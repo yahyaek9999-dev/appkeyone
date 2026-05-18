@@ -1,0 +1,39 @@
+# Caddy v2 reverse proxy for KEYONE WhatsApp Bot SaaS
+# Edit this file at: C:\Caddy\Caddyfile then run:  caddy reload --config C:\Caddy\Caddyfile
+
+# Main app subdomain (auto-HTTPS via Let's Encrypt)
+k1wb.app.keyone1.com {
+    encode gzip zstd
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+
+    # Static assets - long cache
+    @static path *.svg *.png *.jpg *.jpeg *.gif *.webp *.ico *.woff *.woff2 *.css *.js
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # WhatsApp service routes (Node Puppeteer service on :7799)
+    handle_path /wa/* {
+        reverse_proxy 127.0.0.1:7799
+    }
+
+    # LLM API (FastAPI CloakBrowser on :7788)
+    handle_path /llm/* {
+        reverse_proxy 127.0.0.1:7788
+    }
+
+    # Next.js SaaS app (default catch-all on :3000)
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

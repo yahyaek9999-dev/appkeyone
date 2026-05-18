@@ -1,0 +1,68 @@
+# ============================================================
+# KEYONE — root .gitignore
+# ============================================================
+
+# ----- Dependencies -----
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# ----- Environment files (NEVER commit real secrets) -----
+# Keep *.example files tracked; ignore everything else.
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+# .env.example  ← intentionally NOT listed: keep it tracked
+
+# ----- Databases -----
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ----- Sessions & ephemeral runtime state -----
+sessions/
+backups/
+
+# ----- Build outputs -----
+# NOTE: .next/ is intentionally NOT ignored here.
+# The VPS pull includes the built .next/ artifact so the Windows
+# deploy pipeline can skip the `next build` step when unchanged.
+# If you want a clean source-only repo, add .next/ back.
+dist/
+build/
+out/
+
+# ----- Logs -----
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ----- OS & editor -----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ----- TypeScript cache -----
+*.tsbuildinfo
+
+# ----- Test coverage -----
+coverage/
+.nyc_output/

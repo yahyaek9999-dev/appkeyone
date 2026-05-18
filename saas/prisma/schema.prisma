@@ -1,0 +1,752 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  phone        String?
+  role         String   @default("user") // user | admin
+  createdAt    DateTime @default(now())
+
+  // ---- Membership: account suspension (Phase: membership foundation) ----
+  // Suspended users keep their data but cannot send/receive WA messages,
+  // run AI requests, or send broadcasts. Reactivation is admin-only.
+  // Default false ensures existing users are unaffected by the migration.
+  suspended       Boolean  @default(false)
+  suspendedAt     DateTime?
+  suspendedReason String?
+
+  bot            Bot?
+  subscription   Subscription?
+  customers      Customer[]
+  documents      Document[]
+  apiCalls       ApiCall[]
+  broadcasts     Broadcast[]
+  knowledgeGaps  KnowledgeGap[]
+  orders         Order[]
+}
+
+model Bot {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String   @default("المساعد الذكي")
+  persona         String   @default("ودود ومحترف")
+  systemPrompt    String   @default("أنت مساعد المبيعات الرسمي للشركة. تكلم بالعربية باحترام واختصار. اعرض الخدمات والأسعار بدقة من معلومات الشركة المتوفرة فقط، ولا تخترع أي سعر. لو العميل أبدى نية شراء أو سأل عن طريقة الاشتراك أو الدفع، اطلب اسمه ورقم واتسابه ووجّهه يتواصل مع رقم الإدارة لإتمام التفعيل. لو السؤال خارج معلوماتك، اعتذر بصراحة واطلب التواصل مع الإدارة.")
+  welcomeMessage  String   @default("أهلاً بك! كيف يمكنني مساعدتك؟")
+  notifyPhone     String?  // Phone to receive order/payment alerts
+  orderKeywords   String   @default("اوردر,طلب,حولت,تحويل,دفعت,انستاباي,فودافون كاش,فيزا,ايصال")
+  whatsappStatus  String   @default("disconnected") // disconnected | connecting | connected
+  whatsappPhone   String?
+
+  // ---- Working hours & out-of-office ----
+  workingHoursEnabled Boolean @default(false)
+  workingHours        String  @default("[]")  // JSON: [{day:0..6, from:"09:00", to:"21:00", enabled:true}]
+  outOfHoursMessage   String  @default("شكراً لتواصلك! فريقنا متاح من 9 صباحاً حتى 9 مساءً. هنرد عليك أول ما نرجع. 🙏")
+  alertEnabled        Boolean @default(true)  // anger alerts on/off
+  followUpsEnabled    Boolean @default(true)
+  followUpHours       Int     @default(24)    // wait this many hours before nudging
+  // IANA timezone used for working hours, daily-report scheduling, and any
+  // local-hour computation. Default = Africa/Cairo (project's home market).
+  // Existing rows get the default automatically via prisma db push.
+  timezone            String  @default("Africa/Cairo")
+
+  // ---- Human simulation (Wave 5) ----
+  humanizeReplies     Boolean @default(false)  // master switch for all human-like behaviors
+  typingSpeedCps      Int     @default(25)     // chars per second (used for typing delay calc)
+  dynamicEmojis       Boolean @default(true)   // sprinkle context-appropriate emojis
+  replyVariations     Boolean @default(true)   // higher temperature + variety hint
+  preReplyDelayMs     Int     @default(800)    // small "reading" pause before typing starts
+
+  // ---- Sales intelligence (Wave 7) ----
+  negotiationEnabled  Boolean @default(false)
+  negotiationFloorPct Int     @default(10)     // max % off the listed price the bot may offer
+  persuasionEnabled   Boolean @default(true)   // urgency/scarcity hints when intent=buy
+
+  // ---- Wave 12: response cache (exact-text 24h) ----
+  cacheEnabled    Boolean  @default(true)      // cache identical customer questions for 24h
+  cacheTtlHours   Int      @default(24)        // 1..168
+
+  // ---- Daily safety cap (Controlled Launch) ----
+  // Per-bot daily ceiling on assistant replies. 0 = disabled (falls back to
+  // the monthly plan cap only). Counter is reset by the request path when
+  // `dailyMsgsResetAt` is before "today 00:00 UTC".
+  dailyMessageCap Int      @default(0)
+  dailyMsgsUsed   Int      @default(0)
+  dailyMsgsResetAt DateTime @default(now())
+
+  // ---- Multi-provider AI (Phase: Provider Router) ----
+  // Default "keyone" keeps existing behavior (calls the in-house mse_ai_api).
+  // When set to a third-party provider, the merchant supplies an API key
+  // (encrypted at rest) and an optional model override. All upstream caching,
+  // realism, anti-ban, sales, memory, and quick-reply layers continue to run
+  // unchanged — only the text-generation source is swapped.
+  aiProvider      String   @default("keyone")  // keyone | openai | gemini | openrouter | claude | groq
+  aiApiKeyEnc     String?                       // AES-256-GCM ciphertext of the merchant's API key
+  aiModel         String?                       // optional per-bot model override (provider-specific)
+
+  // ---- Daily AI Business Report (Wave: revenue intelligence) ----
+  // Sends one Arabic WhatsApp summary per day to the merchant's notifyPhone
+  // (or whatsappPhone fallback). Heuristic-only by default — no LLM tokens.
+  dailyReportEnabled   Boolean  @default(true)
+  dailyReportHour      Int      @default(9)        // 0..23, merchant local hour to send
+  dailyReportLastSentAt DateTime?                  // dedupe guard within a single calendar day
+
+  // ---- WhatsApp connection mode (Hybrid Phase 1) ----
+  // Accepted values (both old + new are normalized by `lib/messaging/mode.ts`):
+  //   "qr"          → whatsapp-web.js gateway (legacy alias: "unofficial")
+  //   "meta_cloud"  → Meta Cloud API (legacy alias: "official")
+  // Default stays "qr" so every existing row keeps its current behavior.
+  // The provider factory NEVER routes to Meta until ALL of these are true:
+  //   1. `connectionMode == "meta_cloud"`
+  //   2. global flag `META_CLOUD_ENABLED=1`
+  //   3. merchant plan allows it (Pro=QR-only, Max=hybrid, Companies=full)
+  //   4. `metaAccessTokenEnc` is set + verified
+  connectionMode  String   @default("qr")  // qr | meta_cloud (legacy: unofficial | official)
+
+  // ---- Meta Cloud API configuration (Phase 1 schema, Phase 2 runtime) ----
+  // All token storage is AES-256-GCM encrypted via lib/crypto.ts. Empty by
+  // default — QR mode never reads these fields. The webhook verify token is
+  // a merchant-chosen random string sent back to Meta during webhook setup.
+  metaPhoneNumberId       String?  // Meta Cloud API phone_number_id
+  metaBusinessAccountId   String?  // WABA id (waba_id)
+  metaAccessTokenEnc      String?  // encrypted Cloud API access token
+  metaAppSecretEnc        String?  // encrypted app secret (for X-Hub-Signature-256 verification)
+  metaWebhookVerifyToken  String?  // merchant-chosen token used during webhook handshake
+  metaQualityRating       String?  // GREEN | YELLOW | RED — last seen on Meta dashboard
+  metaMessagingLimit      String?  // TIER_50 | TIER_250 | TIER_1K | TIER_10K | TIER_UNLIMITED
+  metaVerifiedAt          DateTime? // first successful health check timestamp
+
+  // ---- Per-business customization (Issue #6) ----
+  // Adapts the system prompt + automations to the merchant's industry. The
+  // default "store" preserves current behavior so existing rows stay
+  // identical until the merchant opts into another mode.
+  businessMode    String   @default("store")  // store | restaurant | real_estate | services | custom
+
+  // ---- Shipment notification (Issue #7) ----
+  // Optional opt-in messaging to customers when their order changes to
+  // status="shipped". Disabled by default to avoid surprise outbound traffic.
+  shipmentNotifyEnabled  Boolean @default(false)
+  shipmentNotifyTemplate String  @default("📦 طلبك في الطريق إليك! رقم التتبع: {tracking}. شكراً لاختيارك {shop}.")
+
+  // ---- Policy grounding (Issue #11) ----
+  // Free-form merchant-authored rules ("لا نوفر شحن للمحافظات", "أقل سعر للجملة 50",
+  // "لا نتعامل بالدولار"...). Injected into the system prompt VERBATIM so the
+  // AI never invents promises that contradict company policy.
+  policyRules     String   @default("")
+
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  quickReplies    QuickReply[]
+  llmCacheEntries LlmCache[]
+}
+
+/// Exact-match response cache. Stores the LLM's own answer to identical
+/// customer questions, scoped per-bot, with a TTL. NO answer is invented or
+/// edited — we just replay the previous LLM-generated reply.
+model LlmCache {
+  id         String   @id @default(cuid())
+  botId      String
+  bot        Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  qHash      String                                    // sha256(normalized question)
+  question   String                                    // raw question (debug + introspection)
+  response   String                                    // verbatim LLM response
+  hits       Int      @default(0)                     // how many times this was reused
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+
+  @@unique([botId, qHash])
+  @@index([botId, expiresAt])
+}
+
+/// Admin-defined Q→A pairs. We try cheap keyword matching first to skip LLM
+/// and cut cost. Falls back to LLM if no template matches.
+model QuickReply {
+  id        String   @id @default(cuid())
+  botId     String
+  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  triggers  String   // JSON array of trigger keywords/phrases (lowercased)
+  reply     String   // the canned response
+  enabled   Boolean  @default(true)
+  hits      Int      @default(0)   // how many times this matched
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([botId, enabled])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  nameEn      String   @default("")
+  priceUsd    Int      // monthly price in USD
+  yearlyUsd   Int?     // yearly price (optional discount)
+  monthlyMsgs Int
+  features    String   // JSON array of feature strings
+  description String   @default("")
+  highlight   String?  // e.g. "الأكثر طلباً"
+  popular     Boolean  @default(false)
+  sortOrder   Int      @default(0)
+
+  // ---- Membership foundation: granular limits + feature flags ----
+  // All fields are additive with safe defaults so existing plans keep working
+  // unchanged. Use the seed-defaults helper to populate values for the
+  // canonical Pro/Max/Companies tiers at deploy time.
+  tier              String  @default("basic")   // basic | pro | max | companies (display group)
+  aiRequestsMonthly Int     @default(0)         // 0 = unlimited
+  broadcastsMonthly Int     @default(0)         // 0 = unlimited
+  whatsappSessions  Int     @default(1)         // simultaneous WA numbers allowed
+  metaAccess        String  @default("none")    // none | limited | full
+  analyticsAccess   String  @default("basic")   // basic | advanced
+  queuePriority     Int     @default(0)         // higher = earlier in queue
+  rateLimitPerMin   Int     @default(60)        // per-user incoming msg rate
+  featureFlags      String  @default("{}")      // JSON: { broadcasts:true, templates:false, ... }
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        Plan     @relation(fields: [planId], references: [id])
+  status      String   @default("pending") // pending | active | expired | canceled
+  billingCycle String  @default("monthly") // monthly | yearly
+  startedAt   DateTime @default(now())
+  expiresAt   DateTime
+  msgsUsed    Int      @default(0)
+  paymentRef  String?  // WhatsApp transfer reference / receipt
+  adminNote   String?  // Admin internal notes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // ---- Membership usage counters ----
+  // Roll over monthly via the rolling-reset helper in lib/membership/limits.ts.
+  // 0 in the matching Plan field = unlimited (we never block).
+  aiRequestsUsed Int       @default(0)
+  broadcastsUsed Int       @default(0)
+  usageResetAt   DateTime?
+}
+
+model ApiCall {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   // e.g. /api/chat
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone       String   // WhatsApp number of the end-customer
+  name        String?
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  // ---- Sales intelligence (computed by LLM + heuristics) ----
+  leadScore       Int       @default(0)      // 0-100, recomputed after every msg
+  lastIntent      String?                    // buy | inquiry | complaint | support | greeting | other
+  lastSentiment   String?                    // positive | neutral | negative | angry
+  tags            String    @default("[]")   // JSON array of tags
+  followUpAt      DateTime?                  // when the cron should send a nudge
+  followUpSent    Boolean   @default(false)
+  notes           String?                    // admin's private notes about this customer
+
+  // ---- Smart personalization (Wave 9) ----
+  preferences     String    @default("{}")   // JSON: { products:[], sizes:[], colors:[], budget?:number, lastTopics?:[] }
+  purchaseProb    Int       @default(0)      // 0-100 estimated buy probability (Wave 8 predictive)
+  bestHourLocal   Int?                       // best hour-of-day (0-23) to message this customer
+
+  // ---- Cart abandonment (Wave 8) ----
+  cartItems       String    @default("[]")   // JSON list of items the customer asked about
+  cartUpdatedAt   DateTime?
+  cartReminderSent Boolean  @default(false)
+
+  // ---- Contact Trust System (Safety Wave) ----
+  // Trust accrues with healthy two-way conversation. Used by the safety
+  // engine to decide which contacts can safely receive higher-frequency
+  // messaging vs. cold outbound that needs strict throttling.
+  trustScore       Int       @default(50)    // 0-100, starts neutral
+  engagementScore  Int       @default(0)     // 0-100, weighted by reply frequency
+  inboundCount     Int       @default(0)
+  outboundCount    Int       @default(0)
+  firstInboundAt   DateTime?                  // null = bot wrote first (cold) → low trust
+  lastInboundAt    DateTime?
+  lastOutboundAt   DateTime?
+  blockedAt        DateTime?                  // set when WA reports a block / send fail final
+  reportedAt       DateTime?                  // set when WA reports the contact reported us
+
+  conversation Conversation?
+  memory       CustomerMemory?
+  orders       Order[]
+
+  @@unique([userId, phone])
+  @@index([userId])
+  @@index([userId, leadScore])
+  @@index([followUpAt])
+}
+
+/// Phase 1 — Memory Engine. One row per Customer. Stores a rolling Arabic
+/// summary of the conversation + an extracted, structured "facts" JSON
+/// (favorite products, sizes, budget, objections, ...). Updated in the
+/// background every ~20 messages so the LLM prompt stays compact while the
+/// bot still "remembers" everything important. Backward compatible with the
+/// existing Customer.preferences field (we keep mirroring there).
+model CustomerMemory {
+  id                       String   @id @default(cuid())
+  customerId               String   @unique
+  customer                 Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  summary                  String   @default("")     // short Arabic rolling summary
+  factsJson                String   @default("{}")   // structured extracted facts (Phase 1)
+  lastSummarizedMessageId  String?                   // last msg id included in summary
+  messageCount             Int      @default(0)      // total msgs seen by extractor
+  pendingSinceMessageId    String?                   // first msg id queued since last extract
+  pendingCount             Int      @default(0)      // msgs queued since last extract
+  updatedAt                DateTime @updatedAt
+  createdAt                DateTime @default(now())
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  customerId  String    @unique
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  summary     String?   // rolling summary for long conversations
+  botPaused   Boolean   @default(false)   // manual takeover by admin
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  messages    Message[]
+  orders      Order[]
+}
+
+model Message {
+  id              String   @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role            String   // user | assistant | system | tool | admin
+  content         String
+  mediaType       String?  // text | voice | image
+  mediaUrl        String?
+  flagged         Boolean  @default(false) // order/payment detected
+  // ---- per-message classification (only on user msgs) ----
+  intent          String?
+  sentiment       String?
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String   // raw text
+  source    String   @default("manual") // manual | url | pdf | docx | suggestion
+  sourceUrl String?  // origin URL if crawled
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Broadcast campaigns: an admin queues a message that should fan out to many
+/// customers. A worker (cron) drains it slowly to avoid WhatsApp rate limits.
+model Broadcast {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  template      String                 // body, may contain {name} {phone}
+  audience      String    @default("all")  // all | hot | warm | tag:<tag>
+  personalize   Boolean   @default(false)  // ask LLM to gently personalize per recipient (default OFF = exact mode for safety)
+  status        String    @default("queued")  // queued | sending | done | canceled
+  total         Int       @default(0)
+  sent          Int       @default(0)
+  failed        Int       @default(0)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  items         BroadcastItem[]
+
+  @@index([userId, status])
+}
+
+model BroadcastItem {
+  id            String     @id @default(cuid())
+  broadcastId   String
+  broadcast     Broadcast  @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  customerId    String
+  phone         String
+  name          String?
+  status        String     @default("pending")  // pending | sent | failed | skipped
+  error         String?
+  sentAt        DateTime?
+
+  @@index([broadcastId, status])
+}
+
+/// Logs unanswerable questions. When the bot tells the user "I don't know",
+/// we save the prompt here so the admin can convert it into knowledge.
+model KnowledgeGap {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerId     String?
+  question       String
+  conversationId String?
+  occurrences    Int      @default(1)
+  resolved       Boolean  @default(false)
+  resolvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, resolved])
+  @@index([userId, occurrences])
+}
+
+// ---------------------------------------------------------------------------
+// Internal Orders System.
+//
+// Orders are auto-extracted from WhatsApp conversations by a lightweight
+// regex-first pipeline (lib/order-extractor). Confidence is recorded so the
+// merchant knows which extractions to double-check. Items + timeline are
+// additive and optional — old data continues to work.
+// ---------------------------------------------------------------------------
+model Order {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerId        String
+  customer          Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  conversationId    String?
+  conversation      Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  // ---- Snapshot of the customer at the moment of capture ----
+  customerName      String?
+  customerPhone     String?
+  shippingAddress   String?       // free text — fed by the customer over chat
+  // ---- Money ----
+  subtotal          Int           @default(0) // store as integer (smallest unit / EGP)
+  shipping          Int           @default(0)
+  discount          Int           @default(0)
+  total             Int           @default(0)
+  currency          String        @default("EGP")
+  paymentMethod     String?       // "cod" | "instapay" | "vodafone_cash" | "card" | ...
+  // ---- Lifecycle ----
+  status            String        @default("pending")    // pending | confirmed | shipped | delivered | canceled
+  fulfillmentStatus String        @default("unfulfilled") // unfulfilled | partial | fulfilled
+  // ---- Extraction quality ----
+  aiConfidence      Int           @default(0) // 0-100; <50 = please review
+  aiNotes           String?       // short Arabic note from the extractor
+  source            String        @default("auto") // auto | manual
+  // ---- Misc ----
+  flaggedReason     String?       // why merchant flagged it (optional)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  items     OrderItem[]
+  timeline  OrderTimeline[]
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name        String                  // free text — "قميص قطن أزرق"
+  size        String?
+  color       String?
+  quantity    Int      @default(1)
+  unitPrice   Int      @default(0)
+  lineTotal   Int      @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model OrderTimeline {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind      String                  // created | status_changed | note | reminder_sent | payment | ai_extracted
+  payload   String   @default("{}") // JSON
+  message   String?                  // human-readable Arabic line for the UI
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Lightweight observability (Controlled Launch).
+//
+// MetricEvent: per-day, per-event counter. Designed for ~10-20 event kinds
+// (llm_call, llm_fail, cache_hit, semantic_hit, quick_reply_hit, fast_path_hit,
+// realism_active, anti_ban_cooldown, order_extracted, etc.). Keep cardinality
+// LOW — a thousand rows/day is fine, a million is not.
+//
+// The (userId, day, kind) composite is unique so writers can upsert with
+// `count: { increment: 1 }`. `userId="*"` reserved for global counters.
+// ---------------------------------------------------------------------------
+model MetricEvent {
+  id        String   @id @default(cuid())
+  userId    String                  // "*" = global
+  day       String                  // "YYYY-MM-DD" (UTC) — string for portable group-by
+  kind      String                  // event class: see lib/metrics.ts
+  count     Int      @default(0)
+  lastAt    DateTime @default(now())
+
+  @@unique([userId, day, kind])
+  @@index([day, kind])
+  @@index([userId, day])
+}
+
+// ProviderUsage: per-day, per-user, per-provider aggregate. Foundation for
+// future billing. Token counts are best-effort (some providers omit usage).
+model ProviderUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  day          String                  // "YYYY-MM-DD" UTC
+  provider     String                  // keyone | openai | gemini | openrouter | claude | groq
+  model        String   @default("")   // optional resolved model id
+  calls        Int      @default(0)
+  failures     Int      @default(0)
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  totalLatencyMs Int    @default(0)    // sum of measured latencies (for avg = total/calls)
+  lastAt       DateTime @default(now())
+
+  @@unique([userId, day, provider, model])
+  @@index([userId, day])
+  @@index([provider, day])
+}
+
+// ---------------------------------------------------------------------------
+// Safety Engine (Anti-Ban Wave) — persistent state that survives restarts.
+//
+// One SafetyState row per bot/user. Holds counters, cooldown windows, the
+// current warmup stage, the rolling risk score, and kill-switch flags.
+// All counters are reset/decayed by the engine — never direct from API.
+// ---------------------------------------------------------------------------
+model SafetyState {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  // ---- Warmup (controls outbound budget for new accounts) ----
+  warmupStartedAt     DateTime @default(now())
+  warmupStage         String   @default("day1")  // day1 | day2_3 | day4_5 | day6_7 | week2 | mature
+  warmupReplyOnly     Boolean  @default(true)    // Day 1-3: bot may only REPLY, never cold outbound
+  // ---- Counters (rolled over by engine) ----
+  dailySends          Int      @default(0)
+  dailySendsResetAt   DateTime @default(now())
+  hourlySends         Int      @default(0)
+  hourlyResetAt       DateTime @default(now())
+  // ---- Rolling risk ----
+  riskScore           Int      @default(0)       // 0-100, decays over time
+  riskUpdatedAt       DateTime @default(now())
+  trustScore          Int      @default(20)      // bot-level trust, grows with healthy activity
+  // ---- Cooldown / kill-switch ----
+  cooldownUntil       DateTime?
+  killSwitchActive    Boolean  @default(false)
+  killSwitchReason    String?
+  killSwitchAt        DateTime?
+  // ---- Failure tracking (feeds kill-switch) ----
+  recentFailures      Int      @default(0)       // failed sends in last hour
+  recentReconnects    Int      @default(0)       // disconnect/reconnect cycles in last hour
+  failuresResetAt     DateTime @default(now())
+  // ---- Stats ----
+  totalSends          Int      @default(0)
+  totalFailures       Int      @default(0)
+  totalCooldowns      Int      @default(0)
+  lastSendAt          DateTime?
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+
+  @@index([userId])
+}
+
+// SafetyEvent: append-only sliding-window log of every outbound + every
+// risk event. Used for burst detection, similarity checks, and the live
+// dashboard. The engine purges rows older than 24h on every write.
+model SafetyEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  kind        String                          // send | failure | cooldown | warmup_advance | kill | reply | block | report
+  customerId  String?
+  phone       String?
+  replyHash   String?                         // sha1 prefix of outbound body (similarity)
+  riskScore   Int?                            // snapshot
+  payload     String   @default("{}")         // JSON metadata (reasons, error, etc)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, kind, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Hybrid WhatsApp — Phase 1 models (additive, opt-in, no QR impact)
+// ---------------------------------------------------------------------------
+
+/// Per-customer opt-in / consent tracking for outbound messaging. Required
+/// for Meta Cloud API compliance (24h service window + marketing consent).
+/// QR mode reads this loosely; Meta mode treats it as a hard gate.
+model WaConsent {
+  id             String   @id @default(cuid())
+  userId         String                                   // merchant
+  customerPhone  String                                   // E.164, no "+"
+  source         String                                   // inbound_reply | website_form | merchant_upload | imported
+  marketingOptIn Boolean  @default(false)                 // explicit marketing opt-in
+  serviceOptIn   Boolean  @default(true)                  // implicit when customer messages first
+  consentedAt    DateTime @default(now())                 // when opt-in was captured
+  lastInboundAt  DateTime?                                // last time customer messaged us (24h window anchor)
+  revokedAt      DateTime?                                // STOP/الغاء — never message again
+  notes          String   @default("")
+
+  @@unique([userId, customerPhone])
+  @@index([userId, revokedAt])
+  @@index([userId, lastInboundAt])
+}
+
+/// Approved Meta Cloud API message templates. We only know about a template
+/// after a successful Graph API sync (Phase 2). Pre-existing templates from
+/// the Business Manager dashboard appear here when the sync runs.
+model WaTemplate {
+  id           String   @id @default(cuid())
+  userId       String                                     // merchant
+  name         String                                     // template name in Meta dashboard
+  language     String   @default("ar")                    // BCP-47, usually "ar" / "en"
+  category     String                                     // MARKETING | UTILITY | AUTHENTICATION
+  status       String   @default("PENDING")               // APPROVED | PENDING | REJECTED | DISABLED
+  components   String   @default("[]")                    // JSON: header/body/buttons schema
+  qualityScore String?                                    // GREEN | YELLOW | RED — per template
+  rejectReason String?
+  lastSyncedAt DateTime @default(now())
+  usageCount   Int      @default(0)                       // local counter (resets monthly)
+
+  @@unique([userId, name, language])
+  @@index([userId, status])
+}
+
+/// Outbound message ledger — single source of truth for delivery state.
+/// Every send (QR or Meta) writes one row here. The state machine:
+///   queued → sending → sent → delivered → read
+///                          → failed (terminal)
+///                          → expired (terminal — 24h window blew up)
+/// Used for: retries, dead-letter, analytics, duplicate protection.
+model WaMessage {
+  id             String   @id @default(cuid())
+  userId         String                                   // merchant
+  provider       String                                   // qr | meta_cloud
+  conversationId String?                                  // Conversation.id if known
+  customerPhone  String                                   // E.164 destination
+  direction      String   @default("outbound")            // outbound | inbound (Meta webhooks)
+  kind           String   @default("text")                // text | media | template | reaction
+  templateName   String?                                  // when kind=template
+  body           String   @default("")                    // for text/template — what we tried to send
+  mediaUrl       String?                                  // for media kinds
+  status         String   @default("queued")              // queued | sending | sent | delivered | read | failed | expired
+  errorCode      String?                                  // Meta error code or QR error tag
+  errorDetail    String?
+  attempts       Int      @default(0)                     // retry counter
+  providerMsgId  String?  @unique                         // Meta wamid or QR msg id — used for status reconciliation
+  idempotencyKey String?  @unique                         // optional caller-supplied dedupe key
+  queuedAt       DateTime @default(now())
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  failedAt       DateTime?
+
+  @@index([userId, status, queuedAt])
+  @@index([userId, customerPhone, queuedAt])
+  @@index([userId, provider, status])
+}
+
+/// Webhook event ledger — idempotency + dead-letter for Meta Cloud webhooks.
+/// Every POST from Meta lands here BEFORE any business logic runs. Replays
+/// (Meta retries within 7 days) are detected via the unique `eventId`.
+model WaWebhookEvent {
+  id           String   @id @default(cuid())
+  userId       String?                                    // resolved after parsing (null if WABA unknown)
+  source       String   @default("meta_cloud")            // future: other providers
+  eventId      String                                     // Meta `id` field — unique per delivery
+  eventType    String                                     // messages | statuses | account_alerts | …
+  rawBody      String                                     // verbatim JSON for replay/debug
+  signatureOk  Boolean  @default(false)                   // X-Hub-Signature-256 check result
+  processed    Boolean  @default(false)                   // set true after handler succeeds
+  attempts     Int      @default(0)
+  lastError    String?
+  receivedAt   DateTime @default(now())
+  processedAt  DateTime?
+
+  @@unique([source, eventId])
+  @@index([userId, receivedAt])
+  @@index([processed, receivedAt])
+}
+
+/// Compliance audit log — separate from SafetyAudit so we can ship a clean
+/// Meta compliance report without leaking unrelated anti-ban telemetry.
+/// Examples: 24h-window violation blocked, template send rejected by policy,
+/// outbound to revoked consent blocked, quality rating dropped.
+model WaComplianceAudit {
+  id           String   @id @default(cuid())
+  userId       String?
+  provider     String                                     // qr | meta_cloud
+  severity     String   @default("info")                  // info | warn | block | critical
+  category     String                                     // consent | window_24h | template | quality | policy | rate_limit
+  action       String                                     // blocked | allowed | downgraded | warned
+  customerPhone String?
+  title        String
+  detail       String   @default("")
+  payload      String   @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, category, createdAt])
+}
+
+// SafetyAudit: high-signal security events for the admin dashboard.
+// Smaller volume than SafetyEvent; meant to be human-readable.
+model SafetyAudit {
+  id          String   @id @default(cuid())
+  userId      String?                          // null = global
+  level       String   @default("info")        // info | warn | critical
+  category    String                           // anti_ban | warmup | kill_switch | auth | broadcast
+  title       String
+  detail      String   @default("")
+  payload     String   @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([level, createdAt])
+}
+
+// Singleton row holding site-wide configuration the admin can edit.
+model SiteConfig {
+  id              String   @id @default("singleton")
+  brandName       String   @default("KEYONE")
+  brandTagline    String   @default("منصة الذكاء الاصطناعي للأعمال")
+  supportWhatsapp String   @default("+201000000000")
+  supportEmail    String   @default("support@keyone1.com")
+  paymentNote     String   @default("")
+  updatedAt       DateTime @updatedAt
+}
