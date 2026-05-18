@@ -50,7 +50,14 @@ abort() { echo -e "\n${RED}============================================${RST}"; 
 # ---------------------------------------------------------------------------
 # Defaults (override via environment variables)
 # ---------------------------------------------------------------------------
-GITHUB_PAT="${GITHUB_PAT:-REDACTED_TOKEN}"
+# GITHUB_PAT must be set as an environment variable — never hardcode it here.
+# Export it in your shell before calling this script:
+#   export GITHUB_PAT="ghp_..."
+# Or store it in ~/.keyone-secrets (chmod 600) and source it:
+#   source ~/.keyone-secrets
+if [[ -z "${GITHUB_PAT:-}" ]]; then
+  abort "GITHUB_PAT env var is required. Set it before running this script."
+fi
 GITHUB_REPO="https://github.com/yahyaek9999-dev/appkeyone.git"
 GITHUB_REPO_WITH_PAT="https://${GITHUB_PAT}@github.com/yahyaek9999-dev/appkeyone.git"
 
