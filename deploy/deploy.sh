@@ -52,7 +52,7 @@ abort() { echo -e "\n${RED}============================================${RST}"; 
 # ---------------------------------------------------------------------------
 # GITHUB_PAT must be set as an environment variable — never hardcode it here.
 # Export it in your shell before calling this script:
-#   export GITHUB_PAT="ghp_..."
+#   export GITHUB_PAT="your-personal-access-token"
 # Or store it in ~/.keyone-secrets (chmod 600) and source it:
 #   source ~/.keyone-secrets
 if [[ -z "${GITHUB_PAT:-}" ]]; then
