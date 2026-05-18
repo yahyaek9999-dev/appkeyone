@@ -23,6 +23,7 @@ import { TrendBadge } from "@/components/ui/trend-badge";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
+import { LiveOpsStrip } from "./live-ops-strip";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,10 @@ export default async function DashboardOverview() {
 
   // Polish: send brand-new users straight to the onboarding wizard if they
   // haven't created a bot yet. Existing users continue to see the dashboard.
-  const bot = await prisma.bot.findUnique({ where: { userId: user.id }, select: { id: true, name: true } });
+  const bot = await prisma.bot.findUnique({
+    where: { userId: user.id },
+    select: { id: true, name: true },
+  });
   if (!bot) redirect("/onboarding");
 
   const cfg = await getSiteConfig();
@@ -64,7 +68,9 @@ export default async function DashboardOverview() {
     dailySeries,
   ] = await Promise.all([
     prisma.customer.count({ where: { userId: user.id } }),
-    prisma.message.count({ where: { conversation: { customer: { userId: user.id } } } }),
+    prisma.message.count({
+      where: { conversation: { customer: { userId: user.id } } },
+    }),
     prisma.message.count({
       where: { flagged: true, conversation: { customer: { userId: user.id } } },
     }),
@@ -98,17 +104,19 @@ export default async function DashboardOverview() {
       take: 6,
     }),
     // Build last-30-day daily counts in one query.
-    prisma.$queryRawUnsafe<{ day: string; total: number }[]>(
-      `SELECT strftime('%Y-%m-%d', m.createdAt) AS day, COUNT(*) AS total
+    prisma
+      .$queryRawUnsafe<{ day: string; total: number }[]>(
+        `SELECT strftime('%Y-%m-%d', m.createdAt) AS day, COUNT(*) AS total
        FROM Message m
        JOIN Conversation c ON c.id = m.conversationId
        JOIN Customer cu ON cu.id = c.customerId
        WHERE cu.userId = ? AND m.createdAt >= ?
        GROUP BY day
        ORDER BY day ASC`,
-      user.id,
-      start30.toISOString()
-    ).catch(() => []),
+        user.id,
+        start30.toISOString(),
+      )
+      .catch(() => []),
   ]);
 
   // Build a dense series for the last 30 days
@@ -130,16 +138,22 @@ export default async function DashboardOverview() {
     msgsPrior7d > 0
       ? ((msgs7d - msgsPrior7d) / msgsPrior7d) * 100
       : msgs7d > 0
-      ? 100
-      : null;
+        ? 100
+        : null;
 
   const plan = sub.subscription?.plan;
   const usagePct =
     plan && plan.monthlyMsgs > 0 && sub.subscription
-      ? Math.min(100, Math.round((sub.subscription.msgsUsed / plan.monthlyMsgs) * 100))
+      ? Math.min(
+          100,
+          Math.round((sub.subscription.msgsUsed / plan.monthlyMsgs) * 100),
+        )
       : 0;
   const daysLeft = sub.subscription?.expiresAt
-    ? Math.max(0, Math.ceil((sub.subscription.expiresAt.getTime() - Date.now()) / day))
+    ? Math.max(
+        0,
+        Math.ceil((sub.subscription.expiresAt.getTime() - Date.now()) / day),
+      )
     : 0;
 
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
@@ -149,11 +163,15 @@ export default async function DashboardOverview() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold mb-1">أهلاً, {user.name || "صديقي"} 👋</h1>
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-1">
+            أهلاً, {user.name || "صديقي"} 👋
+          </h1>
           <p className="text-slate-400">نظرة عامة على أداء بوتك</p>
         </div>
         <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
       </div>
+
+      <LiveOpsStrip />
 
       {/* Subscription banner */}
       {!sub.active && (
@@ -164,10 +182,10 @@ export default async function DashboardOverview() {
               {sub.subscription?.status === "pending"
                 ? "اشتراكك بانتظار التفعيل من الإدارة"
                 : sub.subscription?.status === "expired"
-                ? "انتهت صلاحية اشتراكك"
-                : sub.reason === "quota_exceeded"
-                ? "وصلت الحد الأقصى من الرسائل لهذا الشهر"
-                : "ليس لديك اشتراك نشط"}
+                  ? "انتهت صلاحية اشتراكك"
+                  : sub.reason === "quota_exceeded"
+                    ? "وصلت الحد الأقصى من الرسائل لهذا الشهر"
+                    : "ليس لديك اشتراك نشط"}
             </div>
             <div className="text-sm text-slate-300">
               تواصل معنا عبر واتساب لتفعيل أو ترقية الاشتراك.
@@ -188,8 +206,18 @@ export default async function DashboardOverview() {
 
       {/* Stats */}
       <StatGrid cols={4} className="mb-6">
-        <Stat icon={<Users />} label="إجمالي العملاء" value={customerCount.toLocaleString()} color="from-blue-500 to-cyan-500" />
-        <Stat icon={<MessageSquare />} label="إجمالي الرسائل" value={msgCount.toLocaleString()} color="from-brand-500 to-emerald-500" />
+        <Stat
+          icon={<Users />}
+          label="إجمالي العملاء"
+          value={customerCount.toLocaleString()}
+          color="from-blue-500 to-cyan-500"
+        />
+        <Stat
+          icon={<MessageSquare />}
+          label="إجمالي الرسائل"
+          value={msgCount.toLocaleString()}
+          color="from-brand-500 to-emerald-500"
+        />
         <Stat
           icon={<TrendingUp />}
           label="آخر 7 أيام"
@@ -198,7 +226,12 @@ export default async function DashboardOverview() {
           trend={msgs7dDelta}
           sparkline={last7Series}
         />
-        <Stat icon={<BellRing />} label="تنبيهات الطلبات" value={flaggedCount.toLocaleString()} color="from-amber-500 to-orange-500" />
+        <Stat
+          icon={<BellRing />}
+          label="تنبيهات الطلبات"
+          value={flaggedCount.toLocaleString()}
+          color="from-amber-500 to-orange-500"
+        />
       </StatGrid>
 
       {/* Usage card */}
@@ -206,14 +239,17 @@ export default async function DashboardOverview() {
         <div className="card p-6 mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <div className="text-xs text-slate-400 mb-1">استهلاك الباقة الحالية</div>
+              <div className="text-xs text-slate-400 mb-1">
+                استهلاك الباقة الحالية
+              </div>
               <div className="text-xl font-bold flex items-center gap-2">
                 <Crown className="w-5 h-5 text-amber-400" />
                 {plan.name}
               </div>
             </div>
             <div className="text-sm text-slate-300">
-              {sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()} رسالة
+              {sub.subscription.msgsUsed.toLocaleString()} /{" "}
+              {plan.monthlyMsgs.toLocaleString()} رسالة
             </div>
           </div>
           <div className="h-3 bg-white/5 rounded-full overflow-hidden">
@@ -222,8 +258,8 @@ export default async function DashboardOverview() {
                 usagePct > 90
                   ? "bg-gradient-to-r from-rose-500 to-red-500"
                   : usagePct > 70
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500"
-                  : "bg-gradient-to-r from-brand-500 to-emerald-500"
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500"
+                    : "bg-gradient-to-r from-brand-500 to-emerald-500"
               }`}
               style={{ width: `${usagePct}%` }}
             />
@@ -240,7 +276,9 @@ export default async function DashboardOverview() {
         <div className="card p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg">نشاط آخر 30 يوم</h2>
-            <span className="text-xs text-slate-400">{msgCount.toLocaleString()} رسالة إجمالاً</span>
+            <span className="text-xs text-slate-400">
+              {msgCount.toLocaleString()} رسالة إجمالاً
+            </span>
           </div>
           <div className="flex items-end gap-0.5 md:gap-1 h-44">
             {last30.map((d) => {
@@ -269,7 +307,10 @@ export default async function DashboardOverview() {
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg">عملاء نشطون</h2>
-            <Link href="/dashboard/customers" className="text-xs text-brand-400 hover:underline">
+            <Link
+              href="/dashboard/customers"
+              className="text-xs text-brand-400 hover:underline"
+            >
               الكل ←
             </Link>
           </div>
@@ -290,17 +331,31 @@ export default async function DashboardOverview() {
                 >
                   <Avatar name={c.name || c.phone} size="md" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate">{c.name || "بدون اسم"}</div>
+                    <div className="text-sm font-semibold truncate">
+                      {c.name || "بدون اسم"}
+                    </div>
                     {(() => {
                       const p = formatCustomerPhone(c.phone);
                       return p.isLid ? (
-                        <div className="text-[10px] text-slate-500 italic" title={p.raw}>{p.display}</div>
+                        <div
+                          className="text-[10px] text-slate-500 italic"
+                          title={p.raw}
+                        >
+                          {p.display}
+                        </div>
                       ) : (
-                        <bdi dir="ltr" className="text-[10px] text-slate-500 block">{p.display}</bdi>
+                        <bdi
+                          dir="ltr"
+                          className="text-[10px] text-slate-500 block"
+                        >
+                          {p.display}
+                        </bdi>
                       );
                     })()}
                   </div>
-                  <div className="text-[10px] text-slate-500">{timeAgo(c.lastSeenAt)}</div>
+                  <div className="text-[10px] text-slate-500">
+                    {timeAgo(c.lastSeenAt)}
+                  </div>
                 </Link>
               ))}
             </div>
@@ -312,7 +367,10 @@ export default async function DashboardOverview() {
       <div className="card p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-lg">آخر الرسائل</h2>
-          <Link href="/dashboard/customers" className="text-sm text-brand-400 hover:underline">
+          <Link
+            href="/dashboard/customers"
+            className="text-sm text-brand-400 hover:underline"
+          >
             عرض الكل ←
           </Link>
         </div>
@@ -331,13 +389,19 @@ export default async function DashboardOverview() {
                 className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition"
               >
                 <Avatar
-                  name={m.role === "user" ? (m.conversation.customer.name || m.conversation.customer.phone) : "BOT"}
+                  name={
+                    m.role === "user"
+                      ? m.conversation.customer.name ||
+                        m.conversation.customer.phone
+                      : "BOT"
+                  }
                   size="md"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 text-xs text-slate-500 mb-0.5">
                     <span className="font-medium">
-                      {m.conversation.customer.name || m.conversation.customer.phone}
+                      {m.conversation.customer.name ||
+                        m.conversation.customer.phone}
                     </span>
                     <span>•</span>
                     <span>{timeAgo(m.createdAt)}</span>
@@ -347,7 +411,9 @@ export default async function DashboardOverview() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-slate-200 truncate">{m.content}</div>
+                  <div className="text-sm text-slate-200 truncate">
+                    {m.content}
+                  </div>
                 </div>
               </div>
             ))}
@@ -390,7 +456,9 @@ function SubscriptionBadge({
       <div className="card px-4 py-3 flex items-center gap-3 border-emerald-500/30 bg-emerald-500/5">
         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
         <div className="text-sm">
-          <div className="font-bold">{sub.subscription?.plan?.name || "اشتراك نشط"}</div>
+          <div className="font-bold">
+            {sub.subscription?.plan?.name || "اشتراك نشط"}
+          </div>
           <div className="text-slate-400 text-xs">باقي {daysLeft} يوم</div>
         </div>
       </div>
@@ -453,9 +521,7 @@ function Stat({
         >
           {icon}
         </div>
-        {trend !== undefined && (
-          <TrendBadge delta={trend} size="sm" />
-        )}
+        {trend !== undefined && <TrendBadge delta={trend} size="sm" />}
       </div>
       <div className="text-3xl font-extrabold tabular-nums">{value}</div>
       <div className="text-sm text-slate-400 mt-1">{label}</div>
