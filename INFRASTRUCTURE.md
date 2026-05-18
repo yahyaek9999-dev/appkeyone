@@ -379,3 +379,19 @@ Follow this checklist when migrating from SQLite → Supabase Postgres.
 
 > Ports 3000, 3001, and 7788 must **not** be exposed on the public firewall.
 > All external traffic must go through Caddy on 443.
+
+---
+
+## ✅ Verified Credentials & Status (2026-05-18)
+
+| Service | Status | Notes |
+|---------|--------|-------|
+| Supabase Postgres | ✅ Password set, port 6543 reachable from VPS | Migration inactive — `DATABASE_URL` still SQLite |
+| Upstash Redis | ✅ Reachable, 115ms latency from VPS | REST + TCP configured |
+| Sentry | ✅ DSN active, errors being captured | Personal token used as `SENTRY_AUTH_TOKEN` |
+| GitHub | ✅ `main` branch live | PAT configured on VPS git remote |
+
+## Supabase DB Password
+Set via `PATCH /v1/projects/wahyuzhqkfgzigcipzcc/database/password`.
+Password stored in VPS `.env` as `POSTGRES_URL` and `POSTGRES_DIRECT_URL`.
+To activate Postgres: change `DATABASE_URL` to point to `POSTGRES_URL` value, then run `prisma migrate deploy`.
