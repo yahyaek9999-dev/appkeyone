@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getSiteConfig } from "@/lib/admin";
@@ -43,174 +44,232 @@ async function getPlans() {
 
 export default async function LandingPage() {
   const [plans, cfg] = await Promise.all([getPlans(), getSiteConfig()]);
+  const brandName = cfg.brandName || "KEYONE";
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
+  const waHref = waNum
+    ? "https://wa.me/" +
+      waNum +
+      "?text=" +
+      encodeURIComponent("أريد طلب حساب جديد في " + brandName)
+    : "";
 
   return (
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
       {/* ───────── Nav ───────── */}
-      <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-md bg-slate-950/70 border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <Logo />
-            <span>{cfg.brandName}</span>
+      <nav className="fixed top-0 inset-x-0 z-50">
+        <div className="hidden md:flex max-w-[1440px] mx-auto h-24 items-center justify-end px-8 lg:px-12">
+          <Link
+            href="/"
+            className="flex items-center gap-3 font-black tracking-tight text-white drop-shadow-[0_0_24px_rgba(34,197,94,0.25)]"
+          >
+            <span className="text-3xl leading-none">{brandName}</span>
+            <Logo
+              className="h-14 w-14 rounded-[1.35rem]"
+              iconClassName="h-8 w-8"
+            />
           </Link>
-          <div className="hidden md:flex items-center gap-7 text-sm text-slate-300">
-            <a href="#features" className="hover:text-white">
-              المميزات
-            </a>
-            <a href="#how" className="hover:text-white">
-              طريقة العمل
-            </a>
-            <Link href="/pricing" className="hover:text-white">
-              الأسعار
-            </Link>
-            <a href="#faq" className="hover:text-white">
-              الأسئلة
-            </a>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="text-sm text-slate-300 hover:text-white px-3 py-1.5"
-            >
-              تسجيل دخول
-            </Link>
+        </div>
+
+        <div
+          dir="ltr"
+          className="md:hidden h-[100px] border-b border-white/10 bg-[#020806]/95 px-5 min-[420px]:px-9 flex items-center justify-between backdrop-blur-xl"
+        >
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 font-black tracking-tight text-white"
+          >
+            <span className="text-2xl leading-none min-[420px]:text-[28px]">
+              {brandName}
+            </span>
+            <Logo
+              className="h-11 w-11 rounded-2xl min-[420px]:h-12 min-[420px]:w-12"
+              iconClassName="h-6 w-6 min-[420px]:h-7 min-[420px]:w-7"
+            />
+          </Link>
+
+          <div className="flex items-center gap-4 min-[420px]:gap-7">
             {waNum ? (
               <a
-                href={`https://wa.me/${waNum}?text=${encodeURIComponent("أريد طلب اشتراك في " + cfg.brandName)}`}
+                href={waHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-medium bg-brand-500 hover:bg-brand-600 transition px-4 py-2 rounded-lg shadow-lg shadow-brand-500/20 inline-flex items-center gap-1.5"
+                dir="rtl"
+                className="rounded-xl border border-brand-500/70 px-4 py-3 text-base font-black text-brand-400 shadow-[0_0_24px_rgba(34,197,94,0.14)] min-[420px]:px-6 min-[420px]:text-lg"
               >
-                <Phone className="w-3.5 h-3.5" /> اطلب حسابك
+                اطلب حسابك
               </a>
             ) : (
               <Link
                 href="/pricing"
-                className="text-sm font-medium bg-brand-500 hover:bg-brand-600 transition px-4 py-2 rounded-lg shadow-lg shadow-brand-500/20"
+                dir="rtl"
+                className="rounded-xl border border-brand-500/70 px-4 py-3 text-base font-black text-brand-400 shadow-[0_0_24px_rgba(34,197,94,0.14)] min-[420px]:px-6 min-[420px]:text-lg"
               >
                 الباقات
               </Link>
             )}
+            <button
+              type="button"
+              aria-label="فتح القائمة"
+              className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 min-[420px]:h-11 min-[420px]:w-11"
+            >
+              <span className="block h-1 w-9 rounded-full bg-white min-[420px]:w-11" />
+              <span className="block h-1 w-9 rounded-full bg-white min-[420px]:w-11" />
+              <span className="block h-1 w-9 rounded-full bg-white min-[420px]:w-11" />
+            </button>
           </div>
         </div>
       </nav>
 
       {/* ───────── Hero ───────── */}
-      <section className="relative pt-32 pb-20 px-4 overflow-hidden">
-        {/* Subtle grid background */}
+      <section className="relative isolate overflow-hidden bg-[#020806] pt-[130px] text-white lg:min-h-screen lg:pt-28">
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_82%_28%,rgba(34,197,94,0.28),transparent_31%),radial-gradient(circle_at_16%_74%,rgba(34,197,94,0.12),transparent_34%),linear-gradient(180deg,#020806_0%,#020806_100%)]" />
         <div
-          className="absolute inset-0 -z-10 opacity-[0.04]"
+          className="absolute inset-0 z-0 opacity-[0.18]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
+              "linear-gradient(rgba(34,197,94,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.55) 1px, transparent 1px)",
+            backgroundSize: "92px 92px",
             maskImage:
-              "radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%)",
+              "radial-gradient(ellipse 78% 62% at 73% 48%, black 18%, transparent 74%)",
             WebkitMaskImage:
-              "radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%)",
+              "radial-gradient(ellipse 78% 62% at 73% 48%, black 18%, transparent 74%)",
           }}
         />
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-brand-500/20 blur-[120px] rounded-full -z-10" />
+        <div className="absolute left-[8%] top-[18%] z-0 hidden h-40 w-40 rounded-full bg-brand-500/10 blur-3xl lg:block" />
 
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-xs text-slate-300 mb-6">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            منصة AI Business Operations متاحة الآن
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[57vw] max-w-[860px] lg:block">
+          <div className="absolute inset-y-0 -right-10 left-0">
+            <Image
+              src="/robot.png"
+              alt="روبوت KEYONE للذكاء الاصطناعي"
+              fill
+              priority
+              sizes="57vw"
+              className="object-cover object-[50%_12%] opacity-95"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#020806] via-[#020806]/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#020806]/10 via-transparent to-[#020806]/30" />
           </div>
+        </div>
 
-          <h1 className="text-4xl sm:text-6xl font-bold leading-tight tracking-tight mb-6">
-            منصة ذكاء اصطناعي تدير عملاءك وطلباتك
-            <br />
-            <span className="bg-gradient-to-l from-brand-300 via-brand-400 to-emerald-400 bg-clip-text text-transparent">
-              من واتساب حتى المبيعات
-            </span>
-          </h1>
-
-          <p className="text-slate-300 text-lg max-w-2xl mx-auto mb-8">
-            KEYONE يحوّل محادثات واتساب إلى نظام تشغيل ذكي للدعم، المبيعات،
-            الطلبات، المتابعة، والتحليلات — يعمل لحظياً ويحافظ على سياق كل عميل.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
-            {waNum ? (
-              <a
-                href={`https://wa.me/${waNum}?text=${encodeURIComponent("أريد طلب حساب جديد في " + cfg.brandName)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 transition px-6 py-3 rounded-xl font-medium shadow-xl shadow-brand-500/30"
-              >
-                <Phone className="w-4 h-4" /> اطلب اشتراكك عبر واتساب
-              </a>
-            ) : (
-              <Link
-                href="/pricing"
-                className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 transition px-6 py-3 rounded-xl font-medium shadow-xl shadow-brand-500/30"
-              >
-                شاهد الباقات <ArrowLeft className="w-4 h-4" />
-              </Link>
-            )}
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 transition px-6 py-3 rounded-xl text-sm"
+        <div
+          dir="ltr"
+          className="relative z-10 mx-auto max-w-[1440px] px-6 sm:px-10 lg:px-16"
+        >
+          <div className="flex flex-col lg:min-h-[calc(100vh-7rem)] lg:justify-center">
+            <div
+              dir="rtl"
+              className="mx-auto w-full max-w-[720px] text-center lg:mx-0 lg:max-w-[690px] lg:pb-12 lg:text-right"
             >
-              عرض الأسعار
-            </Link>
-          </div>
-
-          {/* Trust signals */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-emerald-400" />
-              بنية آمنة للأعمال
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-brand-400" />
-              تشغيل ومتابعة لحظية
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-purple-400" />
-              جاهز للفرق والشركات
-            </div>
-          </div>
-        </div>
-
-        {/* Mock chat preview */}
-        <div className="max-w-3xl mx-auto mt-16 relative">
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10 pointer-events-none" />
-          <ChatPreview />
-        </div>
-      </section>
-
-      {/* ───────── Live AI operations ───────── */}
-      <section className="px-4 pb-8 -mt-8 relative z-20">
-        <div className="max-w-6xl mx-auto bg-slate-900/80 border border-white/10 rounded-2xl px-4 py-4 backdrop-blur-sm shadow-xl shadow-brand-500/5">
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs text-slate-300">
-            {[
-              { label: "AI يرد الآن", dot: "bg-emerald-400" },
-              { label: "طلبات يتم اكتشافها", dot: "bg-brand-400" },
-              { label: "Broadcasts نشطة", dot: "bg-amber-400" },
-              { label: "عملاء متصلون", dot: "bg-cyan-400" },
-              { label: "WhatsApp Online", dot: "bg-emerald-400" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1.5"
-              >
-                <span className="relative flex h-2 w-2">
-                  <span
-                    className={`animate-ping absolute inline-flex h-full w-full rounded-full ${item.dot} opacity-60`}
-                  />
-                  <span
-                    className={`relative inline-flex rounded-full h-2 w-2 ${item.dot}`}
-                  />
-                </span>
-                {item.label}
+              <div className="inline-flex items-center justify-center gap-3 rounded-full border border-brand-500/60 bg-[#06100d]/80 px-6 py-3 text-base font-black text-white shadow-[0_0_36px_rgba(34,197,94,0.12)] sm:text-lg">
+                <span>منصة الذكاء الاصطناعي للأعمال</span>
+                <span className="h-3.5 w-3.5 rounded-full bg-brand-500 shadow-[0_0_18px_rgba(34,197,94,0.9)]" />
               </div>
-            ))}
+
+              <h1 className="mt-8 text-[2.65rem] font-black leading-[1.34] tracking-[-0.045em] text-white drop-shadow-[0_3px_0_rgba(255,255,255,0.08)] sm:text-[3.8rem] lg:text-[4.25rem] xl:text-[4.65rem]">
+                <span>منصة ذكاء اصطناعي</span>
+                <br />
+                <span>تدير عملك وطلباتك</span>
+                <br />
+                <span className="bg-gradient-to-l from-brand-300 via-brand-400 to-brand-600 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(34,197,94,0.24)]">
+                  من واتساب حتى المبيعات
+                </span>
+              </h1>
+
+              <p className="mx-auto mt-8 max-w-[640px] text-lg font-medium leading-9 text-white/90 sm:text-[1.45rem] sm:leading-[2.5rem] lg:mx-0 lg:text-[1.35rem] lg:leading-10">
+                <span className="font-black text-brand-400">{brandName}</span>{" "}
+                يحول محادثات واتساب إلى نظام تشغيل ذكي لدعم المبيعات، الطلبات،
+                المتابعة، والتحليلات — يعمل لحظياً ويحافظ على سياق كل عميل.
+              </p>
+
+              <div className="mt-10 flex flex-col items-center gap-4 lg:flex-row lg:justify-start">
+                {waNum ? (
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-[78px] w-full max-w-[540px] items-center justify-center gap-4 rounded-xl bg-gradient-to-l from-brand-400 to-brand-600 px-7 text-xl font-black text-white shadow-[0_0_34px_rgba(34,197,94,0.36)] transition hover:scale-[1.01] hover:shadow-[0_0_44px_rgba(34,197,94,0.48)] lg:h-[74px] lg:w-auto lg:min-w-[368px]"
+                  >
+                    <WhatsAppIcon className="h-9 w-9" />
+                    <span>اطلب إشتراكك عبر واتساب</span>
+                  </a>
+                ) : (
+                  <Link
+                    href="/pricing"
+                    className="inline-flex h-[78px] w-full max-w-[540px] items-center justify-center gap-4 rounded-xl bg-gradient-to-l from-brand-400 to-brand-600 px-7 text-xl font-black text-white shadow-[0_0_34px_rgba(34,197,94,0.36)] transition hover:scale-[1.01] hover:shadow-[0_0_44px_rgba(34,197,94,0.48)] lg:h-[74px] lg:w-auto lg:min-w-[368px]"
+                  >
+                    شاهد الباقات
+                    <ArrowLeft className="h-6 w-6" />
+                  </Link>
+                )}
+                <Link
+                  href="/pricing"
+                  className="inline-flex h-[74px] w-full max-w-[540px] items-center justify-center rounded-xl border border-white/30 bg-black/20 px-7 text-xl font-black text-white shadow-[inset_0_0_0_1px_rgba(34,197,94,0.15)] transition hover:border-brand-400/80 hover:bg-brand-500/10 lg:w-auto lg:min-w-[238px]"
+                >
+                  عرض الأسعار
+                </Link>
+              </div>
+
+              <div className="mx-auto mt-11 grid w-full max-w-[660px] grid-cols-3 text-white/90 lg:mx-0">
+                {[
+                  { icon: Lock, label: "بنية آمنة للأعمال" },
+                  { icon: Shield, label: "تشغيل ومتابعة لحظية" },
+                  { icon: Users, label: "جاهز للفرق والشركات" },
+                ].map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.label}
+                      className={
+                        "flex min-h-[88px] flex-col items-center justify-center gap-2 px-2 text-center " +
+                        (index > 0 ? "border-r border-brand-500/30" : "")
+                      }
+                    >
+                      <Icon className="h-8 w-8 text-brand-400" />
+                      <span className="text-sm font-bold leading-6 sm:text-base">
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="relative -mx-6 mt-4 h-[650px] overflow-hidden sm:-mx-10 lg:hidden">
+              <Image
+                src="/robot.png"
+                alt="روبوت KEYONE للذكاء الاصطناعي"
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-[50%_0%]"
+              />
+              <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#020806] to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020806] to-transparent" />
+              <div className="absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-[#020806] to-transparent" />
+              <div className="absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-[#020806] to-transparent" />
+
+              <div
+                dir="rtl"
+                className="absolute bottom-8 left-9 right-9 rounded-3xl border border-brand-500/30 bg-[#0b2119]/90 p-5 shadow-2xl shadow-brand-500/25 backdrop-blur-xl"
+              >
+                <div className="flex items-center justify-start gap-4">
+                  <Logo
+                    className="h-14 w-14 rounded-2xl"
+                    iconClassName="h-8 w-8"
+                  />
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-white">
+                      متاح شاتك
+                    </div>
+                    <div className="mt-1 flex items-center justify-start gap-2 text-base font-semibold text-white/80">
+                      <span className="h-2.5 w-2.5 rounded-full bg-brand-400 shadow-[0_0_14px_rgba(34,197,94,0.9)]" />
+                      <span>متصل الآن</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -257,16 +316,56 @@ export default async function LandingPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { icon: Bot, title: "AI Customer Support" },
-              { icon: Sparkles, title: "AI Sales Assistant" },
-              { icon: MessageSquare, title: "WhatsApp Automation" },
-              { icon: Users, title: "CRM" },
-              { icon: ShoppingCart, title: "Order Management" },
-              { icon: Clock, title: "Follow-ups" },
-              { icon: Send, title: "Broadcasts" },
-              { icon: BarChart3, title: "Analytics" },
-              { icon: Brain, title: "AI Memory" },
-              { icon: Inbox, title: "Team Inbox" },
+              {
+                icon: Bot,
+                title: "دعم عملاء AI",
+                desc: "يرد بدقة وبنبرة نشاطك",
+              },
+              {
+                icon: Sparkles,
+                title: "مساعد مبيعات",
+                desc: "يقترح ويقرب قرار الشراء",
+              },
+              {
+                icon: MessageSquare,
+                title: "أتمتة واتساب",
+                desc: "تشغيل الرسائل والسيناريوهات",
+              },
+              {
+                icon: Users,
+                title: "CRM العملاء",
+                desc: "تجميع بيانات وسياق كل عميل",
+              },
+              {
+                icon: ShoppingCart,
+                title: "إدارة الطلبات",
+                desc: "اكتشاف الطلبات وتحويلها للفريق",
+              },
+              {
+                icon: Clock,
+                title: "متابعات ذكية",
+                desc: "تذكير العملاء في الوقت المناسب",
+              },
+              {
+                icon: Send,
+                title: "Broadcasts",
+                desc: "حملات واتساب منظمة وآمنة",
+              },
+              {
+                icon: BarChart3,
+                title: "تحليلات",
+                desc: "رؤية أوضح للرسائل والطلبات",
+              },
+              {
+                icon: Brain,
+                title: "ذاكرة AI",
+                desc: "يحافظ على سياق المحادثات",
+              },
+              {
+                icon: Inbox,
+                title: "Team Inbox",
+                desc: "صندوق موحد لتدخل الفريق",
+              },
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -280,6 +379,9 @@ export default async function LandingPage() {
                   <div className="text-sm font-medium leading-snug">
                     {item.title}
                   </div>
+                  <p className="text-xs text-slate-400 leading-relaxed mt-1">
+                    {item.desc}
+                  </p>
                 </div>
               );
             })}
@@ -476,12 +578,12 @@ export default async function LandingPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
             {[
               { icon: Utensils, label: "مطاعم" },
-              { icon: Shirt, label: "ملابس" },
+              { icon: Shirt, label: "علامات ملابس" },
               { icon: Building2, label: "عقارات" },
               { icon: Stethoscope, label: "عيادات" },
-              { icon: ShoppingCart, label: "Ecommerce" },
+              { icon: ShoppingCart, label: "متاجر إلكترونية" },
               { icon: GraduationCap, label: "كورسات" },
-              { icon: Truck, label: "شحن" },
+              { icon: Truck, label: "شركات شحن" },
             ].map((u) => {
               const Icon = u.icon;
               return (
@@ -518,28 +620,28 @@ export default async function LandingPage() {
             {[
               {
                 icon: Shield,
-                title: "Smart Protection",
-                desc: "حماية من الاستخدام غير الطبيعي",
+                title: "حماية ذكية",
+                desc: "تقليل المخاطر والاستخدام غير الطبيعي",
               },
               {
                 icon: Lock,
-                title: "Secure Infrastructure",
-                desc: "بنية آمنة لحفظ بيانات العملاء",
+                title: "بنية آمنة",
+                desc: "حفظ بيانات العملاء داخل تشغيل موثوق",
               },
               {
                 icon: RotateCcw,
-                title: "Backups",
-                desc: "نسخ احتياطية للحفاظ على استمرارية العمل",
+                title: "نسخ احتياطية",
+                desc: "جاهزية أفضل لاستمرارية العمل",
               },
               {
                 icon: Activity,
-                title: "Realtime Monitoring",
-                desc: "متابعة حالة التشغيل لحظة بلحظة",
+                title: "مراقبة لحظية",
+                desc: "متابعة حالة التشغيل وقت الذروة",
               },
               {
                 icon: Server,
-                title: "Stable Operations",
-                desc: "تشغيل مستقر للفرق والشركات",
+                title: "تشغيل مستقر",
+                desc: "اعتمادية أعلى للفرق والشركات",
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -715,12 +817,38 @@ export default async function LandingPage() {
 
 /* ─────────── Helper components ─────────── */
 
-function Logo() {
+function WhatsAppIcon({ className = "h-6 w-6" }: { className?: string }) {
   return (
-    <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/30">
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      <path d="M9.2 8.7c.2-.4.4-.5.7-.5h.5c.2 0 .4.1.5.4l.7 1.7c.1.3.1.5-.1.7l-.4.5c.5.9 1.2 1.6 2.1 2.1l.5-.4c.2-.2.5-.2.7-.1l1.7.7c.3.1.4.3.4.6v.5c0 .3-.1.5-.4.7-.4.3-.9.4-1.5.3-3.1-.5-5.6-3-6.1-6.1-.1-.5 0-1 .2-1.4Z" />
+    </svg>
+  );
+}
+
+function Logo({
+  className = "h-9 w-9 rounded-xl",
+  iconClassName = "h-5 w-5",
+}: {
+  className?: string;
+  iconClassName?: string;
+} = {}) {
+  return (
+    <span
+      className={`${className} bg-gradient-to-br from-brand-400 via-brand-500 to-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/30`}
+    >
       <svg
         viewBox="0 0 24 24"
-        className="w-5 h-5 text-white"
+        className={`${iconClassName} text-white`}
         fill="none"
         stroke="currentColor"
         strokeWidth="2.5"
@@ -765,87 +893,6 @@ function FeatureCard({
       </div>
       <h3 className="font-bold mb-2">{title}</h3>
       <p className="text-sm text-slate-300 leading-relaxed">{desc}</p>
-    </div>
-  );
-}
-
-function ChatPreview() {
-  return (
-    <div className="relative bg-slate-900/80 border border-white/10 rounded-3xl shadow-2xl shadow-brand-500/10 overflow-hidden backdrop-blur-sm">
-      {/* Chat header */}
-      <div className="bg-emerald-600/90 px-5 py-3 flex items-center gap-3 border-b border-emerald-500/20">
-        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
-          <MessageSquare className="w-4 h-4 text-white" />
-        </div>
-        <div>
-          <div className="font-medium text-sm">متجر شركتك</div>
-          <div className="text-xs text-emerald-100/90 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-200" /> متصل
-            الآن
-          </div>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div
-        className="px-4 py-5 space-y-3 bg-[#0a141d]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 30% 20%, rgba(34,197,94,0.06), transparent 50%)",
-        }}
-      >
-        <Bubble side="left" name="عميل">
-          السلام عليكم، عاوز أعرف أسعار الخدمة عندكم؟
-        </Bubble>
-        <Bubble side="right">
-          وعليكم السلام 👋 الباقة الأساسية تبدأ من $29 شهرياً وتشمل 2000 رسالة.
-          عاوز أعرض عليك التفاصيل الكاملة؟
-        </Bubble>
-        <Bubble side="left" name="عميل">
-          آه ممكن، عاوز للمتجر بتاعي ١٠ آلاف رسالة شهرياً
-        </Bubble>
-        <Bubble side="right">
-          الباقة الاحترافية مناسبة لك: $79/شهر، 10,000 رسالة، تشمل ربط رقمين
-          واتساب وتحليلات متقدمة. أحوّلك لفريق المبيعات لتفعيل الاشتراك؟
-        </Bubble>
-        <Bubble side="left" name="عميل">
-          تمام، يلا
-        </Bubble>
-        <Bubble side="right">
-          ممتاز ✅ أرسل اسمك واسم متجرك وهنبعتلك تفاصيل الدفع خلال دقائق.
-        </Bubble>
-        <div className="text-center text-xs text-emerald-400/80 mt-2">
-          ⚡ رد خلال 5 ثوانٍ
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Bubble({
-  children,
-  side,
-  name,
-}: {
-  children: React.ReactNode;
-  side: "left" | "right";
-  name?: string;
-}) {
-  const isRight = side === "right";
-  return (
-    <div className={`flex ${isRight ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow ${
-          isRight
-            ? "bg-emerald-600 text-white rounded-br-sm"
-            : "bg-slate-800 text-slate-100 rounded-bl-sm"
-        }`}
-      >
-        {name && !isRight && (
-          <div className="text-[10px] text-emerald-300 mb-0.5">{name}</div>
-        )}
-        {children}
-      </div>
     </div>
   );
 }
