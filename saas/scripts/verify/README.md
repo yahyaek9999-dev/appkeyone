@@ -20,6 +20,7 @@ Phase 2 foundation: production-safe verification commands for KEYONE runtime con
 - `npm run verify:commerce`
 - `npm run verify:email`
 - `npm run verify:mobile`
+- `npm run verify:baileys`
 - `npm run verify:all`
 
 Append `-- --json` to any command for structured JSON output.
@@ -32,6 +33,7 @@ Set these when running against a live/staging app:
 - `KEYONE_VERIFY_AUTH_COOKIE='keyone_session=...'` for authenticated realtime JSON verification
 - `KEYONE_VERIFY_HTTP_TIMEOUT_MS=5000`
 - `KEYONE_VERIFY_RSS_WARN_MB=1200`
+- `BAILEYS_WORKER_URL=http://127.0.0.1:3025` for isolated Baileys worker health checks
 
 ## Interpreting output
 
