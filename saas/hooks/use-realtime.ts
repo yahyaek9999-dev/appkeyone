@@ -13,11 +13,15 @@ export type RealtimeSnapshot = {
     broadcastsActive: number;
     ordersOpen: number;
     alerts24h: number;
+    commerceIntegrations?: number;
+    commerceFailedEvents?: number;
   };
   latest: {
     messageAt: string | null;
     broadcastAt: string | null;
     orderAt: string | null;
+    commerceEventAt?: string | null;
+    commerceNotificationAt?: string | null;
     safetyAt: string | null;
   };
   activeConversation?: {
