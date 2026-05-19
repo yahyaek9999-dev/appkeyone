@@ -13,8 +13,18 @@ import {
   looksLikeGap,
   questionSimilarity,
 } from "@/lib/insights";
-import { humanizeReply, pickTemperature, computeReadDelayMs, computeTypingDelayMs, type HumanizeConfig } from "@/lib/humanize";
-import { loadMemory, buildMemoryBlock, triggerMemoryUpdate } from "@/lib/memory";
+import {
+  humanizeReply,
+  pickTemperature,
+  computeReadDelayMs,
+  computeTypingDelayMs,
+  type HumanizeConfig,
+} from "@/lib/humanize";
+import {
+  loadMemory,
+  buildMemoryBlock,
+  triggerMemoryUpdate,
+} from "@/lib/memory";
 import { fuzzyMatchQuickReplies } from "@/lib/semantic-match";
 import {
   detectSignals,
@@ -35,7 +45,8 @@ import { applyRealism } from "@/lib/human-realism";
 import { bump } from "@/lib/metrics";
 import { extractPhone, extractName } from "@/lib/phone";
 
-const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
+const SECRET =
+  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 export async function POST(req: Request) {
   const provided = req.headers.get("x-internal-secret");
@@ -44,25 +55,49 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body || !body.event) return NextResponse.json({ error: "bad body" }, { status: 400 });
+  if (!body || !body.event)
+    return NextResponse.json({ error: "bad body" }, { status: 400 });
 
   const { event, userId } = body;
-  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+  if (!userId)
+    return NextResponse.json({ error: "userId required" }, { status: 400 });
 
   if (event === "connected") {
     await prisma.bot
       .update({
         where: { userId },
-        data: { whatsappStatus: "connected", whatsappPhone: body.phone || null },
+        data: {
+          whatsappStatus: "connected",
+          whatsappPhone: body.phone || null,
+        },
       })
       .catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
+  if (event === "disconnected") {
+    const reason = String((body as any).reason || "unknown");
+    await prisma.bot
+      .update({
+        where: { userId },
+        data: { whatsappStatus: "disconnected" } as any,
+      })
+      .catch(() => {});
+    console.warn(
+      `[wa-event] [${userId}] session disconnected: reason="${reason}"`,
+    );
     return NextResponse.json({ ok: true });
   }
   if (event !== "incoming") {
     return NextResponse.json({ ok: true });
   }
 
-  const { from, mediaType, text: rawText, mediaBase64, mimetype } = body as {
+  const {
+    from,
+    mediaType,
+    text: rawText,
+    mediaBase64,
+    mimetype,
+  } = body as {
     from: { phone: string; name?: string | null };
     mediaType: "text" | "voice" | "image";
     text: string;
@@ -101,14 +136,27 @@ export async function POST(req: Request) {
 
   // ---- Gate by subscription -------------------------------------------------
   const sub = user.subscription;
-  if (!sub) return NextResponse.json({ ok: true, reply: null, blocked: "no_subscription" });
+  if (!sub)
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked: "no_subscription",
+    });
   if (sub.status !== "active")
-    return NextResponse.json({ ok: true, reply: null, blocked: "inactive_status:" + sub.status });
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked: "inactive_status:" + sub.status,
+    });
   if (sub.expiresAt < new Date())
     return NextResponse.json({ ok: true, reply: null, blocked: "expired" });
   const monthlyCap = sub.plan?.monthlyMsgs ?? 0;
   if (monthlyCap > 0 && sub.msgsUsed >= monthlyCap)
-    return NextResponse.json({ ok: true, reply: null, blocked: "quota_exhausted" });
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked: "quota_exhausted",
+    });
 
   // ---- AI request cap (membership) ------------------------------------------
   // 0 in the plan field means unlimited. Quick-reply / fuzzy-match branches
@@ -116,7 +164,11 @@ export async function POST(req: Request) {
   // same numbers. We block here as a fast short-circuit when exhausted.
   const aiCap = (sub.plan as any)?.aiRequestsMonthly ?? 0;
   if (aiCap > 0 && ((sub as any).aiRequestsUsed ?? 0) >= aiCap) {
-    return NextResponse.json({ ok: true, reply: null, blocked: "ai_quota_exhausted" });
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked: "ai_quota_exhausted",
+    });
   }
 
   // ---- Daily cap (Controlled Launch safety) -------------------------------
@@ -124,17 +176,26 @@ export async function POST(req: Request) {
   // 0 disables the cap (falls back to the monthly plan limit only).
   const dailyCap = (bot as any).dailyMessageCap ?? 0;
   if (dailyCap > 0) {
-    const utcStartOfToday = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
+    const utcStartOfToday = new Date(
+      new Date().toISOString().slice(0, 10) + "T00:00:00.000Z",
+    );
     const lastReset = new Date((bot as any).dailyMsgsResetAt || 0);
     if (lastReset < utcStartOfToday) {
       await prisma.bot
-        .update({ where: { id: bot.id }, data: { dailyMsgsUsed: 0, dailyMsgsResetAt: new Date() } as any })
+        .update({
+          where: { id: bot.id },
+          data: { dailyMsgsUsed: 0, dailyMsgsResetAt: new Date() } as any,
+        })
         .catch(() => {});
       (bot as any).dailyMsgsUsed = 0;
     }
     if (((bot as any).dailyMsgsUsed ?? 0) >= dailyCap) {
       bump("daily_cap_hit", userId);
-      return NextResponse.json({ ok: true, reply: null, blocked: "daily_cap_exhausted" });
+      return NextResponse.json({
+        ok: true,
+        reply: null,
+        blocked: "daily_cap_exhausted",
+      });
     }
   }
 
@@ -143,8 +204,14 @@ export async function POST(req: Request) {
   if (mediaType === "voice" && mediaBase64) {
     messageText = await transcribeAudio(mediaBase64, mimetype || "audio/ogg");
   } else if (mediaType === "image" && mediaBase64) {
-    const desc = await describeImage(mediaBase64, mimetype || "image/jpeg", rawText || "");
-    messageText = `[العميل أرسل صورة]\nوصف الصورة: ${desc}` + (rawText ? `\nتعليق العميل: ${rawText}` : "");
+    const desc = await describeImage(
+      mediaBase64,
+      mimetype || "image/jpeg",
+      rawText || "",
+    );
+    messageText =
+      `[العميل أرسل صورة]\nوصف الصورة: ${desc}` +
+      (rawText ? `\nتعليق العميل: ${rawText}` : "");
   }
   if (!messageText.trim()) {
     return NextResponse.json({ ok: true, reply: null });
@@ -160,7 +227,9 @@ export async function POST(req: Request) {
   // ---- Trust accrual: this customer just sent us a message -----------------
   // Bumps trustScore + engagementScore + sets firstInboundAt if null.
   // Non-fatal on failure (DB hiccup shouldn't block the bot reply).
-  onInbound(customer.id).catch((e) => console.error("[trust/onInbound]", e?.message));
+  onInbound(customer.id).catch((e) =>
+    console.error("[trust/onInbound]", e?.message),
+  );
   // Log to safety event stream so the engine can compute a real
   // inbound:outbound ratio and grant the healthy-conversation discount.
   recordInboundReply(userId, customer.id, customer.phone).catch(() => {});
@@ -194,7 +263,7 @@ export async function POST(req: Request) {
           data.phone = harvestedPhone;
         } else {
           console.info(
-            `[wa/incoming] harvested phone ${harvestedPhone} already used by customer ${existing.id}; keeping LID row`
+            `[wa/incoming] harvested phone ${harvestedPhone} already used by customer ${existing.id}; keeping LID row`,
           );
         }
       }
@@ -205,7 +274,7 @@ export async function POST(req: Request) {
           data,
         });
         console.info(
-          `[wa/incoming] upgraded customer ${customer.id}: ${JSON.stringify(data)}`
+          `[wa/incoming] upgraded customer ${customer.id}: ${JSON.stringify(data)}`,
         );
       }
     }
@@ -241,21 +310,46 @@ export async function POST(req: Request) {
   // ---- Manual takeover: admin owns this conversation -----------------------
   if ((conv as any).botPaused) {
     // Still classify in the background so dashboards stay live
-    classifyAndScore({ customerId: customer.id, conversationId: conv.id, text: messageText, flagged }).catch(() => {});
-    return NextResponse.json({ ok: true, reply: null, blocked: "manual_takeover" });
+    classifyAndScore({
+      customerId: customer.id,
+      conversationId: conv.id,
+      text: messageText,
+      flagged,
+    }).catch(() => {});
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked: "manual_takeover",
+    });
   }
 
   // ---- Out of office -------------------------------------------------------
   // Working hours are evaluated in the merchant's own timezone (Bot.timezone)
   // so a "9 AM - 9 PM" window matches Cairo time even when the VPS runs UTC.
-  if (bot.workingHoursEnabled && !inWorkingHours(bot.workingHours, new Date(), (bot as any).timezone || "Africa/Cairo")) {
-    const ooo = bot.outOfHoursMessage || "نحن خارج ساعات العمل حالياً. سنرد عليك في أقرب وقت.";
+  if (
+    bot.workingHoursEnabled &&
+    !inWorkingHours(
+      bot.workingHours,
+      new Date(),
+      (bot as any).timezone || "Africa/Cairo",
+    )
+  ) {
+    const ooo =
+      bot.outOfHoursMessage ||
+      "نحن خارج ساعات العمل حالياً. سنرد عليك في أقرب وقت.";
     await prisma.message.create({
       data: { conversationId: conv.id, role: "assistant", content: ooo },
     });
-    classifyAndScore({ customerId: customer.id, conversationId: conv.id, text: messageText, flagged }).catch(() => {});
+    classifyAndScore({
+      customerId: customer.id,
+      conversationId: conv.id,
+      text: messageText,
+      flagged,
+    }).catch(() => {});
     return NextResponse.json({
-      ok: true, reply: ooo, mode: "ooo",
+      ok: true,
+      reply: ooo,
+      mode: "ooo",
       preDelayMs: humanCfg.enabled ? computeReadDelayMs(humanCfg) : 0,
       typingDelayMs: humanCfg.enabled ? computeTypingDelayMs(ooo, humanCfg) : 0,
     });
@@ -269,16 +363,29 @@ export async function POST(req: Request) {
       .update({ where: { id: quick.id }, data: { hits: { increment: 1 } } })
       .catch(() => {});
     await prisma.message.create({
-      data: { conversationId: conv.id, role: "assistant", content: quick.reply },
+      data: {
+        conversationId: conv.id,
+        role: "assistant",
+        content: quick.reply,
+      },
     });
     await prisma.subscription
       .update({ where: { userId }, data: { msgsUsed: { increment: 1 } } })
       .catch(() => {});
-    classifyAndScore({ customerId: customer.id, conversationId: conv.id, text: messageText, flagged }).catch(() => {});
+    classifyAndScore({
+      customerId: customer.id,
+      conversationId: conv.id,
+      text: messageText,
+      flagged,
+    }).catch(() => {});
     return NextResponse.json({
-      ok: true, reply: quick.reply, mode: "quick_reply",
+      ok: true,
+      reply: quick.reply,
+      mode: "quick_reply",
       preDelayMs: humanCfg.enabled ? computeReadDelayMs(humanCfg) : 0,
-      typingDelayMs: humanCfg.enabled ? computeTypingDelayMs(quick.reply, humanCfg) : 0,
+      typingDelayMs: humanCfg.enabled
+        ? computeTypingDelayMs(quick.reply, humanCfg)
+        : 0,
     });
   }
 
@@ -287,23 +394,40 @@ export async function POST(req: Request) {
   // Only triggers when the customer's wording is *very close* to an admin-
   // defined trigger — guarded by a high threshold (0.62) to avoid wrong
   // replies. Quality stays bounded by admin-curated content.
-  const fuzzy = fuzzyMatchQuickReplies(messageText, bot.quickReplies || [], 0.62);
+  const fuzzy = fuzzyMatchQuickReplies(
+    messageText,
+    bot.quickReplies || [],
+    0.62,
+  );
   if (fuzzy) {
     bump("semantic_hit", userId);
     await prisma.quickReply
       .update({ where: { id: fuzzy.id }, data: { hits: { increment: 1 } } })
       .catch(() => {});
     await prisma.message.create({
-      data: { conversationId: conv.id, role: "assistant", content: fuzzy.reply },
+      data: {
+        conversationId: conv.id,
+        role: "assistant",
+        content: fuzzy.reply,
+      },
     });
     await prisma.subscription
       .update({ where: { userId }, data: { msgsUsed: { increment: 1 } } })
       .catch(() => {});
-    classifyAndScore({ customerId: customer.id, conversationId: conv.id, text: messageText, flagged }).catch(() => {});
+    classifyAndScore({
+      customerId: customer.id,
+      conversationId: conv.id,
+      text: messageText,
+      flagged,
+    }).catch(() => {});
     return NextResponse.json({
-      ok: true, reply: fuzzy.reply, mode: "semantic_faq",
+      ok: true,
+      reply: fuzzy.reply,
+      mode: "semantic_faq",
       preDelayMs: humanCfg.enabled ? computeReadDelayMs(humanCfg) : 0,
-      typingDelayMs: humanCfg.enabled ? computeTypingDelayMs(fuzzy.reply, humanCfg) : 0,
+      typingDelayMs: humanCfg.enabled
+        ? computeTypingDelayMs(fuzzy.reply, humanCfg)
+        : 0,
     });
   }
 
@@ -337,8 +461,12 @@ export async function POST(req: Request) {
   // chunk + score against the customer's question and inject only the top
   // relevant pieces. Falls back gracefully to head-of-KB for short messages.
   const [knowledgeBase, memorySnap] = await Promise.all([
-    fromCache ? Promise.resolve("") : retrieveRelevantKb(userId, messageText, { k: 4, charBudget: 3500 }),
-    fromCache ? Promise.resolve({ summary: "", facts: {}, hasSummary: false } as any) : loadMemory(customer.id),
+    fromCache
+      ? Promise.resolve("")
+      : retrieveRelevantKb(userId, messageText, { k: 4, charBudget: 3500 }),
+    fromCache
+      ? Promise.resolve({ summary: "", facts: {}, hasSummary: false } as any)
+      : loadMemory(customer.id),
   ]);
   const memoryBlock = fromCache ? "" : buildMemoryBlock(memorySnap);
 
@@ -424,18 +552,26 @@ export async function POST(req: Request) {
     }
     // Cache the LLM-generated reply (best-effort). Skip the fallback error
     // string so we never serve "خلل تقني" from cache.
-    if (cacheCandidate && reply && !reply.startsWith("عذراً، يبدو أن هناك خلل")) {
+    if (
+      cacheCandidate &&
+      reply &&
+      !reply.startsWith("عذراً، يبدو أن هناك خلل")
+    ) {
       setCached(
         bot.id,
         !!bot.cacheEnabled,
         bot.cacheTtlHours ?? 24,
         messageText,
-        reply
+        reply,
       ).catch(() => {});
     }
   }
 
-  if (isFirstMsg && bot.welcomeMessage && !reply.includes(bot.welcomeMessage.slice(0, 10))) {
+  if (
+    isFirstMsg &&
+    bot.welcomeMessage &&
+    !reply.includes(bot.welcomeMessage.slice(0, 10))
+  ) {
     reply = `${bot.welcomeMessage}\n\n${reply}`;
   }
 
@@ -468,19 +604,31 @@ export async function POST(req: Request) {
 
   // Phase 1: fire-and-forget memory update. Only runs the LLM extractor
   // once every N messages (background). Never blocks the request.
-  triggerMemoryUpdate({ customerId: customer.id, conversationId: conv.id }).catch(() => {});
+  triggerMemoryUpdate({
+    customerId: customer.id,
+    conversationId: conv.id,
+  }).catch(() => {});
 
   // Membership counters: this branch ran a real LLM call, so bump both
   // monthly message counter AND the AI requests counter. Quick-reply and
   // fuzzy-match branches above only bump msgsUsed (no LLM cost).
   await prisma.subscription
-    .update({ where: { userId }, data: { msgsUsed: { increment: 1 }, aiRequestsUsed: { increment: 1 } } as any })
+    .update({
+      where: { userId },
+      data: {
+        msgsUsed: { increment: 1 },
+        aiRequestsUsed: { increment: 1 },
+      } as any,
+    })
     .catch(() => {});
 
   // Daily counter (Controlled Launch). Always bumped on a successful reply.
   if (dailyCap > 0) {
     await prisma.bot
-      .update({ where: { id: bot.id }, data: { dailyMsgsUsed: { increment: 1 } } as any })
+      .update({
+        where: { id: bot.id },
+        data: { dailyMsgsUsed: { increment: 1 } } as any,
+      })
       .catch(() => {});
   }
 
@@ -514,7 +662,9 @@ export async function POST(req: Request) {
   //     where the customer never says "اوردر" but the order is real.
   // Both still write `status=pending` so the merchant reviews.
   const orderHistory = [
-    ...conv.messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
+    ...conv.messages
+      .slice(-10)
+      .map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: messageText },
     { role: "assistant", content: reply },
   ];
@@ -534,7 +684,9 @@ export async function POST(req: Request) {
     conversationId: conv.id,
     text: messageText,
     flagged,
-    notifyPhone: bot.alertEnabled ? (bot.notifyPhone || (bot as any).whatsappPhone || null) : null,
+    notifyPhone: bot.alertEnabled
+      ? bot.notifyPhone || (bot as any).whatsappPhone || null
+      : null,
     alertEnabled: !!bot.alertEnabled,
     customerLabel: customer.name || customer.phone,
     userId,
@@ -689,8 +841,10 @@ async function classifyAndScore(args: {
   const allMsgs = cust.conversation?.messages || [];
   const total = allMsgs.length;
   const firstAt = allMsgs[0]?.createdAt || cust.createdAt;
-  const daysSinceFirst =
-    Math.max(0, (Date.now() - new Date(firstAt).getTime()) / (1000 * 60 * 60 * 24));
+  const daysSinceFirst = Math.max(
+    0,
+    (Date.now() - new Date(firstAt).getTime()) / (1000 * 60 * 60 * 24),
+  );
   const flaggedHistorical = allMsgs.filter((m) => m.flagged).length;
 
   const score = scoreLead({
@@ -718,7 +872,8 @@ async function classifyAndScore(args: {
     !args.flagged &&
     !(cust as any).followUpSent
   ) {
-    const hours = args.followUpHours && args.followUpHours > 0 ? args.followUpHours : 24;
+    const hours =
+      args.followUpHours && args.followUpHours > 0 ? args.followUpHours : 24;
     followUpAt = new Date(Date.now() + hours * 60 * 60 * 1000);
   }
 
@@ -744,32 +899,42 @@ async function classifyAndScore(args: {
   if (
     args.userId &&
     args.alertEnabled !== false &&
-    (c.sentiment === "angry" || c.sentiment === "negative" || c.intent === "complaint")
+    (c.sentiment === "angry" ||
+      c.sentiment === "negative" ||
+      c.intent === "complaint")
   ) {
     const isAnger = c.sentiment === "angry";
     const isEscalation = isAnger || c.intent === "complaint";
     // Audit row first — never depends on WhatsApp delivery succeeding.
-    await prisma.safetyAudit.create({
-      data: {
-        userId: args.userId,
-        level: isAnger ? "critical" : "warn",
-        category: "anger",
-        title: isAnger ? "عميل غاضب — تنبيه فوري" : (isEscalation ? "شكوى/تصعيد" : "عميل غير راضٍ"),
-        detail: `العميل: ${args.customerLabel || "غير معروف"} — "${args.text.slice(0, 200)}"`,
-        payload: JSON.stringify({
-          customerId: args.customerId,
-          sentiment: c.sentiment,
-          intent: c.intent,
-          leadScore: score,
-        }),
-      },
-    }).catch(() => {});
+    await prisma.safetyAudit
+      .create({
+        data: {
+          userId: args.userId,
+          level: isAnger ? "critical" : "warn",
+          category: "anger",
+          title: isAnger
+            ? "عميل غاضب — تنبيه فوري"
+            : isEscalation
+              ? "شكوى/تصعيد"
+              : "عميل غير راضٍ",
+          detail: `العميل: ${args.customerLabel || "غير معروف"} — "${args.text.slice(0, 200)}"`,
+          payload: JSON.stringify({
+            customerId: args.customerId,
+            sentiment: c.sentiment,
+            intent: c.intent,
+            leadScore: score,
+          }),
+        },
+      })
+      .catch(() => {});
 
     const alertTo = args.notifyPhone || (await resolveNotifyPhone(args.userId));
     if (alertTo) {
       const head = isAnger
         ? "🚨 عميل غاضب — يحتاج تدخل فوري"
-        : (isEscalation ? "⚠️ شكوى/تصعيد" : "⚠️ عميل غير راضٍ");
+        : isEscalation
+          ? "⚠️ شكوى/تصعيد"
+          : "⚠️ عميل غير راضٍ";
       const text =
         `${head}\n\n` +
         `العميل: ${args.customerLabel || "غير معروف"}\n` +
@@ -845,23 +1010,28 @@ async function extractAndStoreOrder(args: {
         (draft.subtotal > 0 && draft.subtotal !== existing.subtotal) ||
         (draft.total > 0 && draft.total !== existing.total);
       if (needsUpdate) {
-        await (prisma as any).order.update({
-          where: { id: existing.id },
-          data: {
-            subtotal: draft.subtotal,
-            discount: draft.discount,
-            total: draft.total,
-            paymentMethod: draft.paymentMethod || undefined,
-            shippingAddress: draft.shippingAddress || undefined,
-            timeline: {
-              create: {
-                kind: "ai_extracted",
-                message: `تحديث تلقائي: ${draft.discount > 0 ? `خصم ${draft.discount} — ` : ""}الإجمالي ${draft.total}.`,
-                payload: JSON.stringify({ confidence: draft.confidence, source: "merge" }),
+        await (prisma as any).order
+          .update({
+            where: { id: existing.id },
+            data: {
+              subtotal: draft.subtotal,
+              discount: draft.discount,
+              total: draft.total,
+              paymentMethod: draft.paymentMethod || undefined,
+              shippingAddress: draft.shippingAddress || undefined,
+              timeline: {
+                create: {
+                  kind: "ai_extracted",
+                  message: `تحديث تلقائي: ${draft.discount > 0 ? `خصم ${draft.discount} — ` : ""}الإجمالي ${draft.total}.`,
+                  payload: JSON.stringify({
+                    confidence: draft.confidence,
+                    source: "merge",
+                  }),
+                },
               },
             },
-          },
-        }).catch(() => {});
+          })
+          .catch(() => {});
       }
       return;
     }
@@ -899,8 +1069,15 @@ async function extractAndStoreOrder(args: {
         },
         timeline: {
           create: [
-            { kind: "created",       message: "تم إنشاء الطلب تلقائياً من المحادثة." },
-            { kind: "ai_extracted",  message: draft.notes, payload: JSON.stringify({ confidence: draft.confidence }) },
+            {
+              kind: "created",
+              message: "تم إنشاء الطلب تلقائياً من المحادثة.",
+            },
+            {
+              kind: "ai_extracted",
+              message: draft.notes,
+              payload: JSON.stringify({ confidence: draft.confidence }),
+            },
           ],
         },
       },
@@ -927,7 +1104,9 @@ async function extractAndStoreOrder(args: {
           }),
         },
       });
-    } catch { /* swallow audit failure */ }
+    } catch {
+      /* swallow audit failure */
+    }
   }
 }
 
@@ -944,7 +1123,9 @@ async function persistNegotiationState(args: {
     });
     let facts: any = {};
     if (row?.factsJson) {
-      try { facts = JSON.parse(row.factsJson); } catch {}
+      try {
+        facts = JSON.parse(row.factsJson);
+      } catch {}
     }
     facts.negotiation = next;
     const factsJson = JSON.stringify(facts);

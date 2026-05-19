@@ -25,7 +25,8 @@ import { localHour, localYmd } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
-const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
+const SECRET =
+  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 export async function POST(req: Request) {
   if (req.headers.get("x-internal-secret") !== SECRET) {
@@ -44,17 +45,23 @@ export async function POST(req: Request) {
   const where: any = onlyUserId ? { id: onlyUserId } : {};
   // include the full bot row so we get the new `timezone` field without a
   // typed select (Prisma client types may not include it until regen).
-  const users = await prisma.user.findMany({
+  const users = (await prisma.user.findMany({
     where,
     include: { bot: true, subscription: { include: { plan: false } } } as any,
-  }) as any[];
+  })) as any[];
 
   const out: any[] = [];
-  let sent = 0, skipped = 0, failed = 0;
+  let sent = 0,
+    skipped = 0,
+    failed = 0;
 
   for (const u of users) {
     const bot = u.bot;
-    if (!bot) { skipped++; out.push({ userId: u.id, skip: "no-bot" }); continue; }
+    if (!bot) {
+      skipped++;
+      out.push({ userId: u.id, skip: "no-bot" });
+      continue;
+    }
 
     // The merchant configured a local hour-of-day (e.g. 9 AM). We compare
     // against the *local* hour in their own timezone, and dedupe by their
@@ -65,41 +72,61 @@ export async function POST(req: Request) {
     const localDayKey = localYmd(tz, now);
 
     if (!force) {
-      if (!bot.dailyReportEnabled) { skipped++; out.push({ userId: u.id, skip: "disabled" }); continue; }
+      if (!bot.dailyReportEnabled) {
+        skipped++;
+        out.push({ userId: u.id, skip: "disabled" });
+        continue;
+      }
       // Hour window: match exact hour OR the NEXT hour if we haven't sent
       // today (covers cron drift / a missed tick at the top of the hour).
       // This means a 9 AM configured report will fire at the first cron tick
       // between 09:00–09:59 local OR the first one after 10:00 if 9 was missed.
       const configuredHour = bot.dailyReportHour ?? 9;
-      const alreadySentToday = bot.dailyReportLastSentAt
-        && localYmd(tz, bot.dailyReportLastSentAt) === localDayKey;
+      const alreadySentToday =
+        bot.dailyReportLastSentAt &&
+        localYmd(tz, bot.dailyReportLastSentAt) === localDayKey;
       const hourMatches = localH === configuredHour;
-      const catchupAfter = localH > configuredHour && localH <= configuredHour + 2 && !alreadySentToday;
+      const catchupAfter =
+        localH > configuredHour &&
+        localH <= configuredHour + 2 &&
+        !alreadySentToday;
       if (!hourMatches && !catchupAfter) {
         skipped++;
-        out.push({ userId: u.id, skip: `hour-mismatch:${configuredHour}!=${localH}(${tz})` });
+        out.push({
+          userId: u.id,
+          skip: `hour-mismatch:${configuredHour}!=${localH}(${tz})`,
+        });
         continue;
       }
       if (alreadySentToday) {
-        skipped++; out.push({ userId: u.id, skip: "already-sent-today" });
+        skipped++;
+        out.push({ userId: u.id, skip: "already-sent-today" });
         continue;
       }
     }
 
     const sub = u.subscription;
     if (!force && (!sub || sub.status !== "active" || sub.expiresAt < now)) {
-      skipped++; out.push({ userId: u.id, skip: "no-active-sub" }); continue;
+      skipped++;
+      out.push({ userId: u.id, skip: "no-active-sub" });
+      continue;
     }
 
     const to = bot.notifyPhone || bot.whatsappPhone || u.phone || null;
-    if (!to) { skipped++; out.push({ userId: u.id, skip: "no-phone" }); continue; }
+    if (!to) {
+      skipped++;
+      out.push({ userId: u.id, skip: "no-phone" });
+      continue;
+    }
 
     // WhatsApp status is a "best effort" health signal — sometimes the wa-service
     // marks a session "connecting" for short windows even though it can still
     // send. Don't block the report on it; if the send itself fails we'll catch
     // it below and log a SafetyAudit row.
     if (!force && bot.whatsappStatus === "disconnected") {
-      skipped++; out.push({ userId: u.id, skip: `wa-status:disconnected` }); continue;
+      skipped++;
+      out.push({ userId: u.id, skip: `wa-status:disconnected` });
+      continue;
     }
 
     try {
@@ -112,7 +139,8 @@ export async function POST(req: Request) {
       });
 
       if (!report.shouldSend) {
-        skipped++; out.push({ userId: u.id, skip: "quiet-day" });
+        skipped++;
+        out.push({ userId: u.id, skip: "quiet-day" });
         continue;
       }
 
@@ -123,41 +151,59 @@ export async function POST(req: Request) {
 
       const r = await wa.send(u.id, to, report.text);
       if (r?.ok) {
-        await prisma.bot.update({
-          where: { userId: u.id },
-          data: { dailyReportLastSentAt: now } as any,
-        }).catch(() => {});
+        await prisma.bot
+          .update({
+            where: { userId: u.id },
+            data: { dailyReportLastSentAt: now } as any,
+          })
+          .catch(() => {});
         sent++;
-        out.push({ userId: u.id, to, status: "sent", insights: report.used.map((x) => x.id) });
+        out.push({
+          userId: u.id,
+          to,
+          status: "sent",
+          tz,
+          localHour: localH,
+          localDay: localDayKey,
+          insights: report.used.map((x: any) => x.id),
+        });
+        console.log(
+          `[daily-report] ✓ sent userId=${u.id} tz=${tz} localHour=${localH} to=${to}`,
+        );
       } else {
         failed++;
-        const errStr = typeof (r as any)?.data === "string"
-          ? (r as any).data
-          : JSON.stringify((r as any)?.data || {}).slice(0, 400);
-        await prisma.safetyAudit.create({
-          data: {
-            userId: u.id,
-            level: "warn",
-            category: "daily_report",
-            title: "فشل إرسال التقرير اليومي",
-            detail: errStr,
-            payload: JSON.stringify({ to, tz, localHour: localH }),
-          },
-        }).catch(() => {});
+        const errStr =
+          typeof (r as any)?.data === "string"
+            ? (r as any).data
+            : JSON.stringify((r as any)?.data || {}).slice(0, 400);
+        await prisma.safetyAudit
+          .create({
+            data: {
+              userId: u.id,
+              level: "warn",
+              category: "daily_report",
+              title: "فشل إرسال التقرير اليومي",
+              detail: errStr,
+              payload: JSON.stringify({ to, tz, localHour: localH }),
+            },
+          })
+          .catch(() => {});
         out.push({ userId: u.id, to, status: "send-failed", error: errStr });
       }
     } catch (e: any) {
       failed++;
-      await prisma.safetyAudit.create({
-        data: {
-          userId: u.id,
-          level: "warn",
-          category: "daily_report",
-          title: "خطأ أثناء توليد التقرير اليومي",
-          detail: String(e?.message || e).slice(0, 400),
-          payload: JSON.stringify({ tz, localHour: localH }),
-        },
-      }).catch(() => {});
+      await prisma.safetyAudit
+        .create({
+          data: {
+            userId: u.id,
+            level: "warn",
+            category: "daily_report",
+            title: "خطأ أثناء توليد التقرير اليومي",
+            detail: String(e?.message || e).slice(0, 400),
+            payload: JSON.stringify({ tz, localHour: localH }),
+          },
+        })
+        .catch(() => {});
       out.push({ userId: u.id, error: e?.message || String(e) });
     }
   }

@@ -8,26 +8,40 @@
 //   send / broadcast) with concurrency-controlled reconnects to prevent
 //   storms. Auth is always preserved via LocalAuth on disk.
 
-import pkg from 'whatsapp-web.js';
+import pkg from "whatsapp-web.js";
 const { Client, LocalAuth } = pkg;
-import qrcode from 'qrcode';
-import path from 'path';
-import fs from 'fs/promises';
+import qrcode from "qrcode";
+import path from "path";
+import fs from "fs/promises";
 
-const SESSIONS_DIR = process.env.SESSIONS_DIR || './sessions';
-const SAAS_INCOMING_URL = process.env.SAAS_INCOMING_URL || 'http://127.0.0.1:3000/api/whatsapp/incoming';
-const SAAS_INTERNAL_SECRET = process.env.SAAS_INTERNAL_SECRET || 'dev';
+const SESSIONS_DIR = process.env.SESSIONS_DIR || "./sessions";
+const SAAS_INCOMING_URL =
+  process.env.SAAS_INCOMING_URL ||
+  "http://127.0.0.1:3000/api/whatsapp/incoming";
+const SAAS_INTERNAL_SECRET = process.env.SAAS_INTERNAL_SECRET || "dev";
 
 // ---------------------------------------------------------------------------
 // Feature flags + tunables (smart scaling)
 // ---------------------------------------------------------------------------
-const ENABLE_HIBERNATION     = process.env.ENABLE_SESSION_HIBERNATION === '1';
-const ENABLE_CHROMIUM_OPT    = process.env.ENABLE_CHROMIUM_OPTIMIZATION === '1';
-const HIBERNATE_MAX_ACTIVE   = Math.max(1, Number(process.env.HIBERNATE_MAX_ACTIVE || 4));
-const HIBERNATE_IDLE_MIN     = Math.max(5, Number(process.env.HIBERNATE_IDLE_MINUTES || 30));
-const HIBERNATE_IDLE_MS      = HIBERNATE_IDLE_MIN * 60 * 1000;
-const HIBERNATE_MAX_WAKES    = Math.max(1, Number(process.env.HIBERNATE_MAX_CONCURRENT_WAKES || 2));
-const HIBERNATE_WAKE_TIMEOUT = Math.max(5000, Number(process.env.HIBERNATE_WAKE_TIMEOUT_SEC || 20) * 1000);
+const ENABLE_HIBERNATION = process.env.ENABLE_SESSION_HIBERNATION === "1";
+const ENABLE_CHROMIUM_OPT = process.env.ENABLE_CHROMIUM_OPTIMIZATION === "1";
+const HIBERNATE_MAX_ACTIVE = Math.max(
+  1,
+  Number(process.env.HIBERNATE_MAX_ACTIVE || 4),
+);
+const HIBERNATE_IDLE_MIN = Math.max(
+  5,
+  Number(process.env.HIBERNATE_IDLE_MINUTES || 30),
+);
+const HIBERNATE_IDLE_MS = HIBERNATE_IDLE_MIN * 60 * 1000;
+const HIBERNATE_MAX_WAKES = Math.max(
+  1,
+  Number(process.env.HIBERNATE_MAX_CONCURRENT_WAKES || 2),
+);
+const HIBERNATE_WAKE_TIMEOUT = Math.max(
+  5000,
+  Number(process.env.HIBERNATE_WAKE_TIMEOUT_SEC || 20) * 1000,
+);
 
 // Returns true if `digits` looks like a real E.164 phone number.
 // Per ITU-T E.164: 1-15 digits, leading digit is the country code so it
@@ -36,9 +50,9 @@ const HIBERNATE_WAKE_TIMEOUT = Math.max(5000, Number(process.env.HIBERNATE_WAKE_
 // are typically 15-17 digits AND start with a non-country-code prefix
 // (often 16xxx, 11xxx...). We tighten to 8..15 digits, no leading zero.
 function looksLikePhone(digits) {
-  if (!digits || typeof digits !== 'string') return false;
+  if (!digits || typeof digits !== "string") return false;
   if (!/^\d{8,15}$/.test(digits)) return false;
-  if (digits.startsWith('0')) return false;
+  if (digits.startsWith("0")) return false;
   return true;
 }
 
@@ -59,56 +73,62 @@ function looksLikePhone(digits) {
 // ~380-450 MB. On an 8 GB VPS, after OS + Node + Caddy + CloakBrowser the
 // safe budget is ~5 GB, which fits ~12 concurrent sessions with headroom.
 // Operators with more RAM can override via the WA_MAX_SESSIONS env var.
-const MAX_ACTIVE_SESSIONS = Math.max(1, Number(process.env.WA_MAX_SESSIONS || 12));
+const MAX_ACTIVE_SESSIONS = Math.max(
+  1,
+  Number(process.env.WA_MAX_SESSIONS || 12),
+);
 const IDLE_EVICT_MS = ENABLE_HIBERNATION
   ? HIBERNATE_IDLE_MS
-  : Math.max(60 * 60 * 1000, Number(process.env.WA_IDLE_HOURS || 6) * 3600 * 1000);
+  : Math.max(
+      60 * 60 * 1000,
+      Number(process.env.WA_IDLE_HOURS || 6) * 3600 * 1000,
+    );
 const IDLE_CHECK_MS = ENABLE_HIBERNATION ? 60 * 1000 : 5 * 60 * 1000; // sweep faster when hibernating
 
 // ---------------------------------------------------------------------------
 // Chromium optimization: aggressive resource reduction flags
 // ---------------------------------------------------------------------------
 const CHROMIUM_BASE_ARGS = [
-  '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-  '--disable-accelerated-2d-canvas',
-  '--no-first-run',
-  '--no-zygote',
-  '--disable-gpu',
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-dev-shm-usage",
+  "--disable-accelerated-2d-canvas",
+  "--no-first-run",
+  "--no-zygote",
+  "--disable-gpu",
 ];
 
 const CHROMIUM_OPTIMIZED_ARGS = [
   ...CHROMIUM_BASE_ARGS,
   // Memory reduction
-  '--disable-extensions',
-  '--disable-component-extensions-with-background-pages',
-  '--disable-default-apps',
-  '--disable-background-networking',
-  '--disable-sync',
-  '--disable-translate',
-  '--disable-background-timer-throttling',
-  '--disable-backgrounding-occluded-windows',
-  '--disable-renderer-backgrounding',
+  "--disable-extensions",
+  "--disable-component-extensions-with-background-pages",
+  "--disable-default-apps",
+  "--disable-background-networking",
+  "--disable-sync",
+  "--disable-translate",
+  "--disable-background-timer-throttling",
+  "--disable-backgrounding-occluded-windows",
+  "--disable-renderer-backgrounding",
   // Disable media/images for RAM savings (~30-50 MB per session)
-  '--disable-images',
-  '--blink-settings=imagesEnabled=false',
-  '--disable-remote-fonts',
+  "--disable-images",
+  "--blink-settings=imagesEnabled=false",
+  "--disable-remote-fonts",
   // Disable unnecessary features
-  '--disable-notifications',
-  '--disable-hang-monitor',
-  '--disable-breakpad',
-  '--disable-client-side-phishing-detection',
-  '--disable-component-update',
-  '--disable-domain-reliability',
-  '--disable-features=TranslateUI,BlinkGenPropertyTrees',
-  '--metrics-recording-only',
-  '--mute-audio',
+  "--disable-notifications",
+  "--disable-hang-monitor",
+  "--disable-breakpad",
+  "--disable-client-side-phishing-detection",
+  "--disable-component-update",
+  "--disable-domain-reliability",
+  "--disable-features=TranslateUI,BlinkGenPropertyTrees",
+  "--metrics-recording-only",
+  "--mute-audio",
   // Reduce V8 memory
-  '--js-flags=--max-old-space-size=128',
+  "--js-flags=--max-old-space-size=128",
   // Reduce process count
-  '--renderer-process-limit=1',
-  '--single-process',
+  "--renderer-process-limit=1",
+  "--single-process",
 ];
 
 function getChromiumArgs() {
@@ -130,18 +150,32 @@ class SessionManager {
     /** @type {Map<string, { resolve: Function, reject: Function, timer: any }[]>} */
     this._wakeWaiters = new Map();
     /** @type {{ wakes: number, wakeFails: number, hibernations: number, avgWakeMs: number, _wakeTotal: number }} */
-    this._metrics = { wakes: 0, wakeFails: 0, hibernations: 0, avgWakeMs: 0, _wakeTotal: 0 };
+    this._metrics = {
+      wakes: 0,
+      wakeFails: 0,
+      hibernations: 0,
+      avgWakeMs: 0,
+      _wakeTotal: 0,
+    };
+
+    /** Auto-reconnect state */
+    this._reconnectTimers = new Map(); // userId -> setTimeout handle
+    this._reconnectAttempts = new Map(); // userId -> number of reconnect attempts
 
     // Background sweep — close sessions that have been idle too long so
     // their Chromium RAM is reclaimed. Auth stays on disk for next /start.
     this._idleTimer = setInterval(() => this._sweepIdle(), IDLE_CHECK_MS);
-    if (typeof this._idleTimer.unref === 'function') this._idleTimer.unref();
+    if (typeof this._idleTimer.unref === "function") this._idleTimer.unref();
 
     if (ENABLE_HIBERNATION) {
-      console.log(`[wa] Hibernation ENABLED: maxActive=${HIBERNATE_MAX_ACTIVE} idleMin=${HIBERNATE_IDLE_MIN} maxWakes=${HIBERNATE_MAX_WAKES}`);
+      console.log(
+        `[wa] Hibernation ENABLED: maxActive=${HIBERNATE_MAX_ACTIVE} idleMin=${HIBERNATE_IDLE_MIN} maxWakes=${HIBERNATE_MAX_WAKES}`,
+      );
     }
     if (ENABLE_CHROMIUM_OPT) {
-      console.log(`[wa] Chromium optimization ENABLED: ${CHROMIUM_OPTIMIZED_ARGS.length - CHROMIUM_BASE_ARGS.length} extra flags`);
+      console.log(
+        `[wa] Chromium optimization ENABLED: ${CHROMIUM_OPTIMIZED_ARGS.length - CHROMIUM_BASE_ARGS.length} extra flags`,
+      );
     }
   }
 
@@ -153,7 +187,7 @@ class SessionManager {
       pairingCode: s.pairingCode,
       lastActivityAt: s.lastActivityAt || null,
       idleMs: s.lastActivityAt ? Date.now() - s.lastActivityAt : null,
-      hibernated: s.status === 'hibernated',
+      hibernated: s.status === "hibernated",
       priority: s.priority || 0,
     }));
   }
@@ -179,14 +213,18 @@ class SessionManager {
     const now = Date.now();
     for (const s of this._byOldest()) {
       // Don't evict sessions that never finished connecting (QR/pairing).
-      if (s.status !== 'connected') continue;
+      if (s.status !== "connected") continue;
       const last = s.lastActivityAt || s.connectedAt || 0;
       if (now - last >= IDLE_EVICT_MS) {
         if (ENABLE_HIBERNATION) {
-          console.log(`[wa] [${s.id}] hibernating (idle ${Math.round((now - last) / 60000)}min) — Chromium freed, auth kept`);
+          console.log(
+            `[wa] [${s.id}] hibernating (idle ${Math.round((now - last) / 60000)}min) — Chromium freed, auth kept`,
+          );
           await this._hibernate(s).catch(() => {});
         } else {
-          console.log(`[wa] [${s.id}] idle-evict (no activity for ${Math.round((now - last) / 3600000)}h) — closing Chromium, auth kept`);
+          console.log(
+            `[wa] [${s.id}] idle-evict (no activity for ${Math.round((now - last) / 3600000)}h) — closing Chromium, auth kept`,
+          );
           await this._closeChromium(s).catch(() => {});
         }
       }
@@ -199,8 +237,10 @@ class SessionManager {
 
   async _closeChromium(s) {
     if (!s) return;
-    try { await s.client.destroy(); } catch {}
-    s.status = 'idle-closed';
+    try {
+      await s.client.destroy();
+    } catch {}
+    s.status = "idle-closed";
     s.client = null;
     // KEEP the entry in the map so the UI shows status: idle-closed and the
     // user can resume via /start without re-pairing.
@@ -209,8 +249,10 @@ class SessionManager {
   /** Hibernate a session — same as close but marks as 'hibernated' for wake-on-demand */
   async _hibernate(s) {
     if (!s || !s.client) return;
-    try { await s.client.destroy(); } catch {}
-    s.status = 'hibernated';
+    try {
+      await s.client.destroy();
+    } catch {}
+    s.status = "hibernated";
     s.client = null;
     s.hibernatedAt = Date.now();
     this._metrics.hibernations++;
@@ -221,14 +263,16 @@ class SessionManager {
    * hibernate the least recently active ones until we're within budget.
    */
   async _enforceActivePoolCap() {
-    const live = this._byOldest().filter((s) => s.status === 'connected');
+    const live = this._byOldest().filter((s) => s.status === "connected");
     const excess = live.length - HIBERNATE_MAX_ACTIVE;
     if (excess <= 0) return;
     // Hibernate the oldest (least recently active) sessions
     for (let i = 0; i < excess; i++) {
       const s = live[i];
       if (s) {
-        console.log(`[wa] [${s.id}] pool-cap hibernate (${live.length}/${HIBERNATE_MAX_ACTIVE})`);
+        console.log(
+          `[wa] [${s.id}] pool-cap hibernate (${live.length}/${HIBERNATE_MAX_ACTIVE})`,
+        );
         await this._hibernate(s).catch(() => {});
       }
     }
@@ -240,7 +284,7 @@ class SessionManager {
    */
   async _wakeSession(userId) {
     const s = this.sessions.get(userId);
-    if (!s || s.status !== 'hibernated') return s;
+    if (!s || s.status !== "hibernated") return s;
 
     // If already waking, wait for the existing wake to complete
     if (this._wakingNow.has(userId)) {
@@ -253,7 +297,9 @@ class SessionManager {
     }
 
     // Make room in the active pool by hibernating LRU sessions
-    const liveSessions = Array.from(this.sessions.values()).filter((x) => x.client && x.status === 'connected');
+    const liveSessions = Array.from(this.sessions.values()).filter(
+      (x) => x.client && x.status === "connected",
+    );
     if (liveSessions.length >= HIBERNATE_MAX_ACTIVE) {
       // Hibernate the oldest connected session (not the one we're waking)
       const oldest = liveSessions
@@ -274,17 +320,19 @@ class SessionManager {
       const restarted = await this.start(userId);
       // Wait for 'connected' status
       const deadline = Date.now() + HIBERNATE_WAKE_TIMEOUT;
-      while (Date.now() < deadline && restarted.status !== 'connected') {
+      while (Date.now() < deadline && restarted.status !== "connected") {
         await sleep(500);
       }
-      if (restarted.status !== 'connected') {
+      if (restarted.status !== "connected") {
         this._metrics.wakeFails++;
         throw new Error(`wake timeout after ${HIBERNATE_WAKE_TIMEOUT}ms`);
       }
       const wakeMs = Date.now() - t0;
       this._metrics.wakes++;
       this._metrics._wakeTotal += wakeMs;
-      this._metrics.avgWakeMs = Math.round(this._metrics._wakeTotal / this._metrics.wakes);
+      this._metrics.avgWakeMs = Math.round(
+        this._metrics._wakeTotal / this._metrics.wakes,
+      );
       console.log(`[wa] [${userId}] woke in ${wakeMs}ms`);
 
       // Resolve any waiters
@@ -302,7 +350,10 @@ class SessionManager {
   _waitForWake(userId) {
     return new Promise((resolve, reject) => {
       if (!this._wakeWaiters.has(userId)) this._wakeWaiters.set(userId, []);
-      const timer = setTimeout(() => reject(new Error('wake wait timeout')), HIBERNATE_WAKE_TIMEOUT + 5000);
+      const timer = setTimeout(
+        () => reject(new Error("wake wait timeout")),
+        HIBERNATE_WAKE_TIMEOUT + 5000,
+      );
       this._wakeWaiters.get(userId).push({ resolve, reject, timer });
     });
   }
@@ -310,13 +361,111 @@ class SessionManager {
   _resolveWaiters(userId, session) {
     const waiters = this._wakeWaiters.get(userId) || [];
     this._wakeWaiters.delete(userId);
-    for (const w of waiters) { clearTimeout(w.timer); w.resolve(session); }
+    for (const w of waiters) {
+      clearTimeout(w.timer);
+      w.resolve(session);
+    }
   }
 
   _rejectWaiters(userId, err) {
     const waiters = this._wakeWaiters.get(userId) || [];
     this._wakeWaiters.delete(userId);
-    for (const w of waiters) { clearTimeout(w.timer); w.reject(err); }
+    for (const w of waiters) {
+      clearTimeout(w.timer);
+      w.reject(err);
+    }
+  }
+
+  /**
+   * Schedule an auto-reconnect with exponential backoff.
+   * Called when a session disconnects for a non-logout reason.
+   * Attempts: 5s -> 15s -> 30s -> 60s -> 120s -> 300s (max)
+   * After 8 failures (auth likely dead), pauses for 30min then resets.
+   */
+  _scheduleReconnect(userId) {
+    // Cancel any existing timer first
+    if (this._reconnectTimers.has(userId)) {
+      clearTimeout(this._reconnectTimers.get(userId));
+      this._reconnectTimers.delete(userId);
+    }
+
+    const attempt = this._reconnectAttempts.get(userId) || 0;
+    this._reconnectAttempts.set(userId, attempt + 1);
+
+    // Exponential backoff delays (ms)
+    const DELAYS = [5000, 15000, 30000, 60000, 120000, 300000];
+    const delayMs = DELAYS[Math.min(attempt, DELAYS.length - 1)];
+
+    // After too many failures, pause long before retrying
+    const MAX_FAST_ATTEMPTS = 8;
+    const pauseMs = attempt >= MAX_FAST_ATTEMPTS ? 30 * 60 * 1000 : delayMs;
+
+    if (attempt >= MAX_FAST_ATTEMPTS && attempt % MAX_FAST_ATTEMPTS === 0) {
+      console.warn(
+        `[wa] [${userId}] reconnect: ${attempt} failures — pausing ${Math.round(pauseMs / 60000)}min before retry`,
+      );
+    } else {
+      console.log(
+        `[wa] [${userId}] reconnect: attempt #${attempt + 1} in ${Math.round(pauseMs / 1000)}s`,
+      );
+    }
+
+    const timer = setTimeout(async () => {
+      this._reconnectTimers.delete(userId);
+
+      const s = this.sessions.get(userId);
+      // Skip if already recovered, in qr mode, or removed by logout
+      if (!s) return;
+      if (
+        s.status === "connected" ||
+        s.status === "qr" ||
+        s.status === "connecting" ||
+        s.status === "pairing"
+      ) {
+        console.log(
+          `[wa] [${userId}] reconnect cancelled — status already: ${s.status}`,
+        );
+        return;
+      }
+
+      // Verify auth data still exists on disk before trying
+      const sessionFolder = path.join(SESSIONS_DIR, `session-${userId}`);
+      try {
+        await fs.access(sessionFolder);
+      } catch {
+        console.log(
+          `[wa] [${userId}] reconnect aborted — no auth folder on disk`,
+        );
+        this.sessions.delete(userId);
+        this._reconnectAttempts.delete(userId);
+        return;
+      }
+
+      console.log(
+        `[wa] [${userId}] reconnect: starting attempt #${attempt + 1}...`,
+      );
+      try {
+        await this.start(userId);
+        // After start(), the session will go through 'connecting' -> 'connected'.
+        // If it hits 'qr', auth has expired — stop auto-reconnect.
+        setTimeout(() => {
+          const ss = this.sessions.get(userId);
+          if (ss && ss.status === "qr") {
+            console.warn(
+              `[wa] [${userId}] reconnect: ended in QR — auth expired. Clearing reconnect state.`,
+            );
+            this._reconnectAttempts.delete(userId);
+            // Don't reschedule — user must scan QR manually
+          }
+        }, 45000);
+      } catch (e) {
+        console.error(`[wa] [${userId}] reconnect start() failed:`, e.message);
+        // Disconnected handler on the new client will reschedule
+      }
+    }, pauseMs);
+
+    this._reconnectTimers.set(userId, timer);
+    if (typeof timer.unref === "function") timer.unref();
   }
 
   async _enforceCapBeforeStart() {
@@ -327,7 +476,9 @@ class SessionManager {
     const oldest = this._byOldest()[0];
     if (oldest) {
       if (ENABLE_HIBERNATION) {
-        console.log(`[wa] LRU-hibernate ${oldest.id} (live=${live.length}/${cap})`);
+        console.log(
+          `[wa] LRU-hibernate ${oldest.id} (live=${live.length}/${cap})`,
+        );
         await this._hibernate(oldest).catch(() => {});
       } else {
         console.log(`[wa] LRU-evict ${oldest.id} (live=${live.length}/${cap})`);
@@ -344,14 +495,14 @@ class SessionManager {
       maxAbsolute: MAX_ACTIVE_SESSIONS,
       total: all.length,
       live: all.filter((s) => s.client).length,
-      connected: all.filter((s) => s.status === 'connected').length,
-      idleClosed: all.filter((s) => s.status === 'idle-closed').length,
+      connected: all.filter((s) => s.status === "connected").length,
+      idleClosed: all.filter((s) => s.status === "idle-closed").length,
       idleEvictAfterHours: Math.round(IDLE_EVICT_MS / 3600000),
       hibernationEnabled: ENABLE_HIBERNATION,
       chromiumOptEnabled: ENABLE_CHROMIUM_OPT,
     };
     if (ENABLE_HIBERNATION) {
-      base.hibernated = all.filter((s) => s.status === 'hibernated').length;
+      base.hibernated = all.filter((s) => s.status === "hibernated").length;
       base.waking = this._wakingNow.size;
       base.metrics = { ...this._metrics };
       delete base.metrics._wakeTotal;
@@ -361,7 +512,14 @@ class SessionManager {
 
   async start(userId) {
     const existing = this.sessions.get(userId);
-    if (existing && existing.client && (existing.status === 'connected' || existing.status === 'qr' || existing.status === 'connecting' || existing.status === 'pairing')) {
+    if (
+      existing &&
+      existing.client &&
+      (existing.status === "connected" ||
+        existing.status === "qr" ||
+        existing.status === "connecting" ||
+        existing.status === "pairing")
+    ) {
       this._touch(userId);
       return existing;
     }
@@ -385,7 +543,7 @@ class SessionManager {
     const session = {
       id: userId,
       client,
-      status: 'connecting',
+      status: "connecting",
       qrDataUrl: null,
       pairingCode: null,
       phone: null,
@@ -396,54 +554,91 @@ class SessionManager {
     };
     this.sessions.set(userId, session);
 
-    client.on('qr', async (qrStr) => {
+    client.on("qr", async (qrStr) => {
       try {
-        session.qrDataUrl = await qrcode.toDataURL(qrStr, { margin: 1, scale: 6 });
-        session.status = 'qr';
+        session.qrDataUrl = await qrcode.toDataURL(qrStr, {
+          margin: 1,
+          scale: 6,
+        });
+        session.status = "qr";
         console.log(`[wa] [${userId}] QR ready`);
       } catch (e) {
-        console.error('[wa] qr encode error', e);
+        console.error("[wa] qr encode error", e);
       }
     });
 
-    client.on('authenticated', () => {
+    client.on("authenticated", () => {
       console.log(`[wa] [${userId}] authenticated`);
-      session.status = 'connecting';
+      session.status = "connecting";
       session.qrDataUrl = null;
       session.pairingCode = null;
     });
 
-    client.on('auth_failure', (msg) => {
+    client.on("auth_failure", (msg) => {
       console.error(`[wa] [${userId}] auth failure:`, msg);
-      session.status = 'disconnected';
+      session.status = "disconnected";
     });
 
-    client.on('ready', () => {
-      session.status = 'connected';
+    client.on("ready", () => {
+      session.status = "connected";
       session.qrDataUrl = null;
       session.pairingCode = null;
       session.phone = client.info?.wid?.user || null;
       session.connectedAt = Date.now();
       session.lastActivityAt = Date.now();
-      console.log(`[wa] [${userId}] connected as ${session.phone}`);
-      notifySaas({ event: 'connected', userId, phone: session.phone }).catch(() => {});
+      // Clear reconnect state — successfully recovered.
+      this._reconnectAttempts.delete(userId);
+      if (this._reconnectTimers.has(userId)) {
+        clearTimeout(this._reconnectTimers.get(userId));
+        this._reconnectTimers.delete(userId);
+      }
+      console.log(
+        `[wa] [${userId}] connected as ${session.phone} (reconnect attempts cleared)`,
+      );
+      notifySaas({ event: "connected", userId, phone: session.phone }).catch(
+        () => {},
+      );
     });
 
-    client.on('disconnected', async (reason) => {
-      console.log(`[wa] [${userId}] disconnected:`, reason);
-      session.status = 'disconnected';
-      this.sessions.delete(userId);
-      // Only wipe the auth folder on an intentional LOGOUT (user unlinked the
-      // device from their phone). Transient disconnects (network blip, server
-      // reconnect) keep the auth so the next /start can resume without QR.
-      const isLogout = String(reason).toUpperCase().includes('LOGOUT');
+    client.on("disconnected", async (reason) => {
+      const isLogout = String(reason).toUpperCase().includes("LOGOUT");
+      console.warn(
+        `[wa] [${userId}] DISCONNECTED reason="${reason}" isLogout=${isLogout} timestamp=${new Date().toISOString()}`,
+      );
+
+      session.status = "disconnected";
+
+      // Always notify SAAS so bot.whatsappStatus stays in sync in the DB.
+      notifySaas({
+        event: "disconnected",
+        userId,
+        reason: String(reason),
+      }).catch(() => {});
+
       if (isLogout) {
+        // Intentional device unlink — wipe auth, permanently remove session.
+        this.sessions.delete(userId);
+        this._reconnectAttempts.delete(userId);
+        if (this._reconnectTimers.has(userId)) {
+          clearTimeout(this._reconnectTimers.get(userId));
+          this._reconnectTimers.delete(userId);
+        }
         const folder = path.join(SESSIONS_DIR, `session-${userId}`);
         await fs.rm(folder, { recursive: true, force: true }).catch(() => {});
+        return;
       }
+
+      // Transient disconnect — keep session in map (status='disconnected'),
+      // free the old Chromium process, schedule auto-reconnect.
+      session.client = null;
+      try {
+        await client.destroy();
+      } catch {}
+
+      this._scheduleReconnect(userId);
     });
 
-    client.on('message', async (msg) => {
+    client.on("message", async (msg) => {
       try {
         if (msg.fromMe) return;
         session.lastActivityAt = Date.now(); // touch on every inbound message
@@ -456,9 +651,9 @@ class SessionManager {
         const contact = await msg.getContact();
         let fromPhone = null;
 
-        if (msg.from.endsWith('@c.us')) {
+        if (msg.from.endsWith("@c.us")) {
           // @c.us JID = the digits ARE the real phone (E.164 without '+').
-          fromPhone = '+' + msg.from.replace('@c.us', '');
+          fromPhone = "+" + msg.from.replace("@c.us", "");
         } else {
           // @lid (new privacy model) or other non-c.us. The ONLY trustworthy
           // phone source is a JID that itself ends in `@c.us`. We do NOT
@@ -478,34 +673,37 @@ class SessionManager {
           //   3. Otherwise: not resolvable → store as `lid:<id>` so the
           //      DB never again contains a fake "+<lid>" phone.
           const trySerialized = (jid) =>
-            (typeof jid === 'string' && jid.endsWith('@c.us'))
-              ? '+' + jid.replace('@c.us', '')
+            typeof jid === "string" && jid.endsWith("@c.us")
+              ? "+" + jid.replace("@c.us", "")
               : null;
 
-          fromPhone = trySerialized(contact?.id?._serialized)
-                    || trySerialized(msg.author);
+          fromPhone =
+            trySerialized(contact?.id?._serialized) ||
+            trySerialized(msg.author);
 
           if (!fromPhone) {
-            const lid = msg.from.replace(/@.*$/, '');
-            fromPhone = 'lid:' + lid;
-            console.warn(`[wa] [${userId}] LID-only contact: msg.from=${msg.from} contact.id=${contact?.id?._serialized || ''} contact.number=${contact?.number || ''}; stored as ${fromPhone}`);
+            const lid = msg.from.replace(/@.*$/, "");
+            fromPhone = "lid:" + lid;
+            console.warn(
+              `[wa] [${userId}] LID-only contact: msg.from=${msg.from} contact.id=${contact?.id?._serialized || ""} contact.number=${contact?.number || ""}; stored as ${fromPhone}`,
+            );
           }
         }
 
         const senderName = contact?.pushname || contact?.name || null;
 
-        let text = msg.body || '';
-        let mediaType = 'text';
+        let text = msg.body || "";
+        let mediaType = "text";
         let mediaBase64 = null;
         let mimetype = null;
 
         if (msg.hasMedia) {
-          if (msg.type === 'audio' || msg.type === 'ptt') {
-            mediaType = 'voice';
-          } else if (msg.type === 'image') {
-            mediaType = 'image';
+          if (msg.type === "audio" || msg.type === "ptt") {
+            mediaType = "voice";
+          } else if (msg.type === "image") {
+            mediaType = "image";
           }
-          if (mediaType !== 'text') {
+          if (mediaType !== "text") {
             try {
               const media = await msg.downloadMedia();
               if (media) {
@@ -513,12 +711,14 @@ class SessionManager {
                 mimetype = media.mimetype;
               }
             } catch (e) {
-              console.error('[wa] media download failed:', e.message);
+              console.error("[wa] media download failed:", e.message);
             }
           }
         }
 
-        console.log(`[wa] [${userId}] IN  ${fromPhone} (${mediaType}) len=${text.length}: ${text.slice(0, 80)}`);
+        console.log(
+          `[wa] [${userId}] IN  ${fromPhone} (${mediaType}) len=${text.length}: ${text.slice(0, 80)}`,
+        );
 
         // Show typing indicator while LLM is generating; refresh every 15s
         // because WA auto-clears the "typing..." state after ~25s.
@@ -534,7 +734,7 @@ class SessionManager {
 
         const t0 = Date.now();
         const result = await notifySaas({
-          event: 'incoming',
+          event: "incoming",
           userId,
           from: { phone: fromPhone, name: senderName },
           mediaType,
@@ -546,14 +746,22 @@ class SessionManager {
 
         if (!result) {
           if (typingInterval) clearInterval(typingInterval);
-          try { await chat.clearState(); } catch {}
-          console.error(`[wa] [${userId}] SAAS_FAIL after ${dt}ms — no reply sent to customer`);
+          try {
+            await chat.clearState();
+          } catch {}
+          console.error(
+            `[wa] [${userId}] SAAS_FAIL after ${dt}ms — no reply sent to customer`,
+          );
           return;
         }
         if (!result.reply) {
           if (typingInterval) clearInterval(typingInterval);
-          try { await chat.clearState(); } catch {}
-          console.log(`[wa] [${userId}] saas ok (${dt}ms) but no reply (subscription/trial limit?)`);
+          try {
+            await chat.clearState();
+          } catch {}
+          console.log(
+            `[wa] [${userId}] saas ok (${dt}ms) but no reply (subscription/trial limit?)`,
+          );
           return;
         }
 
@@ -561,17 +769,30 @@ class SessionManager {
         // The saas may instruct us to wait `preDelayMs` (reading time) before
         // typing, and to keep typing for `typingDelayMs` (proportional to
         // reply length) before actually sending.
-        const preDelayMs = Math.max(0, Math.min(3000, Number(result.preDelayMs) || 0));
-        const typingDelayMs = Math.max(0, Math.min(8000, Number(result.typingDelayMs) || 0));
+        const preDelayMs = Math.max(
+          0,
+          Math.min(3000, Number(result.preDelayMs) || 0),
+        );
+        const typingDelayMs = Math.max(
+          0,
+          Math.min(8000, Number(result.typingDelayMs) || 0),
+        );
 
         if (preDelayMs > 0) {
           // Stop the in-LLM typing indicator briefly to mimic "reading" pause
-          try { await chat.clearState(); } catch {}
-          if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+          try {
+            await chat.clearState();
+          } catch {}
+          if (typingInterval) {
+            clearInterval(typingInterval);
+            typingInterval = null;
+          }
           await sleep(preDelayMs);
         }
         if (typingDelayMs > 0) {
-          try { await chat.sendStateTyping(); } catch {}
+          try {
+            await chat.sendStateTyping();
+          } catch {}
           if (!typingInterval) {
             typingInterval = setInterval(() => {
               chat.sendStateTyping().catch(() => {});
@@ -581,24 +802,33 @@ class SessionManager {
         }
 
         if (typingInterval) clearInterval(typingInterval);
-        try { await chat.clearState(); } catch {}
+        try {
+          await chat.clearState();
+        } catch {}
 
         try {
           await client.sendMessage(msg.from, result.reply);
           const totalDelay = preDelayMs + typingDelayMs;
-          console.log(`[wa] [${userId}] OUT ${fromPhone} (llm:${dt}ms+human:${totalDelay}ms): ${String(result.reply).slice(0, 80)}`);
+          console.log(
+            `[wa] [${userId}] OUT ${fromPhone} (llm:${dt}ms+human:${totalDelay}ms): ${String(result.reply).slice(0, 80)}`,
+          );
         } catch (sendErr) {
-          console.error(`[wa] [${userId}] SEND_FAIL to ${msg.from}:`, sendErr.message);
+          console.error(
+            `[wa] [${userId}] SEND_FAIL to ${msg.from}:`,
+            sendErr.message,
+          );
         }
       } catch (e) {
-        console.error('[wa] message handler error:', e);
+        console.error("[wa] message handler error:", e);
       }
     });
 
     // Initialize asynchronously; do not await so we return fast
     client.initialize().catch((e) => {
-      console.error(`[wa] [${userId}] initialize error:`, e);
-      session.status = 'disconnected';
+      console.error(`[wa] [${userId}] initialize error:`, e.message || e);
+      session.status = "disconnected";
+      // Schedule a reconnect — the init failure might be transient (Chromium crash, etc.)
+      this._scheduleReconnect(userId);
     });
 
     return session;
@@ -607,8 +837,8 @@ class SessionManager {
   async requestPairingCode(userId, phoneNumber) {
     let s = this.sessions.get(userId);
     if (!s) s = await this.start(userId);
-    const clean = String(phoneNumber).replace(/[^\d]/g, '');
-    if (!clean) throw new Error('invalid phone');
+    const clean = String(phoneNumber).replace(/[^\d]/g, "");
+    if (!clean) throw new Error("invalid phone");
 
     // Wait until the puppeteer page reaches a state where pairing code can be requested
     // (whatsapp-web.js requires the QR phase to be active first)
@@ -617,7 +847,7 @@ class SessionManager {
       try {
         const code = await s.client.requestPairingCode(clean);
         s.pairingCode = code;
-        s.status = 'pairing';
+        s.status = "pairing";
         console.log(`[wa] [${userId}] pairing code: ${code} for +${clean}`);
         return code;
       } catch (e) {
@@ -625,36 +855,44 @@ class SessionManager {
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
-    throw new Error('timeout waiting for pairing code');
+    throw new Error("timeout waiting for pairing code");
   }
 
   async send(userId, toPhone, text) {
     let s = this.sessions.get(userId);
     // Auto-wake from hibernation (smart scaling)
-    if (s && s.status === 'hibernated' && ENABLE_HIBERNATION) {
+    if (s && s.status === "hibernated" && ENABLE_HIBERNATION) {
       console.log(`[wa] [${userId}] auto-wake on send()`);
       s = await this._wakeSession(userId);
     }
     // Auto-resume if Chromium was evicted but auth is still on disk
-    if (s && s.status === 'idle-closed') {
+    if (s && s.status === "idle-closed") {
       console.log(`[wa] [${userId}] auto-resume on send()`);
       s = await this.start(userId);
       // Wait briefly for the client to be ready
       const start = Date.now();
-      while (Date.now() - start < 15000 && s.status !== 'connected') {
+      while (Date.now() - start < 15000 && s.status !== "connected") {
         await sleep(500);
       }
     }
-    if (!s || s.status !== 'connected') throw new Error('session not connected');
+    if (!s || s.status !== "connected")
+      throw new Error("session not connected");
     s.lastActivityAt = Date.now();
 
     // Reject contacts whose stored "phone" is actually a WhatsApp LID.
     // We never had a real phone number for these so we can't initiate a send.
-    if (typeof toPhone === 'string' && (toPhone.startsWith('lid:') || toPhone.includes('@lid'))) {
-      throw new Error('cannot initiate send to WhatsApp LID; no public phone available');
+    if (
+      typeof toPhone === "string" &&
+      (toPhone.startsWith("lid:") || toPhone.includes("@lid"))
+    ) {
+      throw new Error(
+        "cannot initiate send to WhatsApp LID; no public phone available",
+      );
     }
 
-    const cleaned = String(toPhone || '').replace(/^\+/, '').replace(/[^\d]/g, '');
+    const cleaned = String(toPhone || "")
+      .replace(/^\+/, "")
+      .replace(/[^\d]/g, "");
     // Valid E.164 phones are 8-15 digits. Anything shorter is bogus; anything
     // longer is almost certainly a LID misclassified as a phone in old rows.
     if (cleaned.length < 8 || cleaned.length > 15) {
@@ -673,7 +911,7 @@ class SessionManager {
       throw new Error(`getNumberId failed: ${e?.message || e}`);
     }
     if (!numberId) {
-      throw new Error('number not registered on WhatsApp');
+      throw new Error("number not registered on WhatsApp");
     }
     return s.client.sendMessage(numberId._serialized, text);
   }
@@ -681,8 +919,12 @@ class SessionManager {
   async logout(userId) {
     const s = this.sessions.get(userId);
     if (s?.client) {
-      try { await s.client.logout(); } catch {}
-      try { await s.client.destroy(); } catch {}
+      try {
+        await s.client.logout();
+      } catch {}
+      try {
+        await s.client.destroy();
+      } catch {}
     }
     const folder = path.join(SESSIONS_DIR, `session-${userId}`);
     await fs.rm(folder, { recursive: true, force: true }).catch(() => {});
@@ -693,20 +935,20 @@ class SessionManager {
 async function notifySaas(payload) {
   try {
     const res = await fetch(SAAS_INCOMING_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Secret': SAAS_INTERNAL_SECRET,
+        "Content-Type": "application/json",
+        "X-Internal-Secret": SAAS_INTERNAL_SECRET,
       },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      console.error('[wa] saas responded', res.status);
+      console.error("[wa] saas responded", res.status);
       return null;
     }
     return await res.json().catch(() => null);
   } catch (e) {
-    console.error('[wa] saas unreachable:', e.message);
+    console.error("[wa] saas unreachable:", e.message);
     return null;
   }
 }
