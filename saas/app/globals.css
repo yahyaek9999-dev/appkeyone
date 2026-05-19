@@ -13,16 +13,16 @@
             "ss02" on;
         background:
             radial-gradient(
-                circle at top right,
-                rgba(34, 197, 94, 0.1),
-                transparent 32rem
+                circle at 82% 18%,
+                rgba(34, 197, 94, 0.11),
+                transparent 34rem
             ),
             radial-gradient(
-                circle at 15% 10%,
-                rgba(59, 130, 246, 0.08),
-                transparent 28rem
+                circle at 16% 82%,
+                rgba(16, 185, 129, 0.07),
+                transparent 30rem
             ),
-            #020617;
+            linear-gradient(180deg, #020806 0%, #06110d 48%, #020806 100%);
     }
     ::selection {
         @apply bg-brand-500/40 text-white;
@@ -30,73 +30,162 @@
 }
 
 @layer components {
-    .btn {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+    /* ── English content font (system stack, not Cairo) ── */
+    .font-en {
+        font-family: -apple-system, "Inter", "Segoe UI", sans-serif;
     }
-    .btn-primary {
-        @apply btn bg-brand-500 text-white hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/30 active:scale-95;
+
+    /* ── Page shell ── */
+    .ai-page {
+        @apply relative min-h-screen overflow-x-hidden bg-[#020806] text-white;
+        background:
+            radial-gradient(
+                circle at 82% 18%,
+                rgba(34, 197, 94, 0.11),
+                transparent 34rem
+            ),
+            radial-gradient(
+                circle at 13% 78%,
+                rgba(16, 185, 129, 0.07),
+                transparent 30rem
+            ),
+            linear-gradient(180deg, #020806 0%, #06110d 48%, #020806 100%);
     }
-    .btn-ghost {
-        @apply btn bg-white/5 text-white hover:bg-white/10 border border-white/10;
+
+    /* ── Grid texture — barely visible, not a pattern ── */
+    .ai-grid-bg {
+        background-image:
+            linear-gradient(rgba(34, 197, 94, 0.12) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(34, 197, 94, 0.12) 1px, transparent 1px);
+        background-size: 92px 92px;
     }
-    .btn-outline {
-        @apply btn border border-brand-500/40 text-brand-300 hover:bg-brand-500/10;
+
+    /* ── Layout primitives ── */
+    .ai-section {
+        @apply relative px-4 py-20 sm:py-24;
     }
+    .ai-container {
+        @apply relative z-10 mx-auto max-w-6xl;
+    }
+
+    /* ── Typography ── */
+    .ai-heading {
+        @apply font-black leading-tight tracking-[-0.035em] text-white;
+        text-shadow: 0 0 34px rgba(34, 197, 94, 0.08);
+    }
+    .ai-muted {
+        @apply text-slate-300;
+    }
+
+    /* ── Badge — no glow, subtle border, lighter weight ── */
+    .ai-badge {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-brand-500/25 bg-brand-500/[0.08] px-3 py-1.5 text-xs font-semibold text-brand-200 backdrop-blur;
+    }
+
+    /* ── Cards — no green overlay, more subtle surface ── */
+    .ai-card,
     .card {
-        @apply rounded-2xl bg-slate-900/60 border border-white/10 backdrop-blur;
+        @apply relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.038];
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.04),
-            0 18px 60px rgba(2, 6, 23, 0.18);
+            0 1px 3px rgba(0, 0, 0, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
+    .card > *,
+    .ai-card > * {
+        @apply relative z-10;
+    }
+
+    /* ── Card glow — kept as a layout wrapper only ── */
     .card-glow {
         @apply relative overflow-hidden;
     }
-    .card-glow::before {
-        content: "";
-        position: absolute;
-        inset: -1px;
-        pointer-events: none;
-        background: linear-gradient(
-            135deg,
-            rgba(34, 197, 94, 0.16),
-            transparent 34%,
-            rgba(59, 130, 246, 0.1)
-        );
-        opacity: 0.7;
-    }
+
+    /* ── Glass panel — reduced blur and opacity ── */
     .glass-panel {
-        @apply rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl;
+        @apply rounded-2xl border border-white/10 bg-white/[0.035] backdrop-blur-md;
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
     }
+
+    /* ── Live ring — 1px only, no bloom ── */
     .live-ring {
-        box-shadow:
-            0 0 0 1px rgba(34, 197, 94, 0.22),
-            0 0 32px rgba(34, 197, 94, 0.08);
+        box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.18);
     }
+
+    /* ── Base button shell ── */
+    .ai-btn,
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    /* ── Primary button — solid color, no glow ── */
+    .ai-btn-primary,
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-brand-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    /* ── Ghost button — transparent base, subtle hover ── */
+    .ai-btn-ghost,
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-transparent px-5 py-2.5 font-semibold text-slate-200 transition-colors hover:border-white/20 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    /* ── Outline button — more subtle brand border ── */
+    .btn-outline {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-500/30 px-5 py-2.5 font-semibold text-brand-200 transition-colors hover:bg-brand-500/10 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    /* ── Input ── */
     .input {
-        @apply w-full rounded-xl bg-slate-900 border border-white/10 px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition;
+        @apply w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-3 text-white placeholder-slate-500 outline-none transition-colors focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/15;
     }
+
+    /* ── Label ── */
     .label {
-        @apply text-sm font-medium text-slate-300 mb-1.5 block;
+        @apply mb-1.5 block text-sm font-medium text-slate-300;
+    }
+
+    /* ────────────────────────────────────────────────────
+       New utility classes — handcrafted premium feel
+    ──────────────────────────────────────────────────── */
+
+    /* Section divider — more subtle than brand-500/10 */
+    .section-divider {
+        @apply border-t border-white/[0.06];
+    }
+
+    /* Eyebrow label for sections — more natural than ai-badge */
+    .eyebrow {
+        @apply text-xs font-semibold uppercase tracking-widest text-brand-400 opacity-80;
+    }
+
+    /* Subtle surface — for alternating sections */
+    .surface-alt {
+        @apply bg-white/[0.016];
+    }
+
+    /* Premium card variant — used for highlighted/featured cards only */
+    .card-featured {
+        @apply relative overflow-hidden rounded-2xl border border-brand-500/20 bg-brand-500/[0.06];
     }
 }
 
-/* Scrollbar */
+/* ── Scrollbar — minimal, barely there ── */
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: #1e293b;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: rgba(255, 255, 255, 0.16);
 }
 
-/* Gradient mesh */
+/* ── Gradient mesh ── */
 .bg-mesh {
     background-image:
         radial-gradient(at 0% 0%, rgba(34, 197, 94, 0.15) 0px, transparent 50%),

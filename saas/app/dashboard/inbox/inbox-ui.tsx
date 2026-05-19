@@ -265,14 +265,14 @@ export default function InboxUi({
   });
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3rem)] -m-4 md:-m-6 lg:-m-10 flex bg-slate-950">
+    <div className="-m-4 flex h-[calc(100vh-4rem)] overflow-hidden bg-[#020806]/80 md:-m-6 md:h-[calc(100vh-3rem)] lg:-m-10">
       {/* ----- conversation list (full width on mobile when no conv selected, fixed width on md+) ----- */}
       <aside
         className={`${
           activeId ? "hidden md:flex" : "flex"
-        } w-full md:w-80 shrink-0 border-l border-white/5 flex-col`}
+        } w-full shrink-0 flex-col border-l border-brand-500/10 bg-[#020806]/80 backdrop-blur-xl md:w-80`}
       >
-        <div className="p-4 border-b border-white/5">
+        <div className="border-b border-brand-500/10 bg-white/[0.025] p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-brand-400" />
@@ -289,7 +289,7 @@ export default function InboxUi({
               type="search"
               inputMode="search"
               autoComplete="off"
-              className="w-full pr-10 pl-3 py-2.5 md:py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-brand-500"
+              className="w-full rounded-2xl border border-white/10 bg-black/25 py-2.5 pl-3 pr-10 text-sm text-white placeholder-slate-500 outline-none transition focus:border-brand-500/70 focus:ring-2 focus:ring-brand-500/20 md:py-2"
             />
           </div>
         </div>
@@ -324,7 +324,7 @@ export default function InboxUi({
                   setActiveId(c.customerId);
                   setNotesDraft("");
                 }}
-                className={`w-full text-right p-3 border-b border-white/5 hover:bg-white/[0.03] transition flex items-start gap-3 ${isActive ? "bg-brand-500/10 border-r-2 border-r-brand-500" : ""}`}
+                className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-start gap-3 rounded-2xl border border-transparent p-3 text-right transition hover:border-brand-500/20 hover:bg-brand-500/10 ${isActive ? "border-brand-500/35 bg-brand-500/10 shadow-[0_0_24px_rgba(34,197,94,0.08)]" : ""}`}
               >
                 <div className="relative shrink-0">
                   <Avatar name={displayName} size="md" />
@@ -363,7 +363,7 @@ export default function InboxUi({
                   </div>
                   {c.leadScore > 0 && (
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
                         <div
                           className={`h-full ${hot ? "bg-orange-400" : c.leadScore >= 40 ? "bg-amber-400" : "bg-slate-500"}`}
                           style={{ width: `${c.leadScore}%` }}
@@ -385,10 +385,10 @@ export default function InboxUi({
       <main
         className={`${
           activeId ? "flex" : "hidden md:flex"
-        } flex-1 flex-col min-w-0`}
+        } min-w-0 flex-1 flex-col bg-black/10`}
       >
         {!active ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-1 items-center justify-center">
             <EmptyState
               icon={<MessageSquare className="w-full h-full" />}
               title="اختر محادثة"
@@ -398,14 +398,14 @@ export default function InboxUi({
           </div>
         ) : (
           <>
-            <header className="flex items-center justify-between p-4 border-b border-white/5 bg-slate-900/40">
+            <header className="flex items-center justify-between gap-3 border-b border-brand-500/10 bg-[#06100d]/78 p-4 backdrop-blur-xl">
               <div className="min-w-0 flex items-center gap-3">
                 <button
                   onClick={() => {
                     setActiveId(null);
                     setActive(null);
                   }}
-                  className="md:hidden p-1.5 -m-1.5 rounded-lg hover:bg-white/5 text-slate-300"
+                  className="-m-1.5 rounded-xl border border-white/10 bg-white/[0.04] p-1.5 text-slate-300 transition hover:bg-white/10 md:hidden"
                   aria-label="الرجوع للقائمة"
                 >
                   <ArrowRight className="w-5 h-5" />
@@ -456,13 +456,13 @@ export default function InboxUi({
                   }
                 />
                 {active.customer.leadScore > 0 && (
-                  <span className="text-xs px-2 py-1 rounded-md bg-orange-500/10 text-orange-300 border border-orange-500/30 inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs text-orange-300">
                     <Flame className="w-3 h-3" /> {active.customer.leadScore}
                   </span>
                 )}
                 <button
                   onClick={togglePause}
-                  className={`px-3 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 border ${
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold ${
                     active.conversation?.botPaused
                       ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
                       : "bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
@@ -483,7 +483,7 @@ export default function InboxUi({
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950"
+              className="ai-grid-bg flex-1 space-y-3 overflow-y-auto bg-[#020806] p-4 [background-size:72px_72px] [mask-image:linear-gradient(black,black)]"
             >
               {loadingActive && !active.conversation && (
                 <>
@@ -508,7 +508,7 @@ export default function InboxUi({
               {sending && <TypingIndicator label="أنت" />}
             </div>
 
-            <div className="p-4 border-t border-white/5 bg-slate-900/40">
+            <div className="border-t border-brand-500/10 bg-[#06100d]/80 p-4 backdrop-blur-xl">
               {active.conversation?.botPaused && (
                 <div className="text-xs text-amber-300 mb-2 flex items-center gap-1.5">
                   <Pause className="w-3 h-3" /> البوت متوقف لهذه المحادثة. ردودك
@@ -518,9 +518,9 @@ export default function InboxUi({
 
               {/* AI suggestions panel */}
               {(suggestions || suggesting || suggestError) && (
-                <div className="mb-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3">
+                <div className="mb-3 rounded-2xl border border-brand-500/30 bg-brand-500/10 p-3 shadow-[0_0_28px_rgba(34,197,94,0.08)]">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-xs text-cyan-300 font-semibold">
+                    <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
                       <Sparkles className="w-3.5 h-3.5" />
                       اقتراحات AI
                     </div>
@@ -550,9 +550,9 @@ export default function InboxUi({
                         <button
                           key={i}
                           onClick={() => useSuggestion(s.text)}
-                          className="w-full text-right p-2.5 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 transition"
+                          className="w-full rounded-2xl border border-white/10 bg-white/[0.045] p-2.5 text-right transition hover:border-brand-500/35 hover:bg-brand-500/10"
                         >
-                          <div className="text-[10px] text-cyan-300 mb-1">
+                          <div className="mb-1 text-[10px] text-brand-300">
                             {s.label}
                           </div>
                           <div className="text-sm text-slate-200 whitespace-pre-wrap">
@@ -577,13 +577,13 @@ export default function InboxUi({
                   }}
                   rows={2}
                   placeholder="اكتب رسالة... (Ctrl+Enter للإرسال)"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-brand-500 resize-none"
+                  className="input min-h-[64px] flex-1 resize-none p-3 text-sm"
                 />
                 <div className="flex flex-col gap-2">
                   <button
                     onClick={send}
                     disabled={sending || !reply.trim()}
-                    className="px-4 py-3 md:py-2 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white inline-flex items-center gap-1.5 min-h-[44px] md:min-h-0"
+                    className="ai-btn ai-btn-primary min-h-[44px] px-4 py-3 text-sm md:min-h-0 md:py-2"
                   >
                     {sending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -596,7 +596,7 @@ export default function InboxUi({
                     onClick={loadSuggestions}
                     disabled={suggesting}
                     title="اقترح AI ردود جاهزة"
-                    className="px-4 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-50 text-cyan-200 border border-cyan-500/30 inline-flex items-center gap-1.5 text-xs"
+                    className="ai-btn ai-btn-ghost border-brand-500/30 px-4 py-2 text-xs text-brand-200 disabled:opacity-50"
                   >
                     {suggesting ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -614,7 +614,7 @@ export default function InboxUi({
 
       {/* ----- right sidebar: customer info + notes (lg+ only; mobile/tablet save space) ----- */}
       {active && (
-        <aside className="hidden lg:flex w-72 shrink-0 border-r border-white/5 bg-slate-900/30 overflow-y-auto p-4 flex-col gap-4">
+        <aside className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-brand-500/10 bg-[#020806]/70 p-4 backdrop-blur-xl lg:flex">
           <div>
             <div className="text-xs text-slate-400 mb-1">العميل</div>
             <div className="font-semibold">{active.customer.name || "—"}</div>
@@ -670,12 +670,12 @@ export default function InboxUi({
               onChange={(e) => setNotesDraft(e.target.value)}
               rows={5}
               placeholder="ملاحظات لا يراها العميل..."
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs focus:outline-none focus:border-brand-500 resize-none"
+              className="input min-h-[120px] w-full resize-none rounded-2xl p-2 text-xs"
             />
             <button
               onClick={saveNotes}
               disabled={savingNotes}
-              className="mt-2 w-full px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs"
+              className="ai-btn ai-btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
             >
               {savingNotes ? "جاري الحفظ..." : "حفظ"}
             </button>
@@ -692,10 +692,10 @@ function MessageBubble({ m }: { m: Msg }) {
   const isBot = m.role === "assistant";
   const align = isUser ? "justify-start" : "justify-end";
   const bg = isUser
-    ? "bg-white/5 text-slate-100 border-white/10"
+    ? "bg-white/[0.055] text-slate-100 border-white/10"
     : isAdmin
-      ? "bg-emerald-500/15 text-emerald-50 border-emerald-500/30"
-      : "bg-brand-500/15 text-slate-100 border-brand-500/30";
+      ? "bg-emerald-500/15 text-emerald-50 border-emerald-500/35 shadow-[0_0_24px_rgba(16,185,129,0.08)]"
+      : "bg-brand-500/15 text-slate-100 border-brand-500/35 shadow-[0_0_24px_rgba(34,197,94,0.08)]";
   // WhatsApp-style asymmetric corners: incoming has start-side tail, outgoing has end-side tail.
   const cornerClass = isUser ? "rounded-ss-sm" : "rounded-se-sm";
   const Icon = isUser ? User : isAdmin ? User : BotIcon;
@@ -708,7 +708,7 @@ function MessageBubble({ m }: { m: Msg }) {
   return (
     <div className={`flex ${align}`}>
       <div
-        className={`max-w-[70%] rounded-2xl ${cornerClass} border px-4 py-2 shadow-sm ${bg}`}
+        className={`max-w-[78%] rounded-2xl ${cornerClass} border px-4 py-2.5 shadow-sm backdrop-blur ${bg}`}
       >
         <div className="flex items-center gap-1.5 mb-1 text-[10px] opacity-70">
           <Icon className={`w-3 h-3 ${iconClass}`} />

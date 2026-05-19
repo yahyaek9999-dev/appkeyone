@@ -12,7 +12,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={logout}
-      className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-300 transition text-sm"
+      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-slate-400 transition hover:bg-red-500/10 hover:text-red-300"
     >
       <LogOut className="w-4 h-4" />
       تسجيل خروج

@@ -34,7 +34,11 @@ export const NAV_ITEMS = [
   { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: Zap },
   { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Clock },
   { href: "/dashboard/knowledge", label: "قاعدة المعرفة", icon: BookOpen },
-  { href: "/dashboard/suggestions", label: "اقتراحات المعرفة", icon: Lightbulb },
+  {
+    href: "/dashboard/suggestions",
+    label: "اقتراحات المعرفة",
+    icon: Lightbulb,
+  },
   { href: "/dashboard/playground", label: "تجربة البوت", icon: MessageSquare },
   { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone },
   { href: "/dashboard/safety", label: "الأمان والحماية", icon: Shield },
@@ -56,7 +60,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
       {isAdmin && (
         <Link
           href="/admin"
-          className="flex items-center gap-3 px-3 py-3 md:py-2.5 mb-2 rounded-xl bg-gradient-to-l from-red-500/15 to-orange-500/15 border border-red-500/30 text-red-200 hover:from-red-500/25 hover:to-orange-500/25 transition text-sm font-semibold"
+          className="mb-2 flex items-center gap-3 rounded-2xl border border-red-500/30 bg-gradient-to-l from-red-500/15 to-orange-500/15 px-3 py-3 text-sm font-bold text-red-200 transition hover:from-red-500/25 hover:to-orange-500/25 md:py-2.5"
         >
           <ShieldCheck className="w-4 h-4" />
           لوحة الإدارة
@@ -68,7 +72,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
           <Link
             key={n.href}
             href={n.href}
-            className="flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition text-sm"
+            className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-300 transition hover:bg-brand-500/10 hover:text-white md:py-2.5"
           >
             <Icon className="w-4 h-4" />
             {n.label}
