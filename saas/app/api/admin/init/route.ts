@@ -1,15 +1,18 @@
 /**
  * POST /api/admin/init
  *
- * One-time endpoint to create or promote the first admin user.
+ * Recovery endpoint — creates OR resets the admin account.
  * Protected by ADMIN_INIT_SECRET env variable.
  *
- * Body: { secret: string, email: string, password: string }
+ * Body: { secret, email, password }
  *
- * - If a user with that email exists → promotes them to admin.
- * - If not → creates a new admin user.
+ * Behaviour:
+ *  - No admin in DB            → create or promote the given user to admin
+ *  - Admin exists, same email  → reset their password to the supplied one
+ *  - Admin exists, diff email  → 409 (use the existing admin's email)
  *
- * Blocked entirely once an admin already exists (idempotent-safe).
+ * This lets you recover the admin login even after a DB schema migration
+ * wipes or scrambles data, without needing SSH or direct DB access.
  */
 
 import { NextResponse } from "next/server";
@@ -38,7 +41,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "الحقول المطلوبة: secret, email (valid), password (≥8 chars)" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -50,52 +53,73 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "السر غلط" }, { status: 403 });
   }
 
+  const lowerEmail = email.toLowerCase();
+  const passwordHash = await hashPassword(password);
+
   // 3. Check if an admin already exists
   const existingAdmin = await prisma.user.findFirst({
     where: { role: "admin" } as any,
   });
+
+  // Case A: admin exists and it's the same email → reset password
+  if (existingAdmin && (existingAdmin as any).email === lowerEmail) {
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: { passwordHash } as any,
+    });
+    return NextResponse.json({
+      ok: true,
+      action: "password_reset",
+      email: lowerEmail,
+      message: "تم إعادة تعيين كلمة مرور الأدمن — يمكنك الدخول الآن",
+    });
+  }
+
+  // Case B: admin exists but different email → tell them the email
   if (existingAdmin) {
     return NextResponse.json(
-      { error: "يوجد أدمن بالفعل — استخدم لوحة الأدمن لإدارة الصلاحيات" },
-      { status: 409 }
+      {
+        error: "يوجد أدمن بإيميل مختلف — استخدم إيميله أو تواصل مع المطوّر",
+        hint: `admin email starts with: ${(existingAdmin as any).email.slice(0, 3)}***`,
+      },
+      { status: 409 },
     );
   }
 
-  const lowerEmail = email.toLowerCase();
-
-  // 4. Create or promote
+  // Case C: no admin at all — create or promote
   const existingUser = await prisma.user.findUnique({
     where: { email: lowerEmail },
   });
 
   if (existingUser) {
-    // Promote existing user
+    // Promote existing user + reset password
     await prisma.user.update({
       where: { email: lowerEmail },
-      data: { role: "admin" } as any,
+      data: { role: "admin", passwordHash } as any,
     });
     return NextResponse.json({
       ok: true,
       action: "promoted",
       email: lowerEmail,
-      message: "تم ترقية المستخدم إلى أدمن بنجاح",
-    });
-  } else {
-    // Create new admin user
-    const passwordHash = await hashPassword(password);
-    await prisma.user.create({
-      data: {
-        email: lowerEmail,
-        passwordHash,
-        name: "Admin",
-        role: "admin",
-      } as any,
-    });
-    return NextResponse.json({
-      ok: true,
-      action: "created",
-      email: lowerEmail,
-      message: "تم إنشاء حساب الأدمن بنجاح",
+      message: "تم ترقية المستخدم إلى أدمن وتحديث كلمة المرور",
     });
   }
+
+  // Create brand new admin user
+  await prisma.user.create({
+    data: {
+      email: lowerEmail,
+      passwordHash,
+      name: "Admin",
+      role: "admin",
+      bot: { create: {} },
+    } as any,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    action: "created",
+    email: lowerEmail,
+    message: "تم إنشاء حساب الأدمن — يمكنك الدخول الآن",
+  });
 }
