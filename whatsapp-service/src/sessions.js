@@ -1,5 +1,12 @@
 // Multi-tenant WhatsApp manager built on whatsapp-web.js (Puppeteer + Chrome).
 // Each user gets an isolated session folder via LocalAuth.
+//
+// Smart Session Hibernation (ENABLE_SESSION_HIBERNATION=1):
+//   Instead of keeping all sessions as live Chromium processes, we maintain
+//   a small active pool (HIBERNATE_MAX_ACTIVE, default 4) and hibernate
+//   idle sessions automatically. Sessions wake on demand (incoming msg /
+//   send / broadcast) with concurrency-controlled reconnects to prevent
+//   storms. Auth is always preserved via LocalAuth on disk.
 
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
@@ -10,6 +17,17 @@ import fs from 'fs/promises';
 const SESSIONS_DIR = process.env.SESSIONS_DIR || './sessions';
 const SAAS_INCOMING_URL = process.env.SAAS_INCOMING_URL || 'http://127.0.0.1:3000/api/whatsapp/incoming';
 const SAAS_INTERNAL_SECRET = process.env.SAAS_INTERNAL_SECRET || 'dev';
+
+// ---------------------------------------------------------------------------
+// Feature flags + tunables (smart scaling)
+// ---------------------------------------------------------------------------
+const ENABLE_HIBERNATION     = process.env.ENABLE_SESSION_HIBERNATION === '1';
+const ENABLE_CHROMIUM_OPT    = process.env.ENABLE_CHROMIUM_OPTIMIZATION === '1';
+const HIBERNATE_MAX_ACTIVE   = Math.max(1, Number(process.env.HIBERNATE_MAX_ACTIVE || 4));
+const HIBERNATE_IDLE_MIN     = Math.max(5, Number(process.env.HIBERNATE_IDLE_MINUTES || 30));
+const HIBERNATE_IDLE_MS      = HIBERNATE_IDLE_MIN * 60 * 1000;
+const HIBERNATE_MAX_WAKES    = Math.max(1, Number(process.env.HIBERNATE_MAX_CONCURRENT_WAKES || 2));
+const HIBERNATE_WAKE_TIMEOUT = Math.max(5000, Number(process.env.HIBERNATE_WAKE_TIMEOUT_SEC || 20) * 1000);
 
 // Returns true if `digits` looks like a real E.164 phone number.
 // Per ITU-T E.164: 1-15 digits, leading digit is the country code so it
@@ -42,8 +60,60 @@ function looksLikePhone(digits) {
 // safe budget is ~5 GB, which fits ~12 concurrent sessions with headroom.
 // Operators with more RAM can override via the WA_MAX_SESSIONS env var.
 const MAX_ACTIVE_SESSIONS = Math.max(1, Number(process.env.WA_MAX_SESSIONS || 12));
-const IDLE_EVICT_MS = Math.max(60 * 60 * 1000, Number(process.env.WA_IDLE_HOURS || 6) * 3600 * 1000);
-const IDLE_CHECK_MS = 5 * 60 * 1000; // sweep every 5 min
+const IDLE_EVICT_MS = ENABLE_HIBERNATION
+  ? HIBERNATE_IDLE_MS
+  : Math.max(60 * 60 * 1000, Number(process.env.WA_IDLE_HOURS || 6) * 3600 * 1000);
+const IDLE_CHECK_MS = ENABLE_HIBERNATION ? 60 * 1000 : 5 * 60 * 1000; // sweep faster when hibernating
+
+// ---------------------------------------------------------------------------
+// Chromium optimization: aggressive resource reduction flags
+// ---------------------------------------------------------------------------
+const CHROMIUM_BASE_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-accelerated-2d-canvas',
+  '--no-first-run',
+  '--no-zygote',
+  '--disable-gpu',
+];
+
+const CHROMIUM_OPTIMIZED_ARGS = [
+  ...CHROMIUM_BASE_ARGS,
+  // Memory reduction
+  '--disable-extensions',
+  '--disable-component-extensions-with-background-pages',
+  '--disable-default-apps',
+  '--disable-background-networking',
+  '--disable-sync',
+  '--disable-translate',
+  '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-renderer-backgrounding',
+  // Disable media/images for RAM savings (~30-50 MB per session)
+  '--disable-images',
+  '--blink-settings=imagesEnabled=false',
+  '--disable-remote-fonts',
+  // Disable unnecessary features
+  '--disable-notifications',
+  '--disable-hang-monitor',
+  '--disable-breakpad',
+  '--disable-client-side-phishing-detection',
+  '--disable-component-update',
+  '--disable-domain-reliability',
+  '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+  '--metrics-recording-only',
+  '--mute-audio',
+  // Reduce V8 memory
+  '--js-flags=--max-old-space-size=128',
+  // Reduce process count
+  '--renderer-process-limit=1',
+  '--single-process',
+];
+
+function getChromiumArgs() {
+  return ENABLE_CHROMIUM_OPT ? CHROMIUM_OPTIMIZED_ARGS : CHROMIUM_BASE_ARGS;
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -51,10 +121,28 @@ class SessionManager {
   constructor() {
     /** @type {Map<string, any>} */
     this.sessions = new Map();
+
+    // ---------------------------------------------------------------------------
+    // Hibernation state (only active when ENABLE_SESSION_HIBERNATION=1)
+    // ---------------------------------------------------------------------------
+    /** @type {Set<string>} — sessions currently waking up (concurrency gate) */
+    this._wakingNow = new Set();
+    /** @type {Map<string, { resolve: Function, reject: Function, timer: any }[]>} */
+    this._wakeWaiters = new Map();
+    /** @type {{ wakes: number, wakeFails: number, hibernations: number, avgWakeMs: number, _wakeTotal: number }} */
+    this._metrics = { wakes: 0, wakeFails: 0, hibernations: 0, avgWakeMs: 0, _wakeTotal: 0 };
+
     // Background sweep — close sessions that have been idle too long so
     // their Chromium RAM is reclaimed. Auth stays on disk for next /start.
     this._idleTimer = setInterval(() => this._sweepIdle(), IDLE_CHECK_MS);
     if (typeof this._idleTimer.unref === 'function') this._idleTimer.unref();
+
+    if (ENABLE_HIBERNATION) {
+      console.log(`[wa] Hibernation ENABLED: maxActive=${HIBERNATE_MAX_ACTIVE} idleMin=${HIBERNATE_IDLE_MIN} maxWakes=${HIBERNATE_MAX_WAKES}`);
+    }
+    if (ENABLE_CHROMIUM_OPT) {
+      console.log(`[wa] Chromium optimization ENABLED: ${CHROMIUM_OPTIMIZED_ARGS.length - CHROMIUM_BASE_ARGS.length} extra flags`);
+    }
   }
 
   list() {
@@ -65,6 +153,8 @@ class SessionManager {
       pairingCode: s.pairingCode,
       lastActivityAt: s.lastActivityAt || null,
       idleMs: s.lastActivityAt ? Date.now() - s.lastActivityAt : null,
+      hibernated: s.status === 'hibernated',
+      priority: s.priority || 0,
     }));
   }
 
@@ -92,9 +182,18 @@ class SessionManager {
       if (s.status !== 'connected') continue;
       const last = s.lastActivityAt || s.connectedAt || 0;
       if (now - last >= IDLE_EVICT_MS) {
-        console.log(`[wa] [${s.id}] idle-evict (no activity for ${Math.round((now - last) / 3600000)}h) — closing Chromium, auth kept`);
-        await this._closeChromium(s).catch(() => {});
+        if (ENABLE_HIBERNATION) {
+          console.log(`[wa] [${s.id}] hibernating (idle ${Math.round((now - last) / 60000)}min) — Chromium freed, auth kept`);
+          await this._hibernate(s).catch(() => {});
+        } else {
+          console.log(`[wa] [${s.id}] idle-evict (no activity for ${Math.round((now - last) / 3600000)}h) — closing Chromium, auth kept`);
+          await this._closeChromium(s).catch(() => {});
+        }
       }
+    }
+    // When hibernation is on, also enforce the active pool cap proactively
+    if (ENABLE_HIBERNATION) {
+      await this._enforceActivePoolCap();
     }
   }
 
@@ -107,28 +206,157 @@ class SessionManager {
     // user can resume via /start without re-pairing.
   }
 
+  /** Hibernate a session — same as close but marks as 'hibernated' for wake-on-demand */
+  async _hibernate(s) {
+    if (!s || !s.client) return;
+    try { await s.client.destroy(); } catch {}
+    s.status = 'hibernated';
+    s.client = null;
+    s.hibernatedAt = Date.now();
+    this._metrics.hibernations++;
+  }
+
+  /**
+   * Enforce the active pool cap: if more sessions are live than HIBERNATE_MAX_ACTIVE,
+   * hibernate the least recently active ones until we're within budget.
+   */
+  async _enforceActivePoolCap() {
+    const live = this._byOldest().filter((s) => s.status === 'connected');
+    const excess = live.length - HIBERNATE_MAX_ACTIVE;
+    if (excess <= 0) return;
+    // Hibernate the oldest (least recently active) sessions
+    for (let i = 0; i < excess; i++) {
+      const s = live[i];
+      if (s) {
+        console.log(`[wa] [${s.id}] pool-cap hibernate (${live.length}/${HIBERNATE_MAX_ACTIVE})`);
+        await this._hibernate(s).catch(() => {});
+      }
+    }
+  }
+
+  /**
+   * Wake a hibernated session. Concurrency-controlled to prevent reconnect storms.
+   * Returns the session once connected or throws on timeout.
+   */
+  async _wakeSession(userId) {
+    const s = this.sessions.get(userId);
+    if (!s || s.status !== 'hibernated') return s;
+
+    // If already waking, wait for the existing wake to complete
+    if (this._wakingNow.has(userId)) {
+      return this._waitForWake(userId);
+    }
+
+    // Concurrency gate: wait if too many wakes in flight
+    while (this._wakingNow.size >= HIBERNATE_MAX_WAKES) {
+      await sleep(500);
+    }
+
+    // Make room in the active pool by hibernating LRU sessions
+    const liveSessions = Array.from(this.sessions.values()).filter((x) => x.client && x.status === 'connected');
+    if (liveSessions.length >= HIBERNATE_MAX_ACTIVE) {
+      // Hibernate the oldest connected session (not the one we're waking)
+      const oldest = liveSessions
+        .filter((x) => x.id !== userId)
+        .sort((a, b) => (a.lastActivityAt || 0) - (b.lastActivityAt || 0))[0];
+      if (oldest) {
+        console.log(`[wa] [${oldest.id}] pool-evict for wake of ${userId}`);
+        await this._hibernate(oldest).catch(() => {});
+      }
+    }
+
+    this._wakingNow.add(userId);
+    const t0 = Date.now();
+    console.log(`[wa] [${userId}] waking from hibernation...`);
+
+    try {
+      // Re-start the session (will reuse LocalAuth from disk)
+      const restarted = await this.start(userId);
+      // Wait for 'connected' status
+      const deadline = Date.now() + HIBERNATE_WAKE_TIMEOUT;
+      while (Date.now() < deadline && restarted.status !== 'connected') {
+        await sleep(500);
+      }
+      if (restarted.status !== 'connected') {
+        this._metrics.wakeFails++;
+        throw new Error(`wake timeout after ${HIBERNATE_WAKE_TIMEOUT}ms`);
+      }
+      const wakeMs = Date.now() - t0;
+      this._metrics.wakes++;
+      this._metrics._wakeTotal += wakeMs;
+      this._metrics.avgWakeMs = Math.round(this._metrics._wakeTotal / this._metrics.wakes);
+      console.log(`[wa] [${userId}] woke in ${wakeMs}ms`);
+
+      // Resolve any waiters
+      this._resolveWaiters(userId, restarted);
+      return restarted;
+    } catch (err) {
+      this._rejectWaiters(userId, err);
+      throw err;
+    } finally {
+      this._wakingNow.delete(userId);
+    }
+  }
+
+  /** Wait for an in-progress wake to complete (used by concurrent callers) */
+  _waitForWake(userId) {
+    return new Promise((resolve, reject) => {
+      if (!this._wakeWaiters.has(userId)) this._wakeWaiters.set(userId, []);
+      const timer = setTimeout(() => reject(new Error('wake wait timeout')), HIBERNATE_WAKE_TIMEOUT + 5000);
+      this._wakeWaiters.get(userId).push({ resolve, reject, timer });
+    });
+  }
+
+  _resolveWaiters(userId, session) {
+    const waiters = this._wakeWaiters.get(userId) || [];
+    this._wakeWaiters.delete(userId);
+    for (const w of waiters) { clearTimeout(w.timer); w.resolve(session); }
+  }
+
+  _rejectWaiters(userId, err) {
+    const waiters = this._wakeWaiters.get(userId) || [];
+    this._wakeWaiters.delete(userId);
+    for (const w of waiters) { clearTimeout(w.timer); w.reject(err); }
+  }
+
   async _enforceCapBeforeStart() {
+    const cap = ENABLE_HIBERNATION ? HIBERNATE_MAX_ACTIVE : MAX_ACTIVE_SESSIONS;
     const live = Array.from(this.sessions.values()).filter((s) => s.client);
-    if (live.length < MAX_ACTIVE_SESSIONS) return;
+    if (live.length < cap) return;
     // LRU evict the oldest active session
     const oldest = this._byOldest()[0];
     if (oldest) {
-      console.log(`[wa] LRU-evict ${oldest.id} (live=${live.length}/${MAX_ACTIVE_SESSIONS})`);
-      await this._closeChromium(oldest).catch(() => {});
+      if (ENABLE_HIBERNATION) {
+        console.log(`[wa] LRU-hibernate ${oldest.id} (live=${live.length}/${cap})`);
+        await this._hibernate(oldest).catch(() => {});
+      } else {
+        console.log(`[wa] LRU-evict ${oldest.id} (live=${live.length}/${cap})`);
+        await this._closeChromium(oldest).catch(() => {});
+      }
     }
   }
 
   /** Stats snapshot for /sessions/stats endpoint */
   stats() {
     const all = Array.from(this.sessions.values());
-    return {
-      max: MAX_ACTIVE_SESSIONS,
+    const base = {
+      max: ENABLE_HIBERNATION ? HIBERNATE_MAX_ACTIVE : MAX_ACTIVE_SESSIONS,
+      maxAbsolute: MAX_ACTIVE_SESSIONS,
       total: all.length,
       live: all.filter((s) => s.client).length,
       connected: all.filter((s) => s.status === 'connected').length,
       idleClosed: all.filter((s) => s.status === 'idle-closed').length,
       idleEvictAfterHours: Math.round(IDLE_EVICT_MS / 3600000),
+      hibernationEnabled: ENABLE_HIBERNATION,
+      chromiumOptEnabled: ENABLE_CHROMIUM_OPT,
     };
+    if (ENABLE_HIBERNATION) {
+      base.hibernated = all.filter((s) => s.status === 'hibernated').length;
+      base.waking = this._wakingNow.size;
+      base.metrics = { ...this._metrics };
+      delete base.metrics._wakeTotal;
+    }
+    return base;
   }
 
   async start(userId) {
@@ -150,15 +378,7 @@ class SessionManager {
       }),
       puppeteer: {
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-        ],
+        args: getChromiumArgs(),
       },
     });
 
@@ -171,6 +391,8 @@ class SessionManager {
       phone: null,
       lastActivityAt: Date.now(),
       connectedAt: null,
+      hibernatedAt: null,
+      priority: 0,
     };
     this.sessions.set(userId, session);
 
@@ -408,6 +630,11 @@ class SessionManager {
 
   async send(userId, toPhone, text) {
     let s = this.sessions.get(userId);
+    // Auto-wake from hibernation (smart scaling)
+    if (s && s.status === 'hibernated' && ENABLE_HIBERNATION) {
+      console.log(`[wa] [${userId}] auto-wake on send()`);
+      s = await this._wakeSession(userId);
+    }
     // Auto-resume if Chromium was evicted but auth is still on disk
     if (s && s.status === 'idle-closed') {
       console.log(`[wa] [${userId}] auto-resume on send()`);

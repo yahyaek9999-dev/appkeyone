@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getCachedSnapshot } from "@/lib/snapshot-cache";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -173,7 +174,8 @@ export async function GET(req: Request) {
   );
 
   if (wantsJson) {
-    return NextResponse.json(await buildSnapshot(userId, customerId));
+    const snapshot = await getCachedSnapshot(userId, customerId, () => buildSnapshot(userId, customerId));
+    return NextResponse.json(snapshot);
   }
 
   const stream = new ReadableStream({
@@ -185,7 +187,7 @@ export async function GET(req: Request) {
       async function send() {
         if (closed) return;
         try {
-          const snapshot = await buildSnapshot(userId, customerId);
+          const snapshot = await getCachedSnapshot(userId, customerId, () => buildSnapshot(userId, customerId));
           controller.enqueue(
             encoder.encode(
               `event: message\ndata: ${JSON.stringify(snapshot)}\n\n`,

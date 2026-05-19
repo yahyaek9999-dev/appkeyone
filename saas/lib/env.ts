@@ -311,6 +311,21 @@ export const env = {
   get enableBullmq(): boolean {
     return getEnv("ENABLE_BULLMQ") === "1";
   },
+  get enableSessionHibernation(): boolean {
+    return getEnv("ENABLE_SESSION_HIBERNATION") === "1";
+  },
+  get enableSnapshotCache(): boolean {
+    return getEnv("ENABLE_SNAPSHOT_CACHE") === "1";
+  },
+  get enableMessageCoalescing(): boolean {
+    return getEnv("ENABLE_MESSAGE_COALESCING") === "1";
+  },
+  get enableChromiumOptimization(): boolean {
+    return getEnv("ENABLE_CHROMIUM_OPTIMIZATION") === "1";
+  },
+  get enableBackgroundOffloading(): boolean {
+    return getEnv("ENABLE_BACKGROUND_OFFLOADING") === "1";
+  },
 
   // ---- Anti-ban tuning ----
   get antiBanPerMin(): number {

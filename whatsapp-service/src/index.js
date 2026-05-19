@@ -7,8 +7,15 @@ import { manager } from './sessions.js';
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const SECRET = process.env.SAAS_INTERNAL_SECRET || 'dev';
 const SESSIONS_DIR = process.env.SESSIONS_DIR || './sessions';
+const ENABLE_HIBERNATION = process.env.ENABLE_SESSION_HIBERNATION === '1';
+const HIBERNATE_MAX_ACTIVE = Math.max(1, Number(process.env.HIBERNATE_MAX_ACTIVE || 4));
+const RESTORE_STAGGER_MS = Math.max(1000, Number(process.env.RESTORE_STAGGER_MS || 3000));
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Auto-restore previously linked sessions on boot
+// When hibernation is enabled, only restore the most-recent N sessions as
+// active and register the rest as 'hibernated' (no Chromium process).
 async function restoreSessions() {
   try {
     const entries = await fs.readdir(SESSIONS_DIR).catch(() => []);
@@ -19,12 +26,48 @@ async function restoreSessions() {
       console.log('[wa-service] no saved sessions to restore');
       return;
     }
-    console.log(`[wa-service] restoring ${userIds.length} session(s):`, userIds.join(', '));
-    for (const id of userIds) {
-      try {
-        await manager.start(id);
-      } catch (e) {
-        console.error(`[wa-service] failed to restore ${id}:`, e.message);
+
+    if (ENABLE_HIBERNATION) {
+      // Staggered restore: only boot HIBERNATE_MAX_ACTIVE sessions,
+      // register the rest as hibernated (zero RAM).
+      const toActivate = userIds.slice(0, HIBERNATE_MAX_ACTIVE);
+      const toHibernate = userIds.slice(HIBERNATE_MAX_ACTIVE);
+      console.log(`[wa-service] hibernation restore: ${toActivate.length} active, ${toHibernate.length} hibernated`);
+
+      // Register hibernated sessions first (instant, no Chromium)
+      for (const id of toHibernate) {
+        manager.sessions.set(id, {
+          id,
+          client: null,
+          status: 'hibernated',
+          qrDataUrl: null,
+          pairingCode: null,
+          phone: null,
+          lastActivityAt: 0,
+          connectedAt: null,
+          hibernatedAt: Date.now(),
+          priority: 0,
+        });
+      }
+
+      // Stagger active session restoration to prevent OOM spike
+      for (const id of toActivate) {
+        try {
+          await manager.start(id);
+          console.log(`[wa-service] restored ${id} — staggering ${RESTORE_STAGGER_MS}ms`);
+          await sleep(RESTORE_STAGGER_MS);
+        } catch (e) {
+          console.error(`[wa-service] failed to restore ${id}:`, e.message);
+        }
+      }
+    } else {
+      console.log(`[wa-service] restoring ${userIds.length} session(s):`, userIds.join(', '));
+      for (const id of userIds) {
+        try {
+          await manager.start(id);
+        } catch (e) {
+          console.error(`[wa-service] failed to restore ${id}:`, e.message);
+        }
       }
     }
   } catch (e) {
@@ -45,6 +88,23 @@ app.use((req, res, next) => {
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true, sessions: manager.list() }));
+
+// Wake a hibernated session on demand (called by saas before sending)
+app.post('/sessions/:userId/wake', async (req, res) => {
+  try {
+    const s = manager.get(req.params.userId);
+    if (!s) return res.status(404).json({ error: 'session not found' });
+    if (s.status === 'connected') return res.json({ ok: true, status: 'connected', wakeMs: 0 });
+    if (s.status !== 'hibernated' && s.status !== 'idle-closed') {
+      return res.json({ ok: true, status: s.status, wakeMs: 0 });
+    }
+    const t0 = Date.now();
+    const woken = await manager._wakeSession(req.params.userId);
+    res.json({ ok: true, status: woken.status, wakeMs: Date.now() - t0 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // Pool stats — used by the admin dashboard to monitor capacity on the 8GB VPS
 app.get('/sessions/stats', (_req, res) => {
