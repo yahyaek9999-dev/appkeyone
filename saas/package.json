@@ -9,7 +9,16 @@
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "verify:system": "node scripts/verify/run.js system",
+    "verify:whatsapp": "node scripts/verify/run.js whatsapp",
+    "verify:orders": "node scripts/verify/run.js orders",
+    "verify:realtime": "node scripts/verify/run.js realtime",
+    "verify:commerce": "node scripts/verify/run.js commerce",
+    "verify:email": "node scripts/verify/run.js email",
+    "verify:mobile": "node scripts/verify/run.js mobile",
+    "verify:all": "node scripts/verify/run.js all",
+    "worker:baileys": "node workers/baileys.worker.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -5,9 +5,14 @@
 @layer base {
     html {
         scroll-behavior: smooth;
+        overflow-x: hidden;
+        text-size-adjust: 100%;
+        -webkit-text-size-adjust: 100%;
     }
     body {
         @apply bg-slate-950 text-slate-100 antialiased;
+        min-width: 0;
+        overflow-x: hidden;
         font-feature-settings:
             "ss01" on,
             "ss02" on;
@@ -38,6 +43,7 @@
     /* ── Page shell ── */
     .ai-page {
         @apply relative min-h-screen overflow-x-hidden bg-[#020806] text-white;
+        min-width: 0;
         background:
             radial-gradient(
                 circle at 82% 18%,
@@ -166,6 +172,30 @@
     /* Premium card variant — used for highlighted/featured cards only */
     .card-featured {
         @apply relative overflow-hidden rounded-2xl border border-brand-500/20 bg-brand-500/[0.06];
+    }
+
+    /* ── Mobile dashboard safety primitives (P1.5) ── */
+    .mobile-safe-panel {
+        @apply max-w-full min-w-0 overflow-hidden;
+    }
+
+    .mobile-scroll-x {
+        @apply max-w-full overflow-x-auto overscroll-x-contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .touch-target {
+        @apply min-h-[44px] min-w-[44px];
+    }
+}
+
+@layer utilities {
+    .pb-safe {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    .pt-safe {
+        padding-top: env(safe-area-inset-top);
     }
 }
 

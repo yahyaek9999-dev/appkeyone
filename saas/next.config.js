@@ -6,10 +6,24 @@
 // instrumentation of server functions during the build step.
 // ---------------------------------------------------------------------------
 const { withSentryConfig } = require("@sentry/nextjs");
+const { execSync } = require("child_process");
+
+// Build-time version identifier: git short hash + date. Exposed as
+// NEXT_PUBLIC_BUILD_ID so both server (health endpoint) and client
+// (stale-cache detection) can reference the exact deploy version.
+let buildId = "dev";
+try {
+  const hash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  buildId = `${hash}-${date}`;
+} catch {}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_BUILD_ID: buildId,
+  },
   experimental: {
     // Existing: allow large server action payloads (e.g. PDF/DOCX uploads)
     serverActions: { bodySizeLimit: "10mb" },

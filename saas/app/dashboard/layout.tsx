@@ -50,7 +50,7 @@ export default async function DashboardLayout({
   );
 
   return (
-    <div className="ai-page min-h-screen md:flex">
+    <div className="ai-page min-h-screen min-w-0 md:flex">
       {/* Mobile drawer (hidden on md+) */}
       <MobileNav pageTitle={brandName}>
         {Brand}
@@ -67,8 +67,10 @@ export default async function DashboardLayout({
 
       {/* Main content. We intentionally drop `max-h-screen overflow-y-auto` —
           that combo breaks iOS momentum scrolling. Scroll lives on the body. */}
-      <main className="min-h-screen flex-1 bg-black/10">
-        <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-10">{children}</div>
+      <main className="min-h-screen min-w-0 flex-1 bg-black/10">
+        <div className="mx-auto w-full max-w-6xl min-w-0 p-4 pb-safe md:p-6 lg:p-10">
+          {children}
+        </div>
       </main>
     </div>
   );

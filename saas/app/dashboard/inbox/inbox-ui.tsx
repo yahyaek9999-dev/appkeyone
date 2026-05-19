@@ -265,7 +265,7 @@ export default function InboxUi({
   });
 
   return (
-    <div className="-m-4 flex h-[calc(100vh-4rem)] overflow-hidden bg-[#020806]/80 md:-m-6 md:h-[calc(100vh-3rem)] lg:-m-10">
+    <div className="-m-4 flex h-[calc(100dvh_-_4rem_-_env(safe-area-inset-top))] min-w-0 overflow-hidden bg-[#020806]/80 md:-m-6 md:h-[calc(100vh_-_3rem)] lg:-m-10">
       {/* ----- conversation list (full width on mobile when no conv selected, fixed width on md+) ----- */}
       <aside
         className={`${
@@ -398,7 +398,7 @@ export default function InboxUi({
           </div>
         ) : (
           <>
-            <header className="flex items-center justify-between gap-3 border-b border-brand-500/10 bg-[#06100d]/78 p-4 backdrop-blur-xl">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-500/10 bg-[#06100d]/78 p-3 backdrop-blur-xl sm:p-4">
               <div className="min-w-0 flex items-center gap-3">
                 <button
                   onClick={() => {
@@ -444,7 +444,7 @@ export default function InboxUi({
                   })()}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <AiActivityPill
                   active={sending}
                   text={
@@ -462,7 +462,7 @@ export default function InboxUi({
                 )}
                 <button
                   onClick={togglePause}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+                  className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold ${
                     active.conversation?.botPaused
                       ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
                       : "bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
@@ -565,7 +565,7 @@ export default function InboxUi({
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
                 <textarea
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
@@ -579,11 +579,11 @@ export default function InboxUi({
                   placeholder="اكتب رسالة... (Ctrl+Enter للإرسال)"
                   className="input min-h-[64px] flex-1 resize-none p-3 text-sm"
                 />
-                <div className="flex flex-col gap-2">
+                <div className="flex shrink-0 flex-row gap-2 sm:flex-col">
                   <button
                     onClick={send}
                     disabled={sending || !reply.trim()}
-                    className="ai-btn ai-btn-primary min-h-[44px] px-4 py-3 text-sm md:min-h-0 md:py-2"
+                    className="ai-btn ai-btn-primary min-h-[44px] flex-1 px-4 py-3 text-sm sm:flex-none md:min-h-0 md:py-2"
                   >
                     {sending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -596,7 +596,7 @@ export default function InboxUi({
                     onClick={loadSuggestions}
                     disabled={suggesting}
                     title="اقترح AI ردود جاهزة"
-                    className="ai-btn ai-btn-ghost border-brand-500/30 px-4 py-2 text-xs text-brand-200 disabled:opacity-50"
+                    className="ai-btn ai-btn-ghost min-h-[44px] flex-1 border-brand-500/30 px-4 py-2 text-xs text-brand-200 disabled:opacity-50 sm:flex-none"
                   >
                     {suggesting ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -708,7 +708,7 @@ function MessageBubble({ m }: { m: Msg }) {
   return (
     <div className={`flex ${align}`}>
       <div
-        className={`max-w-[78%] rounded-2xl ${cornerClass} border px-4 py-2.5 shadow-sm backdrop-blur ${bg}`}
+        className={`max-w-[92%] break-words rounded-2xl ${cornerClass} border px-4 py-2.5 shadow-sm backdrop-blur sm:max-w-[78%] ${bg}`}
       >
         <div className="flex items-center gap-1.5 mb-1 text-[10px] opacity-70">
           <Icon className={`w-3 h-3 ${iconClass}`} />

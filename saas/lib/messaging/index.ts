@@ -22,9 +22,24 @@ import { prisma } from "@/lib/db";
 import { metaCloudAllowedForUser } from "./feature-flags";
 import { metaCloudProvider } from "./meta-provider";
 import { qrProvider } from "./qr-provider";
-import type { MessagingProvider, ProviderResult, SendMediaArgs, SendTemplateArgs, SendTextArgs } from "./provider";
+import type {
+  MessagingProvider,
+  ProviderResult,
+  SendMediaArgs,
+  SendTemplateArgs,
+  SendTextArgs,
+} from "./provider";
 
-async function recordRouteDecision(userId: string, chosen: "qr" | "meta_cloud", reason: string) {
+type ActiveProviderName = "qr" | "meta_cloud";
+type ActiveMessagingProvider = MessagingProvider & {
+  readonly name: ActiveProviderName;
+};
+
+async function recordRouteDecision(
+  userId: string,
+  chosen: ActiveProviderName,
+  reason: string,
+) {
   try {
     await (prisma as any).waComplianceAudit.create({
       data: {
@@ -42,7 +57,9 @@ async function recordRouteDecision(userId: string, chosen: "qr" | "meta_cloud", 
   }
 }
 
-export async function resolveProvider(userId: string): Promise<{ provider: MessagingProvider; reason: string }> {
+export async function resolveProvider(
+  userId: string,
+): Promise<{ provider: ActiveMessagingProvider; reason: string }> {
   const eligibility = await metaCloudAllowedForUser(userId);
   if (eligibility.allowed) {
     return { provider: metaCloudProvider, reason: "meta_cloud_eligible" };
@@ -52,7 +69,9 @@ export async function resolveProvider(userId: string): Promise<{ provider: Messa
 
 export const messaging = {
   /** Send a plain-text message via the best available provider. */
-  async send(args: SendTextArgs): Promise<ProviderResult & { provider: "qr" | "meta_cloud" }> {
+  async send(
+    args: SendTextArgs,
+  ): Promise<ProviderResult & { provider: ActiveProviderName }> {
     const { provider, reason } = await resolveProvider(args.userId);
     // Only record routing decisions on the FIRST send of a conversation to
     // avoid log spam. Cheap heuristic: emit only when an idempotencyKey is
@@ -64,13 +83,17 @@ export const messaging = {
     return { ...r, provider: provider.name };
   },
 
-  async sendMedia(args: SendMediaArgs): Promise<ProviderResult & { provider: "qr" | "meta_cloud" }> {
+  async sendMedia(
+    args: SendMediaArgs,
+  ): Promise<ProviderResult & { provider: ActiveProviderName }> {
     const { provider } = await resolveProvider(args.userId);
     const r = await provider.sendMedia(args);
     return { ...r, provider: provider.name };
   },
 
-  async sendTemplate(args: SendTemplateArgs): Promise<ProviderResult & { provider: "qr" | "meta_cloud" }> {
+  async sendTemplate(
+    args: SendTemplateArgs,
+  ): Promise<ProviderResult & { provider: ActiveProviderName }> {
     const { provider } = await resolveProvider(args.userId);
     const r = await provider.sendTemplate(args);
     return { ...r, provider: provider.name };

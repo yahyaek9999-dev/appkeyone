@@ -14,6 +14,7 @@
  *   - MetaCloudProvider (stub — every method returns NOT_IMPLEMENTED)
  *
  * Phase 2 fills in the Meta provider.
+ * Phase 3 will add an experimental Baileys provider behind ENABLE_BAILEYS=1.
  */
 
 /** Universal response shape for every provider method. */
@@ -30,8 +31,8 @@ export interface ProviderResult<T = unknown> {
 }
 
 export interface SendTextArgs {
-  userId: string;            // merchant id
-  to: string;                // E.164 destination phone (with or without "+")
+  userId: string; // merchant id
+  to: string; // E.164 destination phone (with or without "+")
   text: string;
   /** Optional caller-supplied idempotency key (string up to 64 chars). */
   idempotencyKey?: string;
@@ -49,7 +50,7 @@ export interface SendTemplateArgs {
   userId: string;
   to: string;
   templateName: string;
-  language?: string;                          // BCP-47, default "ar"
+  language?: string; // BCP-47, default "ar"
   components?: Array<Record<string, unknown>>; // Meta-style template variables
   idempotencyKey?: string;
 }
@@ -66,7 +67,7 @@ export interface ProviderStatus {
 
 /** What every provider must implement. */
 export interface MessagingProvider {
-  readonly name: "qr" | "meta_cloud";
+  readonly name: "qr" | "meta_cloud" | "baileys";
 
   sendMessage(args: SendTextArgs): Promise<ProviderResult>;
   sendMedia(args: SendMediaArgs): Promise<ProviderResult>;
@@ -85,18 +86,21 @@ export interface MessagingProvider {
    * Meta supports a real API check; QR returns "unknown" unless we have a
    * record of an outbound success.
    */
-  validateRecipient(userId: string, phone: string): Promise<ProviderResult<{ exists: "yes" | "no" | "unknown" }>>;
+  validateRecipient(
+    userId: string,
+    phone: string,
+  ): Promise<ProviderResult<{ exists: "yes" | "no" | "unknown" }>>;
 }
 
 /** Sentinel error codes — providers must use these for cross-provider checks. */
 export const ERR = {
   NOT_IMPLEMENTED: "not_implemented",
-  NOT_SUPPORTED:   "not_supported",
-  NOT_CONFIGURED:  "not_configured",
-  RATE_LIMITED:    "rate_limited",
-  WINDOW_EXPIRED:  "window_24h_expired",
+  NOT_SUPPORTED: "not_supported",
+  NOT_CONFIGURED: "not_configured",
+  RATE_LIMITED: "rate_limited",
+  WINDOW_EXPIRED: "window_24h_expired",
   CONSENT_MISSING: "consent_missing",
   TEMPLATE_NOT_APPROVED: "template_not_approved",
-  PROVIDER_DOWN:   "provider_down",
-  UNKNOWN:         "unknown",
+  PROVIDER_DOWN: "provider_down",
+  UNKNOWN: "unknown",
 } as const;

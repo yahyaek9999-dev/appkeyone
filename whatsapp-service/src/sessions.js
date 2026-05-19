@@ -187,6 +187,8 @@ class SessionManager {
       pairingCode: s.pairingCode,
       lastActivityAt: s.lastActivityAt || null,
       idleMs: s.lastActivityAt ? Date.now() - s.lastActivityAt : null,
+      connectedAt: s.connectedAt || null,
+      reconnectAttempts: this._reconnectAttempts.get(id) || 0,
       hibernated: s.status === "hibernated",
       priority: s.priority || 0,
     }));
@@ -496,10 +498,20 @@ class SessionManager {
       total: all.length,
       live: all.filter((s) => s.client).length,
       connected: all.filter((s) => s.status === "connected").length,
+      disconnected: all.filter((s) => s.status === "disconnected").length,
+      connecting: all.filter((s) => s.status === "connecting").length,
       idleClosed: all.filter((s) => s.status === "idle-closed").length,
       idleEvictAfterHours: Math.round(IDLE_EVICT_MS / 3600000),
       hibernationEnabled: ENABLE_HIBERNATION,
       chromiumOptEnabled: ENABLE_CHROMIUM_OPT,
+      reconnect: {
+        pendingTimers: this._reconnectTimers.size,
+        sessionsWithAttempts: this._reconnectAttempts.size,
+        totalAttempts: Array.from(this._reconnectAttempts.values()).reduce((a, b) => a + b, 0),
+        perSession: Object.fromEntries(this._reconnectAttempts),
+      },
+      uptime: Math.floor(process.uptime()),
+      memoryMB: Math.round(process.memoryUsage.rss ? process.memoryUsage.rss() / 1048576 : process.memoryUsage().rss / 1048576),
     };
     if (ENABLE_HIBERNATION) {
       base.hibernated = all.filter((s) => s.status === "hibernated").length;

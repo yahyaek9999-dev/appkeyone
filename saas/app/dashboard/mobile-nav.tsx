@@ -28,6 +28,15 @@ export default function MobileNav({ pageTitle, children }: Props) {
     setOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   // Lock body scroll while drawer is open (prevents background scroll on iOS).
   useEffect(() => {
     if (!open) return;
@@ -41,12 +50,12 @@ export default function MobileNav({ pageTitle, children }: Props) {
   return (
     <>
       {/* Sticky mobile top bar */}
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-brand-500/10 bg-[#020806]/92 px-4 shadow-[0_12px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl md:hidden">
+      <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-brand-500/10 bg-[#020806]/92 px-4 pt-safe shadow-[0_12px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl md:hidden">
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="فتح القائمة"
-          className="-m-2 rounded-xl border border-white/10 bg-white/[0.04] p-2 text-slate-100 hover:bg-white/10 active:bg-white/10"
+          className="touch-target -m-2 rounded-xl border border-white/10 bg-white/[0.04] p-2 text-slate-100 hover:bg-white/10 active:bg-white/10"
         >
           <Menu className="w-6 h-6" />
         </button>
@@ -66,7 +75,7 @@ export default function MobileNav({ pageTitle, children }: Props) {
 
       {/* Drawer */}
       <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85%] flex-col border-l border-brand-500/20 bg-[#020806]/96 shadow-2xl shadow-black/60 backdrop-blur-xl transition-transform duration-200 ease-out md:hidden ${
+        className={`fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col border-l border-brand-500/20 bg-[#020806]/96 shadow-2xl shadow-black/60 backdrop-blur-xl transition-transform duration-200 ease-out md:hidden ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         role="dialog"
