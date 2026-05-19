@@ -4,6 +4,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { resolveIntegrationFromRequest, sha256 } from "@/lib/commerce/security";
 import { deriveExternalEventId, recordCommerceWebhookEvent } from "@/lib/commerce/events";
 import { COMMERCE_EVENTS } from "@/lib/commerce/types";
+import { syncCommerceOrderFromEvent } from "@/lib/commerce/orders";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -91,11 +92,22 @@ export async function POST(req: Request) {
     signatureOk: verification.signatureOk,
   });
 
-  if (!recorded.duplicate) {
+  if (!recorded.duplicate || recorded.retryable) {
     await (prisma as any).commerceIntegration.update({
       where: { id: verification.integration.id },
       data: { lastEventAt: new Date() },
     }).catch(() => {});
+
+    if (recorded.eventId) {
+      await syncCommerceOrderFromEvent({
+        eventId: recorded.eventId,
+        integrationId: verification.integration.id,
+        userId: verification.integration.userId,
+        platform: verification.integration.platform || "custom",
+        eventType,
+        payload,
+      });
+    }
   }
 
   return NextResponse.json({

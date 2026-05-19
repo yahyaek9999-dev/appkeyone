@@ -45,7 +45,19 @@ export async function recordCommerceWebhookEvent(input: CommerceEventInput): Pro
     return { duplicate: false, eventId: event.id, status: "received" };
   } catch (e: any) {
     const duplicate = String(e?.code || "") === "P2002";
-    if (duplicate) return { duplicate: true, status: "duplicate" };
+    if (duplicate) {
+      const existing = await (prisma as any).commerceWebhookEvent.findUnique({
+        where: { integrationId_externalEventId: { integrationId: input.integrationId, externalEventId: input.externalEventId } },
+        select: { id: true, status: true },
+      }).catch(() => null);
+      const retryable = existing?.status === "received" || existing?.status === "failed";
+      return {
+        duplicate: true,
+        eventId: existing?.id,
+        status: existing?.status || "duplicate",
+        retryable,
+      };
+    }
     throw e;
   }
 }

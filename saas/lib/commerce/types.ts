@@ -47,4 +47,5 @@ export type CommerceEventProcessResult = {
   duplicate: boolean;
   eventId?: string;
   status: "received" | "processed" | "failed" | "duplicate";
+  retryable?: boolean;
 };
