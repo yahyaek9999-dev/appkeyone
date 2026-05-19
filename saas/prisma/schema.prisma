@@ -32,6 +32,12 @@ model User {
   broadcasts     Broadcast[]
   knowledgeGaps  KnowledgeGap[]
   orders         Order[]
+  commerceIntegrations CommerceIntegration[]
+  commerceWebhookEvents CommerceWebhookEvent[]
+  commerceAutomations CommerceAutomation[]
+  commerceNotifications CommerceNotificationLog[]
+  commerceEmailProviders CommerceEmailProvider[]
+  commerceEmailTemplates CommerceEmailTemplate[]
 }
 
 model Bot {
@@ -457,6 +463,12 @@ model Order {
   aiConfidence      Int           @default(0) // 0-100; <50 = please review
   aiNotes           String?       // short Arabic note from the extractor
   source            String        @default("auto") // auto | manual
+  commerceIntegrationId String?
+  commerceIntegration   CommerceIntegration? @relation(fields: [commerceIntegrationId], references: [id], onDelete: SetNull)
+  externalSource    String?
+  externalOrderId   String?
+  externalOrderName String?
+  externalPayload   String        @default("{}")
   // ---- Misc ----
   flaggedReason     String?       // why merchant flagged it (optional)
   createdAt         DateTime      @default(now())
@@ -468,6 +480,8 @@ model Order {
   @@index([userId, status])
   @@index([userId, createdAt])
   @@index([customerId])
+  @@index([commerceIntegrationId])
+  @@unique([userId, externalSource, externalOrderId])
 }
 
 model OrderItem {
@@ -496,6 +510,140 @@ model OrderTimeline {
   createdAt DateTime @default(now())
 
   @@index([orderId, createdAt])
+}
+
+model CommerceIntegration {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  platform        String   @default("custom")
+  enabled         Boolean  @default(true)
+  apiKeyHash      String   @unique
+  apiKeyPrefix    String
+  webhookSecretEnc String
+  configJson      String   @default("{}")
+  lastTestAt      DateTime?
+  lastEventAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orders      Order[]
+  events      CommerceWebhookEvent[]
+  automations CommerceAutomation[]
+
+  @@index([userId, enabled])
+  @@index([userId, platform])
+}
+
+model CommerceWebhookEvent {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integrationId     String
+  integration       CommerceIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  source            String
+  eventType         String
+  externalEventId   String
+  externalOrderId   String?
+  payloadHash       String
+  rawPayload        String
+  normalizedPayload String   @default("{}")
+  signatureOk       Boolean  @default(false)
+  status            String   @default("received")
+  attempts          Int      @default(0)
+  lastError         String?
+  receivedAt        DateTime @default(now())
+  processedAt       DateTime?
+
+  @@unique([integrationId, externalEventId])
+  @@index([userId, receivedAt])
+  @@index([integrationId, status, receivedAt])
+  @@index([userId, status, receivedAt])
+}
+
+model CommerceAutomation {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integrationId String?
+  integration   CommerceIntegration? @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  eventType     String
+  channel       String
+  enabled       Boolean  @default(false)
+  subject       String   @default("")
+  template      String   @default("")
+  language      String   @default("ar")
+  throttleSeconds Int    @default(300)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, integrationId, eventType, channel, language])
+  @@index([userId, enabled])
+  @@index([integrationId, eventType])
+}
+
+model CommerceNotificationLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integrationId String?
+  orderId       String?
+  eventId       String?
+  eventType     String
+  channel       String
+  provider      String   @default("")
+  recipient     String
+  subject       String   @default("")
+  body          String   @default("")
+  status        String   @default("queued")
+  attempts      Int      @default(0)
+  idempotencyKey String  @unique
+  error         String?
+  nextAttemptAt DateTime?
+  sentAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, status, createdAt])
+  @@index([userId, eventType, createdAt])
+  @@index([nextAttemptAt])
+}
+
+model CommerceEmailProvider {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String   @default("smtp")
+  enabled     Boolean  @default(false)
+  fromName    String   @default("")
+  fromEmail   String   @default("")
+  host        String   @default("")
+  port        Int      @default(587)
+  username    String   @default("")
+  secretEnc   String?
+  configJson  String   @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId, enabled])
+}
+
+model CommerceEmailTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType String
+  language  String   @default("ar")
+  subject   String
+  html      String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, eventType, language])
+  @@index([userId, enabled])
 }
 
 // ---------------------------------------------------------------------------
