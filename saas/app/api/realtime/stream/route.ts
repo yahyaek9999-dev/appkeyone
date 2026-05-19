@@ -20,6 +20,10 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     latestMessage,
     latestBroadcast,
     latestOrder,
+    commerceIntegrations,
+    commerceFailedEvents,
+    latestCommerceEvent,
+    latestCommerceNotification,
     safetyEvent,
     bot,
   ] = await Promise.all([
@@ -58,6 +62,34 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
         select: { updatedAt: true },
       })
       .catch(() => null),
+    (prisma as any).commerceIntegration?.count
+      ? (prisma as any).commerceIntegration
+          .count({ where: { userId, enabled: true } })
+          .catch(() => 0)
+      : Promise.resolve(0),
+    (prisma as any).commerceWebhookEvent?.count
+      ? (prisma as any).commerceWebhookEvent
+          .count({ where: { userId, status: "failed" } })
+          .catch(() => 0)
+      : Promise.resolve(0),
+    (prisma as any).commerceWebhookEvent?.findFirst
+      ? (prisma as any).commerceWebhookEvent
+          .findFirst({
+            where: { userId },
+            orderBy: { receivedAt: "desc" },
+            select: { receivedAt: true, status: true },
+          })
+          .catch(() => null)
+      : Promise.resolve(null),
+    (prisma as any).commerceNotificationLog?.findFirst
+      ? (prisma as any).commerceNotificationLog
+          .findFirst({
+            where: { userId },
+            orderBy: { updatedAt: "desc" },
+            select: { updatedAt: true, status: true },
+          })
+          .catch(() => null)
+      : Promise.resolve(null),
     (prisma as any).safetyAudit?.findFirst
       ? (prisma as any).safetyAudit
           .findFirst({
@@ -119,6 +151,8 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     messageAt: latestMessage?.createdAt?.toISOString() || null,
     broadcastAt: latestBroadcast?.updatedAt?.toISOString() || null,
     orderAt: latestOrder?.updatedAt?.toISOString() || null,
+    commerceEventAt: latestCommerceEvent?.receivedAt?.toISOString() || null,
+    commerceNotificationAt: latestCommerceNotification?.updatedAt?.toISOString() || null,
     safetyAt: safetyEvent?.createdAt?.toISOString() || null,
   };
 
@@ -131,6 +165,10 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     latest.messageAt || "",
     latest.broadcastAt || "",
     latest.orderAt || "",
+    latest.commerceEventAt || "",
+    latest.commerceNotificationAt || "",
+    commerceIntegrations,
+    commerceFailedEvents,
     latest.safetyAt || "",
     active?.messageCount || 0,
     active?.lastMessageAt || "",
@@ -147,6 +185,8 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
       broadcastsActive,
       ordersOpen,
       alerts24h,
+      commerceIntegrations,
+      commerceFailedEvents,
     },
     latest,
     activeConversation: active,
