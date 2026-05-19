@@ -6,6 +6,7 @@ import type { CommerceIntegrationSummary, WebhookVerificationResult } from "./ty
 const API_KEY_PREFIX = "ko_live_";
 const KEY_BYTES = 32;
 const SECRET_BYTES = 32;
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -44,6 +45,15 @@ export function verifySignature(secret: string, rawPayload: string, provided: st
   return safeCompare(expected, normalized);
 }
 
+export function verifyWebhookTimestamp(value: string | null, nowMs: number = Date.now()): boolean {
+  if (!value) return false;
+  const asNumber = Number(value);
+  const ts = Number.isFinite(asNumber) ? asNumber : Date.parse(value);
+  if (!Number.isFinite(ts)) return false;
+  const normalized = ts < 10_000_000_000 ? ts * 1000 : ts;
+  return Math.abs(nowMs - normalized) <= MAX_CLOCK_SKEW_MS;
+}
+
 export async function resolveIntegrationFromRequest(req: Request, rawPayload: string): Promise<WebhookVerificationResult> {
   const apiKey = req.headers.get("x-keyone-api-key") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
   if (!apiKey.trim()) return { ok: false, reason: "missing_api_key", signatureOk: false };
@@ -69,6 +79,10 @@ export async function resolveIntegrationFromRequest(req: Request, rawPayload: st
     secret = decryptSecret(integration.webhookSecretEnc || "");
   } catch {
     return { ok: false, reason: "secret_unreadable", signatureOk: false };
+  }
+
+  if (!verifyWebhookTimestamp(req.headers.get("x-keyone-timestamp"))) {
+    return { ok: false, reason: "bad_timestamp", signatureOk: false };
   }
 
   const signatureOk = verifySignature(secret, rawPayload, req.headers.get("x-keyone-signature"));
