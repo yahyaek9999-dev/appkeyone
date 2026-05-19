@@ -5,6 +5,7 @@ import { resolveIntegrationFromRequest, sha256 } from "@/lib/commerce/security";
 import { deriveExternalEventId, recordCommerceWebhookEvent } from "@/lib/commerce/events";
 import { COMMERCE_EVENTS } from "@/lib/commerce/types";
 import { syncCommerceOrderFromEvent } from "@/lib/commerce/orders";
+import { dispatchCommerceAutomations } from "@/lib/commerce/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
     }).catch(() => {});
 
     if (recorded.eventId) {
-      await syncCommerceOrderFromEvent({
+      const syncResult = await syncCommerceOrderFromEvent({
         eventId: recorded.eventId,
         integrationId: verification.integration.id,
         userId: verification.integration.userId,
@@ -107,6 +108,16 @@ export async function POST(req: Request) {
         eventType,
         payload,
       });
+      if (!syncResult.skipped && syncResult.orderId) {
+        dispatchCommerceAutomations({
+          userId: verification.integration.userId,
+          integrationId: verification.integration.id,
+          eventId: recorded.eventId,
+          eventType,
+          orderId: syncResult.orderId,
+          trackingCode: syncResult.trackingCode || null,
+        }).catch((e) => console.error("[commerce] automation dispatch failed:", e?.message || e));
+      }
     }
   }
 

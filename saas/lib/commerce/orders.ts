@@ -129,7 +129,7 @@ export async function syncCommerceOrderFromEvent(args: {
     }).catch(() => {});
 
     await markCommerceEventProcessed(args.eventId);
-    return { skipped: false, orderId: order.id, created: !existing };
+    return { skipped: false, orderId: order.id, created: !existing, trackingCode: normalized.trackingCode };
   } catch (error) {
     await markCommerceEventFailed(args.eventId, error);
     throw error;
