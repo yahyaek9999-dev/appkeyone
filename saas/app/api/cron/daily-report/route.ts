@@ -22,6 +22,12 @@ import { aggregateForUser } from "@/lib/daily-report/aggregate";
 import { deriveInsights } from "@/lib/daily-report/insights";
 import { formatReport } from "@/lib/daily-report/format-ar";
 import { localHour, localYmd } from "@/lib/tz";
+import {
+  drainDailyReportRetries,
+  queueDailyReportDelivery,
+  sendDailyReportDelivery,
+} from "@/lib/daily-report/delivery";
+import { buildDailyUsageSnapshot } from "@/lib/usage-ledger";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +45,7 @@ export async function POST(req: Request) {
   const onlyUserId = url.searchParams.get("userId") || null;
 
   const now = new Date();
+  const retryStats = await drainDailyReportRetries(25);
 
   // Pull all merchants with a Bot configured. We filter by hour + dedupe in
   // JS rather than in Prisma so the query stays simple and indexable.
@@ -149,7 +156,14 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const r = await wa.send(u.id, to, report.text);
+      const delivery = await queueDailyReportDelivery({
+        userId: u.id,
+        reportDay: localDayKey,
+        channel: "whatsapp",
+        recipient: to,
+        body: report.text,
+      });
+      const r = await sendDailyReportDelivery(delivery);
       if (r?.ok) {
         await prisma.bot
           .update({
@@ -172,10 +186,9 @@ export async function POST(req: Request) {
         );
       } else {
         failed++;
-        const errStr =
-          typeof (r as any)?.data === "string"
-            ? (r as any).data
-            : JSON.stringify((r as any)?.data || {}).slice(0, 400);
+        const errStr = String(
+          (r as any)?.error || "daily_report_send_failed",
+        ).slice(0, 400);
         await prisma.safetyAudit
           .create({
             data: {
@@ -190,6 +203,7 @@ export async function POST(req: Request) {
           .catch(() => {});
         out.push({ userId: u.id, to, status: "send-failed", error: errStr });
       }
+      buildDailyUsageSnapshot(u.id, localDayKey).catch(() => {});
     } catch (e: any) {
       failed++;
       await prisma.safetyAudit
@@ -216,6 +230,7 @@ export async function POST(req: Request) {
     skipped,
     failed,
     dryRun,
+    retries: retryStats,
     log: out,
   });
 }

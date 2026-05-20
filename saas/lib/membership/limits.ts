@@ -19,16 +19,24 @@ export type LimitKind = "messages" | "ai" | "broadcast";
 
 export interface LimitDecision {
   allowed: boolean;
-  reason: "ok" | "suspended" | "no_subscription" | "expired" | "exhausted" | "feature_disabled";
+  reason:
+    | "ok"
+    | "suspended"
+    | "no_subscription"
+    | "expired"
+    | "exhausted"
+    | "feature_disabled";
   used: number;
-  cap: number;            // 0 = unlimited
-  remaining: number;      // Number.POSITIVE_INFINITY when unlimited
+  cap: number; // 0 = unlimited
+  remaining: number; // Number.POSITIVE_INFINITY when unlimited
   resetAt: Date | null;
   plan: EffectivePlan;
 }
 
 function startOfNextMonth(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0),
+  );
 }
 function startOfThisMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
@@ -40,21 +48,25 @@ function startOfThisMonth(d: Date): Date {
  * we're still inside the same month.
  */
 async function rollIfNeeded(userId: string) {
-  const sub = await prisma.subscription.findUnique({ where: { userId } }) as any;
+  const sub = (await prisma.subscription.findUnique({
+    where: { userId },
+  })) as any;
   if (!sub) return null;
   const now = new Date();
   const monthStart = startOfThisMonth(now);
   const lastReset = sub.usageResetAt ? new Date(sub.usageResetAt) : new Date(0);
   if (lastReset < monthStart) {
-    await prisma.subscription.update({
-      where: { userId },
-      data: {
-        msgsUsed: 0,
-        aiRequestsUsed: 0,
-        broadcastsUsed: 0,
-        usageResetAt: now,
-      } as any,
-    }).catch(() => {});
+    await prisma.subscription
+      .update({
+        where: { userId },
+        data: {
+          msgsUsed: 0,
+          aiRequestsUsed: 0,
+          broadcastsUsed: 0,
+          usageResetAt: now,
+        } as any,
+      })
+      .catch(() => {});
     sub.msgsUsed = 0;
     sub.aiRequestsUsed = 0;
     sub.broadcastsUsed = 0;
@@ -63,26 +75,49 @@ async function rollIfNeeded(userId: string) {
   return sub;
 }
 
-function pickCounter(kind: LimitKind, sub: any, plan: EffectivePlan): { used: number; cap: number; field: string } {
+function pickCounter(
+  kind: LimitKind,
+  sub: any,
+  plan: EffectivePlan,
+): { used: number; cap: number; field: string } {
   switch (kind) {
-    case "messages":  return { used: sub?.msgsUsed       ?? 0, cap: plan.monthlyMsgs,       field: "msgsUsed" };
-    case "ai":        return { used: sub?.aiRequestsUsed ?? 0, cap: plan.aiRequestsMonthly, field: "aiRequestsUsed" };
-    case "broadcast": return { used: sub?.broadcastsUsed ?? 0, cap: plan.broadcastsMonthly, field: "broadcastsUsed" };
+    case "messages":
+      return {
+        used: sub?.msgsUsed ?? 0,
+        cap: plan.monthlyMsgs,
+        field: "msgsUsed",
+      };
+    case "ai":
+      return {
+        used: sub?.aiRequestsUsed ?? 0,
+        cap: plan.aiRequestsMonthly,
+        field: "aiRequestsUsed",
+      };
+    case "broadcast":
+      return {
+        used: sub?.broadcastsUsed ?? 0,
+        cap: plan.broadcastsMonthly,
+        field: "broadcastsUsed",
+      };
   }
 }
 
-export async function checkLimit(userId: string, kind: LimitKind): Promise<LimitDecision> {
+export async function checkLimit(
+  userId: string,
+  kind: LimitKind,
+): Promise<LimitDecision> {
   const plan = await getEffectivePlan(userId);
-  const baseDecision = (extra: Partial<LimitDecision>): LimitDecision => ({
-    allowed: false,
-    reason: "ok",
-    used: 0,
-    cap: 0,
-    remaining: 0,
-    resetAt: null,
-    plan,
-    ...extra,
-  } as LimitDecision);
+  const baseDecision = (extra: Partial<LimitDecision>): LimitDecision =>
+    ({
+      allowed: false,
+      reason: "ok",
+      used: 0,
+      cap: 0,
+      remaining: 0,
+      resetAt: null,
+      plan,
+      ...extra,
+    }) as LimitDecision;
 
   if (plan.blocked) return baseDecision({ reason: "suspended" });
 
@@ -92,11 +127,28 @@ export async function checkLimit(userId: string, kind: LimitKind): Promise<Limit
   if (!sub) {
     // No subscription at all. We use the fallback plan's caps (e.g. 100 msgs/mo).
     const counter = pickCounter(kind, null, plan);
-    if (counter.cap === 0) return baseDecision({ allowed: true, used: 0, cap: 0, remaining: Number.POSITIVE_INFINITY, resetAt });
-    return baseDecision({ allowed: false, reason: "no_subscription", used: 0, cap: counter.cap, remaining: counter.cap, resetAt });
+    if (counter.cap === 0)
+      return baseDecision({
+        allowed: true,
+        used: 0,
+        cap: 0,
+        remaining: Number.POSITIVE_INFINITY,
+        resetAt,
+      });
+    return baseDecision({
+      allowed: false,
+      reason: "no_subscription",
+      used: 0,
+      cap: counter.cap,
+      remaining: counter.cap,
+      resetAt,
+    });
   }
 
-  if (sub.status !== "active" || (sub.expiresAt && sub.expiresAt < new Date())) {
+  if (
+    sub.status !== "active" ||
+    (sub.expiresAt && sub.expiresAt < new Date())
+  ) {
     return baseDecision({ reason: "expired", resetAt });
   }
 
@@ -107,7 +159,13 @@ export async function checkLimit(userId: string, kind: LimitKind): Promise<Limit
 
   const c = pickCounter(kind, sub, plan);
   if (c.cap === 0) {
-    return baseDecision({ allowed: true, used: c.used, cap: 0, remaining: Number.POSITIVE_INFINITY, resetAt });
+    return baseDecision({
+      allowed: true,
+      used: c.used,
+      cap: 0,
+      remaining: Number.POSITIVE_INFINITY,
+      resetAt,
+    });
   }
   const remaining = Math.max(0, c.cap - c.used);
   return baseDecision({
@@ -126,18 +184,44 @@ export async function checkLimit(userId: string, kind: LimitKind): Promise<Limit
  * double-check). Best-effort — failures are swallowed (we never want a
  * counter write to fail the user's actual operation).
  */
-export async function incrementUsage(userId: string, kind: LimitKind, by: number = 1): Promise<void> {
+export async function incrementUsage(
+  userId: string,
+  kind: LimitKind,
+  by: number = 1,
+): Promise<void> {
   if (by <= 0) return;
-  const field = kind === "messages" ? "msgsUsed"
-              : kind === "ai"       ? "aiRequestsUsed"
-              :                       "broadcastsUsed";
   try {
-    await prisma.subscription.update({
-      where: { userId },
-      data: { [field]: { increment: by } } as any,
+    const { recordUsage, usageIdempotencyKey } =
+      await import("@/lib/usage-ledger");
+    await recordUsage({
+      userId,
+      kind,
+      quantity: by,
+      source: "membership",
+      reason: "legacy_increment_usage",
+      idempotencyKey: usageIdempotencyKey([
+        "membership",
+        userId,
+        kind,
+        Date.now(),
+        Math.random(),
+      ]),
     });
   } catch {
-    // No subscription / DB hiccup — ignore.
+    const field =
+      kind === "messages"
+        ? "msgsUsed"
+        : kind === "ai"
+          ? "aiRequestsUsed"
+          : "broadcastsUsed";
+    try {
+      await prisma.subscription.update({
+        where: { userId },
+        data: { [field]: { increment: by } } as any,
+      });
+    } catch {
+      // No subscription / DB hiccup — ignore.
+    }
   }
 }
 
@@ -150,15 +234,24 @@ export async function getUsageSnapshot(userId: string) {
     plan,
     resetAt: startOfNextMonth(now),
     counters: {
-      messages:  { used: sub?.msgsUsed       ?? 0, cap: plan.monthlyMsgs },
-      ai:        { used: sub?.aiRequestsUsed ?? 0, cap: plan.aiRequestsMonthly },
-      broadcast: { used: sub?.broadcastsUsed ?? 0, cap: plan.broadcastsMonthly },
+      messages: { used: sub?.msgsUsed ?? 0, cap: plan.monthlyMsgs },
+      ai: { used: sub?.aiRequestsUsed ?? 0, cap: plan.aiRequestsMonthly },
+      broadcast: {
+        used: sub?.broadcastsUsed ?? 0,
+        cap: plan.broadcastsMonthly,
+      },
     },
   };
 }
 
 /** Quick yes/no for middlewares. Never throws. */
-export async function isAllowed(userId: string, kind: LimitKind): Promise<boolean> {
-  try { return (await checkLimit(userId, kind)).allowed; }
-  catch { return true; } // fail-open: don't break production on a counter bug
+export async function isAllowed(
+  userId: string,
+  kind: LimitKind,
+): Promise<boolean> {
+  try {
+    return (await checkLimit(userId, kind)).allowed;
+  } catch {
+    return true;
+  } // fail-open: don't break production on a counter bug
 }

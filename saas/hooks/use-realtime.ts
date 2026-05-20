@@ -15,6 +15,8 @@ export type RealtimeSnapshot = {
     alerts24h: number;
     commerceIntegrations?: number;
     commerceFailedEvents?: number;
+    escalationActive?: number;
+    escalationCritical?: number;
   };
   latest: {
     messageAt: string | null;
@@ -23,6 +25,7 @@ export type RealtimeSnapshot = {
     commerceEventAt?: string | null;
     commerceNotificationAt?: string | null;
     safetyAt: string | null;
+    escalationAt?: string | null;
   };
   activeConversation?: {
     customerId: string;
@@ -44,7 +47,10 @@ export function useRealtimeSnapshot({
   fallbackMs = 30000,
 }: {
   activeCustomerId?: string | null;
-  onChange?: (snapshot: RealtimeSnapshot, previous: RealtimeSnapshot | null) => void;
+  onChange?: (
+    snapshot: RealtimeSnapshot,
+    previous: RealtimeSnapshot | null,
+  ) => void;
   fallbackMs?: number;
 }) {
   const [state, setState] = useState<LiveState>("connecting");
@@ -96,7 +102,9 @@ export function useRealtimeSnapshot({
     // If a proxy/browser blocks SSE, we fall back to slow polling automatically.
     try {
       const es = new EventSource(url);
-      es.onopen = () => { if (!closed) setState("live"); };
+      es.onopen = () => {
+        if (!closed) setState("live");
+      };
       es.onmessage = (ev) => {
         if (closed) return;
         try {

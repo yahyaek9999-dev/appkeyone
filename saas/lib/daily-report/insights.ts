@@ -23,14 +23,21 @@ export function deriveInsights(a: DailyAggregate): Insight[] {
 
   // 1) Spike in messages vs day-before (need a meaningful baseline)
   if (a.messagesDayBefore >= 10 && a.messages > a.messagesDayBefore * 1.3) {
-    const pct = r(((a.messages - a.messagesDayBefore) / a.messagesDayBefore) * 100);
+    const pct = r(
+      ((a.messages - a.messagesDayBefore) / a.messagesDayBefore) * 100,
+    );
     out.push({
       id: "msg_spike",
       priority: 70,
       text: `📈 المحادثات زادت ${pct}% عن أمس الأول.`,
     });
-  } else if (a.messagesDayBefore >= 10 && a.messages < a.messagesDayBefore * 0.6) {
-    const pct = r(((a.messagesDayBefore - a.messages) / a.messagesDayBefore) * 100);
+  } else if (
+    a.messagesDayBefore >= 10 &&
+    a.messages < a.messagesDayBefore * 0.6
+  ) {
+    const pct = r(
+      ((a.messagesDayBefore - a.messages) / a.messagesDayBefore) * 100,
+    );
     out.push({
       id: "msg_drop",
       priority: 65,
@@ -97,7 +104,29 @@ export function deriveInsights(a: DailyAggregate): Insight[] {
     });
   }
 
-  // 7) Bot coverage (bot replied to fraction of inbound)
+  // 7) Unresolved escalations should be surfaced before routine analytics.
+  if (a.unresolvedEscalations > 0) {
+    out.push({
+      id: "unresolved_escalations",
+      priority: 98,
+      text: `🚨 ${a.unresolvedEscalations} تصعيد محتاج متابعة بشرية اليوم.`,
+    });
+  }
+
+  // 8) Conversion summary signal.
+  if (
+    a.userMessages >= 20 &&
+    a.conversionRatePct > 0 &&
+    a.conversionRatePct < 2
+  ) {
+    out.push({
+      id: "conversion_low",
+      priority: 58,
+      text: `🟡 التحويل ${a.conversionRatePct}% — راجع العملاء اللي سألوا عن السعر.`,
+    });
+  }
+
+  // 9) Bot coverage (bot replied to fraction of inbound)
   if (a.userMessages >= 10) {
     const ratio = a.assistantMessages / Math.max(1, a.userMessages);
     if (ratio < 0.7) {
@@ -126,6 +155,8 @@ export function recommend(top: Insight[]): string | null {
   if (top.length === 0) return null;
   const head = top[0];
   switch (head.id) {
+    case "unresolved_escalations":
+      return "اقفل التصعيدات المفتوحة قبل أي حملات أو متابعات تلقائية.";
     case "hot_leads_awaiting":
       return "ابدأ يومك بالرد على العملاء المحتملين قبل الظهر.";
     case "orders_today":
@@ -139,6 +170,7 @@ export function recommend(top: Insight[]): string | null {
     case "no_conversion":
       return "جرّب عرض حصري لـ24 ساعة على المنتج الأكثر طلباً.";
     case "orders_zero_warn":
+    case "conversion_low":
       return "راجع هل في عملاء سألوا عن السعر ولم يكملوا.";
     case "new_customers":
       return "ابعت رسالة ترحيب شخصية للعملاء الجدد.";

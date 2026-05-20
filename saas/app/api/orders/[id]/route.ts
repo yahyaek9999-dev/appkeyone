@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { wa } from "@/lib/wa";
+import { dispatchCommerceAutomations } from "@/lib/commerce/notifications";
+import { usageIdempotencyKey } from "@/lib/usage-ledger";
 
 export const dynamic = "force-dynamic";
 
 const ALLOWED_STATUS = new Set([
   "pending",
   "confirmed",
+  "preparing",
   "shipped",
+  "out_for_delivery",
   "delivered",
   "canceled",
 ]);
@@ -68,6 +72,20 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     data.customerName = body.customerName.slice(0, 100);
   if (typeof body.flaggedReason === "string")
     data.flaggedReason = body.flaggedReason.slice(0, 200);
+  if (typeof body.trackingCode === "string")
+    data.trackingCode = body.trackingCode.slice(0, 100);
+  if (typeof body.trackingUrl === "string")
+    data.trackingUrl = body.trackingUrl.slice(0, 500);
+  if (body.status === "preparing") data.shippingStatus = "preparing";
+  if (body.status === "shipped") data.shippingStatus = "shipped";
+  if (body.status === "out_for_delivery") {
+    data.shippingStatus = "shipped";
+    data.deliveryStatus = "out_for_delivery";
+  }
+  if (body.status === "delivered") {
+    data.shippingStatus = "shipped";
+    data.deliveryStatus = "delivered";
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "no_fields" }, { status: 400 });
@@ -99,10 +117,18 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
       })
       .catch(() => {});
 
-    // ---- Issue #7: shipment notification ----
-    // Auto-message the customer when status flips to "shipped" AND the
-    // merchant opted in. Fire-and-forget so a WA hiccup doesn't fail the
-    // status update. Trackable via SafetyAudit on failure.
+    // Event-driven commerce notifications. Existing shipment-only opt-in is
+    // preserved, and the richer automation engine can send WhatsApp/email when
+    // the merchant enables templates.
+    dispatchOrderStatusAutomation({
+      userId: user.id,
+      orderId: ctx.params.id,
+      status: data.status,
+      trackingCode: body.trackingCode || data.trackingCode || null,
+    }).catch((e) =>
+      console.error("[orders] status automation failed:", e?.message || e),
+    );
+
     if (data.status === "shipped") {
       sendShipmentNotification(
         ctx.params.id,
@@ -115,6 +141,46 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   }
 
   return NextResponse.json({ ok: true, order: updated });
+}
+
+async function dispatchOrderStatusAutomation(args: {
+  userId: string;
+  orderId: string;
+  status: string;
+  trackingCode?: string | null;
+}) {
+  const map: Record<string, string> = {
+    confirmed: "order.confirmed",
+    preparing: "order.preparing",
+    shipped: "order.shipped",
+    out_for_delivery: "order.out_for_delivery",
+    delivered: "order.delivered",
+    canceled: "order.cancelled",
+  };
+  const eventType = map[args.status] || "order.updated";
+  const eventId = usageIdempotencyKey([
+    "manual-order-status",
+    args.orderId,
+    args.status,
+    Date.now(),
+  ]);
+  await dispatchCommerceAutomations({
+    userId: args.userId,
+    integrationId: "manual",
+    eventId,
+    eventType,
+    orderId: args.orderId,
+    trackingCode: args.trackingCode || null,
+  });
+  await (prisma as any).order
+    .update({
+      where: { id: args.orderId },
+      data: {
+        lastNotifiedStatus: args.status,
+        lastCustomerNotifiedAt: new Date(),
+      } as any,
+    })
+    .catch(() => {});
 }
 
 /**

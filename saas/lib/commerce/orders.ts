@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
-import { normalizeCommerceOrder, type NormalizedCommerceOrder } from "./normalize";
+import {
+  normalizeCommerceOrder,
+  type NormalizedCommerceOrder,
+} from "./normalize";
 import { markCommerceEventFailed, markCommerceEventProcessed } from "./events";
+import { markFollowUpsConvertedForCustomer } from "@/lib/follow-ups";
 
 function safeJson(value: unknown): string {
   try {
@@ -11,7 +15,10 @@ function safeJson(value: unknown): string {
 }
 
 function customerFallbackPhone(order: NormalizedCommerceOrder): string {
-  return order.customer.phone || `external:${order.platform}:${order.externalOrderId}`.slice(0, 120);
+  return (
+    order.customer.phone ||
+    `external:${order.platform}:${order.externalOrderId}`.slice(0, 120)
+  );
 }
 
 async function upsertCustomer(userId: string, order: NormalizedCommerceOrder) {
@@ -32,7 +39,10 @@ async function upsertCustomer(userId: string, order: NormalizedCommerceOrder) {
   });
 }
 
-async function replaceOrderItems(orderId: string, items: NormalizedCommerceOrder["items"]) {
+async function replaceOrderItems(
+  orderId: string,
+  items: NormalizedCommerceOrder["items"],
+) {
   await (prisma as any).orderItem.deleteMany({ where: { orderId } });
   if (!items.length) return;
   await (prisma as any).orderItem.createMany({
@@ -57,7 +67,11 @@ export async function syncCommerceOrderFromEvent(args: {
   eventType: string;
   payload: any;
 }) {
-  const normalized = normalizeCommerceOrder({ eventType: args.eventType, platform: args.platform, payload: args.payload });
+  const normalized = normalizeCommerceOrder({
+    eventType: args.eventType,
+    platform: args.platform,
+    payload: args.payload,
+  });
   if (!normalized) {
     await markCommerceEventProcessed(args.eventId);
     return { skipped: true, reason: "not_order_event" };
@@ -88,6 +102,21 @@ export async function syncCommerceOrderFromEvent(args: {
       paymentMethod: normalized.paymentMethod,
       status: normalized.status,
       fulfillmentStatus: normalized.fulfillmentStatus,
+      shippingStatus:
+        normalized.status === "preparing"
+          ? "preparing"
+          : normalized.status === "shipped" ||
+              normalized.status === "out_for_delivery" ||
+              normalized.status === "delivered"
+            ? "shipped"
+            : "not_started",
+      deliveryStatus:
+        normalized.status === "out_for_delivery"
+          ? "out_for_delivery"
+          : normalized.status === "delivered"
+            ? "delivered"
+            : "not_started",
+      trackingCode: normalized.trackingCode,
       aiConfidence: 100,
       aiNotes: "Imported from commerce webhook",
       source: "commerce",
@@ -104,32 +133,45 @@ export async function syncCommerceOrderFromEvent(args: {
 
     await replaceOrderItems(order.id, normalized.items);
 
-    await (prisma as any).orderTimeline.create({
-      data: {
-        orderId: order.id,
-        kind: existing ? "status_changed" : "created",
-        message: existing ? `تم تحديث الطلب من ${normalized.platform}.` : `تم استلام الطلب من ${normalized.platform}.`,
-        payload: safeJson({
-          eventId: args.eventId,
-          eventType: args.eventType,
+    await (prisma as any).orderTimeline
+      .create({
+        data: {
+          orderId: order.id,
+          kind: existing ? "status_changed" : "created",
+          message: existing
+            ? `تم تحديث الطلب من ${normalized.platform}.`
+            : `تم استلام الطلب من ${normalized.platform}.`,
+          payload: safeJson({
+            eventId: args.eventId,
+            eventType: args.eventType,
+            externalOrderId: normalized.externalOrderId,
+            previousStatus: existing?.status || null,
+            status: normalized.status,
+            trackingCode: normalized.trackingCode,
+          }),
+        },
+      })
+      .catch(() => {});
+
+    await (prisma as any).commerceWebhookEvent
+      .update({
+        where: { id: args.eventId },
+        data: {
+          normalizedPayload: safeJson(normalized),
           externalOrderId: normalized.externalOrderId,
-          previousStatus: existing?.status || null,
-          status: normalized.status,
-          trackingCode: normalized.trackingCode,
-        }),
-      },
-    }).catch(() => {});
+        },
+      })
+      .catch(() => {});
 
-    await (prisma as any).commerceWebhookEvent.update({
-      where: { id: args.eventId },
-      data: {
-        normalizedPayload: safeJson(normalized),
-        externalOrderId: normalized.externalOrderId,
-      },
-    }).catch(() => {});
-
+    await markFollowUpsConvertedForCustomer(customer.id);
     await markCommerceEventProcessed(args.eventId);
-    return { skipped: false, orderId: order.id, created: !existing, trackingCode: normalized.trackingCode };
+    return {
+      skipped: false,
+      orderId: order.id,
+      customerId: customer.id,
+      created: !existing,
+      trackingCode: normalized.trackingCode,
+    };
   } catch (error) {
     await markCommerceEventFailed(args.eventId, error);
     throw error;

@@ -21,10 +21,28 @@ export interface FormattedReport {
   used: Insight[];
 }
 
-const AR_DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const AR_DAYS = [
+  "الأحد",
+  "الاثنين",
+  "الثلاثاء",
+  "الأربعاء",
+  "الخميس",
+  "الجمعة",
+  "السبت",
+];
 const AR_MONTHS = [
-  "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
-  "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
+  "يناير",
+  "فبراير",
+  "مارس",
+  "أبريل",
+  "مايو",
+  "يونيو",
+  "يوليو",
+  "أغسطس",
+  "سبتمبر",
+  "أكتوبر",
+  "نوفمبر",
+  "ديسمبر",
 ];
 
 export function formatReport(input: FormatInput): FormattedReport {
@@ -46,12 +64,20 @@ export function formatReport(input: FormatInput): FormattedReport {
   lines.push(`📅 ${date}`);
   lines.push("");
   lines.push("أمس:");
-  lines.push(`• ${agg.messages} رسالة${deltaSuffix(agg.messages, agg.messagesDayBefore)}`);
+  lines.push(
+    `• ${agg.messages} رسالة${deltaSuffix(agg.messages, agg.messagesDayBefore)}`,
+  );
   if (agg.ordersCount > 0) {
-    lines.push(`• ${agg.ordersCount} طلب بقيمة ${formatEgp(agg.ordersRevenueMinor)}`);
+    lines.push(
+      `• ${agg.ordersCount} طلب بقيمة ${formatEgp(agg.ordersRevenueMinor)}`,
+    );
   }
   if (agg.newCustomers > 0) {
     lines.push(`• ${agg.newCustomers} عميل جديد`);
+  }
+  lines.push(`• معدل التحويل التقريبي: ${agg.conversionRatePct}%`);
+  if (agg.unresolvedEscalations > 0) {
+    lines.push(`• ${agg.unresolvedEscalations} تصعيد غير محلول`);
   }
 
   if (top.length > 0) {

@@ -25,6 +25,9 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     latestCommerceEvent,
     latestCommerceNotification,
     safetyEvent,
+    escalationActive,
+    escalationCritical,
+    latestEscalation,
     bot,
   ] = await Promise.all([
     prisma.conversation
@@ -99,6 +102,36 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
           })
           .catch(() => null)
       : Promise.resolve(null),
+    (prisma as any).escalationTicket?.count
+      ? (prisma as any).escalationTicket
+          .count({
+            where: {
+              userId,
+              status: { in: ["open", "acknowledged", "human_active"] },
+            },
+          })
+          .catch(() => 0)
+      : Promise.resolve(0),
+    (prisma as any).escalationTicket?.count
+      ? (prisma as any).escalationTicket
+          .count({
+            where: {
+              userId,
+              severity: { in: ["high", "critical"] },
+              status: { in: ["open", "acknowledged", "human_active"] },
+            },
+          })
+          .catch(() => 0)
+      : Promise.resolve(0),
+    (prisma as any).escalationTicket?.findFirst
+      ? (prisma as any).escalationTicket
+          .findFirst({
+            where: { userId },
+            orderBy: { updatedAt: "desc" },
+            select: { updatedAt: true, status: true },
+          })
+          .catch(() => null)
+      : Promise.resolve(null),
     prisma.bot
       .findUnique({
         where: { userId },
@@ -152,8 +185,10 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     broadcastAt: latestBroadcast?.updatedAt?.toISOString() || null,
     orderAt: latestOrder?.updatedAt?.toISOString() || null,
     commerceEventAt: latestCommerceEvent?.receivedAt?.toISOString() || null,
-    commerceNotificationAt: latestCommerceNotification?.updatedAt?.toISOString() || null,
+    commerceNotificationAt:
+      latestCommerceNotification?.updatedAt?.toISOString() || null,
     safetyAt: safetyEvent?.createdAt?.toISOString() || null,
+    escalationAt: latestEscalation?.updatedAt?.toISOString() || null,
   };
 
   const seq = [
@@ -170,6 +205,9 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     commerceIntegrations,
     commerceFailedEvents,
     latest.safetyAt || "",
+    latest.escalationAt || "",
+    escalationActive,
+    escalationCritical,
     active?.messageCount || 0,
     active?.lastMessageAt || "",
     bot?.whatsappStatus || "",
@@ -187,6 +225,8 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
       alerts24h,
       commerceIntegrations,
       commerceFailedEvents,
+      escalationActive,
+      escalationCritical,
     },
     latest,
     activeConversation: active,
@@ -214,7 +254,9 @@ export async function GET(req: Request) {
   );
 
   if (wantsJson) {
-    const snapshot = await getCachedSnapshot(userId, customerId, () => buildSnapshot(userId, customerId));
+    const snapshot = await getCachedSnapshot(userId, customerId, () =>
+      buildSnapshot(userId, customerId),
+    );
     return NextResponse.json(snapshot);
   }
 
@@ -227,7 +269,9 @@ export async function GET(req: Request) {
       async function send() {
         if (closed) return;
         try {
-          const snapshot = await getCachedSnapshot(userId, customerId, () => buildSnapshot(userId, customerId));
+          const snapshot = await getCachedSnapshot(userId, customerId, () =>
+            buildSnapshot(userId, customerId),
+          );
           controller.enqueue(
             encoder.encode(
               `event: message\ndata: ${JSON.stringify(snapshot)}\n\n`,

@@ -507,11 +507,18 @@ class SessionManager {
       reconnect: {
         pendingTimers: this._reconnectTimers.size,
         sessionsWithAttempts: this._reconnectAttempts.size,
-        totalAttempts: Array.from(this._reconnectAttempts.values()).reduce((a, b) => a + b, 0),
+        totalAttempts: Array.from(this._reconnectAttempts.values()).reduce(
+          (a, b) => a + b,
+          0,
+        ),
         perSession: Object.fromEntries(this._reconnectAttempts),
       },
       uptime: Math.floor(process.uptime()),
-      memoryMB: Math.round(process.memoryUsage.rss ? process.memoryUsage.rss() / 1048576 : process.memoryUsage().rss / 1048576),
+      memoryMB: Math.round(
+        process.memoryUsage.rss
+          ? process.memoryUsage.rss() / 1048576
+          : process.memoryUsage().rss / 1048576,
+      ),
     };
     if (ENABLE_HIBERNATION) {
       base.hibernated = all.filter((s) => s.status === "hibernated").length;
@@ -753,6 +760,8 @@ class SessionManager {
           text,
           mediaBase64,
           mimetype,
+          providerMessageId: msg.id?._serialized || msg.id?.id || null,
+          providerTimestamp: msg.timestamp || null,
         });
         const dt = Date.now() - t0;
 

@@ -1,14 +1,30 @@
-export const COMMERCE_PLATFORMS = ["custom", "woocommerce", "shopify", "api"] as const;
+export const COMMERCE_PLATFORMS = [
+  "custom",
+  "woocommerce",
+  "shopify",
+  "salla",
+  "zid",
+  "api",
+] as const;
 export const COMMERCE_EVENTS = [
   "order.created",
   "order.updated",
+  "order.confirmed",
+  "order.preparing",
   "order.shipped",
+  "order.out_for_delivery",
   "order.delivered",
   "payment.failed",
   "order.cancelled",
   "customer.created",
 ] as const;
-export const COMMERCE_CHANNELS = ["whatsapp", "email", "dashboard", "ai_followup", "analytics"] as const;
+export const COMMERCE_CHANNELS = [
+  "whatsapp",
+  "email",
+  "dashboard",
+  "ai_followup",
+  "analytics",
+] as const;
 
 export type CommercePlatform = (typeof COMMERCE_PLATFORMS)[number];
 export type CommerceEventType = (typeof COMMERCE_EVENTS)[number];

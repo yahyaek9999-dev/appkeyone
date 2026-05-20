@@ -7,6 +7,13 @@ import { chat as llmChat, buildMessages, detectOrderIntent } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { notifyMerchant } from "@/lib/notify";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  analyzeCustomerMessage,
+  customerEscalationReply,
+  emotionalPromptBlock,
+} from "@/lib/sentiment";
+import { createEscalationTicket } from "@/lib/escalation";
+import { recordUsage, usageIdempotencyKey } from "@/lib/usage-ledger";
 
 const Body = z.object({
   customerId: z.string().nullish(),
@@ -116,16 +123,81 @@ export async function POST(req: Request) {
 
     // Detect order intent BEFORE LLM (cheap)
     const flagged = detectOrderIntent(message, bot.orderKeywords);
+    const emotional = analyzeCustomerMessage(message, {
+      recentMessages: conv.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt,
+      })),
+      lastIntent: (customer as any).lastIntent,
+      lastSentiment: (customer as any).lastSentiment,
+      lowConfidenceThreshold: (bot as any).escalationConfidenceFloor ?? 35,
+    });
 
     // Save user message
-    await prisma.message.create({
+    const inboundMessage = await prisma.message.create({
       data: {
         conversationId: conv.id,
         role: "user",
         content: message,
         flagged,
-      },
+        intent:
+          emotional.intent === "refund" || emotional.intent === "escalation"
+            ? "complaint"
+            : emotional.intent,
+        sentiment: emotional.sentiment,
+        angerScore: emotional.angerScore,
+        confidenceScore: emotional.confidenceScore,
+        frustrationScore: emotional.frustrationScore,
+        urgencyScore: emotional.urgencyScore,
+        emotionalTone: emotional.toneHint.slice(0, 160),
+      } as any,
     });
+
+    if (emotional.shouldEscalate) {
+      const escalation = await createEscalationTicket({
+        userId: user.id,
+        customerId: customer.id,
+        conversationId: conv.id,
+        customerPhone: customer.phone,
+        customerName: customer.name,
+        messageText: message,
+        analysis: emotional,
+        bot,
+        notifyPhone: bot.alertEnabled
+          ? bot.notifyPhone || (bot as any).whatsappPhone || null
+          : null,
+        sourceMessageId: inboundMessage.id,
+      });
+      const reply = customerEscalationReply(emotional);
+      const assistantMessage = await prisma.message.create({
+        data: { conversationId: conv.id, role: "assistant", content: reply },
+      });
+      await recordUsage({
+        userId: user.id,
+        kind: "messages",
+        source: "chat",
+        reason: "escalation_reply",
+        idempotencyKey: usageIdempotencyKey([
+          "chat",
+          user.id,
+          inboundMessage.id,
+          "messages",
+          "escalation",
+        ]),
+        conversationId: conv.id,
+        messageId: assistantMessage.id,
+        customerId: customer.id,
+        metadata: { escalationTicketId: escalation.ticket.id },
+      });
+      return NextResponse.json({
+        ok: true,
+        reply,
+        flagged,
+        customerId: customer.id,
+        escalationTicketId: escalation.ticket.id,
+      });
+    }
 
     // Build prompt
     const messages = buildMessages({
@@ -138,6 +210,12 @@ export async function POST(req: Request) {
       newUserMsg: message,
       customerName: customer.name,
       customerPhone: customer.phone,
+      emotionalContext:
+        emotional.shouldCalmFirst ||
+        emotional.sentiment === "negative" ||
+        emotional.sentiment === "angry"
+          ? emotionalPromptBlock(emotional)
+          : undefined,
     });
 
     // Call LLM
@@ -150,7 +228,7 @@ export async function POST(req: Request) {
     }
 
     // Save assistant message
-    await prisma.message.create({
+    const assistantMessage = await prisma.message.create({
       data: {
         conversationId: conv.id,
         role: "assistant",
@@ -163,16 +241,39 @@ export async function POST(req: Request) {
       data: { lastSeenAt: new Date() },
     });
 
-    // Increment subscription usage (msgs + AI requests)
-    if (user.subscription) {
-      await prisma.subscription.update({
-        where: { userId: user.id },
-        data: {
-          msgsUsed: { increment: 1 },
-          aiRequestsUsed: { increment: 1 },
-        } as any,
-      });
-    }
+    // Immutable billing ledger (server-side; never derived from chat history)
+    await recordUsage({
+      userId: user.id,
+      kind: "messages",
+      source: "chat",
+      reason: "llm_reply",
+      idempotencyKey: usageIdempotencyKey([
+        "chat",
+        user.id,
+        inboundMessage.id,
+        "messages",
+        "llm",
+      ]),
+      conversationId: conv.id,
+      messageId: assistantMessage.id,
+      customerId: customer.id,
+    });
+    await recordUsage({
+      userId: user.id,
+      kind: "ai",
+      source: "chat",
+      reason: "llm_reply",
+      idempotencyKey: usageIdempotencyKey([
+        "chat",
+        user.id,
+        inboundMessage.id,
+        "ai",
+        "llm",
+      ]),
+      conversationId: conv.id,
+      messageId: assistantMessage.id,
+      customerId: customer.id,
+    });
 
     // Send notification if order detected
     if (flagged && bot.notifyPhone) {

@@ -44,6 +44,20 @@ import { loadKnowledgeBaseCached, retrieveRelevantKb } from "@/lib/kb-cache";
 import { applyRealism } from "@/lib/human-realism";
 import { bump } from "@/lib/metrics";
 import { extractPhone, extractName } from "@/lib/phone";
+import {
+  analyzeCustomerMessage,
+  customerEscalationReply,
+  emotionalPromptBlock,
+  isOptOut,
+  type EmotionalAnalysis,
+} from "@/lib/sentiment";
+import { createEscalationTicket } from "@/lib/escalation";
+import { recordUsage, usageIdempotencyKey } from "@/lib/usage-ledger";
+import {
+  markFollowUpsConvertedForCustomer,
+  queueSmartFollowUp,
+} from "@/lib/follow-ups";
+import { evaluateInboundProtection } from "@/lib/protection";
 
 const SECRET =
   process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
@@ -103,7 +117,10 @@ export async function POST(req: Request) {
     text: string;
     mediaBase64?: string;
     mimetype?: string;
+    providerMessageId?: string;
   };
+  const providerMessageId =
+    String((body as any).providerMessageId || "").slice(0, 180) || null;
 
   // ---- Load tenant ----------------------------------------------------------
   const user = await prisma.user.findUnique({
@@ -296,30 +313,186 @@ export async function POST(req: Request) {
   const isFirstMsg = conv.messages.length === 0;
   const flagged = detectOrderIntent(messageText, bot.orderKeywords);
 
-  // Persist the inbound message immediately so the live inbox sees it
-  await prisma.message.create({
+  // Duplicate-event protection: if the WhatsApp gateway retries the same
+  // upstream message, never create a second user message, reply, or bill it.
+  if (providerMessageId) {
+    const duplicate = await prisma.message
+      .findFirst({
+        where: {
+          conversationId: conv.id,
+          role: "user",
+          providerMessageId,
+        } as any,
+        select: { id: true },
+      })
+      .catch(() => null);
+    if (duplicate) {
+      return NextResponse.json({
+        ok: true,
+        reply: null,
+        blocked: "duplicate_event",
+      });
+    }
+  }
+
+  const emotional = analyzeCustomerMessage(messageText, {
+    recentMessages: conv.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      createdAt: m.createdAt,
+    })),
+    lastIntent: (customer as any).lastIntent,
+    lastSentiment: (customer as any).lastSentiment,
+    lowConfidenceThreshold: (bot as any).escalationConfidenceFloor ?? 35,
+  });
+
+  // Persist the inbound message immediately so the live inbox sees it.
+  // Scores are server-derived and immutable for audit; client never provides them.
+  const inboundMessage = await prisma.message.create({
     data: {
       conversationId: conv.id,
       role: "user",
       content: messageText,
       mediaType,
+      providerMessageId,
       flagged,
-    },
+      intent: mapEmotionalIntent(emotional.intent),
+      sentiment: emotional.sentiment,
+      angerScore: emotional.angerScore,
+      confidenceScore: emotional.confidenceScore,
+      frustrationScore: emotional.frustrationScore,
+      urgencyScore: emotional.urgencyScore,
+      emotionalTone: emotional.toneHint.slice(0, 160),
+      metadataJson: JSON.stringify({ providerMessageId, emotional }),
+    } as any,
   });
 
-  // ---- Manual takeover: admin owns this conversation -----------------------
-  if ((conv as any).botPaused) {
-    // Still classify in the background so dashboards stay live
+  if (isOptOut(messageText)) {
+    await prisma.customer
+      .update({
+        where: { id: customer.id },
+        data: { optedOutAt: new Date() } as any,
+      })
+      .catch(() => {});
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked: "customer_opted_out",
+    });
+  }
+
+  const protection = await evaluateInboundProtection({
+    userId,
+    customerId: customer.id,
+    phone: customer.phone,
+    text: messageText,
+  });
+  if (protection.blocked) {
     classifyAndScore({
       customerId: customer.id,
       conversationId: conv.id,
       text: messageText,
       flagged,
+      analysis: emotional,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
       reply: null,
-      blocked: "manual_takeover",
+      blocked: protection.reason || "protection_blocked",
+    });
+  }
+
+  const currentHandoff = (conv as any).handoffState || "ai_active";
+  // ---- Manual / human takeover: admin owns this conversation ---------------
+  if (
+    (conv as any).botPaused ||
+    currentHandoff === "human_required" ||
+    currentHandoff === "human_active"
+  ) {
+    // Still classify in the background so dashboards stay live.
+    classifyAndScore({
+      customerId: customer.id,
+      conversationId: conv.id,
+      text: messageText,
+      flagged,
+      analysis: emotional,
+    }).catch(() => {});
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked:
+        currentHandoff === "ai_active" ? "manual_takeover" : currentHandoff,
+    });
+  }
+
+  // ---- Real escalation: create ticket + notify admin before any AI response.
+  if (emotional.shouldEscalate) {
+    const escalation = await createEscalationTicket({
+      userId,
+      customerId: customer.id,
+      conversationId: conv.id,
+      customerPhone: customer.phone,
+      customerName: customer.name,
+      messageText,
+      analysis: emotional,
+      bot,
+      notifyPhone: bot.alertEnabled
+        ? bot.notifyPhone || (bot as any).whatsappPhone || null
+        : null,
+      sourceMessageId: inboundMessage.id,
+    });
+    const reply = customerEscalationReply(emotional);
+    const assistantMessage = await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        role: "assistant",
+        content: reply,
+        metadataJson: JSON.stringify({
+          escalationTicketId: escalation.ticket.id,
+        }),
+      } as any,
+    });
+    await recordUsage({
+      userId,
+      kind: "messages",
+      source: "whatsapp",
+      reason: "escalation_reply",
+      idempotencyKey: usageIdempotencyKey([
+        "wa",
+        userId,
+        providerMessageId || inboundMessage.id,
+        "messages",
+        "escalation",
+      ]),
+      conversationId: conv.id,
+      messageId: assistantMessage.id,
+      customerId: customer.id,
+      metadata: { escalationTicketId: escalation.ticket.id },
+    });
+    classifyAndScore({
+      customerId: customer.id,
+      conversationId: conv.id,
+      text: messageText,
+      flagged,
+      analysis: emotional,
+      notifyPhone: bot.alertEnabled
+        ? bot.notifyPhone || (bot as any).whatsappPhone || null
+        : null,
+      alertEnabled: !!bot.alertEnabled,
+      customerLabel: customer.name || customer.phone,
+      userId,
+      followUpsEnabled: false,
+    }).catch(() => {});
+    return NextResponse.json({
+      ok: true,
+      reply,
+      mode: "escalation",
+      escalationTicketId: escalation.ticket.id,
+      handoffState: escalation.handoffState,
+      preDelayMs: humanCfg.enabled ? computeReadDelayMs(humanCfg) : 0,
+      typingDelayMs: humanCfg.enabled
+        ? computeTypingDelayMs(reply, humanCfg)
+        : 0,
     });
   }
 
@@ -362,21 +535,36 @@ export async function POST(req: Request) {
     await prisma.quickReply
       .update({ where: { id: quick.id }, data: { hits: { increment: 1 } } })
       .catch(() => {});
-    await prisma.message.create({
+    const assistantMessage = await prisma.message.create({
       data: {
         conversationId: conv.id,
         role: "assistant",
         content: quick.reply,
       },
     });
-    await prisma.subscription
-      .update({ where: { userId }, data: { msgsUsed: { increment: 1 } } })
-      .catch(() => {});
+    await recordUsage({
+      userId,
+      kind: "messages",
+      source: "whatsapp",
+      reason: "quick_reply",
+      idempotencyKey: usageIdempotencyKey([
+        "wa",
+        userId,
+        providerMessageId || inboundMessage.id,
+        "messages",
+        "quick",
+        quick.id,
+      ]),
+      conversationId: conv.id,
+      messageId: assistantMessage.id,
+      customerId: customer.id,
+    });
     classifyAndScore({
       customerId: customer.id,
       conversationId: conv.id,
       text: messageText,
       flagged,
+      analysis: emotional,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
@@ -404,21 +592,36 @@ export async function POST(req: Request) {
     await prisma.quickReply
       .update({ where: { id: fuzzy.id }, data: { hits: { increment: 1 } } })
       .catch(() => {});
-    await prisma.message.create({
+    const assistantMessage = await prisma.message.create({
       data: {
         conversationId: conv.id,
         role: "assistant",
         content: fuzzy.reply,
       },
     });
-    await prisma.subscription
-      .update({ where: { userId }, data: { msgsUsed: { increment: 1 } } })
-      .catch(() => {});
+    await recordUsage({
+      userId,
+      kind: "messages",
+      source: "whatsapp",
+      reason: "semantic_faq",
+      idempotencyKey: usageIdempotencyKey([
+        "wa",
+        userId,
+        providerMessageId || inboundMessage.id,
+        "messages",
+        "semantic",
+        fuzzy.id,
+      ]),
+      conversationId: conv.id,
+      messageId: assistantMessage.id,
+      customerId: customer.id,
+    });
     classifyAndScore({
       customerId: customer.id,
       conversationId: conv.id,
       text: messageText,
       flagged,
+      analysis: emotional,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
@@ -539,6 +742,12 @@ export async function POST(req: Request) {
       businessMode: (bot as any).businessMode || "store",
       // Issue #11: merchant policy rules — verbatim into prompt
       policyRules: (bot as any).policyRules || "",
+      emotionalContext:
+        emotional.shouldCalmFirst ||
+        emotional.sentiment === "negative" ||
+        emotional.sentiment === "angry"
+          ? emotionalPromptBlock(emotional)
+          : undefined,
     });
     try {
       reply = await llmChat(messages, {
@@ -598,7 +807,7 @@ export async function POST(req: Request) {
   });
   reply = realism.text;
 
-  await prisma.message.create({
+  const assistantMessage = await prisma.message.create({
     data: { conversationId: conv.id, role: "assistant", content: reply },
   });
 
@@ -609,18 +818,43 @@ export async function POST(req: Request) {
     conversationId: conv.id,
   }).catch(() => {});
 
-  // Membership counters: this branch ran a real LLM call, so bump both
-  // monthly message counter AND the AI requests counter. Quick-reply and
-  // fuzzy-match branches above only bump msgsUsed (no LLM cost).
-  await prisma.subscription
-    .update({
-      where: { userId },
-      data: {
-        msgsUsed: { increment: 1 },
-        aiRequestsUsed: { increment: 1 },
-      } as any,
-    })
-    .catch(() => {});
+  // Immutable usage ledger: always bill the outbound reply; bill AI only when
+  // a real LLM call happened (cache hits are message usage, not provider cost).
+  await recordUsage({
+    userId,
+    kind: "messages",
+    source: "whatsapp",
+    reason: fromCache ? "llm_cache_reply" : "llm_reply",
+    idempotencyKey: usageIdempotencyKey([
+      "wa",
+      userId,
+      providerMessageId || inboundMessage.id,
+      "messages",
+      fromCache ? "cache" : "llm",
+    ]),
+    conversationId: conv.id,
+    messageId: assistantMessage.id,
+    customerId: customer.id,
+    metadata: { fromCache },
+  });
+  if (!fromCache) {
+    await recordUsage({
+      userId,
+      kind: "ai",
+      source: "whatsapp",
+      reason: "llm_reply",
+      idempotencyKey: usageIdempotencyKey([
+        "wa",
+        userId,
+        providerMessageId || inboundMessage.id,
+        "ai",
+        "llm",
+      ]),
+      conversationId: conv.id,
+      messageId: assistantMessage.id,
+      customerId: customer.id,
+    });
+  }
 
   // Daily counter (Controlled Launch). Always bumped on a successful reply.
   if (dailyCap > 0) {
@@ -692,6 +926,7 @@ export async function POST(req: Request) {
     userId,
     followUpsEnabled: !!bot.followUpsEnabled,
     followUpHours: bot.followUpHours || 24,
+    analysis: emotional,
   }).catch((e) => console.error("[insights] failed:", e?.message));
 
   // Knowledge-gap detection: if the bot's reply looks like an "I don't know",
@@ -758,6 +993,38 @@ export async function POST(req: Request) {
   });
 }
 
+function mapEmotionalIntent(
+  intent: EmotionalAnalysis["intent"],
+): "buy" | "inquiry" | "complaint" | "support" | "greeting" | "other" {
+  if (intent === "refund" || intent === "escalation") return "complaint";
+  if (
+    intent === "buy" ||
+    intent === "inquiry" ||
+    intent === "complaint" ||
+    intent === "support" ||
+    intent === "greeting"
+  )
+    return intent;
+  return "other";
+}
+
+function mergeClassification(
+  base: Awaited<ReturnType<typeof classify>>,
+  analysis?: EmotionalAnalysis,
+) {
+  if (!analysis) return base;
+  const tags = new Set([...(base.tags || [])]);
+  if (analysis.angerScore >= 60) tags.add("غضب");
+  if (analysis.frustrationLoop) tags.add("تكرار/سوء فهم");
+  if (analysis.intent === "refund") tags.add("استرجاع");
+  if (analysis.intent === "escalation") tags.add("تصعيد");
+  return {
+    sentiment: analysis.sentiment,
+    intent: mapEmotionalIntent(analysis.intent),
+    tags: Array.from(tags).slice(0, 4),
+  };
+}
+
 async function recordKnowledgeGap(args: {
   userId: string;
   customerId: string;
@@ -778,7 +1045,10 @@ async function recordKnowledgeGap(args: {
     if (questionSimilarity(g.question, args.question) >= 0.6) {
       await prisma.knowledgeGap.update({
         where: { id: g.id },
-        data: { occurrences: { increment: 1 } },
+        data: {
+          occurrences: { increment: 1 },
+          score: { increment: 10 } as any,
+        } as any,
       });
       return;
     }
@@ -789,7 +1059,18 @@ async function recordKnowledgeGap(args: {
       customerId: args.customerId,
       conversationId: args.conversationId,
       question: args.question.slice(0, 500),
-    },
+      score: /سعر|بكام|منتج|مقاس|لون|شحن|توصيل|price|product|shipping/i.test(
+        args.question,
+      )
+        ? 45
+        : 20,
+      productHint:
+        /سعر|بكام|منتج|مقاس|لون|شحن|توصيل|price|product|shipping/i.test(
+          args.question,
+        )
+          ? "commerce"
+          : null,
+    } as any,
   });
 }
 
@@ -808,8 +1089,10 @@ async function classifyAndScore(args: {
   userId?: string;
   followUpsEnabled?: boolean;
   followUpHours?: number;
+  analysis?: EmotionalAnalysis;
 }) {
-  const c = await classify(args.text);
+  const base = await classify(args.text);
+  const c = mergeClassification(base, args.analysis);
 
   // Save sentiment + intent on the latest message we just inserted
   const latestUserMsg = await prisma.message.findFirst({
@@ -820,7 +1103,19 @@ async function classifyAndScore(args: {
     await prisma.message
       .update({
         where: { id: latestUserMsg.id },
-        data: { intent: c.intent, sentiment: c.sentiment },
+        data: {
+          intent: c.intent,
+          sentiment: c.sentiment,
+          ...(args.analysis
+            ? {
+                angerScore: args.analysis.angerScore,
+                confidenceScore: args.analysis.confidenceScore,
+                frustrationScore: args.analysis.frustrationScore,
+                urgencyScore: args.analysis.urgencyScore,
+                emotionalTone: args.analysis.toneHint.slice(0, 160),
+              }
+            : {}),
+        } as any,
       })
       .catch(() => {});
   }
@@ -875,6 +1170,18 @@ async function classifyAndScore(args: {
     const hours =
       args.followUpHours && args.followUpHours > 0 ? args.followUpHours : 24;
     followUpAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+    if (args.userId) {
+      queueSmartFollowUp({
+        userId: args.userId,
+        customerId: args.customerId,
+        conversationId: args.conversationId,
+        messageText: args.text,
+        intent: c.intent,
+        sentiment: c.sentiment,
+        delayHours: hours,
+        reason: "buyerish_inactivity",
+      }).catch(() => {});
+    }
   }
 
   await prisma.customer
@@ -885,6 +1192,9 @@ async function classifyAndScore(args: {
         lastIntent: c.intent,
         lastSentiment: c.sentiment,
         tags: JSON.stringify(merged),
+        ...(args.analysis
+          ? { frustrationScore: args.analysis.frustrationScore }
+          : {}),
         ...(followUpAt ? { followUpAt, followUpSent: false } : {}),
       } as any,
     })
@@ -1082,6 +1392,8 @@ async function extractAndStoreOrder(args: {
         },
       },
     });
+
+    await markFollowUpsConvertedForCustomer(args.customerId);
 
     // Notify the merchant when the order looks confident enough.
     return order;

@@ -1,4 +1,8 @@
-import { compressHistory, classifyComplexity, depthForComplexity } from "./semantic-match";
+import {
+  compressHistory,
+  classifyComplexity,
+  depthForComplexity,
+} from "./semantic-match";
 import { coalesce, fingerprintMessages } from "./fast-path";
 import { routeProviderChat } from "./providers/provider-router";
 import type { ProviderId } from "./providers/types";
@@ -36,7 +40,10 @@ export type ProviderOverride = {
 // ---------------------------------------------------------------------------
 function getUrls(): string[] {
   // Comma-separated list takes precedence
-  const multi = (process.env.LLM_API_URLS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const multi = (process.env.LLM_API_URLS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (multi.length > 0) return multi;
   return [process.env.LLM_API_URL || "http://127.0.0.1:7788"];
 }
@@ -45,12 +52,18 @@ function getUrls(): string[] {
 // Concurrency limiter — at most MAX_CONCURRENT_LLM requests are forwarded
 // to the LLM cluster at any moment. Excess requests wait in a FIFO queue.
 // ---------------------------------------------------------------------------
-const MAX_CONCURRENT_LLM = Math.max(1, Number(process.env.LLM_MAX_CONCURRENT || 3));
+const MAX_CONCURRENT_LLM = Math.max(
+  1,
+  Number(process.env.LLM_MAX_CONCURRENT || 3),
+);
 let active = 0;
 const waiters: Array<() => void> = [];
 
 async function acquire(): Promise<void> {
-  if (active < MAX_CONCURRENT_LLM) { active++; return; }
+  if (active < MAX_CONCURRENT_LLM) {
+    active++;
+    return;
+  }
   await new Promise<void>((resolve) => waiters.push(resolve));
   active++;
 }
@@ -91,7 +104,10 @@ const breakers: Map<string, BreakerState> = new Map();
 
 function getBreaker(url: string): BreakerState {
   let b = breakers.get(url);
-  if (!b) { b = { fails: 0, firstFailAt: 0, openUntil: 0 }; breakers.set(url, b); }
+  if (!b) {
+    b = { fails: 0, firstFailAt: 0, openUntil: 0 };
+    breakers.set(url, b);
+  }
   return b;
 }
 function breakerIsOpen(url: string): boolean {
@@ -100,13 +116,19 @@ function breakerIsOpen(url: string): boolean {
   if (b.openUntil > 0 && Date.now() < b.openUntil) return true;
   if (b.openUntil > 0 && Date.now() >= b.openUntil) {
     // half-open: clear and allow one probe
-    b.openUntil = 0; b.fails = 0; b.firstFailAt = 0;
+    b.openUntil = 0;
+    b.fails = 0;
+    b.firstFailAt = 0;
   }
   return false;
 }
 function breakerRecordSuccess(url: string): void {
   const b = breakers.get(url);
-  if (b) { b.fails = 0; b.firstFailAt = 0; b.openUntil = 0; }
+  if (b) {
+    b.fails = 0;
+    b.firstFailAt = 0;
+    b.openUntil = 0;
+  }
 }
 function breakerRecordFailure(url: string): void {
   const b = getBreaker(url);
@@ -119,7 +141,9 @@ function breakerRecordFailure(url: string): void {
   b.fails += 1;
   if (b.fails >= FAIL_THRESHOLD) {
     b.openUntil = now + OPEN_MS;
-    console.warn(`[llm] circuit OPEN for ${url} (${b.fails} fails); cooling ${OPEN_MS}ms`);
+    console.warn(
+      `[llm] circuit OPEN for ${url} (${b.fails} fails); cooling ${OPEN_MS}ms`,
+    );
   }
 }
 
@@ -130,7 +154,7 @@ async function callOnce(
   url: string,
   key: string,
   body: unknown,
-  timeoutMs: number
+  timeoutMs: number,
 ): Promise<string> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -147,7 +171,9 @@ async function callOnce(
     });
     if (!res.ok) {
       let detail = "";
-      try { detail = JSON.stringify(await res.json()); } catch {}
+      try {
+        detail = JSON.stringify(await res.json());
+      } catch {}
       const err: any = new Error(`LLM error ${res.status} ${detail}`);
       err.status = res.status;
       throw err;
@@ -175,12 +201,12 @@ export async function chat(
      * skipped (e.g. anonymous internal callers).
      */
     meterUserId?: string;
-  } = {}
+  } = {},
 ): Promise<string> {
   const key = process.env.LLM_API_KEY || "change-secret-key-2026";
   const model = process.env.LLM_MODEL || "gpt-4o-mini";
-  const retries = opts.retries ?? 2;          // up to 3 attempts total
-  const timeoutMs = opts.timeoutMs ?? 60000;  // 60s per attempt
+  const retries = opts.retries ?? 2; // up to 3 attempts total
+  const timeoutMs = opts.timeoutMs ?? 60000; // 60s per attempt
   const meterUserId = opts.meterUserId;
 
   // ---- Third-party provider dispatch ------------------------------------
@@ -189,7 +215,10 @@ export async function chat(
   // path so behavior under load is identical to the default route.
   const ov = opts.provider;
   const useExternal =
-    ov && ov.provider && ov.provider !== "keyone" && !!(ov.apiKey && ov.apiKey.length > 0);
+    ov &&
+    ov.provider &&
+    ov.provider !== "keyone" &&
+    !!(ov.apiKey && ov.apiKey.length > 0);
 
   const body: any = { model, messages };
   if (typeof opts.temperature === "number") body.temperature = opts.temperature;
@@ -200,12 +229,22 @@ export async function chat(
   const canCoalesce = opts.coalesce !== false && (opts.temperature ?? 0) <= 0.6;
   const runOnce = () =>
     useExternal
-      ? runExternalChat(messages, ov!, opts.temperature, opts.maxTokens, timeoutMs, retries, meterUserId)
+      ? runExternalChat(
+          messages,
+          ov!,
+          opts.temperature,
+          opts.maxTokens,
+          timeoutMs,
+          retries,
+          meterUserId,
+        )
       : runChatOnce(body, key, timeoutMs, retries, meterUserId, model);
   if (canCoalesce) {
     // Include provider id in the fingerprint so two merchants with different
     // providers but identical prompts don't accidentally share a response.
-    const fpBody = useExternal ? { ...body, __p: ov!.provider, __m: ov!.model || "" } : body;
+    const fpBody = useExternal
+      ? { ...body, __p: ov!.provider, __m: ov!.model || "" }
+      : body;
     const fp = fingerprintMessages(fpBody);
     return coalesce(fp, runOnce);
   }
@@ -219,7 +258,7 @@ async function runExternalChat(
   maxTokens: number | undefined,
   timeoutMs: number,
   retries: number,
-  meterUserId: string | undefined
+  meterUserId: string | undefined,
 ): Promise<string> {
   // Concurrency-limit external providers too. Even though the in-house
   // CloakBrowser isn't involved, the merchant's vendor account often has
@@ -243,7 +282,7 @@ async function runExternalChat(
         provider: ov.provider,
         model: ov.model || null,
         success: true,
-        inputTokens:  r.usage?.inputTokens,
+        inputTokens: r.usage?.inputTokens,
         outputTokens: r.usage?.outputTokens,
         latencyMs: Date.now() - t0,
       });
@@ -271,7 +310,7 @@ async function runChatOnce(
   timeoutMs: number,
   retries: number,
   meterUserId?: string,
-  modelHint?: string
+  modelHint?: string,
 ): Promise<string> {
   await acquire();
   const t0 = Date.now();
@@ -329,7 +368,8 @@ async function runChatOnce(
       // immediately. Saves merchants from 3-minute hangs when LLM is dead.
       if (!triedAtLeastOne) break;
       if (attempt < retries) {
-        const delay = 500 * Math.pow(2, attempt) + Math.floor(Math.random() * 400);
+        const delay =
+          500 * Math.pow(2, attempt) + Math.floor(Math.random() * 400);
         await sleep(delay);
       }
     }
@@ -360,9 +400,9 @@ export function buildMessages(opts: {
   customerName?: string | null;
   customerPhone?: string;
   // ---- Wave 5+: behavior modifiers ----
-  humanize?: boolean;            // adds variety + natural rhythm to replies
-  customerPreferences?: string;  // JSON string of past prefs (Wave 9 personalization)
-  customerLeadScore?: number;    // 0-100, used for tone adjustment
+  humanize?: boolean; // adds variety + natural rhythm to replies
+  customerPreferences?: string; // JSON string of past prefs (Wave 9 personalization)
+  customerLeadScore?: number; // 0-100, used for tone adjustment
   customerLastIntent?: string | null;
   // ---- Wave 7 sales modifiers ----
   persuasionEnabled?: boolean;
@@ -378,9 +418,11 @@ export function buildMessages(opts: {
   // means "no extra guidance" — preserves the default behavior.
   salesBlock?: string;
   // ---- Issue #6: per-business mode ----
-  businessMode?: string;   // store | restaurant | real_estate | services | custom
+  businessMode?: string; // store | restaurant | real_estate | services | custom
   // ---- Issue #11: policy grounding ----
-  policyRules?: string;    // verbatim merchant-authored rules, injected as a hard constraint
+  policyRules?: string; // verbatim merchant-authored rules, injected as a hard constraint
+  // ---- Production intelligence: emotional tone adaptation ----
+  emotionalContext?: string; // pre-rendered tone/sentiment block from lib/sentiment
 }): Msg[] {
   const sys: string[] = [];
   sys.push(`أنت "${opts.botName}", مساعد ذكي يخدم زبائن شركة عبر واتساب.`);
@@ -408,7 +450,7 @@ export function buildMessages(opts: {
 عند عدم وضوح طلب العميل (Issue #10):
 - لو السؤال غامض أو يحتمل أكثر من معنى، اسأل عن التوضيح بأدب بدلاً من التخمين.
 - لا تخترع تفاصيل أو معلومات لم تذكر في قاعدة المعرفة.
-- لو العميل كتب بأخطاء إملائية أو لهجة غير مألوفة، حاول تفهم نيته من السياق، ولو فضلت غامضة اطلب التوضيح.`
+- لو العميل كتب بأخطاء إملائية أو لهجة غير مألوفة، حاول تفهم نيته من السياق، ولو فضلت غامضة اطلب التوضيح.`,
   );
 
   // ---- Issue #11: policy grounding (HARD CONSTRAINT) -----------------------
@@ -418,9 +460,10 @@ export function buildMessages(opts: {
   if (_policy) {
     sys.push(
       `--- سياسة الشركة الصارمة (التزم بها 100% — تتقدم على أي قاعدة أخرى) ---\n` +
-      _policy.slice(0, 2000) + `\n` +
-      `لا تعد بأي شيء يخالف هذه السياسة. لو العميل طلب شيء خارجها، اعتذر بأدب ووجّهه للإدارة.\n` +
-      `--- نهاية السياسة ---`
+        _policy.slice(0, 2000) +
+        `\n` +
+        `لا تعد بأي شيء يخالف هذه السياسة. لو العميل طلب شيء خارجها، اعتذر بأدب ووجّهه للإدارة.\n` +
+        `--- نهاية السياسة ---`,
     );
   }
 
@@ -432,20 +475,20 @@ export function buildMessages(opts: {
   if (_mode === "restaurant") {
     sys.push(
       `وضع المطعم: تعامل مع الأسئلة عن المنيو، الأطباق، الأسعار، والتوصيل بسرعة وودود. ` +
-      `اسأل عن عدد الأشخاص، نوع الطلب (داخل/خارج)، والوقت المفضل للتسليم. ` +
-      `أكّد كل طلب بشكل واضح قبل الإرسال للمطبخ.`
+        `اسأل عن عدد الأشخاص، نوع الطلب (داخل/خارج)، والوقت المفضل للتسليم. ` +
+        `أكّد كل طلب بشكل واضح قبل الإرسال للمطبخ.`,
     );
   } else if (_mode === "real_estate") {
     sys.push(
       `وضع العقارات: ركّز على الموقع، المساحة، السعر، حالة العقار، طريقة الدفع. ` +
-      `اسأل عن نوع العقار المطلوب، الميزانية، المنطقة، والغرض (سكن/استثمار). ` +
-      `لا تقطع وعداً بمعاينة قبل الرجوع للإدارة.`
+        `اسأل عن نوع العقار المطلوب، الميزانية، المنطقة، والغرض (سكن/استثمار). ` +
+        `لا تقطع وعداً بمعاينة قبل الرجوع للإدارة.`,
     );
   } else if (_mode === "services") {
     sys.push(
       `وضع الخدمات: ركّز على وصف الخدمة، المدة، السعر، ومتى يبدأ التنفيذ. ` +
-      `اسأل عن طبيعة الطلب، الموعد المفضل، والمكان لو الخدمة ميدانية. ` +
-      `أكّد كل تفصيلة قبل تأكيد الحجز.`
+        `اسأل عن طبيعة الطلب، الموعد المفضل، والمكان لو الخدمة ميدانية. ` +
+        `أكّد كل تفصيلة قبل تأكيد الحجز.`,
     );
   } else if (_mode === "custom") {
     // Fall through to merchant's own systemPrompt — no extra instruction needed.
@@ -453,19 +496,23 @@ export function buildMessages(opts: {
     // store (default) — preserve current behavior, no extra block.
   }
 
+  if (opts.emotionalContext && opts.emotionalContext.trim()) {
+    sys.push(opts.emotionalContext.trim());
+  }
+
   if (opts.knowledgeBase && opts.knowledgeBase.trim()) {
     sys.push(
       `--- معلومات الشركة (استخدمها كمصدر رئيسي) ---\n${opts.knowledgeBase.slice(
         0,
-        12000
-      )}\n--- نهاية المعلومات ---`
+        12000,
+      )}\n--- نهاية المعلومات ---`,
     );
   }
   if (opts.customerName || opts.customerPhone) {
     sys.push(
       `العميل الحالي: ${opts.customerName || "بدون اسم"} (${
         opts.customerPhone || ""
-      })`
+      })`,
     );
   }
 
@@ -480,7 +527,8 @@ export function buildMessages(opts: {
   //
   // Hard rule: once we have BOTH name + non-LID phone, NEVER ask again.
   const _phone = (opts.customerPhone || "").trim();
-  const _isLid = _phone.startsWith("lid:") || _phone.includes("@lid") || !_phone;
+  const _isLid =
+    _phone.startsWith("lid:") || _phone.includes("@lid") || !_phone;
   const _needsName = !opts.customerName || !opts.customerName.trim();
   const _haveBoth = !_isLid && !_needsName;
 
@@ -491,8 +539,13 @@ export function buildMessages(opts: {
     .filter((m) => m.role === "assistant")
     .map((m) => m.content || "")
     .join("\n");
-  const _askedNameBefore = /\b(اسمك|اسمه|اسم حضرتك|اسم[يه]?|name)\b/i.test(_assistantHistory);
-  const _askedPhoneBefore = /\b(رقمك|تليفونك|رقم تليفونك|واتسابك|واتساب|phone|number)\b/i.test(_assistantHistory);
+  const _askedNameBefore = /\b(اسمك|اسمه|اسم حضرتك|اسم[يه]?|name)\b/i.test(
+    _assistantHistory,
+  );
+  const _askedPhoneBefore =
+    /\b(رقمك|تليفونك|رقم تليفونك|واتسابك|واتساب|phone|number)\b/i.test(
+      _assistantHistory,
+    );
 
   if (!_haveBoth) {
     const need: string[] = [];
@@ -509,20 +562,20 @@ export function buildMessages(opts: {
       // We still need something AND we haven't asked for it yet.
       sys.push(
         `ملاحظة عن العميل: لسه ما عندناش ${need.join(" و")}. ` +
-        `لو الفرصة مناسبة في الرد ده، اطلبهم منه بأسلوب ودود ومختصر مرة واحدة فقط. ` +
-        `بعد ما يبعتهم، ما تسألوش تاني أبداً وأكمل المحادثة عادي.`
+          `لو الفرصة مناسبة في الرد ده، اطلبهم منه بأسلوب ودود ومختصر مرة واحدة فقط. ` +
+          `بعد ما يبعتهم، ما تسألوش تاني أبداً وأكمل المحادثة عادي.`,
       );
     } else {
       // We need info but we already asked. Tell the bot NOT to repeat.
       sys.push(
         `ملاحظة مهمة: العميل لم يرد بعد على طلب البيانات. ` +
-        `لا تطلب الاسم أو الرقم مرة أخرى. أكمل المحادثة عادي وانتظر منه البيانات لما يحب.`
+          `لا تطلب الاسم أو الرقم مرة أخرى. أكمل المحادثة عادي وانتظر منه البيانات لما يحب.`,
       );
     }
   } else {
     // We have everything — be explicit so the bot doesn't ask redundantly.
     sys.push(
-      `معلومات العميل مكتملة (الاسم والرقم محفوظين). ممنوع تسأل عن الاسم أو رقم التليفون مرة أخرى مهما كانت الظروف.`
+      `معلومات العميل مكتملة (الاسم والرقم محفوظين). ممنوع تسأل عن الاسم أو رقم التليفون مرة أخرى مهما كانت الظروف.`,
     );
   }
 
@@ -531,12 +584,18 @@ export function buildMessages(opts: {
   // present — memory.ts already mirrors the same facts and produces a more
   // compact, structured block. Saves ~80 tokens per request.
   const hasMemoryBlockEarly = !!(opts.memoryBlock && opts.memoryBlock.trim());
-  if (!hasMemoryBlockEarly && opts.customerPreferences && opts.customerPreferences !== "{}") {
+  if (
+    !hasMemoryBlockEarly &&
+    opts.customerPreferences &&
+    opts.customerPreferences !== "{}"
+  ) {
     try {
       const prefs = JSON.parse(opts.customerPreferences);
       const lines: string[] = [];
       if (Array.isArray(prefs.products) && prefs.products.length)
-        lines.push(`- منتجات سأل عنها سابقاً: ${prefs.products.slice(0, 5).join("، ")}`);
+        lines.push(
+          `- منتجات سأل عنها سابقاً: ${prefs.products.slice(0, 5).join("، ")}`,
+        );
       if (Array.isArray(prefs.sizes) && prefs.sizes.length)
         lines.push(`- مقاسات/أحجام: ${prefs.sizes.slice(0, 5).join("، ")}`);
       if (Array.isArray(prefs.colors) && prefs.colors.length)
@@ -544,11 +603,14 @@ export function buildMessages(opts: {
       if (typeof prefs.budget === "number")
         lines.push(`- ميزانية تقريبية: ${prefs.budget}`);
       if (Array.isArray(prefs.lastTopics) && prefs.lastTopics.length)
-        lines.push(`- آخر مواضيع نقاش: ${prefs.lastTopics.slice(0, 3).join("، ")}`);
+        lines.push(
+          `- آخر مواضيع نقاش: ${prefs.lastTopics.slice(0, 3).join("، ")}`,
+        );
       if (lines.length) {
         sys.push(
           `--- ذاكرة العميل (استخدمها بحذر؛ لا تذكرها صراحة إلا لو سأل) ---\n` +
-          lines.join("\n") + "\n--- نهاية الذاكرة ---"
+            lines.join("\n") +
+            "\n--- نهاية الذاكرة ---",
         );
       }
     } catch {}
@@ -562,7 +624,7 @@ export function buildMessages(opts: {
 - لا تبدأ كل رد بكلمة "أهلاً" أو "بكل تأكيد". نوّع البدايات.
 - استخدم جملاً قصيرة ومتدفقة كمحادثة حقيقية، وأحياناً كلمات تأكيد طبيعية مثل "تمام"، "ماشي"، "حاضر"، "أكيد".
 - لا تستخدم Markdown. لا تستخدم * إلا نادراً للتأكيد.
-- لو الموقف يحتمل، أضف emoji واحد فقط في نهاية الرد، لا أكثر.`
+- لو الموقف يحتمل، أضف emoji واحد فقط في نهاية الرد، لا أكثر.`,
     );
   }
 
@@ -570,12 +632,16 @@ export function buildMessages(opts: {
   // Audit fix #7: suppress when Phase 2 salesBlock is present (it carries a
   // more targeted, mode-specific instruction). Saves ~60 tokens per request.
   const hasSalesBlockEarly = !!(opts.salesBlock && opts.salesBlock.trim());
-  if (!hasSalesBlockEarly && opts.persuasionEnabled && opts.customerLastIntent === "buy") {
+  if (
+    !hasSalesBlockEarly &&
+    opts.persuasionEnabled &&
+    opts.customerLastIntent === "buy"
+  ) {
     sys.push(
       `تعليمات بيعية (العميل أبدى نية شراء):
 - اظهر لطفاً وحماساً، وثبّت قراره بإيجاز.
 - اقترح خطوة عملية واحدة واضحة (مثل: "ابعتلي اسمك ورقمك أحجزلك").
-- لو فيه عرض/خصم/كمية محدودة في قاعدة المعرفة، اذكره مرة واحدة فقط بدون مبالغة.`
+- لو فيه عرض/خصم/كمية محدودة في قاعدة المعرفة، اذكره مرة واحدة فقط بدون مبالغة.`,
     );
   }
   if (opts.negotiationEnabled) {
@@ -584,7 +650,7 @@ export function buildMessages(opts: {
       `تعليمات تفاوض الأسعار:
 - لو العميل طلب خصماً، يُمكنك التلميح إلى مرونة بسيطة، بحدّ أقصى ${floor}% من السعر.
 - لا تذكر النسبة بشكل صريح. صياغة مثل "ممكن أتكلم مع الإدارة وأرجعلك بأفضل عرض ممكن" مقبولة.
-- لا تجاوز هذا الحد مطلقاً. لو طلب أكثر، اعتذر بلطف ووجّهه لرقم الإدارة.`
+- لا تجاوز هذا الحد مطلقاً. لو طلب أكثر، اعتذر بلطف ووجّهه لرقم الإدارة.`,
     );
   }
 
@@ -612,7 +678,10 @@ export function buildMessages(opts: {
   //   complex  → 16 turns
   // When a memory summary exists we clamp the upper bound (the summary
   // already captures older turns, so 8 is plenty even for complex).
-  const complexity = classifyComplexity(opts.newUserMsg, opts.customerLeadScore || 0);
+  const complexity = classifyComplexity(
+    opts.newUserMsg,
+    opts.customerLeadScore || 0,
+  );
   let historyLimit = depthForComplexity(complexity);
   if (hasMemory) historyLimit = Math.min(historyLimit, 8);
 
@@ -622,7 +691,10 @@ export function buildMessages(opts: {
   const recent = compressed.slice(-historyLimit);
   for (const m of recent) {
     if (m.role === "user" || m.role === "assistant") {
-      messages.push({ role: m.role as "user" | "assistant", content: m.content });
+      messages.push({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      });
     }
   }
   messages.push({ role: "user", content: opts.newUserMsg });

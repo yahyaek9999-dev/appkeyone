@@ -18,20 +18,22 @@ export async function GET() {
           id: true,
           updatedAt: true,
           botPaused: true,
+          handoffState: true,
+          escalationTicketId: true,
           messages: {
             orderBy: { createdAt: "desc" },
             take: 1,
             select: { content: true, role: true, createdAt: true },
           },
           _count: { select: { messages: true } },
-        },
+        } as any,
       },
-    },
+    } as any,
   });
 
   return NextResponse.json({
     conversations: customers
-      .filter((c) => c.conversation)
+      .filter((c: any) => c.conversation)
       .map((c: any) => ({
         customerId: c.id,
         name: c.name,
@@ -40,9 +42,12 @@ export async function GET() {
         lastIntent: c.lastIntent,
         lastSentiment: c.lastSentiment,
         botPaused: c.conversation.botPaused,
+        handoffState: (c.conversation as any).handoffState || "ai_active",
+        escalationTicketId: (c.conversation as any).escalationTicketId || null,
         lastMessage: c.conversation.messages[0]?.content || "",
         lastRole: c.conversation.messages[0]?.role || "user",
-        lastAt: c.conversation.messages[0]?.createdAt || c.conversation.updatedAt,
+        lastAt:
+          c.conversation.messages[0]?.createdAt || c.conversation.updatedAt,
         msgCount: c.conversation._count.messages,
       })),
   });

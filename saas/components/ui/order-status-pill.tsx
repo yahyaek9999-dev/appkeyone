@@ -17,8 +17,11 @@ import { cn } from "@/lib/utils";
 export type OrderStatus =
   | "pending"
   | "confirmed"
+  | "preparing"
   | "shipped"
+  | "out_for_delivery"
   | "delivered"
+  | "canceled"
   | "cancelled"
   | "refunded";
 
@@ -36,15 +39,30 @@ const STATUS_MAP: Record<
     icon: <CheckCircle2 className="size-3" />,
     classes: "bg-sky-500/10 text-sky-300 ring-sky-500/20",
   },
+  preparing: {
+    label: "قيد التجهيز",
+    icon: <Clock className="size-3" />,
+    classes: "bg-blue-500/10 text-blue-300 ring-blue-500/20",
+  },
   shipped: {
     label: "تم الشحن",
     icon: <Truck className="size-3" />,
     classes: "bg-violet-500/10 text-violet-300 ring-violet-500/20",
   },
+  out_for_delivery: {
+    label: "خارج للتسليم",
+    icon: <Truck className="size-3" />,
+    classes: "bg-orange-500/10 text-orange-300 ring-orange-500/20",
+  },
   delivered: {
     label: "تم التسليم",
     icon: <PackageCheck className="size-3" />,
     classes: "bg-emerald-500/10 text-emerald-300 ring-emerald-500/20",
+  },
+  canceled: {
+    label: "ملغي",
+    icon: <XCircle className="size-3" />,
+    classes: "bg-slate-500/10 text-slate-300 ring-slate-500/20",
   },
   cancelled: {
     label: "ملغي",
@@ -69,14 +87,14 @@ export function OrderStatusPill({
   size = "sm",
   className,
 }: OrderStatusPillProps) {
-  const meta = STATUS_MAP[status];
+  const meta = STATUS_MAP[status] || STATUS_MAP.pending;
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full font-medium ring-1 ring-inset",
         size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
         meta.classes,
-        className
+        className,
       )}
     >
       {meta.icon}

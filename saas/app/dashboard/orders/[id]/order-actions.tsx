@@ -3,11 +3,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "pending",   label: "قيد المراجعة" },
+  { value: "pending", label: "قيد المراجعة" },
   { value: "confirmed", label: "مؤكد" },
-  { value: "shipped",   label: "تم الشحن" },
+  { value: "preparing", label: "قيد التجهيز" },
+  { value: "shipped", label: "تم الشحن" },
+  { value: "out_for_delivery", label: "خارج للتسليم" },
   { value: "delivered", label: "تم التسليم" },
-  { value: "canceled",  label: "ملغي" },
+  { value: "canceled", label: "ملغي" },
 ];
 
 export default function OrderActions({
@@ -68,7 +70,9 @@ export default function OrderActions({
           className="mt-1 w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-sm"
         >
           {STATUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
       </label>
@@ -76,7 +80,9 @@ export default function OrderActions({
       <div className="flex gap-2">
         <button
           disabled={pending}
-          onClick={() => update({ status: "confirmed", fulfillmentStatus: "unfulfilled" })}
+          onClick={() =>
+            update({ status: "confirmed", fulfillmentStatus: "unfulfilled" })
+          }
           className="flex-1 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 text-xs"
         >
           تأكيد الطلب

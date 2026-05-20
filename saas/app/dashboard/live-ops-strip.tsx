@@ -1,6 +1,11 @@
 "use client";
 
-import { AlertTriangle, Megaphone, Phone } from "lucide-react";
+import {
+  AlertTriangle,
+  Megaphone,
+  Phone,
+  MessageSquareWarning,
+} from "lucide-react";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
@@ -11,7 +16,7 @@ export function LiveOpsStrip() {
   const connected = wa?.status === "connected";
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-4">
+    <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-5">
       <div className="card card-glow p-4 lg:col-span-1">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -32,6 +37,19 @@ export function LiveOpsStrip() {
         hint={
           wa?.phone || (wa?.mode === "meta_cloud" ? "Meta Cloud" : "QR mode")
         }
+      />
+      <LiveTile
+        icon={<MessageSquareWarning className="size-4" />}
+        label="تصعيدات مفتوحة"
+        value={String(snapshot?.totals.escalationActive ?? "—")}
+        tone={
+          (snapshot?.totals.escalationCritical || 0) > 0
+            ? "warning"
+            : (snapshot?.totals.escalationActive || 0) > 0
+              ? "ai"
+              : "online"
+        }
+        hint={`${snapshot?.totals.escalationCritical || 0} حرجة`}
       />
       <LiveTile
         icon={<Megaphone className="size-4" />}

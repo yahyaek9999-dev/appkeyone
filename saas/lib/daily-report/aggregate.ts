@@ -19,14 +19,16 @@ export interface DailyAggregate {
   generatedAt: Date;
 
   // ---- Yesterday ----
-  messages: number;            // total messages (user + assistant)
-  userMessages: number;        // inbound from customers
-  assistantMessages: number;   // outbound from bot/admin
-  newCustomers: number;        // first message ever yesterday
+  messages: number; // total messages (user + assistant)
+  userMessages: number; // inbound from customers
+  assistantMessages: number; // outbound from bot/admin
+  newCustomers: number; // first message ever yesterday
   ordersCount: number;
-  ordersRevenueMinor: number;  // sum of total (smallest currency unit, EGP)
-  hotLeads: number;            // customers with leadScore >= 70 active in last 7d
-  hotLeadsAwaiting: number;    // hot leads where last msg is from customer (no bot reply)
+  ordersRevenueMinor: number; // sum of total (smallest currency unit, EGP)
+  hotLeads: number; // customers with leadScore >= 70 active in last 7d
+  hotLeadsAwaiting: number; // hot leads where last msg is from customer (no bot reply)
+  unresolvedEscalations: number;
+  conversionRatePct: number;
   topHourLocal: number | null; // hour of day with most user messages (server tz)
 
   // ---- Comparisons ----
@@ -40,7 +42,10 @@ export interface DailyAggregate {
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-export async function aggregateForUser(userId: string, now: Date = new Date()): Promise<DailyAggregate> {
+export async function aggregateForUser(
+  userId: string,
+  now: Date = new Date(),
+): Promise<DailyAggregate> {
   const dayStart = new Date(now.getTime() - DAY);
   const dayBeforeStart = new Date(now.getTime() - 2 * DAY);
   const weekStart = new Date(now.getTime() - 7 * DAY);
@@ -59,6 +64,7 @@ export async function aggregateForUser(userId: string, now: Date = new Date()): 
     yNewCustomers,
     hotLeadsCount,
     hotLeadsAwaitingCount,
+    unresolvedEscalations,
     yMsgsByHour,
   ] = await Promise.all([
     // total messages yesterday (this user's conversations only)
@@ -121,6 +127,16 @@ export async function aggregateForUser(userId: string, now: Date = new Date()): 
     // hot leads where the last message is from customer (no bot reply yet)
     // — done as a raw lookup at the end via a separate query for clarity.
     countHotLeadsAwaiting(userId, weekStart),
+    (prisma as any).escalationTicket?.count
+      ? (prisma as any).escalationTicket
+          .count({
+            where: {
+              userId,
+              status: { in: ["open", "acknowledged", "human_active"] },
+            },
+          })
+          .catch(() => 0)
+      : Promise.resolve(0),
     // best hour: group user messages by hour-of-day for yesterday
     prisma.$queryRawUnsafe<{ h: number; n: number }[]>(
       `SELECT CAST(strftime('%H', m.createdAt) AS INTEGER) AS h, COUNT(*) AS n
@@ -132,14 +148,18 @@ export async function aggregateForUser(userId: string, now: Date = new Date()): 
        GROUP BY h ORDER BY n DESC LIMIT 1`,
       userId,
       dayStart.toISOString(),
-      now.toISOString()
+      now.toISOString(),
     ),
   ]);
 
   const ordersRevenueMinor = sum(yOrders.map((o) => o.total || 0));
-  const revenueAvg7dMinor = Math.round(sum(weekRevenue.map((o) => o.total || 0)) / 7);
+  const revenueAvg7dMinor = Math.round(
+    sum(weekRevenue.map((o) => o.total || 0)) / 7,
+  );
   const messagesAvg7d = Math.round(weekMsgs / 7);
   const ordersAvg7d = Math.round((weekOrders / 7) * 10) / 10; // 1 decimal
+  const conversionRatePct =
+    yUserMsgs > 0 ? Math.round((yOrders.length / yUserMsgs) * 1000) / 10 : 0;
 
   const topHourLocal =
     Array.isArray(yMsgsByHour) && yMsgsByHour.length > 0
@@ -157,6 +177,8 @@ export async function aggregateForUser(userId: string, now: Date = new Date()): 
     ordersRevenueMinor,
     hotLeads: hotLeadsCount,
     hotLeadsAwaiting: hotLeadsAwaitingCount,
+    unresolvedEscalations,
+    conversionRatePct,
     topHourLocal,
     messagesDayBefore: dbMsgs,
     messagesAvg7d,
@@ -171,7 +193,10 @@ export async function aggregateForUser(userId: string, now: Date = new Date()): 
  * from `role=user` (i.e. the merchant hasn't replied yet). Cheap query: pull
  * the candidate set, then look at the most recent message per conversation.
  */
-async function countHotLeadsAwaiting(userId: string, weekStart: Date): Promise<number> {
+async function countHotLeadsAwaiting(
+  userId: string,
+  weekStart: Date,
+): Promise<number> {
   const candidates = await prisma.customer.findMany({
     where: {
       userId,

@@ -20,12 +20,18 @@ import {
   Brain,
   Shield,
   Crown,
+  MessageSquareWarning,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
   { href: "/dashboard/analytics", label: "الإحصائيات", icon: BarChart3 },
   { href: "/dashboard/inbox", label: "الواردات", icon: Inbox },
+  {
+    href: "/dashboard/escalations",
+    label: "التصعيدات",
+    icon: MessageSquareWarning,
+  },
   { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag },
   { href: "/dashboard/integrations", label: "تكاملات التجارة", icon: Plug },
   { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Brain },

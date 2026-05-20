@@ -60,6 +60,19 @@ model Bot {
   alertEnabled        Boolean @default(true)  // anger alerts on/off
   followUpsEnabled    Boolean @default(true)
   followUpHours       Int     @default(24)    // wait this many hours before nudging
+
+  // ---- Production escalation / human handoff controls ----
+  escalationAutoPause        Boolean @default(true)   // severe tickets pause AI until admin takes over
+  escalationEmailEnabled     Boolean @default(false)  // optional email alert via configured email provider
+  escalationConfidenceFloor  Int     @default(35)     // below this confidence, repeated failures escalate
+
+  // ---- Follow-up safety controls ----
+  followUpMaxPerCustomer     Int     @default(2)      // hard anti-spam cap per customer
+  followUpQuietHoursStart    Int?                    // optional local quiet-hour start (0..23)
+  followUpQuietHoursEnd      Int?                    // optional local quiet-hour end (0..23)
+
+  // ---- Order/customer notification controls ----
+  orderStatusNotifyEnabled   Boolean @default(false)  // opt-in WhatsApp updates beyond shipment-only template
   // IANA timezone used for working hours, daily-report scheduling, and any
   // local-hour computation. Default = Africa/Cairo (project's home market).
   // Existing rows get the default automatically via prisma db push.
@@ -273,7 +286,13 @@ model Customer {
   tags            String    @default("[]")   // JSON array of tags
   followUpAt      DateTime?                  // when the cron should send a nudge
   followUpSent    Boolean   @default(false)
+  followUpCount   Int       @default(0)      // immutable-ish anti-spam counter for sent followups
+  optedOutAt      DateTime?                  // customer asked not to receive nudges
   notes           String?                    // admin's private notes about this customer
+
+  // ---- Escalation / emotional intelligence rollups ----
+  frustrationScore Int      @default(0)       // 0-100 latest rolling frustration score
+  lastEscalationAt DateTime?
 
   // ---- Smart personalization (Wave 9) ----
   preferences     String    @default("{}")   // JSON: { products:[], sizes:[], colors:[], budget?:number, lastTopics?:[] }
@@ -307,6 +326,7 @@ model Customer {
   @@index([userId])
   @@index([userId, leadScore])
   @@index([followUpAt])
+  @@index([optedOutAt])
 }
 
 /// Phase 1 — Memory Engine. One row per Customer. Stores a rolling Arabic
@@ -335,11 +355,23 @@ model Conversation {
   customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   summary     String?   // rolling summary for long conversations
   botPaused   Boolean   @default(false)   // manual takeover by admin
+
+  // ---- Human handoff state machine ----
+  // ai_active -> escalation_pending -> human_required -> human_active -> ai_active
+  handoffState       String    @default("ai_active")
+  handoffReason      String?
+  escalationTicketId String?
+  lastEscalatedAt    DateTime?
+  humanActiveAt      DateTime?
+
   updatedAt   DateTime  @updatedAt
   createdAt   DateTime  @default(now())
 
   messages    Message[]
   orders      Order[]
+
+  @@index([handoffState])
+  @@index([lastEscalatedAt])
 }
 
 model Message {
@@ -356,7 +388,16 @@ model Message {
   sentiment       String?
   createdAt       DateTime @default(now())
 
+  providerMessageId String?  // upstream WhatsApp/Meta id for duplicate-event protection
+  angerScore         Int      @default(0)
+  confidenceScore    Int      @default(100)
+  frustrationScore   Int      @default(0)
+  urgencyScore       Int      @default(0)
+  emotionalTone      String?
+  metadataJson       String   @default("{}")
+
   @@index([conversationId, createdAt])
+  @@unique([conversationId, providerMessageId])
 }
 
 model Document {
@@ -367,9 +408,17 @@ model Document {
   content   String   // raw text
   source    String   @default("manual") // manual | url | pdf | docx | suggestion
   sourceUrl String?  // origin URL if crawled
+
+  // ---- Smart knowledge ranking ----
+  priorityScore Int       @default(0)       // admin/AI assisted rank boost
+  hitCount      Int       @default(0)       // retrieval/match telemetry
+  lastMatchedAt DateTime?
+  lastSuggestedAt DateTime?
+
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([userId, priorityScore])
 }
 
 /// Broadcast campaigns: an admin queues a message that should fan out to many
@@ -422,6 +471,12 @@ model KnowledgeGap {
   occurrences    Int      @default(1)
   resolved       Boolean  @default(false)
   resolvedAt     DateTime?
+
+  // Dynamic ranking metadata for the dashboard suggestion queue.
+  score          Int      @default(0)
+  lastIntent     String?
+  lastSentiment  String?
+  productHint    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -457,8 +512,14 @@ model Order {
   currency          String        @default("EGP")
   paymentMethod     String?       // "cod" | "instapay" | "vodafone_cash" | "card" | ...
   // ---- Lifecycle ----
-  status            String        @default("pending")    // pending | confirmed | shipped | delivered | canceled
+  status            String        @default("pending")    // pending | confirmed | preparing | shipped | out_for_delivery | delivered | canceled
   fulfillmentStatus String        @default("unfulfilled") // unfulfilled | partial | fulfilled
+  shippingStatus    String        @default("not_started") // not_started | preparing | shipped | delayed
+  deliveryStatus    String        @default("not_started") // not_started | out_for_delivery | delivered | failed
+  trackingCode      String?
+  trackingUrl       String?
+  lastNotifiedStatus String?
+  lastCustomerNotifiedAt DateTime?
   // ---- Extraction quality ----
   aiConfidence      Int           @default(0) // 0-100; <50 = please review
   aiNotes           String?       // short Arabic note from the extractor
@@ -523,6 +584,13 @@ model CommerceIntegration {
   apiKeyPrefix    String
   webhookSecretEnc String
   configJson      String   @default("{}")
+  setupMode       String   @default("api_key") // api_key | native_webhook | oauth
+  storeUrl        String?
+  connectionStatus String  @default("untested") // untested | healthy | degraded | failed
+  lastSyncStatus  String?
+  lastSyncAt      DateTime?
+  lastSyncError   String?
+  nativeWebhookSecretEnc String?
   lastTestAt      DateTime?
   lastEventAt     DateTime?
   createdAt       DateTime @default(now())
@@ -644,6 +712,173 @@ model CommerceEmailTemplate {
 
   @@unique([userId, eventType, language])
   @@index([userId, enabled])
+}
+
+// ---------------------------------------------------------------------------
+// Production Intelligence: escalation, immutable usage, follow-ups, reports,
+// and protection logs. These tables are append-first and do not cascade from
+// Customer/Conversation on purpose, so billing and escalation history survive
+// chat deletion and account-level audit remains durable.
+// ---------------------------------------------------------------------------
+model EscalationTicket {
+  id                  String   @id @default(cuid())
+  userId              String
+  customerId          String
+  conversationId      String
+  status              String   @default("open") // open | acknowledged | human_active | resolved | dismissed
+  handoffState        String   @default("escalation_pending")
+  severity            String   @default("medium") // low | medium | high | critical
+  reason              String
+  trigger             String
+  sentiment           String?
+  angerScore          Int      @default(0)
+  confidenceScore     Int      @default(100)
+  frustrationScore    Int      @default(0)
+  summary             String   @default("")
+  lastCustomerMessage String   @default("")
+  assignedTo          String?
+  acknowledgedAt      DateTime?
+  acknowledgedBy      String?
+  resolvedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId, status, createdAt])
+  @@index([conversationId, status])
+  @@index([customerId, createdAt])
+}
+
+model EscalationTimeline {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  kind      String   // created | notified | acknowledged | human_active | resolved | note
+  actor     String   @default("system") // system | admin | ai
+  message   String
+  payload   String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model UsageLedger {
+  id             String   @id @default(cuid())
+  userId         String
+  subscriptionId String?
+  kind           String   // messages | ai | broadcast
+  quantity       Int      @default(1)
+  source         String   // whatsapp | chat | followup | broadcast | admin
+  reason         String   @default("")
+  idempotencyKey String   @unique
+  conversationId String?
+  messageId      String?
+  customerId     String?
+  metadata       String   @default("{}")
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, kind, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model UsageDailySnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  day         String   // YYYY-MM-DD UTC
+  messages    Int      @default(0)
+  aiRequests  Int      @default(0)
+  broadcasts  Int      @default(0)
+  ledgerHash  String   @default("")
+  verified    Boolean  @default(true)
+  mismatch    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, day])
+  @@index([day])
+}
+
+model FollowUpTask {
+  id             String   @id @default(cuid())
+  userId         String
+  customerId     String
+  conversationId String?
+  kind           String   @default("smart_nudge") // price_question | product_view | abandoned_conversation | pending_order
+  status         String   @default("queued") // queued | processing | sent | skipped | failed | converted
+  dueAt          DateTime
+  priority       Int      @default(0)
+  reason         String   @default("")
+  context        String   @default("{}")
+  generatedText  String?
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(2)
+  idempotencyKey String   @unique
+  lastError      String?
+  sentAt         DateTime?
+  skippedAt      DateTime?
+  failedAt       DateTime?
+  convertedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, dueAt])
+  @@index([userId, status, dueAt])
+  @@index([customerId, status])
+}
+
+model DailyReportDelivery {
+  id             String   @id @default(cuid())
+  userId         String
+  reportDay      String
+  channel        String   @default("whatsapp") // whatsapp | email | dashboard
+  recipient      String
+  status         String   @default("queued") // queued | sending | sent | failed
+  attempts       Int      @default(0)
+  body           String   @default("")
+  error          String?
+  nextAttemptAt  DateTime?
+  sentAt         DateTime?
+  idempotencyKey String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, reportDay])
+  @@index([status, nextAttemptAt])
+}
+
+model ProtectionLog {
+  id         String   @id @default(cuid())
+  userId     String
+  customerId String?
+  phone      String?
+  kind       String   // flood | spam | abuse | loop | suspicious | ban | unban
+  action     String   // observed | throttled | blocked | banned | unbanned
+  severity   String   @default("info") // info | warn | critical
+  score      Int      @default(0)
+  reason     String   @default("")
+  payload    String   @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, kind, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model BanEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  customerId  String?
+  phone       String?
+  status      String   @default("active") // active | lifted
+  reason      String
+  severity    String   @default("warn")
+  liftedAt    DateTime?
+  liftedBy    String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, status, createdAt])
+  @@index([customerId, status])
 }
 
 // ---------------------------------------------------------------------------

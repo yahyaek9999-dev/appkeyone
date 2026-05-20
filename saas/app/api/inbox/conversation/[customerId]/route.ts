@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
-  ctx: { params: { customerId: string } }
+  ctx: { params: { customerId: string } },
 ) {
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
@@ -22,7 +22,8 @@ export async function GET(
     },
   });
 
-  if (!customer) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!customer)
+    return NextResponse.json({ error: "not found" }, { status: 404 });
 
   return NextResponse.json({
     customer: {
@@ -33,7 +34,11 @@ export async function GET(
       lastIntent: (customer as any).lastIntent,
       lastSentiment: (customer as any).lastSentiment,
       tags: (() => {
-        try { return JSON.parse((customer as any).tags || "[]"); } catch { return []; }
+        try {
+          return JSON.parse((customer as any).tags || "[]");
+        } catch {
+          return [];
+        }
       })(),
       notes: (customer as any).notes || "",
     },
@@ -41,6 +46,10 @@ export async function GET(
       ? {
           id: customer.conversation.id,
           botPaused: (customer.conversation as any).botPaused,
+          handoffState:
+            (customer.conversation as any).handoffState || "ai_active",
+          escalationTicketId:
+            (customer.conversation as any).escalationTicketId || null,
           messages: customer.conversation.messages.map((m: any) => ({
             id: m.id,
             role: m.role,
@@ -48,6 +57,8 @@ export async function GET(
             mediaType: m.mediaType,
             intent: m.intent,
             sentiment: m.sentiment,
+            angerScore: m.angerScore,
+            confidenceScore: m.confidenceScore,
             createdAt: m.createdAt,
           })),
         }
