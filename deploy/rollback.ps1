@@ -23,7 +23,9 @@
 param(
     [string]$InstallDir = "C:\app",
     [string]$Snapshot   = "",
-    [string]$GitCommit  = ""
+    [string]$GitCommit  = "",
+    [switch]$ListOnly,
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
@@ -84,6 +86,37 @@ Write-Host "============================================" -ForegroundColor Cyan
 # Show what's in the snapshot.
 Step "0" "Inspect snapshot contents"
 Get-ChildItem $Snapshot -Recurse | Select-Object FullName, Length | Format-Table | Out-String | Write-Host
+
+if ($ListOnly)
+{
+    Step "LIST" "Rollback dry inventory only"
+    Write-Host "  Snapshot   : $Snapshot" -ForegroundColor Cyan
+    Write-Host "  InstallDir : $InstallDir" -ForegroundColor Cyan
+    if (Test-Path "$Repo\.git")
+    {
+        Push-Location $Repo
+        try
+        { git --no-pager log --oneline -5
+        } finally
+        { Pop-Location
+        }
+    }
+    Write-Host "  No files changed. No services stopped." -ForegroundColor Green
+    exit 0
+}
+
+if ($DryRun)
+{
+    Step "DRY-RUN" "Rollback simulation only"
+    Write-Host "  Would stop services: $SVC_SAAS, $SVC_WA" -ForegroundColor Yellow
+    Write-Host "  Would restore DB/env/session/uploads/prisma from: $Snapshot" -ForegroundColor Yellow
+    if ($GitCommit)
+    { Write-Host "  Would reset git working copy to: $GitCommit" -ForegroundColor Yellow
+    }
+    Write-Host "  Would rebuild and restart services, then run health check." -ForegroundColor Yellow
+    Write-Host "  No files changed. No services stopped." -ForegroundColor Green
+    exit 0
+}
 
 # ----- 1. Stop services -----
 Step "1" "Stop mse-saas + mse-wa"

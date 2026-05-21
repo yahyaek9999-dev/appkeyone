@@ -81,6 +81,16 @@ function Write-Warn   { param([string]$Msg) Write-Host "  [WARN] $Msg" -Foregrou
 function Write-Info   { param([string]$Msg) Write-Host "  [....] $Msg" -ForegroundColor DarkGray }
 function Write-DryRun { param([string]$Msg) Write-Host "  [DRYRUN] $Msg" -ForegroundColor DarkYellow }
 
+function Remove-TransportNoise {
+    param([object[]]$Lines)
+    return @($Lines | Where-Object {
+        $line = [string]$_
+        $line -notmatch '^\*\* WARNING: connection is not using' -and
+        $line -notmatch '^\*\* This session may be vulnerable' -and
+        $line -notmatch '^\*\* The server may need to be upgraded'
+    })
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  SSH HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -129,8 +139,9 @@ function Invoke-VPS {
     )
 
     # Capture both stdout and stderr; @() ensures we always get an array
-    $lines    = @(& ssh @sshArgs 2>&1)
+    $rawLines = @(& ssh @sshArgs 2>&1)
     $exitCode = $LASTEXITCODE
+    $lines    = Remove-TransportNoise -Lines $rawLines
 
     if (-not $HideOutput -and $lines) {
         $lines | ForEach-Object { Write-Info "$_" }
@@ -424,6 +435,19 @@ exit `$code
 
     Write-Host "  ────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Pass "Build completed successfully"
+
+    # ── Post-build cache cleanup ──────────────────────────────────────────────
+    Invoke-VPS -Command @"
+`$cache = '$SAAS_DIR\.next\cache'
+if (Test-Path `$cache) {
+    Remove-Item -LiteralPath `$cache -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "Removed build cache: `$cache"
+} else {
+    Write-Host "No Next build cache to remove"
+}
+exit 0
+"@ -Description "Remove .next/cache after successful build" -IgnoreExitCode | Out-Null
+    Write-Pass "Post-build cache cleanup completed"
 
     # ── STEP 10 ── Start the service ──────────────────────────────────────────
     Write-Step '10/12' "SSH: nssm start $SERVICE"

@@ -369,6 +369,10 @@ From the VPS (PowerShell):
 ```powershell
 cd C:\app\deploy
 
+# Inspect rollback readiness without changing anything
+.\rollback.ps1 -ListOnly
+.\rollback.ps1 -DryRun
+
 # Rollback to the most recent snapshot (reads C:\app\backups\latest.txt)
 .\rollback.ps1
 
@@ -378,6 +382,8 @@ cd C:\app\deploy
 # Rollback to a specific snapshot AND reset git to a specific commit
 .\rollback.ps1 -Snapshot "C:\app\backups\pre-deploy-2026-01-15_143022" -GitCommit "abc1234"
 ```
+
+Use `-ListOnly` or `-DryRun` before a real rollback whenever possible.
 
 The rollback script performs:
 1. Stop `mse-saas` and `mse-wa`

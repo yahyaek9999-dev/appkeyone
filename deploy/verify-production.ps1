@@ -27,12 +27,23 @@ function Add-Check {
     Write-Host "[$label] $Name - $Detail" -ForegroundColor $color
 }
 
+function Remove-TransportNoise {
+    param([object[]]$Lines)
+    return @($Lines | Where-Object {
+        $line = [string]$_
+        $line -notmatch '^\*\* WARNING: connection is not using' -and
+        $line -notmatch '^\*\* This session may be vulnerable' -and
+        $line -notmatch '^\*\* The server may need to be upgraded'
+    })
+}
+
 function Invoke-VPS {
     param([Parameter(Mandatory)][string]$Command)
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Command))
     $target = "${VPSUser}@${VPSHost}"
     $remote = "powershell -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded"
-    $out = @(& ssh -i $SSHKey -o StrictHostKeyChecking=no -o ConnectTimeout=20 $target $remote 2>&1)
+    $raw = @(& ssh -i $SSHKey -o StrictHostKeyChecking=no -o ConnectTimeout=20 $target $remote 2>&1)
+    $out = Remove-TransportNoise -Lines $raw
     return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = ($out -join "`n"); Lines = $out }
 }
 

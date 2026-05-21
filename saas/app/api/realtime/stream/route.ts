@@ -265,6 +265,16 @@ export async function GET(req: Request) {
       const encoder = new TextEncoder();
       let tick = 0;
       let closed = false;
+      let interval: ReturnType<typeof setInterval> | null = null;
+
+      function closeStream() {
+        if (closed) return;
+        closed = true;
+        if (interval) clearInterval(interval);
+        try {
+          controller.close();
+        } catch {}
+      }
 
       async function send() {
         if (closed) return;
@@ -286,20 +296,13 @@ export async function GET(req: Request) {
         }
         tick++;
         if (tick >= MAX_TICKS) {
-          closed = true;
-          controller.close();
+          closeStream();
         }
       }
 
       await send();
-      const interval = setInterval(send, TICK_MS);
-      req.signal.addEventListener("abort", () => {
-        closed = true;
-        clearInterval(interval);
-        try {
-          controller.close();
-        } catch {}
-      });
+      if (!closed) interval = setInterval(send, TICK_MS);
+      req.signal.addEventListener("abort", closeStream);
     },
   });
 

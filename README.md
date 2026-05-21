@@ -1,183 +1,159 @@
-# 🔥 mse_ai_api — ChatGPT AI Automation Helper
+# KEYONE Production Platform
 
-<div align="center">
+KEYONE is a production WhatsApp/commerce SaaS platform with a Next.js dashboard, automation APIs, commerce integrations, and a separate WhatsApp runtime service.
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-[![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev)
-[![Python](https://img.shields.io/badge/Python_3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+This repository is now managed with a professional GitHub + VPS workflow:
 
-**Turn ChatGPT into a FREE OpenAI-compatible API in seconds — no API key required.**
-
-<br>
-
-<div align="center">
-  <h3>Watch the Full Tutorial on YouTube</h3>
-  <a href="https://www.youtube.com/watch?v=e_9tMLRXeKY">
-    <img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube Tutorial" />
-  </a>
-  <br>
-  <em>Learn how to install, set up, and build AI workflows with mse_ai_api</em>
-</div>
-
-</div>
+- **GitHub is the source of truth**
+- **`main` is production**
+- **VPS runs production from `origin/main`**
+- **`keydeploy` is the standard one-command deploy path**
+- **runtime data, secrets, sessions, backups, caches, and SQLite DB files are not committed**
 
 ---
 
-## ❤️ Sponsors
+## Repository structure
 
-- [Kareem Adel](https://www.facebook.com/Kareemadel.official.account) — Owner & CEO at Wzila
-
----
-
-## 🌟 Overview
-
-**mse_ai_api** is a high-performance proxy server built with **FastAPI** and **Playwright**. It perfectly mimics the official OpenAI API structure by automating ChatGPT's free web interface in the background — making it a seamless drop-in replacement for n8n's OpenAI and HTTP nodes.
-
-This version has been **completely rewritten** to support **Advanced AI Agent Tool Calling** reliably, bypassing strict JSON validation errors that plagued earlier approaches.
-
----
-
-## ✨ Key Features
-
-- 💸 **Zero API Costs** — Uses ChatGPT's web interface via background browser automation
-- ⚡ **Lightning Fast** — Built on asynchronous Python with FastAPI
-- 🤖 **Full n8n Agent Support** — Advanced ChatGPT tool calling and JSON parsing
-- 🔌 **OpenAI-Compatible** — Drop-in replacement for OpenAI API clients
-- 🐳 **Dockerized** — One-command deployment
-- 🔒 **Secure** — Protected by your own configurable API secret key
+| Path | Purpose |
+|---|---|
+| `saas/` | Main Next.js SaaS application, dashboard, APIs, Prisma schema |
+| `whatsapp-service/` | WhatsApp bridge/runtime service |
+| `deploy/` | Production deployment, backup, rollback, health-check scripts |
+| `project-knowledge/` | Architecture, flows, safety notes, incident response, scaling notes |
+| `DEVELOPMENT_SETUP.md` | Fresh-machine setup guide |
+| `SAFE_GIT_WORKFLOW.md` | Branching and Git safety rules |
+| `VPS_DEPLOY_WORKFLOW.md` | Production deploy and rollback workflow |
+| `TROUBLESHOOTING.md` | Common failure modes and fixes |
 
 ---
 
-## ⚙️ How It Works
+## Branches
 
-This proxy relies on a robust technical architecture in `main.py` designed for production AI workflows:
-
-1. **`AsyncBrowserThread` (The Engine)** — Instead of spinning up a new browser per request, the API launches a single detached Python thread running an async Chrome browser via Playwright. It uses anti-bot bypass techniques (`--disable-blink-features=AutomationControlled`, spoofed user agents, webdriver hiding) so ChatGPT treats it as a real user session.
-
-2. **Smart Prompt Injection (`format_prompt` & `format_tools_instruction`)** — When n8n sends tool definitions (via AI Agent nodes), the script dynamically rebuilds the prompt and injects precise system instructions commanding ChatGPT to output **only valid JSON** — guaranteeing it behaves like the programmatic API.
-
-3. **Regex Parsing (`parse_tool_calls`)** — Once ChatGPT replies, the proxy scans the response for JSON blocks. If a tool call is detected, it extracts and formats it to meet OpenAI's strict function calling schema, then signals n8n to execute the tool locally.
-
-4. **Flexible Endpoints** — Natively supports both `/v1/chat/completions` (legacy n8n setups) and `/v1/responses` (modern Responses API) for broad compatibility.
+| Branch | Role |
+|---|---|
+| `main` | Production. Deploys from here only. |
+| `dev` | Stable development integration branch. |
+| `ai-experimental` | High-risk AI experiments. Do not deploy directly. |
+| `baileys-exp` | Experimental WhatsApp/Baileys runtime work. Do not deploy directly. |
 
 ---
 
-## 🛠️ Quick Start
+## Local setup
 
-### Option 1 — Docker (Recommended)
+1. Clone with SSH:
 
-Deploying with Docker guarantees all dependencies (including headless Chrome and fonts) are perfectly configured.
+   `git clone git@github.com:yahyaek9999-dev/appkeyone.git`
 
-```bash
-git clone https://github.com/MohamedElsayed-debug/mse_ai_api.git
-cd mse_ai_api
-docker-compose up --build -d
-```
+2. Enter the app:
 
-Server starts on `http://localhost:7777`
+   `cd appkeyone/saas`
 
-### Option 2 — Manual
+3. Install dependencies:
 
-Requires **Python 3.10+**.
+   `npm install`
 
-```bash
-pip install -r requirements.txt
-python main.py
-```
+4. Generate Prisma client:
 
----
+   `npx prisma generate`
 
-## 🔧 Configuration
+5. Create local environment file:
 
-| Variable | Default | Description |
-|---|---|---|
-| `API_SECRET_KEY` | `change-secret-key-2026` | Your server's API key |
+   `cp .env.example .env.local`
 
----
+   Fill real values from the project administrator. Never commit `.env` or `.env.local`.
 
-## 📡 API Reference
+6. Start local development:
 
-**Base URL:** `http://localhost:7777`
+   `npm run dev`
 
-**Endpoints:**
-- `POST /v1/chat/completions` — Legacy OpenAI-compatible endpoint
-- `POST /v1/responses` — Modern Responses API endpoint
-
-**Header:** `Authorization: Bearer <your-secret-key>`
-
-### Example — cURL
-
-```bash
-curl -X POST "http://localhost:7777/v1/chat/completions" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer change-secret-key-2026" \
-  -d '{
-    "messages": [{ "role": "user", "content": "Hello, AI!" }],
-    "model": "gpt-4o-mini"
-  }'
-```
+See `DEVELOPMENT_SETUP.md` for full setup details.
 
 ---
 
-## 🔌 Connecting to n8n
+## Build and verification
 
-### Via HTTP Node
+From `saas/`:
 
-1. Add an **HTTP Request** node in your n8n workflow
-2. Method: `POST`
-3. URL: `http://localhost:7777/v1/chat/completions`
-4. Header: `Authorization: Bearer change-secret-key-2026`
-5. Body (JSON):
+- `npm run build` — Prisma generate + Next.js production build
+- `npx prisma generate` — regenerate Prisma client
+- `npx tsc --noEmit` — TypeScript verification
 
-```json
-{
-  "messages": [{ "role": "user", "content": "Hello, AI!" }],
-  "model": "gpt-4o-mini"
-}
-```
+From repository root:
 
-### Via OpenAI Node (Recommended)
-
-1. In n8n, create a new **OpenAI Account** credential
-2. Set Base URL to: `http://localhost:7777/v1`
-3. Set API Key to your server's secret (`change-secret-key-2026` by default)
-4. Use this credential across any AI Agent or LLM node seamlessly!
+- `pwsh ./deploy/verify-production.ps1` — read-only production verification
+- `keydeploy -DryRun` — deploy simulation
 
 ---
 
-## 💎 PRO Version
+## Production deploy
 
-**mse_ai_api** is great for personal workflows. The **PRO Version** is built for teams and production environments on Django.
+Install the one-command deploy shortcut once:
 
-| Feature | This Repo | PRO Version |
-|---|:---:|:---:|
-| Free ChatGPT Web Backend | ✅ | ✅ |
-| Advanced n8n Tool Calling | ✅ | ✅ |
-| **Image Analysis (HTTP URL)** | ❌ | ✅ |
-| **Image Analysis (Base64/Binary)** | ❌ | ✅ |
-| **Admin Dashboard (GUI)** | ❌ | ✅ |
-| **Multi-User Management** | ❌ | ✅ |
-| **Usage Statistics & Logging** | ❌ | ✅ |
-| **Token Tracking & Quotas** | ❌ | ✅ |
-| **Priority Support** | ❌ | ✅ |
+`pwsh ./deploy/install-keydeploy.ps1`
+
+Then restart PowerShell or reload your profile.
+
+Deploy production:
+
+`keydeploy`
+
+Dry-run:
+
+`keydeploy -DryRun`
+
+`keydeploy` performs:
+
+1. local Git checks
+2. GitHub push
+3. VPS backup
+4. safe `git pull --ff-only origin main`
+5. env verification
+6. production build
+7. service restart
+8. health check
+9. production verification
+
+See `VPS_DEPLOY_WORKFLOW.md` for the full deploy and rollback runbook.
 
 ---
 
-## 📬 Contact
+## Production safety rules
 
-Interested in the PRO version or a custom integration?
+Do not commit:
 
-- **Telegram:** [@MohMsE](https://t.me/MohMsE)
-- **LinkedIn:** [Mohamed Elsayed](https://linkedin.com/in/mohamed-elsayed-3a319939a)
-- **Facebook:** [Melsayed2001](https://www.facebook.com/Melsayed2001)
-- **GitHub:** [@MohamedElsayed-debug](https://github.com/MohamedElsayed-debug)
+- `.env` files
+- WhatsApp sessions/auth files
+- SQLite databases
+- logs
+- backups
+- `.next`
+- `node_modules`
+- upload/runtime files
+- deployment secrets
+
+Do not run destructive Git commands on the VPS unless a fresh backup exists and you understand exactly what will be removed.
+
+Do not restart or modify WhatsApp auth/session state unless the task explicitly requires it.
 
 ---
 
-## 📄 License
+## Current production model
 
-MIT License — see [LICENSE](LICENSE) for details.
+- VPS: Windows Server
+- App root: `C:\app`
+- SaaS service: `mse-saas` via NSSM
+- WhatsApp service: `mse-wa` via NSSM
+- Health endpoint: `http://127.0.0.1:3000/api/health`
+- Standard deploy: `keydeploy`
 
-> **Disclaimer:** This project automates a web browser for personal and educational use. Usage must comply with the terms of service of the underlying platforms. The authors are not responsible for misuse.
+---
+
+## More documentation
+
+- `DEVELOPMENT_SETUP.md`
+- `SAFE_GIT_WORKFLOW.md`
+- `VPS_DEPLOY_WORKFLOW.md`
+- `TROUBLESHOOTING.md`
+- `project-knowledge/INCIDENT_RESPONSE.md`
+- `project-knowledge/PERFORMANCE.md`
+- `project-knowledge/SCALING_PLAN.md`
