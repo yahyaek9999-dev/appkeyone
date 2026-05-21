@@ -5,6 +5,7 @@
 # ----- Dependencies -----
 node_modules/
 .venv/
+venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -22,6 +23,14 @@ __pycache__/
 .env.staging
 # .env.example  ← intentionally NOT listed: keep it tracked
 
+# ----- Secrets & credentials (NEVER commit these) -----
+.deployment-secrets.txt
+*.secrets.txt
+*.credentials.txt
+*.token
+*.key
+!*.key.example
+
 # ----- Databases -----
 *.db
 *.db-wal
@@ -29,16 +38,23 @@ __pycache__/
 *.db-journal
 *.sqlite
 *.sqlite3
+*.db.bak
+*.db.backup-*
 
 # ----- Sessions & ephemeral runtime state -----
 sessions/
 backups/
+state/
+
+# ----- WhatsApp cache/session files -----
+.wwebjs_cache/
+.wwebjs_auth/
+.puppeteer-cache/
+chrome-profile-*/
 
 # ----- Build outputs -----
-# NOTE: .next/ is intentionally NOT ignored here.
-# The VPS pull includes the built .next/ artifact so the Windows
-# deploy pipeline can skip the `next build` step when unchanged.
-# If you want a clean source-only repo, add .next/ back.
+# Build artifacts must not be committed. Production builds on the VPS.
+.next/
 dist/
 build/
 out/
@@ -53,6 +69,8 @@ pnpm-debug.log*
 
 # ----- OS & editor -----
 .DS_Store
+._.DS_Store
+._*
 Thumbs.db
 .idea/
 .vscode/
@@ -66,3 +84,38 @@ Thumbs.db
 # ----- Test coverage -----
 coverage/
 .nyc_output/
+
+# ----- VPS-only runtime artifacts (never commit these) -----
+*.tgz
+*.tar.gz
+app.tgz
+apply-*.ps1
+diag*.ps1
+diag*.py
+fix-*.ps1
+full-check.ps1
+ping-*.ps1
+restart-*.ps1
+revert-*.ps1
+run-*.ps1
+setup-app*.ps1
+setup-saas.ps1
+start-*.ps1
+test-*.ps1
+test-*.py
+bench-*.py
+check-bot.js
+check-state.py
+check-ts-runner.ps1
+finish-update.ps1
+install-*.ps1
+list-users.js
+worker-test.ps1
+seed-test-user.js
+_probe.cjs
+*.bak
+*.bak-*
+saas-backup-*/
+*.png
+!public/**/*.png
+!saas/public/**/*.png
