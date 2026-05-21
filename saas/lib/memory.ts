@@ -55,12 +55,14 @@ export type CustomerMemorySnapshot = {
   summary: string;
   facts: MemoryFacts;
   hasSummary: boolean;
+  memoryConfidence: number;
 };
 
 const EMPTY: CustomerMemorySnapshot = {
   summary: "",
   facts: {},
   hasSummary: false,
+  memoryConfidence: 50,
 };
 
 /** Read the customer's memory row (or empty snapshot). Never throws. */
@@ -77,7 +79,12 @@ export async function loadMemory(
       facts = JSON.parse(row.factsJson || "{}");
     } catch {}
     const summary = (row.summary || "").trim();
-    return { summary, facts, hasSummary: summary.length > 0 };
+    return {
+      summary,
+      facts,
+      hasSummary: summary.length > 0,
+      memoryConfidence: clampNumber(row.memoryConfidence ?? 50, 0, 100),
+    };
   } catch {
     return EMPTY;
   }
@@ -92,6 +99,9 @@ export async function triggerMemoryUpdate(args: {
   customerId: string;
   conversationId: string;
   lastMessageId?: string;
+  sentiment?: string | null;
+  confidenceScore?: number | null;
+  frustrationScore?: number | null;
 }): Promise<void> {
   const { customerId, conversationId } = args;
   try {
@@ -99,6 +109,7 @@ export async function triggerMemoryUpdate(args: {
     const existing = await (prisma as any).customerMemory.findUnique({
       where: { customerId },
     });
+    const qualityPatch = buildQualityPatch(existing, args);
     if (!existing) {
       await (prisma as any).customerMemory.create({
         data: {
@@ -108,6 +119,7 @@ export async function triggerMemoryUpdate(args: {
           messageCount: 1,
           pendingCount: 1,
           pendingSinceMessageId: args.lastMessageId || null,
+          ...qualityPatch,
         },
       });
     } else {
@@ -119,6 +131,7 @@ export async function triggerMemoryUpdate(args: {
           ...(existing.pendingSinceMessageId
             ? {}
             : { pendingSinceMessageId: args.lastMessageId || null }),
+          ...qualityPatch,
         },
       });
     }
@@ -297,6 +310,49 @@ async function runExtractor(args: {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function clampNumber(n: number, min = 0, max = 100): number {
+  return Math.max(min, Math.min(max, Math.round(Number.isFinite(n) ? n : 50)));
+}
+
+function buildQualityPatch(
+  row: any,
+  args: {
+    sentiment?: string | null;
+    confidenceScore?: number | null;
+    frustrationScore?: number | null;
+  },
+): Record<string, any> {
+  const patch: Record<string, any> = {};
+  if (args.sentiment) {
+    let history: Array<{ s: string; ts: number }> = [];
+    try {
+      const parsed = JSON.parse(row?.sentimentHistory || "[]");
+      if (Array.isArray(parsed)) history = parsed;
+    } catch {}
+    history.push({ s: String(args.sentiment).slice(0, 16), ts: Date.now() });
+    patch.sentimentHistory = JSON.stringify(history.slice(-10));
+  }
+
+  if (
+    typeof args.confidenceScore === "number" ||
+    typeof args.frustrationScore === "number"
+  ) {
+    let confidence = clampNumber(row?.memoryConfidence ?? 50);
+    if (
+      (args.confidenceScore ?? 100) < 40 ||
+      (args.frustrationScore ?? 0) >= 70
+    )
+      confidence -= 5;
+    else if (
+      (args.confidenceScore ?? 0) >= 75 &&
+      (args.frustrationScore ?? 0) < 45
+    )
+      confidence += 2;
+    patch.memoryConfidence = clampNumber(confidence, 20, 95);
+  }
+  return patch;
+}
+
 function safeFacts(s: string | null | undefined): MemoryFacts {
   if (!s) return {};
   try {
@@ -392,6 +448,11 @@ function mergeFacts(prev: MemoryFacts, next: MemoryFacts): MemoryFacts {
 export function buildMemoryBlock(snap: CustomerMemorySnapshot): string {
   const lines: string[] = [];
   if (snap.summary) lines.push(`ملخص سابق: ${snap.summary}`);
+  if ((snap.memoryConfidence ?? 50) < 45) {
+    lines.push(
+      "تنبيه ذاكرة: الثقة في الذاكرة منخفضة؛ لا تعتمد على أي تفصيلة غير مؤكدة واسأل سؤال توضيح واحد عند الحاجة.",
+    );
+  }
 
   const f = snap.facts || {};
   const bits: string[] = [];

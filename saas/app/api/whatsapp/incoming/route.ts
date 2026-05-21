@@ -849,6 +849,10 @@ export async function POST(req: Request) {
   triggerMemoryUpdate({
     customerId: customer.id,
     conversationId: conv.id,
+    lastMessageId: inboundMessage.id,
+    sentiment: emotional.sentiment,
+    confidenceScore: emotional.confidenceScore,
+    frustrationScore: emotional.frustrationScore,
   }).catch(() => {});
 
   // Immutable usage ledger: always bill the outbound reply; bill AI only when
