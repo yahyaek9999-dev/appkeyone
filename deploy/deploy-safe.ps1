@@ -287,15 +287,26 @@ if (Test-Path `$envFile) {
 
 # ── backup SQLite database (path resolved from DATABASE_URL in .env) ───────
 `$dbPath = `$null
-`$dbLine = (Get-Content `$envFile -ErrorAction SilentlyContinue |
-    Where-Object { `$_ -match '^\s*DATABASE_URL=' } |
-    Select-Object -First 1) -replace '^\s*DATABASE_URL=file:', ''
-if (`$dbLine) {
-    `$dbLine = `$dbLine.Trim('"').Trim("'").Trim()
-    if ([System.IO.Path]::IsPathRooted(`$dbLine)) {
-        `$dbPath = `$dbLine
+`$dbLine = `$null
+`$dbRaw = Get-Content `$envFile -ErrorAction SilentlyContinue |
+    Where-Object { `$_ -match '^\s*DATABASE_URL\s*=' } |
+    Select-Object -First 1
+if (`$dbRaw) {
+    `$dbLine = (`$dbRaw -replace '^\s*DATABASE_URL\s*=\s*', '').Trim().Trim('"').Trim("'")
+    # Only SQLite file URLs can be backed up here. Other providers are skipped safely.
+    if (`$dbLine -match '^file:(.+)$') {
+        `$dbLine = `$matches[1]
+        # Remove optional query params/fragments and normalize common sqlite relative prefixes.
+        `$dbLine = (`$dbLine -split '[?#]', 2)[0].Trim()
+        if (`$dbLine) {
+            if ([System.IO.Path]::IsPathRooted(`$dbLine)) {
+                `$dbPath = `$dbLine
+            } else {
+                `$dbPath = [System.IO.Path]::GetFullPath((Join-Path '$SAAS_DIR\prisma' `$dbLine))
+            }
+        }
     } else {
-        `$dbPath = [System.IO.Path]::GetFullPath((Join-Path '$SAAS_DIR\prisma' `$dbLine))
+        Write-Host "  [WARN] DATABASE_URL is not a sqlite file: URL; DB backup skipped"
     }
 }
 if (`$dbPath -and (Test-Path `$dbPath)) {
