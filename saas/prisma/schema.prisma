@@ -304,6 +304,19 @@ model Customer {
   cartUpdatedAt   DateTime?
   cartReminderSent Boolean  @default(false)
 
+  // ---- Phase A: Conversion scoring ----
+  conversionScore  Int      @default(0)   // 0-100 AI-derived conversion probability
+  hesitationScore  Int      @default(0)   // 0-100 buyer hesitation level
+
+  // ---- Phase F: Retention & loyalty ----
+  retentionScore   Int      @default(50)  // 0-100 retention likelihood
+  loyaltyScore     Int      @default(0)   // 0-100 loyalty based on repeat orders
+  churnRiskScore   Int      @default(0)   // 0-100 churn risk (higher = more at risk)
+  lastEngagedAt    DateTime?              // last time customer sent a message
+  lastOrderAt      DateTime?              // timestamp of most recent order
+  totalOrderValue  Int      @default(0)   // cumulative order total (EGP)
+  orderCount       Int      @default(0)   // total confirmed orders
+
   // ---- Contact Trust System (Safety Wave) ----
   // Trust accrues with healthy two-way conversation. Used by the safety
   // engine to decide which contacts can safely receive higher-frequency
@@ -327,6 +340,8 @@ model Customer {
   @@index([userId, leadScore])
   @@index([followUpAt])
   @@index([optedOutAt])
+  @@index([userId, retentionScore])
+  @@index([userId, lastEngagedAt])
 }
 
 /// Phase 1 — Memory Engine. One row per Customer. Stores a rolling Arabic
@@ -345,6 +360,12 @@ model CustomerMemory {
   messageCount             Int      @default(0)      // total msgs seen by extractor
   pendingSinceMessageId    String?                   // first msg id queued since last extract
   pendingCount             Int      @default(0)      // msgs queued since last extract
+
+  // ---- Phase C: Memory quality ----
+  memoryConfidence  Int    @default(50)         // 0-100 confidence in memory accuracy
+  sentimentHistory  String @default("[]")       // JSON: last 10 sentiments [{s:"positive",ts:1234}]
+  cleanedAt         DateTime?                   // last time stale facts were pruned
+
   updatedAt                DateTime @updatedAt
   createdAt                DateTime @default(now())
 }
@@ -819,6 +840,11 @@ model FollowUpTask {
   skippedAt      DateTime?
   failedAt       DateTime?
   convertedAt    DateTime?
+
+  // ---- Phase D: Follow-up analytics ----
+  repliedAt         DateTime?              // when customer replied after this followup was sent
+  revenueImpact     Int      @default(0)  // order value if this followup led to conversion (EGP)
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

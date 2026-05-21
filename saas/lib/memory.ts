@@ -23,10 +23,16 @@ import { botProviderOverride } from "@/lib/providers/bot-provider";
 
 // How many *new* user messages must pile up before we run an extraction.
 // Cheap heuristic: 20 ≈ once every ~10 minutes of active chat.
-const EXTRACT_EVERY = Math.max(5, Number(process.env.MEMORY_EXTRACT_EVERY || 20));
+const EXTRACT_EVERY = Math.max(
+  5,
+  Number(process.env.MEMORY_EXTRACT_EVERY || 20),
+);
 
 // Hard guard so we never block the request path on the LLM extractor.
-const EXTRACT_TIMEOUT_MS = Math.max(10000, Number(process.env.MEMORY_EXTRACT_TIMEOUT_MS || 25000));
+const EXTRACT_TIMEOUT_MS = Math.max(
+  10000,
+  Number(process.env.MEMORY_EXTRACT_TIMEOUT_MS || 25000),
+);
 
 // Concurrency guard — if the same customerId is already being processed,
 // drop the duplicate trigger silently. Cheap in-process Set; resets on
@@ -38,10 +44,10 @@ export type MemoryFacts = {
   sizes?: string[];
   colors?: string[];
   budget?: number;
-  frequency?: string;        // "first-time" | "occasional" | "frequent"
-  tone?: string;             // "calm" | "warm" | "impatient" | "skeptical" | ...
-  objections?: string[];     // ["price", "shipping", ...]
-  negotiation?: string;      // "none" | "soft" | "hard"
+  frequency?: string; // "first-time" | "occasional" | "frequent"
+  tone?: string; // "calm" | "warm" | "impatient" | "skeptical" | ...
+  objections?: string[]; // ["price", "shipping", ...]
+  negotiation?: string; // "none" | "soft" | "hard" — NOTE: at runtime may also be a NegotiationState object (see negotiation engine)
   lastTopics?: string[];
 };
 
@@ -51,15 +57,25 @@ export type CustomerMemorySnapshot = {
   hasSummary: boolean;
 };
 
-const EMPTY: CustomerMemorySnapshot = { summary: "", facts: {}, hasSummary: false };
+const EMPTY: CustomerMemorySnapshot = {
+  summary: "",
+  facts: {},
+  hasSummary: false,
+};
 
 /** Read the customer's memory row (or empty snapshot). Never throws. */
-export async function loadMemory(customerId: string): Promise<CustomerMemorySnapshot> {
+export async function loadMemory(
+  customerId: string,
+): Promise<CustomerMemorySnapshot> {
   try {
-    const row = await (prisma as any).customerMemory.findUnique({ where: { customerId } });
+    const row = await (prisma as any).customerMemory.findUnique({
+      where: { customerId },
+    });
     if (!row) return EMPTY;
     let facts: MemoryFacts = {};
-    try { facts = JSON.parse(row.factsJson || "{}"); } catch {}
+    try {
+      facts = JSON.parse(row.factsJson || "{}");
+    } catch {}
     const summary = (row.summary || "").trim();
     return { summary, facts, hasSummary: summary.length > 0 };
   } catch {
@@ -80,7 +96,9 @@ export async function triggerMemoryUpdate(args: {
   const { customerId, conversationId } = args;
   try {
     // Upsert memory row + increment counters atomically-ish.
-    const existing = await (prisma as any).customerMemory.findUnique({ where: { customerId } });
+    const existing = await (prisma as any).customerMemory.findUnique({
+      where: { customerId },
+    });
     if (!existing) {
       await (prisma as any).customerMemory.create({
         data: {
@@ -105,7 +123,9 @@ export async function triggerMemoryUpdate(args: {
       });
     }
 
-    const row = await (prisma as any).customerMemory.findUnique({ where: { customerId } });
+    const row = await (prisma as any).customerMemory.findUnique({
+      where: { customerId },
+    });
     if (!row) return;
     if (row.pendingCount < EXTRACT_EVERY) return;
 
@@ -139,14 +159,19 @@ async function runExtractor(args: {
   if (msgs.length === 0) return;
   msgs.reverse();
 
-  const existing = await (prisma as any).customerMemory.findUnique({ where: { customerId } });
+  const existing = await (prisma as any).customerMemory.findUnique({
+    where: { customerId },
+  });
   const prevSummary: string = existing?.summary || "";
   const prevFacts: MemoryFacts = safeFacts(existing?.factsJson);
 
   // Build a tight, deterministic extractor prompt. The LLM must return JSON.
   const transcript = msgs
     .slice(-30)
-    .map((m) => `${m.role === "user" ? "العميل" : "البوت"}: ${m.content.slice(0, 400)}`)
+    .map(
+      (m) =>
+        `${m.role === "user" ? "العميل" : "البوت"}: ${m.content.slice(0, 400)}`,
+    )
     .join("\n");
 
   const sys =
@@ -199,7 +224,13 @@ async function runExtractor(args: {
         { role: "system", content: sys },
         { role: "user", content: user },
       ],
-      { temperature: 0.1, maxTokens: 500, timeoutMs: EXTRACT_TIMEOUT_MS, retries: 0, provider }
+      {
+        temperature: 0.1,
+        maxTokens: 500,
+        timeoutMs: EXTRACT_TIMEOUT_MS,
+        retries: 0,
+        provider,
+      },
     );
   } catch {
     // LLM unreachable — just reset pending counter so we retry next cycle.
@@ -251,7 +282,10 @@ async function runExtractor(args: {
           products: mergedFacts.products || [],
           sizes: mergedFacts.sizes || [],
           colors: mergedFacts.colors || [],
-          budget: typeof mergedFacts.budget === "number" ? mergedFacts.budget : undefined,
+          budget:
+            typeof mergedFacts.budget === "number"
+              ? mergedFacts.budget
+              : undefined,
           lastTopics: mergedFacts.lastTopics || [],
         }),
       },
@@ -265,10 +299,16 @@ async function runExtractor(args: {
 
 function safeFacts(s: string | null | undefined): MemoryFacts {
   if (!s) return {};
-  try { return JSON.parse(s) || {}; } catch { return {}; }
+  try {
+    return JSON.parse(s) || {};
+  } catch {
+    return {};
+  }
 }
 
-function parseExtractorJson(raw: string): { summary: string; facts: MemoryFacts } | null {
+function parseExtractorJson(
+  raw: string,
+): { summary: string; facts: MemoryFacts } | null {
   if (!raw) return null;
   // Strip code fences if any
   const cleaned = raw
@@ -299,17 +339,23 @@ function sanitizeFacts(raw: any): MemoryFacts {
       .slice(0, max);
     return cleaned.length ? cleaned : undefined;
   };
-  out.products    = arr(raw.products);
-  out.sizes       = arr(raw.sizes, 6);
-  out.colors      = arr(raw.colors, 6);
-  out.objections  = arr(raw.objections, 6);
-  out.lastTopics  = arr(raw.lastTopics, 5);
-  if (typeof raw.budget === "number" && isFinite(raw.budget) && raw.budget > 0) {
+  out.products = arr(raw.products);
+  out.sizes = arr(raw.sizes, 6);
+  out.colors = arr(raw.colors, 6);
+  out.objections = arr(raw.objections, 6);
+  out.lastTopics = arr(raw.lastTopics, 5);
+  if (
+    typeof raw.budget === "number" &&
+    isFinite(raw.budget) &&
+    raw.budget > 0
+  ) {
     out.budget = Math.round(raw.budget);
   }
-  if (typeof raw.frequency === "string")   out.frequency   = raw.frequency.slice(0, 20);
-  if (typeof raw.tone === "string")        out.tone        = raw.tone.slice(0, 20);
-  if (typeof raw.negotiation === "string") out.negotiation = raw.negotiation.slice(0, 20);
+  if (typeof raw.frequency === "string")
+    out.frequency = raw.frequency.slice(0, 20);
+  if (typeof raw.tone === "string") out.tone = raw.tone.slice(0, 20);
+  if (typeof raw.negotiation === "string")
+    out.negotiation = raw.negotiation.slice(0, 20);
   return out;
 }
 
@@ -324,14 +370,17 @@ function mergeFacts(prev: MemoryFacts, next: MemoryFacts): MemoryFacts {
     return set.size ? Array.from(set) : undefined;
   };
   return {
-    products:    uniq(prev.products,   next.products),
-    sizes:       uniq(prev.sizes,      next.sizes, 6),
-    colors:      uniq(prev.colors,     next.colors, 6),
-    objections:  uniq(prev.objections, next.objections, 6),
-    lastTopics:  next.lastTopics && next.lastTopics.length ? next.lastTopics.slice(0, 5) : prev.lastTopics,
-    budget:      typeof next.budget === "number" ? next.budget : prev.budget,
-    frequency:   next.frequency   || prev.frequency,
-    tone:        next.tone        || prev.tone,
+    products: uniq(prev.products, next.products),
+    sizes: uniq(prev.sizes, next.sizes, 6),
+    colors: uniq(prev.colors, next.colors, 6),
+    objections: uniq(prev.objections, next.objections, 6),
+    lastTopics:
+      next.lastTopics && next.lastTopics.length
+        ? next.lastTopics.slice(0, 5)
+        : prev.lastTopics,
+    budget: typeof next.budget === "number" ? next.budget : prev.budget,
+    frequency: next.frequency || prev.frequency,
+    tone: next.tone || prev.tone,
     negotiation: next.negotiation || prev.negotiation,
   };
 }
@@ -346,16 +395,19 @@ export function buildMemoryBlock(snap: CustomerMemorySnapshot): string {
 
   const f = snap.facts || {};
   const bits: string[] = [];
-  if (f.products?.length)    bits.push(`منتجات يهتم بها: ${f.products.slice(0, 5).join("، ")}`);
-  if (f.sizes?.length)       bits.push(`مقاسات: ${f.sizes.join("، ")}`);
-  if (f.colors?.length)      bits.push(`ألوان: ${f.colors.join("، ")}`);
+  if (f.products?.length)
+    bits.push(`منتجات يهتم بها: ${f.products.slice(0, 5).join("، ")}`);
+  if (f.sizes?.length) bits.push(`مقاسات: ${f.sizes.join("، ")}`);
+  if (f.colors?.length) bits.push(`ألوان: ${f.colors.join("، ")}`);
   if (typeof f.budget === "number") bits.push(`ميزانية تقريبية: ${f.budget}`);
-  if (f.frequency)           bits.push(`تكرار التعامل: ${f.frequency}`);
-  if (f.tone)                bits.push(`أسلوبه: ${f.tone}`);
-  if (f.objections?.length)  bits.push(`اعتراضات سابقة: ${f.objections.join("، ")}`);
+  if (f.frequency) bits.push(`تكرار التعامل: ${f.frequency}`);
+  if (f.tone) bits.push(`أسلوبه: ${f.tone}`);
+  if (f.objections?.length)
+    bits.push(`اعتراضات سابقة: ${f.objections.join("، ")}`);
   if (f.negotiation && f.negotiation !== "none")
     bits.push(`سلوكه التفاوضي: ${f.negotiation}`);
-  if (f.lastTopics?.length)  bits.push(`آخر مواضيع: ${f.lastTopics.slice(0, 3).join("، ")}`);
+  if (f.lastTopics?.length)
+    bits.push(`آخر مواضيع: ${f.lastTopics.slice(0, 3).join("، ")}`);
 
   if (bits.length) {
     lines.push(`حقائق: ${bits.join(" | ")}`);
