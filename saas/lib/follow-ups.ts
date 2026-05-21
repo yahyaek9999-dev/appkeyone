@@ -15,6 +15,8 @@ function safeJson(value: unknown): string {
 
 function inferKind(text: string, intent?: string | null): string {
   const t = String(text || "").toLowerCase();
+  if (/هفكر|بفكر|مش متاكد|مش متأكد|maybe|later|not sure/.test(t))
+    return "hesitation_recovery";
   if (/سعر|بكام|price|كام/.test(t)) return "price_question";
   if (/اوردر|طلب|order|دفع|تحويل/.test(t) || intent === "buy")
     return "pending_order";
@@ -75,12 +77,14 @@ export async function queueSmartFollowUp(args: {
   ]);
   const priority =
     kind === "pending_order"
-      ? 80
+      ? 85
       : kind === "price_question"
-        ? 70
-        : kind === "product_view"
-          ? 55
-          : 40;
+        ? 75
+        : kind === "hesitation_recovery"
+          ? 65
+          : kind === "product_view"
+            ? 55
+            : 40;
 
   try {
     const task = await (prisma as any).followUpTask.upsert({
@@ -200,28 +204,32 @@ export async function processFollowUpTask(task: any, now: Date = new Date()) {
     )
     .join("\n");
 
-  const promptSys =
-    `أنت موظف مبيعات بشري لمتجر/شركة "${bot.name}". اكتب رسالة متابعة واتساب قصيرة جداً ومفيدة. ` +
-    `الهدف: ${task.kind}. لا تضغط على العميل، لا تكرر التحية، لا تخترع أسعاراً، ولا ترسل أكثر من سؤال واحد. ` +
-    `لو العميل كان متضايقاً اجعل الرسالة أهدأ. اللهجة: ${bot.persona}.`;
-  const promptUser = `آخر سياق:\n${recent}\n\nاكتب رسالة متابعة واحدة فقط، جملة أو جملتين، بدون شرح.`;
+  let text = buildRuleBasedFollowUp({ task: full || task, customer });
 
-  let text = "";
-  try {
-    text = await llmChat(
-      [
-        { role: "system", content: promptSys },
-        { role: "user", content: promptUser },
-      ],
-      {
-        provider: botProviderOverride(bot),
-        meterUserId: task.userId,
-        maxTokens: 180,
-      },
-    );
-  } catch (e: any) {
-    return retryOrFail(task, e?.message || "llm_failed");
+  if (!text) {
+    const promptSys =
+      `أنت موظف مبيعات بشري لمتجر/شركة "${bot.name}". اكتب رسالة متابعة واتساب قصيرة جداً ومفيدة. ` +
+      `الهدف: ${task.kind}. لا تضغط على العميل، لا تكرر التحية، لا تخترع أسعاراً، ولا ترسل أكثر من سؤال واحد. ` +
+      `لو العميل كان متضايقاً اجعل الرسالة أهدأ. اللهجة: ${bot.persona}.`;
+    const promptUser = `آخر سياق:\n${recent}\n\nاكتب رسالة متابعة واحدة فقط، جملة أو جملتين، بدون شرح.`;
+
+    try {
+      text = await llmChat(
+        [
+          { role: "system", content: promptSys },
+          { role: "user", content: promptUser },
+        ],
+        {
+          provider: botProviderOverride(bot),
+          meterUserId: task.userId,
+          maxTokens: 120,
+        },
+      );
+    } catch (e: any) {
+      return retryOrFail(task, e?.message || "llm_failed");
+    }
   }
+
   text = String(text || "")
     .trim()
     .slice(0, 900);
@@ -273,6 +281,43 @@ export async function processFollowUpTask(task: any, now: Date = new Date()) {
     }),
   ]);
   return { status: "sent", text };
+}
+
+function parseTaskContext(task: any): any {
+  try {
+    return JSON.parse(task?.context || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function buildRuleBasedFollowUp(args: { task: any; customer: any }): string {
+  const task = args.task || {};
+  const ctx = parseTaskContext(task);
+  const sentiment = String(ctx.sentiment || "").toLowerCase();
+  const name = args.customer?.name ? `${args.customer.name}، ` : "";
+
+  if (sentiment === "angry") {
+    return `${name}مش حابب أزعجك، بس حبيت أتأكد إن الموضوع اتحل أو محتاج مني أوصل تفاصيلك للفريق؟`;
+  }
+  if (sentiment === "negative") {
+    return `${name}حبيت أتابع بهدوء بخصوص آخر نقطة. تحب أوضحلك حاجة واحدة تساعدك تقرر؟`;
+  }
+
+  switch (String(task.kind || "")) {
+    case "price_question":
+      return `${name}كنت بتأكد إن تفاصيل السعر وصلتلك. تحب أساعدك تختار الأنسب حسب احتياجك؟`;
+    case "pending_order":
+      return `${name}حبيت أتابع بخصوص الطلب. لو لسه مناسب لك، ابعتلي البيانات الناقصة ونثبته فوراً.`;
+    case "hesitation_recovery":
+      return `${name}ولا يهمك خد وقتك. لو في نقطة مخلياك متردد، ابعتهالي وأوضحها لك بسرعة.`;
+    case "product_view":
+      return `${name}لسه مهتم بالمنتج اللي سألت عنه؟ أقدر أوضحلك المقاس أو التفاصيل في رسالة واحدة.`;
+    case "abandoned_conversation":
+      return `${name}حبيت أتابع معاك، لو لسه محتاج تفاصيل أو ترشيح مناسب أنا جاهز أساعدك.`;
+    default:
+      return "";
+  }
 }
 
 async function skipTask(id: string, reason: string) {
