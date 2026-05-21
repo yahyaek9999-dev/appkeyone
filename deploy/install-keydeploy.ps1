@@ -20,7 +20,13 @@ param()
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $KeyDeployScript = Join-Path $RepoRoot "deploy/keydeploy.ps1"
-$ProfilePath = $PROFILE.CurrentUserAllHosts
+$ProfilePath = if ($PROFILE -and ($PROFILE | Get-Member -Name CurrentUserAllHosts -ErrorAction SilentlyContinue)) {
+    $PROFILE.CurrentUserAllHosts
+} elseif ($PROFILE) {
+    [string]$PROFILE
+} else {
+    Join-Path $HOME ".config/powershell/Microsoft.PowerShell_profile.ps1"
+}
 $ProfileDir = Split-Path $ProfilePath -Parent
 
 if (-not (Test-Path $ProfileDir)) {
