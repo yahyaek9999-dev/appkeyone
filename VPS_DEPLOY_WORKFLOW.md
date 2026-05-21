@@ -11,7 +11,7 @@
 1. [Infrastructure Overview](#1-infrastructure-overview)
 2. [Prerequisites](#2-prerequisites)
 3. [Pre-Deploy Checklist](#3-pre-deploy-checklist)
-4. [Deploy Option A — Automated Script (Recommended)](#4-deploy-option-a--automated-script-recommended)
+4. [Deploy Option A — One-command Deploy (Recommended)](#4-deploy-option-a--one-command-deploy-recommended)
 5. [Deploy Option B — Manual Step-by-Step](#5-deploy-option-b--manual-step-by-step)
 6. [Post-Deploy Verification](#6-post-deploy-verification)
 7. [Rollback Procedure](#7-rollback-procedure)
@@ -126,7 +126,41 @@ ssh -i ~/.ssh/id_ed25519 Administrator@217.154.163.16 "powershell -Command \"Set
 
 ---
 
-## 4. Deploy Option A — Automated Script (Recommended)
+## 4. Deploy Option A — One-command Deploy (Recommended)
+
+The recommended deploy command from your development machine is:
+
+`keydeploy`
+
+It runs `deploy/keydeploy.ps1`, which calls `deploy/deploy-safe.ps1` and then `deploy/verify-production.ps1`.
+
+Install the local PowerShell shortcut once:
+
+`pwsh ./deploy/install-keydeploy.ps1`
+
+Restart PowerShell, or reload your profile with `. $PROFILE`, then use:
+
+`keydeploy`
+
+Dry-run without changing production:
+
+`keydeploy -DryRun`
+
+The one-command deploy flow:
+
+1. Confirms local branch is `main`
+2. Pushes `main` to GitHub
+3. SSHes to the VPS
+4. Creates a pre-deploy backup
+5. Runs `git pull --ff-only origin main` on the VPS
+6. Verifies `saas/.env`
+7. Builds the app
+8. Restarts `mse-saas`
+9. Runs the health check
+10. Runs `verify-production.ps1`
+11. Prints final PASS/FAIL
+
+## 4b. Deploy Option A2 — VPS-side Script
 
 The `deploy/deploy.ps1` script runs **on the VPS** and handles the full deploy cycle safely:
 
@@ -141,7 +175,7 @@ The `deploy/deploy.ps1` script runs **on the VPS** and handles the full deploy c
 9. Health check with retries
 10. Print rollback command if something goes wrong
 
-### Step 1: Push your changes to GitHub
+### VPS-side Step 1: Push your changes to GitHub
 
 ```bash
 # On your local machine
