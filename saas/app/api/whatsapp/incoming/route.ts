@@ -808,10 +808,15 @@ export async function POST(req: Request) {
     reply = `${bot.welcomeMessage}\n\n${reply}`;
   }
 
-  // Apply humanize transforms (variation + emoji) if enabled
+  const currentIntent = mapEmotionalIntent(emotional.intent);
+  const currentSentiment = emotional.sentiment;
+
+  // Apply humanize transforms (variation + emoji) if enabled.
+  // Use the current message analysis, not stale customer rollups, so tone
+  // adapts immediately to excitement, hesitation, or frustration.
   const humanized = humanizeReply(reply, humanCfg, {
-    intent: (customer as any).lastIntent,
-    sentiment: (customer as any).lastSentiment,
+    intent: currentIntent,
+    sentiment: currentSentiment,
     isFirstMsg,
   });
   reply = humanized.text;
@@ -822,8 +827,8 @@ export async function POST(req: Request) {
   // Also produces an `energy` tag we forward to anti-ban.
   const realism = applyRealism(reply, {
     customerId: customer.id,
-    intent: (customer as any).lastIntent,
-    sentiment: (customer as any).lastSentiment,
+    intent: currentIntent,
+    sentiment: currentSentiment,
     salesMode: salesMode,
     customerTone: (memorySnap as any)?.facts?.tone,
     isFirstMsg,

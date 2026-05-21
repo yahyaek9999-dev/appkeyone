@@ -626,6 +626,11 @@ export function buildMessages(opts: {
 - لا تستخدم Markdown. لا تستخدم * إلا نادراً للتأكيد.
 - لو الموقف يحتمل، أضف emoji واحد فقط في نهاية الرد، لا أكثر.`,
     );
+    const styleHint = buildHumanStyleHint(
+      opts.newUserMsg,
+      opts.customerLeadScore || 0,
+    );
+    if (styleHint) sys.push(styleHint);
   }
 
   // ---- Wave 7: sales persuasion ----
@@ -699,6 +704,39 @@ export function buildMessages(opts: {
   }
   messages.push({ role: "user", content: opts.newUserMsg });
   return messages;
+}
+
+function buildHumanStyleHint(text: string, leadScore: number): string {
+  const raw = String(text || "").trim();
+  if (!raw) return "";
+  const arabic = (raw.match(/[\u0600-\u06FF]/g) || []).length;
+  const latin = (raw.match(/[A-Za-z]/g) || []).length;
+  const lower = raw.toLowerCase();
+  const hints: string[] = [];
+
+  if (latin > arabic * 1.2 && latin >= 6) {
+    hints.push(
+      "العميل يكتب بالإنجليزية؛ رد بالإنجليزية البسيطة ما لم يكن السياق العربي أوضح.",
+    );
+  } else if (/\b(ازيك|عامل ايه|بص|طب|ماشي|اوكي|تمام|يعني)\b/.test(lower)) {
+    hints.push(
+      "نبرة العميل عامية؛ استخدم عامية مصرية خفيفة وطبيعية بدون مبالغة.",
+    );
+  } else if (/حضرتك|من فضلك|لو سمحت|please|kindly/i.test(raw)) {
+    hints.push("نبرة العميل مهذبة/رسمية؛ حافظ على احترام هادئ بدون جمود.");
+  }
+
+  if (raw.length <= 28)
+    hints.push("رسالته قصيرة؛ اجعل الرد قصيراً ولا تشرح زيادة.");
+  if (/[؟?]\s*$/.test(raw))
+    hints.push("أجب على السؤال مباشرة أولاً، ثم اختم بخطوة واحدة واضحة.");
+  if (leadScore >= 70)
+    hints.push(
+      "العميل مؤهل للبيع؛ اختم بسؤال عملي واحد يساعده يكمل الطلب بدون ضغط.",
+    );
+
+  if (!hints.length) return "";
+  return `تكييف النبرة الفوري: ${hints.slice(0, 3).join(" ")}`;
 }
 
 // Detect order/payment intent in a message (simple keyword + LLM hybrid; keyword first for speed)
