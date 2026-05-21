@@ -57,6 +57,10 @@ import {
   markFollowUpsConvertedForCustomer,
   queueSmartFollowUp,
 } from "@/lib/follow-ups";
+import {
+  markFollowUpReplied,
+  updateConversionScores,
+} from "@/lib/conversion-engine";
 import { evaluateInboundProtection } from "@/lib/protection";
 
 const SECRET =
@@ -1120,6 +1124,8 @@ async function classifyAndScore(args: {
   followUpHours?: number;
   analysis?: EmotionalAnalysis;
 }) {
+  markFollowUpReplied(args.customerId).catch(() => {});
+
   const base = await classify(args.text);
   const c = mergeClassification(base, args.analysis);
 
@@ -1228,6 +1234,19 @@ async function classifyAndScore(args: {
       } as any,
     })
     .catch(() => {});
+
+  if (args.userId) {
+    updateConversionScores({
+      customerId: args.customerId,
+      conversationId: args.conversationId,
+      text: args.text,
+      intent: c.intent,
+      sentiment: c.sentiment,
+      leadScore: score,
+      followUpSent: !!(cust as any).followUpSent,
+      followUpCount: (cust as any).followUpCount || 0,
+    }).catch(() => {});
+  }
 
   // ---- Anger / escalation alert -----------------------------------------
   // Serious frustration is always surfaced to admin, even if the bot reply was
