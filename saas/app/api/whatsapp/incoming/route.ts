@@ -394,6 +394,11 @@ export async function POST(req: Request) {
       text: messageText,
       flagged,
       analysis: emotional,
+      notifyPhone: bot.notifyPhone || (bot as any).whatsappPhone || null,
+      alertEnabled: !!bot.alertEnabled,
+      customerLabel: customer.name || customer.phone,
+      userId,
+      followUpsEnabled: false,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
@@ -409,13 +414,18 @@ export async function POST(req: Request) {
     currentHandoff === "human_required" ||
     currentHandoff === "human_active"
   ) {
-    // Still classify in the background so dashboards stay live.
+    // Still classify and alert in the background so dashboards/admin visibility stay live.
     classifyAndScore({
       customerId: customer.id,
       conversationId: conv.id,
       text: messageText,
       flagged,
       analysis: emotional,
+      notifyPhone: bot.notifyPhone || (bot as any).whatsappPhone || null,
+      alertEnabled: !!bot.alertEnabled,
+      customerLabel: customer.name || customer.phone,
+      userId,
+      followUpsEnabled: false,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
@@ -518,6 +528,12 @@ export async function POST(req: Request) {
       conversationId: conv.id,
       text: messageText,
       flagged,
+      analysis: emotional,
+      notifyPhone: bot.notifyPhone || (bot as any).whatsappPhone || null,
+      alertEnabled: !!bot.alertEnabled,
+      customerLabel: customer.name || customer.phone,
+      userId,
+      followUpsEnabled: false,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
@@ -565,6 +581,10 @@ export async function POST(req: Request) {
       text: messageText,
       flagged,
       analysis: emotional,
+      notifyPhone: bot.notifyPhone || (bot as any).whatsappPhone || null,
+      alertEnabled: !!bot.alertEnabled,
+      customerLabel: customer.name || customer.phone,
+      userId,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
@@ -622,6 +642,10 @@ export async function POST(req: Request) {
       text: messageText,
       flagged,
       analysis: emotional,
+      notifyPhone: bot.notifyPhone || (bot as any).whatsappPhone || null,
+      alertEnabled: !!bot.alertEnabled,
+      customerLabel: customer.name || customer.phone,
+      userId,
     }).catch(() => {});
     return NextResponse.json({
       ok: true,
@@ -1201,63 +1225,83 @@ async function classifyAndScore(args: {
     .catch(() => {});
 
   // ---- Anger / escalation alert -----------------------------------------
-  // Falls through the phone-resolution chain when notifyPhone wasn't supplied
-  // by the caller — keeps the alert from being lost when the merchant hasn't
-  // yet configured a dedicated notification number. Every escalation (whether
-  // delivered or not) writes a SafetyAudit row so the merchant can see the
-  // event in /dashboard/safety even if the WhatsApp delivery failed.
-  if (
-    args.userId &&
-    args.alertEnabled !== false &&
-    (c.sentiment === "angry" ||
+  // Serious frustration is always surfaced to admin, even if the bot reply was
+  // skipped by protection/manual/out-of-hours fast paths. Medium negative
+  // signals still respect the merchant alert toggle to avoid noisy alerts.
+  if (args.userId) {
+    const seriousFrustration =
+      !!args.analysis &&
+      (args.analysis.shouldEscalate ||
+        args.analysis.severity === "high" ||
+        args.analysis.severity === "critical" ||
+        args.analysis.angerScore >= 70 ||
+        args.analysis.frustrationScore >= 70);
+    const needsVisibility =
+      seriousFrustration ||
+      c.sentiment === "angry" ||
       c.sentiment === "negative" ||
-      c.intent === "complaint")
-  ) {
-    const isAnger = c.sentiment === "angry";
-    const isEscalation = isAnger || c.intent === "complaint";
-    // Audit row first — never depends on WhatsApp delivery succeeding.
-    await prisma.safetyAudit
-      .create({
-        data: {
-          userId: args.userId,
-          level: isAnger ? "critical" : "warn",
-          category: "anger",
-          title: isAnger
-            ? "عميل غاضب — تنبيه فوري"
-            : isEscalation
-              ? "شكوى/تصعيد"
-              : "عميل غير راضٍ",
-          detail: `العميل: ${args.customerLabel || "غير معروف"} — "${args.text.slice(0, 200)}"`,
-          payload: JSON.stringify({
-            customerId: args.customerId,
-            sentiment: c.sentiment,
-            intent: c.intent,
-            leadScore: score,
-          }),
-        },
-      })
-      .catch(() => {});
+      c.intent === "complaint";
+    const shouldNotify =
+      needsVisibility && (seriousFrustration || args.alertEnabled !== false);
 
-    const alertTo = args.notifyPhone || (await resolveNotifyPhone(args.userId));
-    if (alertTo) {
-      const head = isAnger
-        ? "🚨 عميل غاضب — يحتاج تدخل فوري"
-        : isEscalation
-          ? "⚠️ شكوى/تصعيد"
-          : "⚠️ عميل غير راضٍ";
-      const text =
-        `${head}\n\n` +
-        `العميل: ${args.customerLabel || "غير معروف"}\n` +
-        `النية: ${c.intent}\n` +
-        `الحالة: ${c.sentiment}\n` +
-        `الرسالة:\n"${args.text.slice(0, 400)}"\n\n` +
-        `Lead score: ${score}/100`;
-      await notifyAdmin({
-        userId: args.userId,
-        toPhone: alertTo,
-        text,
-        category: "anger",
-      }).catch(() => {});
+    if (needsVisibility) {
+      const isAnger =
+        c.sentiment === "angry" || (args.analysis?.angerScore ?? 0) >= 70;
+      const isEscalation =
+        seriousFrustration || isAnger || c.intent === "complaint";
+      // Audit row first — never depends on WhatsApp delivery succeeding.
+      await prisma.safetyAudit
+        .create({
+          data: {
+            userId: args.userId,
+            level: isEscalation || isAnger ? "critical" : "warn",
+            category: "anger",
+            title: isAnger
+              ? "عميل غاضب — تنبيه فوري"
+              : isEscalation
+                ? "شكوى/تصعيد"
+                : "عميل غير راضٍ",
+            detail: `العميل: ${args.customerLabel || "غير معروف"} — "${args.text.slice(0, 200)}"`,
+            payload: JSON.stringify({
+              customerId: args.customerId,
+              sentiment: c.sentiment,
+              intent: c.intent,
+              leadScore: score,
+              severity: args.analysis?.severity || null,
+              angerScore: args.analysis?.angerScore ?? null,
+              frustrationScore: args.analysis?.frustrationScore ?? null,
+              confidenceScore: args.analysis?.confidenceScore ?? null,
+              seriousFrustration,
+            }),
+          },
+        })
+        .catch(() => {});
+
+      if (shouldNotify) {
+        const alertTo =
+          args.notifyPhone || (await resolveNotifyPhone(args.userId));
+        if (alertTo) {
+          const head = isAnger
+            ? "🚨 عميل غاضب — يحتاج تدخل فوري"
+            : isEscalation
+              ? "⚠️ شكوى/تصعيد"
+              : "⚠️ عميل غير راضٍ";
+          const text =
+            `${head}\n\n` +
+            `العميل: ${args.customerLabel || "غير معروف"}\n` +
+            `النية: ${c.intent}\n` +
+            `الحالة: ${c.sentiment}\n` +
+            `الغضب: ${args.analysis?.angerScore ?? "-"}/100 · الإحباط: ${args.analysis?.frustrationScore ?? "-"}/100 · الثقة: ${args.analysis?.confidenceScore ?? "-"}/100\n` +
+            `الرسالة:\n"${args.text.slice(0, 400)}"\n\n` +
+            `Lead score: ${score}/100`;
+          await notifyAdmin({
+            userId: args.userId,
+            toPhone: alertTo,
+            text,
+            category: "anger",
+          }).catch(() => {});
+        }
+      }
     }
   }
 }

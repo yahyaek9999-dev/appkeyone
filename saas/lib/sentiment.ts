@@ -1,7 +1,19 @@
-export type RecentMessage = { role: string; content: string; createdAt?: Date | string | null };
+export type RecentMessage = {
+  role: string;
+  content: string;
+  createdAt?: Date | string | null;
+};
 
 export type EmotionalAnalysis = {
-  intent: "buy" | "inquiry" | "complaint" | "support" | "refund" | "escalation" | "greeting" | "other";
+  intent:
+    | "buy"
+    | "inquiry"
+    | "complaint"
+    | "support"
+    | "refund"
+    | "escalation"
+    | "greeting"
+    | "other";
   sentiment: "positive" | "neutral" | "negative" | "angry";
   angerScore: number;
   frustrationScore: number;
@@ -16,26 +28,206 @@ export type EmotionalAnalysis = {
   toneHint: string;
 };
 
-const clamp = (n: number, min = 0, max = 100) => Math.max(min, Math.min(max, Math.round(n)));
-const norm = (text: string) => String(text || "").toLowerCase().replace(/[إأآا]/g, "ا").replace(/[ىي]/g, "ي").replace(/[ة]/g, "ه").replace(/\s+/g, " ").trim();
+const clamp = (n: number, min = 0, max = 100) =>
+  Math.max(min, Math.min(max, Math.round(n)));
+const norm = (text: string) =>
+  String(text || "")
+    .toLowerCase()
+    .replace(/[إأآا]/g, "ا")
+    .replace(/[ىي]/g, "ي")
+    .replace(/[ة]/g, "ه")
+    .replace(/\s+/g, " ")
+    .trim();
 
 const angerWords = [
-  "غاضب", "زعلان", "متضايق", "مش عاجب", "مش راضي", "سيء", "سيئ", "وحش", "زفت", "قرف", "حرام", "حراميه", "نصب", "نصاب", "بتستهبل", "استهبل", "مش محترم", "تعبت", "زهقت", "مفيش فايده", "خلاص مش عايز", "bad", "angry", "terrible", "scam", "fraud",
+  "غاضب",
+  "زعلان",
+  "متضايق",
+  "مضايق",
+  "مش عاجب",
+  "مش راضي",
+  "سيء",
+  "سيئ",
+  "وحش",
+  "زفت",
+  "قرف",
+  "حرام",
+  "حراميه",
+  "حرامي",
+  "نصب",
+  "نصاب",
+  "كذاب",
+  "كداب",
+  "بتستهبل",
+  "استهبل",
+  "بتضحكوا عليا",
+  "ضحكتوا عليا",
+  "مش محترم",
+  "قلة ادب",
+  "تعبت",
+  "زهقت",
+  "زهقان",
+  "مفيش فايده",
+  "خلاص مش عايز",
+  "مش هتعامل",
+  "مش هشتري",
+  "خدمة سيئة",
+  "خدمه سيئه",
+  "اوسخ",
+  "bad",
+  "angry",
+  "terrible",
+  "awful",
+  "unacceptable",
+  "disappointed",
+  "frustrated",
+  "scam",
+  "fraud",
+  "fake",
+  "liar",
 ];
 const severeWords = [
-  "محامي", "قضيه", "بلاغ", "حمايه المستهلك", "شرطه", "نصب", "احتيال", "فضيحه", "هشتكي", "اشتكيت", "complaint", "legal", "lawyer", "police", "chargeback",
+  "محامي",
+  "قضيه",
+  "قضية",
+  "بلاغ",
+  "حمايه المستهلك",
+  "حماية المستهلك",
+  "شرطه",
+  "شرطة",
+  "نصب",
+  "احتيال",
+  "فضيحه",
+  "فضيحة",
+  "هفضح",
+  "هشتكي",
+  "اشتكيت",
+  "هبلغ",
+  "هاخد حقي",
+  "complaint",
+  "legal",
+  "lawyer",
+  "police",
+  "chargeback",
+  "consumer protection",
+  "report you",
 ];
 const refundWords = [
-  "استرجاع", "رجع فلوسي", "رجعولي فلوسي", "عايز فلوسي", "استرداد", "refund", "cancel", "الغاء الطلب", "الغاء الاوردر", "فلوسي",
+  "استرجاع",
+  "رجع فلوسي",
+  "رجعولي فلوسي",
+  "عايز فلوسي",
+  "عاوز فلوسي",
+  "استرداد",
+  "refund",
+  "money back",
+  "cancel",
+  "cancel my order",
+  "الغاء الطلب",
+  "إلغاء الطلب",
+  "الغاء الاوردر",
+  "فلوسي",
 ];
 const escalationWords = [
-  "عاوز اكلم الاداره", "عايز اكلم الاداره", "اكلم الاداره", "كلم الاداره", "المدير", "مدير", "مسؤول", "موظف", "بني ادم", "خدمه عملاء", "human", "manager", "admin", "supervisor",
+  "عاوز اكلم الاداره",
+  "عايز اكلم الاداره",
+  "اكلم الاداره",
+  "كلم الاداره",
+  "المدير",
+  "مدير",
+  "مسؤول",
+  "مسئول",
+  "موظف",
+  "بني ادم",
+  "بني آدم",
+  "خدمه عملاء",
+  "خدمة عملاء",
+  "human",
+  "real person",
+  "manager",
+  "admin",
+  "supervisor",
+  "customer service",
 ];
-const complaintWords = ["شكوي", "شكوى", "مشكله", "مشكلتي", "اتاخرت", "متاخر", "مش شغال", "مش بيفتح", "غلط", "ليه", "فين", "support", "issue"];
-const urgencyWords = ["ضروري", "حالاً", "حالا", "فورا", "بسرعه", "مستعجل", "النهارده", "دلوقتي", "urgent", "asap", "now"];
-const positiveWords = ["تمام", "شكرا", "تسلم", "حلو", "ممتاز", "جميل", "عظيم", "موافق", "اوكي", "ok", "thanks", "great"];
-const buyWords = ["السعر", "بكام", "اشتري", "اطلب", "اوردر", "طلب", "دفع", "تحويل", "عايز", "عاوز", "احجز", "price", "buy", "order"];
-const optOutWords = ["متبعتليش", "متبعتش", "وقف", "الغاء الاشتراك", "stop", "unsubscribe", "don't message", "do not message"];
+const complaintWords = [
+  "شكوي",
+  "شكوى",
+  "مشكله",
+  "مشكلة",
+  "مشكلتي",
+  "اتاخرت",
+  "اتأخرت",
+  "متاخر",
+  "متأخر",
+  "مش شغال",
+  "مش بيفتح",
+  "غلط",
+  "ليه",
+  "فين",
+  "محدش رد",
+  "محدش بيرد",
+  "مش فاهمني",
+  "مش ده طلبي",
+  "support",
+  "issue",
+  "problem",
+  "wrong",
+  "late",
+  "no one replied",
+];
+const urgencyWords = [
+  "ضروري",
+  "حالاً",
+  "حالا",
+  "فورا",
+  "بسرعه",
+  "مستعجل",
+  "النهارده",
+  "دلوقتي",
+  "urgent",
+  "asap",
+  "now",
+];
+const positiveWords = [
+  "تمام",
+  "شكرا",
+  "تسلم",
+  "حلو",
+  "ممتاز",
+  "جميل",
+  "عظيم",
+  "موافق",
+  "اوكي",
+  "ok",
+  "thanks",
+  "great",
+];
+const buyWords = [
+  "السعر",
+  "بكام",
+  "اشتري",
+  "اطلب",
+  "اوردر",
+  "طلب",
+  "دفع",
+  "تحويل",
+  "عايز",
+  "عاوز",
+  "احجز",
+  "price",
+  "buy",
+  "order",
+];
+const optOutWords = [
+  "متبعتليش",
+  "متبعتش",
+  "وقف",
+  "الغاء الاشتراك",
+  "stop",
+  "unsubscribe",
+  "don't message",
+  "do not message",
+];
 
 function hasAny(t: string, words: string[]) {
   return words.some((w) => t.includes(norm(w)));
@@ -56,8 +248,16 @@ function repeatedPunctuationScore(raw: string): number {
 }
 
 function similarity(a: string, b: string): number {
-  const as = new Set(norm(a).split(" ").filter((x) => x.length > 1));
-  const bs = new Set(norm(b).split(" ").filter((x) => x.length > 1));
+  const as = new Set(
+    norm(a)
+      .split(" ")
+      .filter((x) => x.length > 1),
+  );
+  const bs = new Set(
+    norm(b)
+      .split(" ")
+      .filter((x) => x.length > 1),
+  );
   if (!as.size || !bs.size) return 0;
   let inter = 0;
   for (const x of as) if (bs.has(x)) inter++;
@@ -68,12 +268,15 @@ export function isOptOut(text: string): boolean {
   return hasAny(norm(text), optOutWords);
 }
 
-export function analyzeCustomerMessage(text: string, opts: {
-  recentMessages?: RecentMessage[];
-  lastIntent?: string | null;
-  lastSentiment?: string | null;
-  lowConfidenceThreshold?: number;
-} = {}): EmotionalAnalysis {
+export function analyzeCustomerMessage(
+  text: string,
+  opts: {
+    recentMessages?: RecentMessage[];
+    lastIntent?: string | null;
+    lastSentiment?: string | null;
+    lowConfidenceThreshold?: number;
+  } = {},
+): EmotionalAnalysis {
   const raw = String(text || "").trim();
   const t = norm(raw);
   const recent = opts.recentMessages || [];
@@ -101,24 +304,62 @@ export function analyzeCustomerMessage(text: string, opts: {
   if (/[!؟?]{3,}/.test(raw)) urgencyScore += 10;
 
   const recentUser = recent.filter((m) => m.role === "user").slice(-5);
-  const recentAssistant = recent.filter((m) => m.role === "assistant").slice(-5);
-  const misunderstandingSignals = ["مش فاهم", "مش فاهمني", "انت مش فاهم", "غلط", "مش ده", "بقولك", "قلتلك", "تاني", "لا مش", "ما هو"];
+  const recentAssistant = recent
+    .filter((m) => m.role === "assistant")
+    .slice(-5);
+  const misunderstandingSignals = [
+    "مش فاهم",
+    "مش فاهمني",
+    "انت مش فاهم",
+    "أنت مش فاهم",
+    "غلط",
+    "مش ده",
+    "مش كده",
+    "بقولك",
+    "قلتلك",
+    "قلت لك",
+    "تاني",
+    "للمره التانيه",
+    "للمرة التانية",
+    "لا مش",
+    "ما هو",
+    "مش بترد",
+    "مش بتسمع",
+    "مش فاهم قصدي",
+    "you don't understand",
+    "not what i asked",
+  ];
   const loopTextHits = countAny(t, misunderstandingSignals);
-  const lastSimilar = recentUser.some((m) => similarity(m.content, raw) >= 0.78);
-  const assistantGap = recentAssistant.some((m) => /لا أعرف|مش متأكد|خارج معلومات|تواصل مع الاداره|تواصل مع الإدارة/.test(m.content));
-  const frustrationLoop = loopTextHits >= 1 || (lastSimilar && recentUser.length >= 2) || (assistantGap && complaint);
+  const lastSimilar = recentUser.some(
+    (m) => similarity(m.content, raw) >= 0.78,
+  );
+  const assistantGap = recentAssistant.some((m) =>
+    /لا أعرف|مش متأكد|خارج معلومات|تواصل مع الاداره|تواصل مع الإدارة/.test(
+      m.content,
+    ),
+  );
+  const frustrationLoop =
+    loopTextHits >= 1 ||
+    (lastSimilar && recentUser.length >= 2) ||
+    (assistantGap && complaint);
 
-  let frustrationScore = loopTextHits * 20 + (lastSimilar ? 18 : 0) + (assistantGap ? 15 : 0);
+  let frustrationScore =
+    loopTextHits * 20 + (lastSimilar ? 18 : 0) + (assistantGap ? 15 : 0);
   if (angerScore >= 45) frustrationScore += 20;
   if (recentUser.length >= 3 && complaint) frustrationScore += 12;
+  if (severe || explicitEscalation || refund) frustrationScore += 18;
+  if (opts.lastSentiment === "negative" || opts.lastSentiment === "angry")
+    frustrationScore += 10;
 
   let confidenceScore = 82;
   if (raw.length <= 2) confidenceScore -= 35;
   if (raw.length <= 6 && !buy && !complaint && !positive) confidenceScore -= 20;
   if (frustrationLoop) confidenceScore -= 25;
   if (assistantGap) confidenceScore -= 15;
-  if (opts.lastSentiment === "negative" || opts.lastSentiment === "angry") confidenceScore -= 8;
-  if (explicitEscalation || refund || severe) confidenceScore = Math.min(confidenceScore, 35);
+  if (opts.lastSentiment === "negative" || opts.lastSentiment === "angry")
+    confidenceScore -= 8;
+  if (explicitEscalation || refund || severe)
+    confidenceScore = Math.min(confidenceScore, 35);
   if (buy || positive) confidenceScore += 5;
 
   angerScore = clamp(angerScore);
@@ -134,7 +375,14 @@ export function analyzeCustomerMessage(text: string, opts: {
   let intent: EmotionalAnalysis["intent"] = "other";
   if (/^(اهلا|السلام|هاي|hello|hi)\b/.test(t)) intent = "greeting";
   if (buy) intent = "buy";
-  if (t.includes("؟") || t.includes("?") || t.includes("ازاي") || t.includes("كيف") || t.includes("هل")) intent = buy ? "buy" : "inquiry";
+  if (
+    t.includes("؟") ||
+    t.includes("?") ||
+    t.includes("ازاي") ||
+    t.includes("كيف") ||
+    t.includes("هل")
+  )
+    intent = buy ? "buy" : "inquiry";
   if (complaint) intent = "complaint";
   if (refund) intent = "refund";
   if (explicitEscalation) intent = "escalation";
@@ -144,18 +392,48 @@ export function analyzeCustomerMessage(text: string, opts: {
   if (explicitEscalation) reasons.push("explicit_human_management_request");
   if (angerScore >= 70) reasons.push("high_anger_score");
   if (frustrationLoop) reasons.push("frustration_loop_detected");
-  if (confidenceScore <= (opts.lowConfidenceThreshold ?? 35)) reasons.push("low_ai_confidence");
+  if (confidenceScore <= (opts.lowConfidenceThreshold ?? 35))
+    reasons.push("low_ai_confidence");
 
-  const critical = severe || (angerScore >= 88 && (refund || explicitEscalation));
-  const high = critical || refund || explicitEscalation || angerScore >= 78 || (frustrationLoop && angerScore >= 55);
-  const medium = high || angerScore >= 45 || complaint || confidenceScore <= (opts.lowConfidenceThreshold ?? 35);
+  const critical =
+    severe || (angerScore >= 88 && (refund || explicitEscalation));
+  const high =
+    critical ||
+    refund ||
+    explicitEscalation ||
+    angerScore >= 78 ||
+    frustrationScore >= 75 ||
+    (frustrationLoop && angerScore >= 55);
+  const medium =
+    high ||
+    angerScore >= 45 ||
+    frustrationScore >= 45 ||
+    complaint ||
+    confidenceScore <= (opts.lowConfidenceThreshold ?? 35);
 
-  const shouldEscalate = critical || high || (frustrationLoop && confidenceScore <= (opts.lowConfidenceThreshold ?? 35));
+  const shouldEscalate =
+    critical ||
+    high ||
+    (frustrationLoop && confidenceScore <= (opts.lowConfidenceThreshold ?? 35));
   const shouldCalmFirst = !shouldEscalate && medium;
 
-  const severity: EmotionalAnalysis["severity"] = critical ? "critical" : high ? "high" : medium ? "medium" : "low";
-  const trigger = reasons[0] || (shouldCalmFirst ? "calm_first_negative_tone" : "none");
-  const toneHint = buildToneHint({ sentiment, angerScore, frustrationScore, urgencyScore, shouldEscalate, shouldCalmFirst });
+  const severity: EmotionalAnalysis["severity"] = critical
+    ? "critical"
+    : high
+      ? "high"
+      : medium
+        ? "medium"
+        : "low";
+  const trigger =
+    reasons[0] || (shouldCalmFirst ? "calm_first_negative_tone" : "none");
+  const toneHint = buildToneHint({
+    sentiment,
+    angerScore,
+    frustrationScore,
+    urgencyScore,
+    shouldEscalate,
+    shouldCalmFirst,
+  });
 
   return {
     intent,
@@ -174,7 +452,17 @@ export function analyzeCustomerMessage(text: string, opts: {
   };
 }
 
-function buildToneHint(a: Pick<EmotionalAnalysis, "sentiment" | "angerScore" | "frustrationScore" | "urgencyScore" | "shouldEscalate" | "shouldCalmFirst">): string {
+function buildToneHint(
+  a: Pick<
+    EmotionalAnalysis,
+    | "sentiment"
+    | "angerScore"
+    | "frustrationScore"
+    | "urgencyScore"
+    | "shouldEscalate"
+    | "shouldCalmFirst"
+  >,
+): string {
   if (a.shouldEscalate) {
     return "العميل متضايق أو يحتاج تدخل بشري. رد بهدوء شديد، اعترف بالمشكلة، لا تجادل، لا تكثر كلام، ولا تعد بتفاصيل غير مؤكدة.";
   }
