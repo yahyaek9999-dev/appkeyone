@@ -83,9 +83,13 @@ if ($GitCommit)
 }
 Write-Host "============================================" -ForegroundColor Cyan
 
-# Show what's in the snapshot.
+# Show what's in the snapshot without dumping huge WA session trees.
 Step "0" "Inspect snapshot contents"
-Get-ChildItem $Snapshot -Recurse | Select-Object FullName, Length | Format-Table | Out-String | Write-Host
+$snapshotFiles = Get-ChildItem $Snapshot -Recurse -File -ErrorAction SilentlyContinue
+$snapshotBytes = ($snapshotFiles | Measure-Object Length -Sum).Sum
+Write-Host "  Snapshot files : $($snapshotFiles.Count)" -ForegroundColor Cyan
+Write-Host "  Snapshot size  : $([math]::Round($snapshotBytes / 1MB, 2)) MB" -ForegroundColor Cyan
+Get-ChildItem $Snapshot | Select-Object Name, Mode, LastWriteTime | Format-Table | Out-String | Write-Host
 
 if ($ListOnly)
 {
