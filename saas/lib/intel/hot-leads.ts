@@ -20,7 +20,10 @@ import { IntelItem } from "./types";
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-export async function detectHotLeads(userId: string, now: Date = new Date()): Promise<IntelItem[]> {
+export async function detectHotLeads(
+  userId: string,
+  now: Date = new Date(),
+): Promise<IntelItem[]> {
   const weekAgo = new Date(now.getTime() - 7 * DAY);
   const dayAgo = new Date(now.getTime() - 1 * DAY);
   const twoDayAgo = new Date(now.getTime() - 2 * DAY);
@@ -38,6 +41,10 @@ export async function detectHotLeads(userId: string, now: Date = new Date()): Pr
       name: true,
       phone: true,
       leadScore: true,
+      conversionScore: true,
+      hesitationScore: true,
+      orderCount: true,
+      totalOrderValue: true,
       lastIntent: true,
       lastSentiment: true,
       purchaseProb: true,
@@ -71,7 +78,8 @@ export async function detectHotLeads(userId: string, now: Date = new Date()): Pr
     if (userMsgs.length === 0) continue;
 
     const last = msgs[0];
-    const awaitingReply = last && last.role === "user" && new Date(last.createdAt) >= dayAgo;
+    const awaitingReply =
+      last && last.role === "user" && new Date(last.createdAt) >= dayAgo;
 
     // cart signal
     let cartItemsCount = 0;
@@ -79,7 +87,10 @@ export async function detectHotLeads(userId: string, now: Date = new Date()): Pr
       const parsed = JSON.parse(c.cartItems || "[]");
       if (Array.isArray(parsed)) cartItemsCount = parsed.length;
     } catch {}
-    const cartFresh = cartItemsCount > 0 && c.cartUpdatedAt && new Date(c.cartUpdatedAt) >= twoDayAgo;
+    const cartFresh =
+      cartItemsCount > 0 &&
+      c.cartUpdatedAt &&
+      new Date(c.cartUpdatedAt) >= twoDayAgo;
 
     // cadence: avg gap between consecutive user messages over last 7d (in min)
     const recentUser = userMsgs.filter((m) => new Date(m.createdAt) >= weekAgo);
@@ -94,16 +105,18 @@ export async function detectHotLeads(userId: string, now: Date = new Date()): Pr
     }
 
     // urgency composition
-    let u = Math.round((c.leadScore || 0) * 0.5);  // base from leadScore
+    let u = Math.round((c.leadScore || 0) * 0.5); // base from leadScore
     if (awaitingReply) u += 25;
     if (cartFresh) u += 18;
     if ((c.lastIntent || "") === "buy") u += 12;
     if ((c.purchaseProb || 0) >= 50) u += 10;
-    if (avgGapMin > 0 && avgGapMin < 120) u += 8;  // fast responder
+    if ((c.conversionScore || 0) >= 60) u += 12;
+    if ((c.hesitationScore || 0) >= 70) u -= 8;
+    if (avgGapMin > 0 && avgGapMin < 120) u += 8; // fast responder
     if ((c.lastSentiment || "") === "positive") u += 5;
     u = Math.max(0, Math.min(100, u));
 
-    if (u < 50) continue;  // hide the noise
+    if (u < 50) continue; // hide the noise
 
     // build "next action" reason + suggestion
     const reasons: string[] = [];
@@ -112,15 +125,35 @@ export async function detectHotLeads(userId: string, now: Date = new Date()): Pr
     if ((c.lastIntent || "") === "buy") reasons.push("نية شراء");
     if (avgGapMin > 0 && avgGapMin < 120) reasons.push("سريع الرد");
 
+    const highValue =
+      (c.orderCount || 0) >= 2 || (c.totalOrderValue || 0) >= 3000;
+    const insightLabel = highValue
+      ? "عميل عالي القيمة"
+      : (c.conversionScore || 0) >= 70
+        ? "احتمال تحويل عالي"
+        : (c.hesitationScore || 0) >= 65
+          ? "مهتم لكنه متردد"
+          : undefined;
+
     const title = awaitingReply
       ? "عميل ساخن بينتظر ردك"
       : cartFresh
-      ? "عميل ساخن مع منتجات بيهتم بيها"
-      : "عميل ساخن نشط";
+        ? "عميل ساخن مع منتجات بيهتم بيها"
+        : (c.conversionScore || 0) >= 70
+          ? "Lead عالي التحويل"
+          : "عميل ساخن نشط";
 
-    const reason = reasons.length > 0
-      ? reasons.join(" • ")
-      : `نقاط ${c.leadScore} • نشط من ${daysAgo(c.lastSeenAt, now)} يوم`;
+    const reasonBits = [...reasons];
+    if ((c.conversionScore || 0) >= 50)
+      reasonBits.push(`تحويل ${c.conversionScore}%`);
+    if ((c.hesitationScore || 0) >= 50)
+      reasonBits.push(`تردد ${c.hesitationScore}%`);
+    if (highValue) reasonBits.push("قيمة عالية");
+
+    const reason =
+      reasonBits.length > 0
+        ? reasonBits.join(" • ")
+        : `نقاط ${c.leadScore} • نشط من ${daysAgo(c.lastSeenAt, now)} يوم`;
 
     out.push({
       id: `hot-${c.id}`,
@@ -138,6 +171,9 @@ export async function detectHotLeads(userId: string, now: Date = new Date()): Pr
         isBuy: (c.lastIntent || "") === "buy",
       }),
       leadScore: c.leadScore || 0,
+      conversionScore: c.conversionScore || 0,
+      hesitationScore: c.hesitationScore || 0,
+      insightLabel,
       lastIntent: c.lastIntent,
       lastInteractionAt: new Date(c.lastSeenAt).toISOString(),
     });

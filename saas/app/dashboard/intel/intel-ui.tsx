@@ -3,8 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Brain, Flame, UserX, Gift, HelpCircle, MessageSquare,
-  Copy, Check, Loader2, RefreshCw,
+  Brain,
+  Flame,
+  UserX,
+  Gift,
+  HelpCircle,
+  MessageSquare,
+  Copy,
+  Check,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { formatCustomerPhone } from "@/lib/phone";
 
@@ -22,6 +30,9 @@ interface IntelItem {
   suggestedMessage: string;
   daysSinceLastMsg?: number;
   leadScore?: number;
+  conversionScore?: number;
+  hesitationScore?: number;
+  insightLabel?: string;
   lastIntent?: string | null;
   orderId?: string;
   orderTotal?: number;
@@ -34,10 +45,30 @@ interface Resp {
 }
 
 const TABS: { key: Kind; label: string; icon: any; color: string }[] = [
-  { key: "hot_lead",      label: "عملاء ساخنين",  icon: Flame,        color: "text-orange-400" },
-  { key: "follow_up_op",  label: "متابعة فرص",    icon: HelpCircle,    color: "text-sky-400" },
-  { key: "lost_customer", label: "عملاء مفقودين",  icon: UserX,        color: "text-rose-400" },
-  { key: "upsell",        label: "فرص بيع إضافي",  icon: Gift,         color: "text-emerald-400" },
+  {
+    key: "hot_lead",
+    label: "عملاء ساخنين",
+    icon: Flame,
+    color: "text-orange-400",
+  },
+  {
+    key: "follow_up_op",
+    label: "متابعة فرص",
+    icon: HelpCircle,
+    color: "text-sky-400",
+  },
+  {
+    key: "lost_customer",
+    label: "عملاء مفقودين",
+    icon: UserX,
+    color: "text-rose-400",
+  },
+  {
+    key: "upsell",
+    label: "فرص بيع إضافي",
+    icon: Gift,
+    color: "text-emerald-400",
+  },
 ];
 
 export default function IntelUi() {
@@ -48,7 +79,8 @@ export default function IntelUi() {
   const [error, setError] = useState<string | null>(null);
 
   async function load(refresh = false) {
-    if (refresh) setRefreshing(true); else setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const r = await fetch("/api/intel", { cache: "no-store" });
@@ -62,12 +94,14 @@ export default function IntelUi() {
       setRefreshing(false);
     }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const items = data?.items[active] || [];
   const total = useMemo(
     () => (data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0),
-    [data]
+    [data],
   );
 
   return (
@@ -80,7 +114,8 @@ export default function IntelUi() {
             ذكاء المبيعات
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            اقتراحات يومية مبنية على محادثاتك وطلباتك. الرسائل جاهزة للنسخ — أنت اللي تقرر تبعت ولا لأ.
+            اقتراحات يومية مبنية على محادثاتك وطلباتك. الرسائل جاهزة للنسخ — أنت
+            اللي تقرر تبعت ولا لأ.
           </p>
         </div>
         <button
@@ -89,7 +124,11 @@ export default function IntelUi() {
           className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-sm inline-flex items-center gap-2 disabled:opacity-50"
           title="تحديث"
         >
-          {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {refreshing ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
           تحديث
         </button>
       </div>
@@ -97,7 +136,11 @@ export default function IntelUi() {
       {/* Counts summary */}
       {data && (
         <div className="text-xs text-slate-400">
-          إجمالي {total} اقتراح حالياً · آخر تحديث {new Date(data.generatedAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+          إجمالي {total} اقتراح حالياً · آخر تحديث{" "}
+          {new Date(data.generatedAt).toLocaleTimeString("ar-EG", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </div>
       )}
 
@@ -119,9 +162,13 @@ export default function IntelUi() {
             >
               <Icon className={`w-4 h-4 ${t.color}`} />
               <span>{t.label}</span>
-              <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
-                n > 0 ? "bg-white/10" : "bg-white/[0.03] text-slate-500"
-              }`}>{n}</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
+                  n > 0 ? "bg-white/10" : "bg-white/[0.03] text-slate-500"
+                }`}
+              >
+                {n}
+              </span>
             </button>
           );
         })}
@@ -135,12 +182,16 @@ export default function IntelUi() {
         </div>
       )}
       {error && (
-        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-200 rounded-xl p-4 text-sm">{error}</div>
+        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-200 rounded-xl p-4 text-sm">
+          {error}
+        </div>
       )}
 
       {!loading && !error && items.length === 0 && (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center">
-          <div className="text-slate-300 font-medium">لا يوجد اقتراحات في هذه الفئة الآن</div>
+          <div className="text-slate-300 font-medium">
+            لا يوجد اقتراحات في هذه الفئة الآن
+          </div>
           <div className="text-xs text-slate-500 mt-1">
             جرّب تاب آخر — أو ارجع بعد ساعات لمّا تتجمع إشارات جديدة.
           </div>
@@ -158,6 +209,14 @@ export default function IntelUi() {
   );
 }
 
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-300">
+      {children}
+    </span>
+  );
+}
+
 function IntelCard({ item }: { item: IntelItem }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
@@ -169,9 +228,11 @@ function IntelCard({ item }: { item: IntelItem }) {
   }
 
   const urgencyTone =
-    item.urgency >= 75 ? "from-rose-500 to-orange-400"
-    : item.urgency >= 55 ? "from-amber-500 to-yellow-400"
-    : "from-sky-500 to-sky-400";
+    item.urgency >= 75
+      ? "from-rose-500 to-orange-400"
+      : item.urgency >= 55
+        ? "from-amber-500 to-yellow-400"
+        : "from-sky-500 to-sky-400";
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 space-y-3">
@@ -184,21 +245,45 @@ function IntelCard({ item }: { item: IntelItem }) {
             {(() => {
               const p = formatCustomerPhone(item.customerPhone);
               return p.isLid ? (
-                <span className="text-slate-500 italic" title={p.raw}>{p.display}</span>
+                <span className="text-slate-500 italic" title={p.raw}>
+                  {p.display}
+                </span>
               ) : (
-                <bdi dir="ltr" className="font-mono">{p.display}</bdi>
+                <bdi dir="ltr" className="font-mono">
+                  {p.display}
+                </bdi>
               );
             })()}
           </div>
           <div className="text-xs text-slate-300 mt-1.5">{item.reason}</div>
+          {(item.insightLabel ||
+            item.conversionScore ||
+            item.hesitationScore) && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {item.insightLabel && <Chip>{item.insightLabel}</Chip>}
+              {!!item.conversionScore && (
+                <Chip>تحويل {item.conversionScore}%</Chip>
+              )}
+              {!!item.hesitationScore && item.hesitationScore >= 50 && (
+                <Chip>تردد {item.hesitationScore}%</Chip>
+              )}
+            </div>
+          )}
         </div>
         <div className="shrink-0 text-left">
-          <div className="text-[10px] uppercase text-slate-500 tracking-wider">إلحاح</div>
+          <div className="text-[10px] uppercase text-slate-500 tracking-wider">
+            إلحاح
+          </div>
           <div className="flex items-center gap-2 min-w-[110px] mt-0.5">
             <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div className={`h-full bg-gradient-to-r ${urgencyTone}`} style={{ width: `${item.urgency}%` }} />
+              <div
+                className={`h-full bg-gradient-to-r ${urgencyTone}`}
+                style={{ width: `${item.urgency}%` }}
+              />
             </div>
-            <span className="text-xs font-mono tabular-nums w-8 text-right">{item.urgency}</span>
+            <span className="text-xs font-mono tabular-nums w-8 text-right">
+              {item.urgency}
+            </span>
           </div>
         </div>
       </div>
@@ -216,7 +301,11 @@ function IntelCard({ item }: { item: IntelItem }) {
               : "bg-brand-500 hover:bg-brand-600 text-white border border-transparent"
           }`}
         >
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
           {copied ? "تم النسخ" : "نسخ الرسالة"}
         </button>
         <Link
