@@ -16,6 +16,10 @@ type Gap = {
   id: string;
   question: string;
   occurrences: number;
+  score?: number;
+  impactLabel?: string;
+  reasons?: string[];
+  productHint?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -169,9 +173,19 @@ export default function SuggestionsUi() {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1.5">
+                  {g.impactLabel && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                      {g.impactLabel}
+                    </span>
+                  )}
                   {g.occurrences > 1 && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/30">
                       تكرّر {g.occurrences} مرات
+                    </span>
+                  )}
+                  {!!g.score && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-slate-300 border border-white/10">
+                      أولوية {g.score}
                     </span>
                   )}
                   <span className="text-xs text-slate-500">
@@ -179,6 +193,18 @@ export default function SuggestionsUi() {
                   </span>
                 </div>
                 <div className="text-sm text-slate-100">{g.question}</div>
+                {!!g.reasons?.length && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {g.reasons.slice(0, 4).map((r) => (
+                      <span
+                        key={r}
+                        className="text-[11px] text-slate-400 bg-white/[0.03] border border-white/5 rounded-full px-2 py-0.5"
+                      >
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-1.5 shrink-0">
                 <button
