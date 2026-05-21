@@ -53,6 +53,7 @@ $blockEnd
 "@
 
 $current = Get-Content $ProfilePath -Raw -ErrorAction SilentlyContinue
+if ($null -eq $current) { $current = "" }
 if ($current -match [regex]::Escape($blockStart)) {
     $pattern = "(?s)" + [regex]::Escape($blockStart) + ".*?" + [regex]::Escape($blockEnd)
     $updated = [regex]::Replace($current, $pattern, $functionBlock.Trim())
