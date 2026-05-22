@@ -276,23 +276,26 @@ export async function GET(req: Request) {
         } catch {}
       }
 
+      function enqueue(chunk: string) {
+        if (closed) return false;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+          return true;
+        } catch {
+          closeStream();
+          return false;
+        }
+      }
+
       async function send() {
         if (closed) return;
         try {
           const snapshot = await getCachedSnapshot(userId, customerId, () =>
             buildSnapshot(userId, customerId),
           );
-          controller.enqueue(
-            encoder.encode(
-              `event: message\ndata: ${JSON.stringify(snapshot)}\n\n`,
-            ),
-          );
+          if (!enqueue(`event: message\ndata: ${JSON.stringify(snapshot)}\n\n`)) return;
         } catch (e: any) {
-          controller.enqueue(
-            encoder.encode(
-              `event: error\ndata: ${JSON.stringify({ error: "snapshot_failed" })}\n\n`,
-            ),
-          );
+          if (!enqueue(`event: error\ndata: ${JSON.stringify({ error: "snapshot_failed" })}\n\n`)) return;
         }
         tick++;
         if (tick >= MAX_TICKS) {

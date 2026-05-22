@@ -111,6 +111,13 @@ export async function POST(req: Request) {
         },
       })
       .catch(() => {});
+    // Recovery path: when a WA session reconnects, immediately drain a small
+    // user-scoped batch so messages delayed by QR/disconnect don't wait for cron.
+    import("@/lib/messaging/outgoing-queue")
+      .then(({ drainOutgoingQueue }) =>
+        drainOutgoingQueue({ userId, batchSize: 5, perUserLimit: 2 }),
+      )
+      .catch(() => {});
     return NextResponse.json({ ok: true });
   }
   if (event === "disconnected") {

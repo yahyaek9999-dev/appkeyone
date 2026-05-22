@@ -27,6 +27,7 @@ export interface DrainOptions {
   batchSize?: number;
   perUserLimit?: number;
   now?: Date;
+  userId?: string;
 }
 
 export interface DrainResult {
@@ -196,6 +197,7 @@ export async function drainOutgoingQueue(
   const rows = await (prisma as any).waMessage
     .findMany({
       where: {
+        ...(opts.userId ? { userId: opts.userId } : {}),
         direction: "outbound",
         kind: "text",
         status: "queued",
