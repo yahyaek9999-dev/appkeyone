@@ -25,8 +25,10 @@ export async function POST(
   if (!customer)
     return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  // Send via the user's WhatsApp session
-  const r = await wa.send(uid, customer.phone, text);
+  // Human inbox replies must reflect real send success/failure immediately.
+  // Do NOT treat "queued" as delivered here, otherwise the UI/logs can show
+  // a reply that never actually left the WhatsApp session.
+  const r = await wa.sendNow(uid, customer.phone, text);
   if (!r.ok) {
     return NextResponse.json(
       { error: "send_failed", detail: r.data },

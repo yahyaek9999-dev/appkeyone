@@ -286,7 +286,7 @@ class SessionManager {
    */
   async _wakeSession(userId) {
     const s = this.sessions.get(userId);
-    if (!s || s.status !== "hibernated") return s;
+    if (!s || (s.status !== "hibernated" && s.status !== "idle-closed")) return s;
 
     // If already waking, wait for the existing wake to complete
     if (this._wakingNow.has(userId)) {
@@ -320,12 +320,15 @@ class SessionManager {
     try {
       // Re-start the session (will reuse LocalAuth from disk)
       const restarted = await this.start(userId);
-      // Wait for 'connected' status
+      // Wait against the live map entry because start() may replace the old
+      // object reference when reviving a hibernated/idle-closed session.
       const deadline = Date.now() + HIBERNATE_WAKE_TIMEOUT;
-      while (Date.now() < deadline && restarted.status !== "connected") {
+      let live = this.sessions.get(userId) || restarted;
+      while (Date.now() < deadline && live.status !== "connected") {
         await sleep(500);
+        live = this.sessions.get(userId) || live;
       }
-      if (restarted.status !== "connected") {
+      if (live.status !== "connected") {
         this._metrics.wakeFails++;
         throw new Error(`wake timeout after ${HIBERNATE_WAKE_TIMEOUT}ms`);
       }
@@ -338,8 +341,8 @@ class SessionManager {
       console.log(`[wa] [${userId}] woke in ${wakeMs}ms`);
 
       // Resolve any waiters
-      this._resolveWaiters(userId, restarted);
-      return restarted;
+      this._resolveWaiters(userId, live);
+      return live;
     } catch (err) {
       this._rejectWaiters(userId, err);
       throw err;
