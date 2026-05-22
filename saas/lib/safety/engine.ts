@@ -78,17 +78,47 @@ export async function assessAndShape(i: AssessInput): Promise<AssessOutput> {
 
     // --- Hard blocks first ----------------------------------------------------
     if (state.killSwitchActive) {
-      return {
-        ...FALLBACK,
-        text: i.reply,
-        blocked: true,
-        blockedReason: "kill_switch_active:" + (state.killSwitchReason || ""),
-        cooldownMs: 24 * 3_600_000,
-        risk: "kill_all",
-        riskScore: 100,
-        reasons: ["kill_switch_active"],
-        warmupStage: state.warmupStage,
-      };
+      const reason = state.killSwitchReason || "";
+      const scoreOnlyKill = reason.includes("risk_score_critical") &&
+        !reason.includes("mass_spam_failures") &&
+        !reason.includes("mass_blocks") &&
+        !reason.includes("reconnect_storm");
+      if (i.customerInitiated && scoreOnlyKill) {
+        // Historical restore/import bursts can inflate score-only risk before
+        // the first real customer interaction. Do not silence live replies for
+        // that case; clear the false emergency and continue with normal risk.
+        await patchState(i.userId, {
+          killSwitchActive: false,
+          killSwitchReason: null,
+          killSwitchAt: null,
+          cooldownUntil: null,
+          riskScore: Math.min(state.riskScore, 40),
+          recentFailures: 0,
+          recentReconnects: 0,
+        } as any);
+        state.killSwitchActive = false;
+        state.killSwitchReason = null;
+        state.killSwitchAt = null;
+        state.cooldownUntil = null;
+        state.riskScore = Math.min(state.riskScore, 40);
+        await audit("warn", "kill_switch", "تم إلغاء إيقاف طارئ خاطئ لرد وارد مباشر", {
+          userId: i.userId,
+          detail: "score-only kill switch cleared for customer-initiated live reply",
+          payload: { previousReason: reason, customerId: i.customerId, phone: i.customerPhone },
+        }).catch(() => {});
+      } else {
+        return {
+          ...FALLBACK,
+          text: i.reply,
+          blocked: true,
+          blockedReason: "kill_switch_active:" + reason,
+          cooldownMs: 24 * 3_600_000,
+          risk: "kill_all",
+          riskScore: 100,
+          reasons: ["kill_switch_active"],
+          warmupStage: state.warmupStage,
+        };
+      }
     }
     if (state.cooldownUntil && new Date(state.cooldownUntil).getTime() > Date.now()) {
       return {

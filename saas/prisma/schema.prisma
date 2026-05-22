@@ -326,6 +326,11 @@ model Customer {
   inboundCount     Int       @default(0)
   outboundCount    Int       @default(0)
   firstInboundAt   DateTime?                  // null = bot wrote first (cold) → low trust
+  // KEYONE activation: imported/historical chats stay visible but do not
+  // start billing/safety/warmup until the first live runtime inbound.
+  keyoneActivatedAt DateTime?
+  firstLiveInboundAt DateTime?
+  historicalImported Boolean @default(false)
   lastInboundAt    DateTime?
   lastOutboundAt   DateTime?
   blockedAt        DateTime?                  // set when WA reports a block / send fail final
@@ -342,6 +347,7 @@ model Customer {
   @@index([optedOutAt])
   @@index([userId, retentionScore])
   @@index([userId, lastEngagedAt])
+  @@index([userId, keyoneActivatedAt])
 }
 
 /// Phase 1 — Memory Engine. One row per Customer. Stores a rolling Arabic

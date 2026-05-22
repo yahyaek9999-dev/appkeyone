@@ -71,6 +71,22 @@ import { evaluateInboundProtection } from "@/lib/protection";
 const SECRET =
   process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
+// whatsapp-web.js can emit old/unread history after session restore. Keep it
+// visible in the inbox, but never let it activate billing/safety/send logic.
+const LIVE_INBOUND_MAX_AGE_MS = 10 * 60_000;
+
+function providerTimestampMs(value: unknown): number | null {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n < 10_000_000_000 ? n * 1000 : n;
+}
+
+function isHistoricalRuntimeInbound(value: unknown): boolean {
+  const ts = providerTimestampMs(value);
+  if (!ts) return false;
+  return Date.now() - ts > LIVE_INBOUND_MAX_AGE_MS;
+}
+
 export async function POST(req: Request) {
   const provided = req.headers.get("x-internal-secret");
   if (provided !== SECRET) {
@@ -154,6 +170,7 @@ export async function POST(req: Request) {
   };
   const providerMessageId =
     String((body as any).providerMessageId || "").slice(0, 180) || null;
+  const historicalInbound = isHistoricalRuntimeInbound((body as any).providerTimestamp);
 
   // ---- Load tenant ----------------------------------------------------------
   const user = await prisma.user.findUnique({
@@ -184,48 +201,51 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, reply: null, blocked: "suspended" });
   }
 
-  // ---- Gate by subscription -------------------------------------------------
-  const sub = user.subscription;
-  if (!sub)
-    return NextResponse.json({
-      ok: true,
-      reply: null,
-      blocked: "no_subscription",
-    });
-  if (sub.status !== "active")
-    return NextResponse.json({
-      ok: true,
-      reply: null,
-      blocked: "inactive_status:" + sub.status,
-    });
-  if (sub.expiresAt < new Date())
-    return NextResponse.json({ ok: true, reply: null, blocked: "expired" });
-  const monthlyCap = sub.plan?.monthlyMsgs ?? 0;
-  if (monthlyCap > 0 && sub.msgsUsed >= monthlyCap)
-    return NextResponse.json({
-      ok: true,
-      reply: null,
-      blocked: "quota_exhausted",
-    });
-
-  // ---- AI request cap (membership) ------------------------------------------
-  // 0 in the plan field means unlimited. Quick-reply / fuzzy-match branches
-  // are NOT blocked by this — only the LLM call is gated downstream by the
-  // same numbers. We block here as a fast short-circuit when exhausted.
-  const aiCap = (sub.plan as any)?.aiRequestsMonthly ?? 0;
-  if (aiCap > 0 && ((sub as any).aiRequestsUsed ?? 0) >= aiCap) {
-    return NextResponse.json({
-      ok: true,
-      reply: null,
-      blocked: "ai_quota_exhausted",
-    });
-  }
-
   // ---- Daily cap (Controlled Launch safety) -------------------------------
   // Rolls the counter when the stored reset day is older than today (UTC).
   // 0 disables the cap (falls back to the monthly plan limit only).
   const dailyCap = (bot as any).dailyMessageCap ?? 0;
-  if (dailyCap > 0) {
+
+  if (!historicalInbound) {
+    // ---- Gate by subscription ---------------------------------------------
+    const sub = user.subscription;
+    if (!sub)
+      return NextResponse.json({
+        ok: true,
+        reply: null,
+        blocked: "no_subscription",
+      });
+    if (sub.status !== "active")
+      return NextResponse.json({
+        ok: true,
+        reply: null,
+        blocked: "inactive_status:" + sub.status,
+      });
+    if (sub.expiresAt < new Date())
+      return NextResponse.json({ ok: true, reply: null, blocked: "expired" });
+    const monthlyCap = sub.plan?.monthlyMsgs ?? 0;
+    if (monthlyCap > 0 && sub.msgsUsed >= monthlyCap)
+      return NextResponse.json({
+        ok: true,
+        reply: null,
+        blocked: "quota_exhausted",
+      });
+
+    // ---- AI request cap (membership) --------------------------------------
+    // 0 in the plan field means unlimited. Quick-reply / fuzzy-match branches
+    // are NOT blocked by this — only the LLM call is gated downstream by the
+    // same numbers. We block here as a fast short-circuit when exhausted.
+    const aiCap = (sub.plan as any)?.aiRequestsMonthly ?? 0;
+    if (aiCap > 0 && ((sub as any).aiRequestsUsed ?? 0) >= aiCap) {
+      return NextResponse.json({
+        ok: true,
+        reply: null,
+        blocked: "ai_quota_exhausted",
+      });
+    }
+  }
+
+  if (!historicalInbound && dailyCap > 0) {
     const utcStartOfToday = new Date(
       new Date().toISOString().slice(0, 10) + "T00:00:00.000Z",
     );
@@ -270,19 +290,42 @@ export async function POST(req: Request) {
   // ---- Upsert customer + conversation --------------------------------------
   let customer = await prisma.customer.upsert({
     where: { userId_phone: { userId, phone: from.phone } },
-    update: { lastSeenAt: new Date(), name: from.name ?? undefined },
-    create: { userId, phone: from.phone, name: from.name ?? undefined },
+    update: {
+      lastSeenAt: new Date(),
+      name: from.name ?? undefined,
+      historicalImported: historicalInbound ? true : undefined,
+    } as any,
+    create: {
+      userId,
+      phone: from.phone,
+      name: from.name ?? undefined,
+      historicalImported: historicalInbound,
+      keyoneActivatedAt: historicalInbound ? null : new Date(),
+      firstLiveInboundAt: historicalInbound ? null : new Date(),
+    } as any,
   });
 
-  // ---- Trust accrual: this customer just sent us a message -----------------
-  // Bumps trustScore + engagementScore + sets firstInboundAt if null.
-  // Non-fatal on failure (DB hiccup shouldn't block the bot reply).
-  onInbound(customer.id).catch((e) =>
-    console.error("[trust/onInbound]", e?.message),
-  );
-  // Log to safety event stream so the engine can compute a real
-  // inbound:outbound ratio and grant the healthy-conversation discount.
-  recordInboundReply(userId, customer.id, customer.phone).catch(() => {});
+  const wasActivated = !!(customer as any).keyoneActivatedAt;
+  if (!historicalInbound && !wasActivated) {
+    customer = await prisma.customer.update({
+      where: { id: customer.id },
+      data: {
+        keyoneActivatedAt: new Date(),
+        firstLiveInboundAt: new Date(),
+        historicalImported: false,
+      } as any,
+    });
+  }
+
+  if (!historicalInbound) {
+    // ---- Trust accrual: this customer just sent a live KEYONE message ------
+    // Historical imports must not affect trust/risk/warmup/billing windows.
+    onInbound(customer.id).catch((e) =>
+      console.error("[trust/onInbound]", e?.message),
+    );
+    // Log to safety event stream only for live runtime messages.
+    recordInboundReply(userId, customer.id, customer.phone).catch(() => {});
+  }
 
   // ---- Auto-capture: harvest real phone + name from the message body -------
   // When the contact arrived as a LID (no real phone) the bot will ask for
@@ -389,6 +432,9 @@ export async function POST(req: Request) {
       mediaType,
       providerMessageId,
       flagged,
+      createdAt: historicalInbound && providerTimestampMs((body as any).providerTimestamp)
+        ? new Date(providerTimestampMs((body as any).providerTimestamp)!)
+        : undefined,
       intent: mapEmotionalIntent(emotional.intent),
       sentiment: emotional.sentiment,
       angerScore: emotional.angerScore,
@@ -396,9 +442,22 @@ export async function POST(req: Request) {
       frustrationScore: emotional.frustrationScore,
       urgencyScore: emotional.urgencyScore,
       emotionalTone: emotional.toneHint.slice(0, 160),
-      metadataJson: JSON.stringify({ providerMessageId, emotional }),
+      metadataJson: JSON.stringify({
+        providerMessageId,
+        emotional,
+        historicalInbound,
+        providerTimestamp: (body as any).providerTimestamp || null,
+      }),
     } as any,
   });
+
+  if (historicalInbound) {
+    return NextResponse.json({
+      ok: true,
+      reply: null,
+      blocked: "historical_inbound_not_activated",
+    });
+  }
 
   if (isOptOut(messageText)) {
     await prisma.customer
