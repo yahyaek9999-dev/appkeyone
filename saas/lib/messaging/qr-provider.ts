@@ -75,7 +75,7 @@ export class QRProvider implements MessagingProvider {
       }
     }
 
-    const r = await wa.send(args.userId, args.to, args.text);
+    const r = await wa.sendNow(args.userId, args.to, args.text);
     if (r.ok) {
       const providerMsgId = (r as any)?.data?.id || (r as any)?.data?.messageId || undefined;
       await recordLedger(args, "sent", { providerMsgId });

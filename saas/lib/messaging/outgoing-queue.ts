@@ -45,6 +45,9 @@ const DEFAULT_PER_USER_LIMIT = 6;
 const SEND_TIMEOUT_RETRY_MS = 5 * 60_000;
 const RATE_RETRY_MS = 15 * 60_000;
 const MAX_ATTEMPTS = 3;
+const STALE_SENDING_MS = 10 * 60_000;
+const DURABLE_SESSION_SPACING_MS = 6_000;
+const FLOOD_RISK_EXTRA_MS = 20_000;
 
 function safeJson(value: unknown): string {
   try {
@@ -80,8 +83,9 @@ export async function enqueueOutboundText(
   }
 
   const basis = Date.now() + Math.max(0, Math.min(7 * 24 * 3_600_000, input.delayMs || 0));
-  const dueMs = nextAllowedSendAt(input.userId, to, basis);
-  const dueAt = new Date(Math.max(Date.now(), dueMs));
+  const inMemoryDueMs = nextAllowedSendAt(input.userId, to, basis);
+  const durableDueMs = await durableAllowedSendAt(input.userId, to, basis).catch(() => basis);
+  const dueAt = new Date(Math.max(Date.now(), inMemoryDueMs, durableDueMs));
 
   try {
     const row = await (prisma as any).waMessage.upsert({
@@ -157,6 +161,8 @@ export async function drainOutgoingQueue(
   };
   const perUserSent = new Map<string, number>();
 
+  await resetStaleSending(now).catch(() => {});
+
   const rows = await (prisma as any).waMessage
     .findMany({
       where: {
@@ -194,7 +200,10 @@ export async function drainOutgoingQueue(
       continue;
     }
 
-    const safeAt = nextAllowedSendAt(row.userId, row.customerPhone);
+    const safeAt = Math.max(
+      nextAllowedSendAt(row.userId, row.customerPhone),
+      await durableAllowedSendAt(row.userId, row.customerPhone).catch(() => Date.now()),
+    );
     if (safeAt > Date.now() + 500) {
       await delayRow(row.id, new Date(safeAt), "anti_flood_pacing");
       result.delayed++;
@@ -205,7 +214,7 @@ export async function drainOutgoingQueue(
     const claim = await (prisma as any).waMessage
       .updateMany({
         where: { id: row.id, status: "queued" },
-        data: { status: "sending", attempts: { increment: 1 } },
+        data: { status: "sending", attempts: { increment: 1 }, queuedAt: new Date() },
       })
       .catch(() => ({ count: 0 }));
     if (!claim?.count) {
@@ -214,7 +223,7 @@ export async function drainOutgoingQueue(
     }
     result.claimed++;
 
-    const sent = await wa.send(row.userId, row.customerPhone, row.body || "");
+    const sent = await wa.sendNow(row.userId, row.customerPhone, row.body || "");
     if (sent.ok) {
       await (prisma as any).waMessage
         .update({
@@ -246,12 +255,17 @@ export async function drainOutgoingQueue(
     const nextDelay = classifyRetryDelayMs(reason);
     const attempts = (row.attempts || 0) + 1;
     if (nextDelay > 0 && attempts < MAX_ATTEMPTS) {
+      const retryAt = await durableAllowedSendAt(
+        row.userId,
+        row.customerPhone,
+        Date.now() + retryBackoffMs(attempts, nextDelay),
+      ).catch(() => Date.now() + retryBackoffMs(attempts, nextDelay));
       await (prisma as any).waMessage
         .update({
           where: { id: row.id },
           data: {
             status: "queued",
-            queuedAt: new Date(Date.now() + nextDelay),
+            queuedAt: new Date(retryAt),
             errorCode: String(sent.status || "send_failed"),
             errorDetail: reason,
           },
@@ -291,6 +305,87 @@ async function delayRow(id: string, dueAt: Date, reason: string): Promise<void> 
   await (prisma as any).waMessage
     .update({ where: { id }, data: { queuedAt: dueAt, errorDetail: reason } })
     .catch(() => {});
+}
+
+async function resetStaleSending(now: Date): Promise<void> {
+  const staleBefore = new Date(now.getTime() - STALE_SENDING_MS);
+  await (prisma as any).waMessage.updateMany({
+    where: {
+      direction: "outbound",
+      kind: "text",
+      status: "sending",
+      queuedAt: { lt: staleBefore },
+      attempts: { lt: MAX_ATTEMPTS },
+    },
+    data: {
+      status: "queued",
+      queuedAt: new Date(now.getTime() + SEND_TIMEOUT_RETRY_MS),
+      errorDetail: "stale_sending_requeued",
+    },
+  });
+  await (prisma as any).waMessage.updateMany({
+    where: {
+      direction: "outbound",
+      kind: "text",
+      status: "sending",
+      queuedAt: { lt: staleBefore },
+      attempts: { gte: MAX_ATTEMPTS },
+    },
+    data: {
+      status: "failed",
+      failedAt: now,
+      errorCode: "stale_sending",
+      errorDetail: "stale_sending_max_attempts",
+    },
+  });
+}
+
+async function durableAllowedSendAt(
+  userId: string,
+  phone: string,
+  basis = Date.now(),
+): Promise<number> {
+  const [lastSessionSend, recentSamePhone, state] = await Promise.all([
+    (prisma as any).waMessage.findFirst({
+      where: {
+        userId,
+        direction: "outbound",
+        status: { in: ["sent", "delivered", "read"] },
+        sentAt: { not: null },
+      },
+      orderBy: { sentAt: "desc" },
+      select: { sentAt: true },
+    }),
+    (prisma as any).waMessage.findFirst({
+      where: {
+        userId,
+        customerPhone: phone,
+        direction: "outbound",
+        status: { in: ["sent", "delivered", "read"] },
+        sentAt: { not: null },
+      },
+      orderBy: { sentAt: "desc" },
+      select: { sentAt: true },
+    }),
+    loadState(userId).catch(() => null),
+  ]);
+  const lastSessionAt = lastSessionSend?.sentAt
+    ? new Date(lastSessionSend.sentAt).getTime() + DURABLE_SESSION_SPACING_MS
+    : 0;
+  const lastPhoneAt = recentSamePhone?.sentAt
+    ? new Date(recentSamePhone.sentAt).getTime() + 4 * 3_600_000
+    : 0;
+  const cooldownAt = state?.cooldownUntil
+    ? new Date(state.cooldownUntil).getTime()
+    : 0;
+  const riskExtra = state?.riskScore && state.riskScore >= 60 ? FLOOD_RISK_EXTRA_MS : 0;
+  return Math.max(basis + riskExtra, lastSessionAt, lastPhoneAt, cooldownAt);
+}
+
+function retryBackoffMs(attempts: number, baseMs: number): number {
+  const factor = Math.max(1, Math.min(4, 2 ** Math.max(0, attempts - 1)));
+  const jitter = Math.floor(Math.random() * 5_000);
+  return baseMs * factor + jitter;
 }
 
 function extractProviderMessageId(data: unknown): string | null {
