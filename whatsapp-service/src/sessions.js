@@ -838,6 +838,13 @@ class SessionManager {
             `[wa] [${userId}] SEND_FAIL to ${msg.from}:`,
             sendErr.message,
           );
+          notifySaas({
+            event: "send_failed",
+            userId,
+            to: fromPhone,
+            reason: sendErr?.message || String(sendErr),
+            source: "auto_reply",
+          }).catch(() => {});
         }
       } catch (e) {
         console.error("[wa] message handler error:", e);
@@ -880,61 +887,72 @@ class SessionManager {
   }
 
   async send(userId, toPhone, text) {
-    let s = this.sessions.get(userId);
-    // Auto-wake from hibernation (smart scaling)
-    if (s && s.status === "hibernated" && ENABLE_HIBERNATION) {
-      console.log(`[wa] [${userId}] auto-wake on send()`);
-      s = await this._wakeSession(userId);
-    }
-    // Auto-resume if Chromium was evicted but auth is still on disk
-    if (s && s.status === "idle-closed") {
-      console.log(`[wa] [${userId}] auto-resume on send()`);
-      s = await this.start(userId);
-      // Wait briefly for the client to be ready
-      const start = Date.now();
-      while (Date.now() - start < 15000 && s.status !== "connected") {
-        await sleep(500);
-      }
-    }
-    if (!s || s.status !== "connected")
-      throw new Error("session not connected");
-    s.lastActivityAt = Date.now();
-
-    // Reject contacts whose stored "phone" is actually a WhatsApp LID.
-    // We never had a real phone number for these so we can't initiate a send.
-    if (
-      typeof toPhone === "string" &&
-      (toPhone.startsWith("lid:") || toPhone.includes("@lid"))
-    ) {
-      throw new Error(
-        "cannot initiate send to WhatsApp LID; no public phone available",
-      );
-    }
-
-    const cleaned = String(toPhone || "")
-      .replace(/^\+/, "")
-      .replace(/[^\d]/g, "");
-    // Valid E.164 phones are 8-15 digits. Anything shorter is bogus; anything
-    // longer is almost certainly a LID misclassified as a phone in old rows.
-    if (cleaned.length < 8 || cleaned.length > 15) {
-      throw new Error(`invalid phone format: "${toPhone}"`);
-    }
-
-    // Modern WA Web requires a LID-aware JID for any contact the session has
-    // never chatted with before. getNumberId() does the proper Store lookup
-    // (createWid + LID resolution) and returns null when the number isn't on
-    // WhatsApp at all. Without this, cold sends fail with the cryptic
-    // "No LID for user" error thrown from WhatsApp's own JS bundle.
-    let numberId;
     try {
-      numberId = await s.client.getNumberId(cleaned);
+      let s = this.sessions.get(userId);
+      // Auto-wake from hibernation (smart scaling)
+      if (s && s.status === "hibernated" && ENABLE_HIBERNATION) {
+        console.log(`[wa] [${userId}] auto-wake on send()`);
+        s = await this._wakeSession(userId);
+      }
+      // Auto-resume if Chromium was evicted but auth is still on disk
+      if (s && s.status === "idle-closed") {
+        console.log(`[wa] [${userId}] auto-resume on send()`);
+        s = await this.start(userId);
+        // Wait briefly for the client to be ready
+        const start = Date.now();
+        while (Date.now() - start < 15000 && s.status !== "connected") {
+          await sleep(500);
+        }
+      }
+      if (!s || s.status !== "connected")
+        throw new Error("session not connected");
+      s.lastActivityAt = Date.now();
+
+      // Reject contacts whose stored "phone" is actually a WhatsApp LID.
+      // We never had a real phone number for these so we can't initiate a send.
+      if (
+        typeof toPhone === "string" &&
+        (toPhone.startsWith("lid:") || toPhone.includes("@lid"))
+      ) {
+        throw new Error(
+          "cannot initiate send to WhatsApp LID; no public phone available",
+        );
+      }
+
+      const cleaned = String(toPhone || "")
+        .replace(/^\+/, "")
+        .replace(/[^\d]/g, "");
+      // Valid E.164 phones are 8-15 digits. Anything shorter is bogus; anything
+      // longer is almost certainly a LID misclassified as a phone in old rows.
+      if (cleaned.length < 8 || cleaned.length > 15) {
+        throw new Error(`invalid phone format: "${toPhone}"`);
+      }
+
+      // Modern WA Web requires a LID-aware JID for any contact the session has
+      // never chatted with before. getNumberId() does the proper Store lookup
+      // (createWid + LID resolution) and returns null when the number isn't on
+      // WhatsApp at all. Without this, cold sends fail with the cryptic
+      // "No LID for user" error thrown from WhatsApp's own JS bundle.
+      let numberId;
+      try {
+        numberId = await s.client.getNumberId(cleaned);
+      } catch (e) {
+        throw new Error(`getNumberId failed: ${e?.message || e}`);
+      }
+      if (!numberId) {
+        throw new Error("number not registered on WhatsApp");
+      }
+      return await s.client.sendMessage(numberId._serialized, text);
     } catch (e) {
-      throw new Error(`getNumberId failed: ${e?.message || e}`);
+      notifySaas({
+        event: "send_failed",
+        userId,
+        to: toPhone,
+        reason: e?.message || String(e),
+        source: "direct_send",
+      }).catch(() => {});
+      throw e;
     }
-    if (!numberId) {
-      throw new Error("number not registered on WhatsApp");
-    }
-    return s.client.sendMessage(numberId._serialized, text);
   }
 
   async logout(userId) {

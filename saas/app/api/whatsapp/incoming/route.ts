@@ -36,7 +36,12 @@ import {
   applySignalsToNegotiation,
 } from "@/lib/sales-engine";
 import { assessOutbound } from "@/lib/anti-ban";
-import { assessAndShape, recordInboundReply } from "@/lib/safety/engine";
+import {
+  assessAndShape,
+  recordFailure,
+  recordInboundReply,
+  recordReconnect,
+} from "@/lib/safety/engine";
 import { onInbound } from "@/lib/safety/trust";
 import { extractOrderFast } from "@/lib/order-extractor";
 import { computePriority } from "@/lib/fast-path";
@@ -100,9 +105,33 @@ export async function POST(req: Request) {
         data: { whatsappStatus: "disconnected" } as any,
       })
       .catch(() => {});
+    recordReconnect(userId).catch(() => {});
     console.warn(
       `[wa-event] [${userId}] session disconnected: reason="${reason}"`,
     );
+    return NextResponse.json({ ok: true });
+  }
+  if (event === "send_failed") {
+    const reason = String((body as any).reason || "unknown").slice(0, 500);
+    const to = String((body as any).to || "").slice(0, 80) || "unknown";
+    const source = String((body as any).source || "wa_gateway").slice(0, 80);
+    await recordFailure(userId, null, to, reason);
+
+    if (/block|forbidden|rate|429|too many/i.test(reason)) {
+      await prisma.safetyAudit
+        .create({
+          data: {
+            userId,
+            level: "warn",
+            category: "anti_ban",
+            title: "فشل إرسال قد يؤثر على سلامة واتساب",
+            detail: `المصدر: ${source} — إلى: ${to} — ${reason}`.slice(0, 900),
+            payload: JSON.stringify({ source, to, reason }),
+          },
+        })
+        .catch(() => {});
+    }
+
     return NextResponse.json({ ok: true });
   }
   if (event !== "incoming") {

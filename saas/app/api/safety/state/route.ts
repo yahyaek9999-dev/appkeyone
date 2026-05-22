@@ -1,129 +1,163 @@
-// GET  /api/safety/state           — current safety snapshot for the user
-// POST /api/safety/clear-kill      — admin clears the kill switch
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadState } from "@/lib/safety/store";
-import { getStageLimits } from "@/lib/safety/warmup";
+import { getStageLimits, type StageLimits } from "@/lib/safety/warmup";
+
+export const dynamic = "force-dynamic";
+
+type ReasonCount = { reason: string; count: number };
 
 export async function GET() {
   const user = await requireUser();
-  const state = await loadState(user.id);
-  const limits = getStageLimits(state.warmupStage as any);
+  const userId = user.id;
+  const state = await loadState(userId);
+  const limits = getStageLimits(state.warmupStage as StageLimits["stage"]);
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  // Recent events (last 24h, capped at 200) for the live feed.
-  const since = new Date(Date.now() - 24 * 3_600_000);
-  const events = await prisma.safetyEvent.findMany({
-    where: { userId: user.id, createdAt: { gte: since } },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
-  const audits = await prisma.safetyAudit.findMany({
-    where: { userId: user.id, createdAt: { gte: since } },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const [events, audits, queueCounts] = await Promise.all([
+    (prisma as any).safetyEvent.findMany({
+      where: { userId, createdAt: { gte: since24h } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+    (prisma as any).safetyAudit.findMany({
+      where: { OR: [{ userId }, { userId: null }], createdAt: { gte: since24h } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    (prisma as any).waMessage?.groupBy
+      ? (prisma as any).waMessage.groupBy({
+          by: ["status"],
+          where: { userId, status: { in: ["queued", "sending", "failed"] } },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
-  // Aggregate counts for chart cards
-  const sends24h = events.filter((e: any) => e.kind === "send").length;
-  const failures24h = events.filter((e: any) => e.kind === "failure").length;
-  const cooldowns24h = events.filter((e: any) => e.kind === "cooldown").length;
-  const reconnects24h = events.filter((e: any) => e.kind === "reconnect").length;
-  const inbound24h = events.filter((e: any) => e.kind === "reply").length;
+  const queueByStatus = new Map<string, number>();
+  for (const r of queueCounts || []) queueByStatus.set(r.status, r._count?._all || 0);
 
-  // Failure split (spam-like vs technical) — informs the dashboard whether
-  // recent failures are a real ban-risk signal or just infra hiccups.
+  let sends24h = 0;
+  let failures24h = 0;
+  let cooldowns24h = 0;
+  let reconnects24h = 0;
+  let inbound24h = 0;
   let spamFails24h = 0;
   let techFails24h = 0;
   let softenedCount = 0;
   const reasonCounts = new Map<string, number>();
   let lastCooldownReasons: string[] = [];
+
   for (const e of events as any[]) {
-    let p: any = null;
-    try { p = JSON.parse(e.payload || "{}"); } catch {}
+    if (e.kind === "send") sends24h++;
+    if (e.kind === "failure") failures24h++;
+    if (e.kind === "cooldown") cooldowns24h++;
+    if (e.kind === "reconnect") reconnects24h++;
+    if (e.kind === "reply") inbound24h++;
+
+    const payload = parsePayload(e.payload);
     if (e.kind === "failure") {
-      if (p?.kind === "spam" || p?.kind === "blocked" || p?.kind === "rate_limit") spamFails24h++;
+      if (payload.kind === "spam" || payload.kind === "blocked" || payload.kind === "rate_limit") spamFails24h++;
       else techFails24h++;
     }
-    if (e.kind === "cooldown" && p?.reasons && Array.isArray(p.reasons)) {
-      if (lastCooldownReasons.length === 0) lastCooldownReasons = p.reasons.slice(0, 6);
-      for (const r of p.reasons) reasonCounts.set(r, (reasonCounts.get(r) || 0) + 1);
+    const reasons = Array.isArray(payload.reasons) ? payload.reasons : [];
+    if (reasons.includes("cooldown_softened_for_inbound")) softenedCount++;
+    if (e.kind === "cooldown" && lastCooldownReasons.length === 0) {
+      lastCooldownReasons = reasons.slice(0, 6);
     }
-    if (e.kind === "send" && p?.reasons && Array.isArray(p.reasons)) {
-      if (p.reasons.includes("cooldown_softened_for_inbound")) softenedCount++;
+    for (const reason of reasons) {
+      if (typeof reason !== "string" || !reason) continue;
+      reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
     }
   }
-  const topReasons = Array.from(reasonCounts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([reason, count]) => ({ reason, count }));
 
-  const outboundInboundRatio = inbound24h > 0
-    ? Number((sends24h / inbound24h).toFixed(2))
-    : sends24h > 0 ? sends24h : 0;
-
-  // Account-health trend: simple traffic-light. Green = healthy, Yellow =
-  // recent friction, Red = clear ban-risk signals in last 24h.
-  let healthTrend: "green" | "yellow" | "red" = "green";
-  if (state.killSwitchActive || spamFails24h >= 8 || cooldowns24h >= 3) healthTrend = "red";
-  else if (state.riskScore >= 50 || spamFails24h >= 3 || cooldowns24h >= 1 || reconnects24h >= 4) healthTrend = "yellow";
-
-  // Queue pressure: 0..1 — how close we are to the daily/hourly ceiling.
-  const queuePressure = Math.max(
-    state.dailySends / Math.max(1, limits.maxDaily),
-    state.hourlySends / Math.max(1, limits.maxHourly)
-  );
+  const queued = queueByStatus.get("queued") || 0;
+  const sending = queueByStatus.get("sending") || 0;
+  const failedQueued = queueByStatus.get("failed") || 0;
+  const queuePressure = Math.min(1, (queued + sending) / Math.max(1, limits.maxHourly));
+  const outboundInboundRatio = sends24h / Math.max(1, inbound24h);
+  const healthTrend = pickHealthTrend({
+    riskScore: state.riskScore,
+    spamFails24h,
+    cooldowns24h,
+    reconnects24h,
+    queuePressure,
+  });
+  const cooldownRemainingMs = state.cooldownUntil
+    ? Math.max(0, new Date(state.cooldownUntil).getTime() - Date.now())
+    : 0;
 
   return NextResponse.json({
-    state: {
-      warmupStage: state.warmupStage,
-      warmupReplyOnly: state.warmupReplyOnly,
-      warmupStartedAt: state.warmupStartedAt,
-      dailySends: state.dailySends,
-      hourlySends: state.hourlySends,
-      riskScore: state.riskScore,
-      trustScore: state.trustScore,
-      cooldownUntil: state.cooldownUntil,
-      cooldownRemainingMs: state.cooldownUntil
-        ? Math.max(0, new Date(state.cooldownUntil).getTime() - Date.now())
-        : 0,
-      killSwitchActive: state.killSwitchActive,
-      killSwitchReason: state.killSwitchReason,
-      killSwitchAt: state.killSwitchAt,
-      recentFailures: state.recentFailures,
-      recentReconnects: state.recentReconnects,
-      totalSends: state.totalSends,
-      totalFailures: state.totalFailures,
-      totalCooldowns: state.totalCooldowns,
-      lastSendAt: state.lastSendAt,
-    },
-    limits: {
-      stage: limits.stage,
-      maxDaily: limits.maxDaily,
-      maxHourly: limits.maxHourly,
-      maxNewChats10Min: limits.maxNewChats10Min,
-      replyOnly: limits.replyOnly,
-      description: limits.description,
-    },
+    state: { ...state, cooldownRemainingMs },
+    limits,
     counters: {
-      sends24h, failures24h, cooldowns24h, reconnects24h,
-      inbound24h, spamFails24h, techFails24h, softenedCount,
+      sends24h,
+      failures24h,
+      cooldowns24h,
+      reconnects24h,
+      inbound24h,
+      spamFails24h,
+      techFails24h,
+      softenedCount,
+    },
+    queue: {
+      queued,
+      sending,
+      failed: failedQueued,
+      pressure: queuePressure,
     },
     diagnostics: {
       outboundInboundRatio,
       healthTrend,
-      queuePressure: Number(queuePressure.toFixed(2)),
-      topReasons,
+      queuePressure,
+      topReasons: topReasons(reasonCounts),
       lastCooldownReasons,
     },
-    events: events.map((e: any) => ({
-      id: e.id, kind: e.kind, phone: e.phone,
-      riskScore: e.riskScore, createdAt: e.createdAt,
-      payload: e.payload,
-    })),
-    audits: audits.map((a: any) => ({
-      id: a.id, level: a.level, category: a.category,
-      title: a.title, detail: a.detail, createdAt: a.createdAt,
-    })),
+    events,
+    audits,
   });
+}
+
+function parsePayload(raw: string | null | undefined): any {
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function topReasons(counts: Map<string, number>): ReasonCount[] {
+  return Array.from(counts.entries())
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+}
+
+function pickHealthTrend(input: {
+  riskScore: number;
+  spamFails24h: number;
+  cooldowns24h: number;
+  reconnects24h: number;
+  queuePressure: number;
+}): "green" | "yellow" | "red" {
+  if (
+    input.riskScore >= 75 ||
+    input.spamFails24h >= 3 ||
+    input.cooldowns24h >= 2 ||
+    input.reconnects24h >= 5 ||
+    input.queuePressure >= 0.95
+  ) {
+    return "red";
+  }
+  if (
+    input.riskScore >= 40 ||
+    input.spamFails24h > 0 ||
+    input.cooldowns24h > 0 ||
+    input.reconnects24h >= 3 ||
+    input.queuePressure >= 0.7
+  ) {
+    return "yellow";
+  }
+  return "green";
 }
