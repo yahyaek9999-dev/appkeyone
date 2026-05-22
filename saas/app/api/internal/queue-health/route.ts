@@ -34,6 +34,7 @@ function unauthorized() {
 const QUEUE_NAMES = [
   "broadcasts",
   "follow-ups",
+  "outgoing-messages",
   "daily-report",
   "meta-webhook-processor",
   "llm-prewarm",
@@ -132,12 +133,14 @@ async function getCronStats(): Promise<{
   broadcastQueued: number;
   broadcastSending: number;
   followUpsPending: number;
+  outgoingMessages: Awaited<ReturnType<typeof import("@/lib/messaging/outgoing-queue")["getOutgoingQueueHealth"]>>;
 }> {
   // Import prisma lazily so this file remains safe to compile without a
   // Prisma client (e.g. in a stripped test environment).
   const { prisma } = await import("@/lib/db");
+  const { getOutgoingQueueHealth } = await import("@/lib/messaging/outgoing-queue");
 
-  const [broadcastQueued, broadcastSending, followUpsPending] =
+  const [broadcastQueued, broadcastSending, followUpsPending, outgoingMessages] =
     await Promise.all([
       prisma.broadcast.count({ where: { status: "queued" } }).catch(() => -1),
       prisma.broadcast.count({ where: { status: "sending" } }).catch(() => -1),
@@ -149,9 +152,17 @@ async function getCronStats(): Promise<{
           },
         })
         .catch(() => -1),
+      getOutgoingQueueHealth().catch(() => ({
+        queued: -1,
+        scheduled: -1,
+        sending: -1,
+        sent24h: -1,
+        failed24h: -1,
+        oldestQueuedAgeSec: -1,
+      })),
     ]);
 
-  return { broadcastQueued, broadcastSending, followUpsPending };
+  return { broadcastQueued, broadcastSending, followUpsPending, outgoingMessages };
 }
 
 // ---------------------------------------------------------------------------
