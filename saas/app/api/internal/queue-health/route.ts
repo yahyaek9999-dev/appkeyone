@@ -166,6 +166,7 @@ async function getCronStats(): Promise<{
         sent24h: -1,
         failed24h: -1,
         oldestQueuedAgeSec: -1,
+        staleQueued: -1,
       })),
     ]);
 

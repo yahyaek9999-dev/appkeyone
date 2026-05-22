@@ -47,6 +47,8 @@ const SEND_TIMEOUT_RETRY_MS = 5 * 60_000;
 const RATE_RETRY_MS = 15 * 60_000;
 const MAX_ATTEMPTS = 3;
 const STALE_SENDING_MS = 10 * 60_000;
+const STALE_QUEUED_EXPIRE_MS = 7 * 24 * 3_600_000;
+const STALE_QUEUED_WARN_MS = 30 * 60_000;
 const DURABLE_SESSION_SPACING_MS = 6_000;
 const DURABLE_BROADCAST_CONTACT_SPACING_MS = 4 * 3_600_000;
 const FLOOD_RISK_EXTRA_MS = 20_000;
@@ -343,6 +345,7 @@ async function delayRow(id: string, dueAt: Date, reason: string): Promise<void> 
 
 async function resetStaleSending(now: Date): Promise<void> {
   const staleBefore = new Date(now.getTime() - STALE_SENDING_MS);
+  const expiredQueuedBefore = new Date(now.getTime() - STALE_QUEUED_EXPIRE_MS);
   await (prisma as any).waMessage.updateMany({
     where: {
       direction: "outbound",
@@ -370,6 +373,20 @@ async function resetStaleSending(now: Date): Promise<void> {
       failedAt: now,
       errorCode: "stale_sending",
       errorDetail: "stale_sending_max_attempts",
+    },
+  });
+  await (prisma as any).waMessage.updateMany({
+    where: {
+      direction: "outbound",
+      kind: "text",
+      status: "queued",
+      queuedAt: { lt: expiredQueuedBefore },
+    },
+    data: {
+      status: "expired",
+      failedAt: now,
+      errorCode: "stale_queued_expired",
+      errorDetail: "queued_more_than_7d",
     },
   });
 }
@@ -436,16 +453,19 @@ export async function getOutgoingQueueHealth(userId?: string): Promise<{
   sent24h: number;
   failed24h: number;
   oldestQueuedAgeSec: number;
+  staleQueued: number;
 }> {
   const now = new Date();
   const since = new Date(Date.now() - 24 * 3_600_000);
   const whereUser = userId ? { userId } : {};
-  const [queued, scheduled, sending, sent24h, failed24h, oldest] = await Promise.all([
+  const staleQueuedBefore = new Date(Date.now() - STALE_QUEUED_WARN_MS);
+  const [queued, scheduled, sending, sent24h, failed24h, staleQueued, oldest] = await Promise.all([
     (prisma as any).waMessage.count({ where: { ...whereUser, status: "queued", queuedAt: { lte: now } } }).catch(() => -1),
     (prisma as any).waMessage.count({ where: { ...whereUser, status: "queued", queuedAt: { gt: now } } }).catch(() => -1),
     (prisma as any).waMessage.count({ where: { ...whereUser, status: "sending" } }).catch(() => -1),
     (prisma as any).waMessage.count({ where: { ...whereUser, status: { in: ["sent", "delivered", "read"] }, sentAt: { gte: since } } }).catch(() => -1),
     (prisma as any).waMessage.count({ where: { ...whereUser, status: "failed", failedAt: { gte: since } } }).catch(() => -1),
+    (prisma as any).waMessage.count({ where: { ...whereUser, status: "queued", queuedAt: { lte: staleQueuedBefore } } }).catch(() => -1),
     (prisma as any).waMessage.findFirst({
       where: { ...whereUser, status: "queued", queuedAt: { lte: now } },
       orderBy: { queuedAt: "asc" },
@@ -455,5 +475,5 @@ export async function getOutgoingQueueHealth(userId?: string): Promise<{
   const oldestQueuedAgeSec = oldest?.queuedAt
     ? Math.max(0, Math.round((Date.now() - new Date(oldest.queuedAt).getTime()) / 1000))
     : 0;
-  return { queued, scheduled, sending, sent24h, failed24h, oldestQueuedAgeSec };
+  return { queued, scheduled, sending, sent24h, failed24h, oldestQueuedAgeSec, staleQueued };
 }

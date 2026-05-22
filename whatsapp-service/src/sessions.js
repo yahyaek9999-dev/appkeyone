@@ -421,7 +421,8 @@ class SessionManager {
 
     // After too many failures, pause long before retrying
     const MAX_FAST_ATTEMPTS = 8;
-    const pauseMs = attempt >= MAX_FAST_ATTEMPTS ? 30 * 60 * 1000 : delayMs;
+    const jitterMs = Math.floor(Math.random() * Math.min(10_000, Math.max(1_000, delayMs * 0.25)));
+    const pauseMs = (attempt >= MAX_FAST_ATTEMPTS ? 30 * 60 * 1000 : delayMs) + jitterMs;
 
     if (attempt >= MAX_FAST_ATTEMPTS && attempt % MAX_FAST_ATTEMPTS === 0) {
       console.warn(
