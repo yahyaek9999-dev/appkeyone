@@ -42,6 +42,14 @@ const HIBERNATE_WAKE_TIMEOUT = Math.max(
   5000,
   Number(process.env.HIBERNATE_WAKE_TIMEOUT_SEC || 20) * 1000,
 );
+const AUTH_RESTORE_QR_GRACE_MS = Math.max(
+  15_000,
+  Number(process.env.AUTH_RESTORE_QR_GRACE_SEC || 60) * 1000,
+);
+const AUTH_RESTORE_QR_MAX_RETRIES = Math.max(
+  0,
+  Number(process.env.AUTH_RESTORE_QR_MAX_RETRIES || 1),
+);
 
 // Returns true if `digits` looks like a real E.164 phone number.
 // Per ITU-T E.164: 1-15 digits, leading digit is the country code so it
@@ -136,6 +144,16 @@ function getChromiumArgs() {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function hasSessionAuth(userId) {
+  const folder = path.join(SESSIONS_DIR, `session-${userId}`);
+  try {
+    const entries = await fs.readdir(folder);
+    return entries.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 class SessionManager {
   constructor() {
@@ -559,6 +577,7 @@ class SessionManager {
     await this._enforceCapBeforeStart();
 
     await fs.mkdir(SESSIONS_DIR, { recursive: true });
+    const hadAuthAtStart = await hasSessionAuth(userId);
 
     const client = new Client({
       authStrategy: new LocalAuth({
@@ -582,11 +601,46 @@ class SessionManager {
       connectedAt: null,
       hibernatedAt: null,
       priority: 0,
+      hadAuthAtStart,
+      qrRestoreRetries: existing?.qrRestoreRetries || 0,
+      qrTimer: null,
     };
     this.sessions.set(userId, session);
 
     client.on("qr", async (qrStr) => {
       try {
+        // During post-restart LocalAuth restore, whatsapp-web.js may emit QR
+        // before the session fully settles. Do not force customers into a QR
+        // re-auth immediately; wait briefly and retry once while preserving auth.
+        if (
+          session.hadAuthAtStart &&
+          !session.connectedAt &&
+          session.qrRestoreRetries < AUTH_RESTORE_QR_MAX_RETRIES
+        ) {
+          if (!session.qrTimer) {
+            session.status = "connecting";
+            session.qrRestoreRetries += 1;
+            console.warn(
+              `[wa] [${userId}] QR during auth restore — retry ${session.qrRestoreRetries}/${AUTH_RESTORE_QR_MAX_RETRIES} in ${Math.round(AUTH_RESTORE_QR_GRACE_MS / 1000)}s`,
+            );
+            session.qrTimer = setTimeout(async () => {
+              session.qrTimer = null;
+              const live = this.sessions.get(userId);
+              if (!live || live !== session || live.status === "connected") return;
+              try {
+                await client.destroy();
+              } catch {}
+              live.client = null;
+              live.status = "disconnected";
+              this.start(userId).catch((e) => {
+                console.error(`[wa] [${userId}] auth-restore QR retry failed:`, e?.message || e);
+              });
+            }, AUTH_RESTORE_QR_GRACE_MS);
+            if (typeof session.qrTimer.unref === "function") session.qrTimer.unref();
+          }
+          return;
+        }
+
         session.qrDataUrl = await qrcode.toDataURL(qrStr, {
           margin: 1,
           scale: 6,
@@ -607,7 +661,14 @@ class SessionManager {
 
     client.on("auth_failure", (msg) => {
       console.error(`[wa] [${userId}] auth failure:`, msg);
+      if (session.qrTimer) {
+        clearTimeout(session.qrTimer);
+        session.qrTimer = null;
+      }
       session.status = "disconnected";
+      // Do not delete auth here. A transient Chromium/web init issue can look
+      // like auth failure; let reconnect/backoff decide before requiring QR.
+      this._scheduleReconnect(userId);
     });
 
     client.on("ready", () => {
@@ -617,6 +678,11 @@ class SessionManager {
       session.phone = client.info?.wid?.user || null;
       session.connectedAt = Date.now();
       session.lastActivityAt = Date.now();
+      session.qrRestoreRetries = 0;
+      if (session.qrTimer) {
+        clearTimeout(session.qrTimer);
+        session.qrTimer = null;
+      }
       // Clear reconnect state — successfully recovered.
       this._reconnectAttempts.delete(userId);
       if (this._reconnectTimers.has(userId)) {
@@ -638,6 +704,10 @@ class SessionManager {
       );
 
       session.status = "disconnected";
+      if (session.qrTimer) {
+        clearTimeout(session.qrTimer);
+        session.qrTimer = null;
+      }
 
       // Always notify SAAS so bot.whatsappStatus stays in sync in the DB.
       notifySaas({

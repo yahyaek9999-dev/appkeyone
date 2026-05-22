@@ -65,6 +65,8 @@ async function restoreSessions() {
       for (const id of userIds) {
         try {
           await manager.start(id);
+          console.log(`[wa-service] restore started ${id} — staggering ${RESTORE_STAGGER_MS}ms`);
+          await sleep(RESTORE_STAGGER_MS);
         } catch (e) {
           console.error(`[wa-service] failed to restore ${id}:`, e.message);
         }
