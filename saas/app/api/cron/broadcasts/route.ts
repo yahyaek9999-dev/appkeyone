@@ -201,7 +201,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const r = await wa.send(bc.userId, it.phone, body);
+    const r = await wa.send(bc.userId, it.phone, body, "broadcast");
     if (r.ok) {
       await prisma.broadcastItem.update({
         where: { id: it.id },

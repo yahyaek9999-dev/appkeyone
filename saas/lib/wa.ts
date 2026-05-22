@@ -28,11 +28,16 @@ async function sendNow(userId: string, to: string, text: string) {
   });
 }
 
-async function enqueueSend(userId: string, to: string, text: string) {
+async function enqueueSend(
+  userId: string,
+  to: string,
+  text: string,
+  reason: "manual" | "broadcast" | "followup" | "order_update" | "system" = "system",
+) {
   if (!SMART_QUEUE_ENABLED) return sendNow(userId, to, text);
   try {
     const { enqueueOutboundText, drainOutgoingQueue } = await import("@/lib/messaging/outgoing-queue");
-    const queued = await enqueueOutboundText({ userId, to, text, reason: "system" });
+    const queued = await enqueueOutboundText({ userId, to, text, reason });
     if (!queued.queued) {
       return { ok: false, status: 500, data: { error: queued.reason || "queue_failed" } };
     }

@@ -86,7 +86,7 @@ export async function notifyMerchant(opts: {
     return { ok: false, channel: "self" };
   }
 
-  const r = await wa.send(opts.userId, opts.toPhone, message);
+  const r = await wa.send(opts.userId, opts.toPhone, message, "order_update");
   if (r.ok) return { ok: true, channel: "whatsapp" };
 
   await audit({
@@ -132,7 +132,7 @@ export async function notifyAdmin(opts: {
     return { ok: false, channel: "self" };
   }
 
-  const r = await wa.send(opts.userId, opts.toPhone, opts.text);
+  const r = await wa.send(opts.userId, opts.toPhone, opts.text, "system");
   if (r.ok) return { ok: true, channel: "whatsapp" };
 
   await audit({

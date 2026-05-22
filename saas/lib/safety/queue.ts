@@ -15,9 +15,14 @@ interface PerContactSlot {
   lastSentAt: number;
 }
 
-const PER_CONTACT_MIN_SPACING_MS = 4 * 3_600_000; // 4h between sends to same phone
+const PER_CONTACT_MIN_SPACING_MS = 4 * 3_600_000; // 4h between broadcast sends to same phone
 const PER_SESSION_MIN_SPACING_MS = 6_000;          // 6s between any two sends
 const JITTER_RANGE_MS = 4_000;                     // ±4s jitter
+
+interface SendPacingOptions {
+  perContactSpacingMs?: number;
+  jitterRangeMs?: number;
+}
 
 const perContact = new Map<string, Map<string, number>>(); // userId -> phone -> ts
 const perSession = new Map<string, number>();              // userId -> last send ts
@@ -26,14 +31,21 @@ const perSession = new Map<string, number>();              // userId -> last sen
 export function nextAllowedSendAt(
   userId: string,
   phone: string,
-  basis = Date.now()
+  basis = Date.now(),
+  options: SendPacingOptions = {},
 ): number {
+  const perContactSpacingMs = options.perContactSpacingMs ?? PER_CONTACT_MIN_SPACING_MS;
+  const jitterRangeMs = options.jitterRangeMs ?? JITTER_RANGE_MS;
   const userMap = perContact.get(userId);
   const lastToPhone = userMap?.get(phone) || 0;
-  const earliestForPhone = lastToPhone + PER_CONTACT_MIN_SPACING_MS;
+  const earliestForPhone = perContactSpacingMs > 0
+    ? lastToPhone + perContactSpacingMs
+    : 0;
   const lastForSession = perSession.get(userId) || 0;
   const earliestForSession = lastForSession + PER_SESSION_MIN_SPACING_MS;
-  const jitter = Math.floor((Math.random() * 2 - 1) * JITTER_RANGE_MS);
+  const jitter = jitterRangeMs > 0
+    ? Math.floor((Math.random() * 2 - 1) * jitterRangeMs)
+    : 0;
   return Math.max(basis, earliestForPhone, earliestForSession) + jitter;
 }
 

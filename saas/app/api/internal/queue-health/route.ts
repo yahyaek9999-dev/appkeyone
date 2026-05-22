@@ -32,12 +32,11 @@ function unauthorized() {
 // Queue names used by the project's cron / BullMQ workers
 // ---------------------------------------------------------------------------
 const QUEUE_NAMES = [
-  "broadcasts",
-  "follow-ups",
-  "outgoing-messages",
-  "daily-report",
-  "meta-webhook-processor",
-  "llm-prewarm",
+  "keyone:broadcasts",
+  "keyone:notifications",
+  "keyone:ai-jobs",
+  "keyone:webhooks",
+  "keyone:dead-letter",
 ] as const;
 
 type QueueName = (typeof QUEUE_NAMES)[number];
@@ -48,6 +47,14 @@ interface QueueStats {
   completed: number;
   failed: number;
   delayed: number;
+}
+
+function deriveRedisUrlFromUpstashRest(): string {
+  const restUrl = process.env.UPSTASH_REDIS_REST_URL || "";
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  if (!restUrl || !token) return "";
+  const host = restUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return `rediss://:${token}@${host}:6380`;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,9 +68,9 @@ async function getBullMQStats(): Promise<
   | { ok: true; queues: Record<QueueName, QueueStats> }
   | { ok: false; error: string }
 > {
-  const redisUrl = process.env.UPSTASH_REDIS_URL;
+  const redisUrl = process.env.UPSTASH_REDIS_URL || deriveRedisUrlFromUpstashRest();
   if (!redisUrl) {
-    return { ok: false, error: "UPSTASH_REDIS_URL is not set" };
+    return { ok: false, error: "UPSTASH_REDIS_URL or UPSTASH_REDIS_REST_URL/TOKEN is not set" };
   }
 
   try {

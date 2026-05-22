@@ -546,6 +546,15 @@ class SessionManager {
       return existing;
     }
 
+    // If a previous client ended in a failed/disconnected state, destroy it
+    // before replacing it. This avoids orphan Chromium/client objects during
+    // reconnect storms while preserving valid connected/QR/connecting clients.
+    if (existing?.client) {
+      try {
+        await existing.client.destroy();
+      } catch {}
+    }
+
     // Respect the active-session ceiling (LRU evict if needed)
     await this._enforceCapBeforeStart();
 
@@ -892,23 +901,41 @@ class SessionManager {
   async send(userId, toPhone, text) {
     try {
       let s = this.sessions.get(userId);
+      const waitForConnected = async (session, timeoutMs = 20000) => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs && session?.status !== "connected") {
+          await sleep(500);
+          session = this.sessions.get(userId) || session;
+        }
+        return session;
+      };
+
+      // Auto-start if auth exists on disk but the in-memory session has not
+      // been restored yet (common immediately after service restart/deploy).
+      if (!s) {
+        const sessionFolder = path.join(SESSIONS_DIR, `session-${userId}`);
+        try {
+          await fs.access(sessionFolder);
+          console.log(`[wa] [${userId}] auto-start on send() from saved auth`);
+          s = await this.start(userId);
+        } catch {}
+      }
       // Auto-wake from hibernation (smart scaling)
       if (s && s.status === "hibernated" && ENABLE_HIBERNATION) {
         console.log(`[wa] [${userId}] auto-wake on send()`);
         s = await this._wakeSession(userId);
       }
-      // Auto-resume if Chromium was evicted but auth is still on disk
-      if (s && s.status === "idle-closed") {
-        console.log(`[wa] [${userId}] auto-resume on send()`);
+      // Auto-resume if Chromium was evicted or the reconnect timer has not run
+      // yet, but auth is still available.
+      if (s && (s.status === "idle-closed" || s.status === "disconnected")) {
+        console.log(`[wa] [${userId}] auto-resume on send() from ${s.status}`);
         s = await this.start(userId);
-        // Wait briefly for the client to be ready
-        const start = Date.now();
-        while (Date.now() - start < 15000 && s.status !== "connected") {
-          await sleep(500);
-        }
+      }
+      if (s && (s.status === "connecting" || s.status === "pairing")) {
+        s = await waitForConnected(s);
       }
       if (!s || s.status !== "connected")
-        throw new Error("session not connected");
+        throw new Error(`session not connected (status=${s?.status || "missing"})`);
       s.lastActivityAt = Date.now();
 
       // Reject contacts whose stored "phone" is actually a WhatsApp LID.

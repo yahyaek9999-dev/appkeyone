@@ -47,7 +47,33 @@ const RATE_RETRY_MS = 15 * 60_000;
 const MAX_ATTEMPTS = 3;
 const STALE_SENDING_MS = 10 * 60_000;
 const DURABLE_SESSION_SPACING_MS = 6_000;
+const DURABLE_BROADCAST_CONTACT_SPACING_MS = 4 * 3_600_000;
 const FLOOD_RISK_EXTRA_MS = 20_000;
+
+const QUEUE_REASONS = new Set<QueueReason>([
+  "manual",
+  "broadcast",
+  "followup",
+  "order_update",
+  "system",
+]);
+
+function pacingForReason(reason?: string | null): { perContactSpacingMs: number; jitterRangeMs: number } {
+  // The 4h same-contact guard is anti-broadcast-spam protection. Applying it
+  // to transactional notifications/follow-ups made production sends look lost.
+  return reason === "broadcast"
+    ? { perContactSpacingMs: DURABLE_BROADCAST_CONTACT_SPACING_MS, jitterRangeMs: 4_000 }
+    : { perContactSpacingMs: 0, jitterRangeMs: 0 };
+}
+
+function reasonFromRow(row: any): QueueReason {
+  const code = typeof row?.errorCode === "string" && row.errorCode.startsWith("reason:")
+    ? row.errorCode.slice("reason:".length)
+    : "";
+  const detail = typeof row?.errorDetail === "string" ? row.errorDetail : "";
+  const reason = code || detail;
+  return QUEUE_REASONS.has(reason as QueueReason) ? (reason as QueueReason) : "system";
+}
 
 function safeJson(value: unknown): string {
   try {
@@ -83,8 +109,9 @@ export async function enqueueOutboundText(
   }
 
   const basis = Date.now() + Math.max(0, Math.min(7 * 24 * 3_600_000, input.delayMs || 0));
-  const inMemoryDueMs = nextAllowedSendAt(input.userId, to, basis);
-  const durableDueMs = await durableAllowedSendAt(input.userId, to, basis).catch(() => basis);
+  const pacing = pacingForReason(input.reason || "system");
+  const inMemoryDueMs = nextAllowedSendAt(input.userId, to, basis, pacing);
+  const durableDueMs = await durableAllowedSendAt(input.userId, to, basis, pacing).catch(() => basis);
   const dueAt = new Date(Math.max(Date.now(), inMemoryDueMs, durableDueMs));
 
   try {
@@ -103,6 +130,7 @@ export async function enqueueOutboundText(
         status: "queued",
         queuedAt: dueAt,
         idempotencyKey: input.idempotencyKey || null,
+        errorCode: `reason:${input.reason || "system"}`,
         errorDetail: input.reason || "queued",
       },
       update: {
@@ -110,6 +138,7 @@ export async function enqueueOutboundText(
         body: text.slice(0, 4000),
         status: "queued",
         queuedAt: dueAt,
+        errorCode: `reason:${input.reason || "system"}`,
         errorDetail: input.reason || "requeued",
       },
     });
@@ -131,6 +160,7 @@ export async function enqueueOutboundText(
             body: text.slice(0, 4000),
             status: "queued",
             queuedAt: dueAt,
+            errorCode: `reason:${input.reason || "system"}`,
             errorDetail: input.reason || "queued",
           },
         });
@@ -200,9 +230,10 @@ export async function drainOutgoingQueue(
       continue;
     }
 
+    const pacing = pacingForReason(reasonFromRow(row));
     const safeAt = Math.max(
-      nextAllowedSendAt(row.userId, row.customerPhone),
-      await durableAllowedSendAt(row.userId, row.customerPhone).catch(() => Date.now()),
+      nextAllowedSendAt(row.userId, row.customerPhone, Date.now(), pacing),
+      await durableAllowedSendAt(row.userId, row.customerPhone, Date.now(), pacing).catch(() => Date.now()),
     );
     if (safeAt > Date.now() + 500) {
       await delayRow(row.id, new Date(safeAt), "anti_flood_pacing");
@@ -259,6 +290,7 @@ export async function drainOutgoingQueue(
         row.userId,
         row.customerPhone,
         Date.now() + retryBackoffMs(attempts, nextDelay),
+        pacingForReason(reasonFromRow(row)),
       ).catch(() => Date.now() + retryBackoffMs(attempts, nextDelay));
       await (prisma as any).waMessage
         .update({
@@ -344,6 +376,7 @@ async function durableAllowedSendAt(
   userId: string,
   phone: string,
   basis = Date.now(),
+  pacing: { perContactSpacingMs: number; jitterRangeMs: number } = pacingForReason("broadcast"),
 ): Promise<number> {
   const [lastSessionSend, recentSamePhone, state] = await Promise.all([
     (prisma as any).waMessage.findFirst({
@@ -372,8 +405,8 @@ async function durableAllowedSendAt(
   const lastSessionAt = lastSessionSend?.sentAt
     ? new Date(lastSessionSend.sentAt).getTime() + DURABLE_SESSION_SPACING_MS
     : 0;
-  const lastPhoneAt = recentSamePhone?.sentAt
-    ? new Date(recentSamePhone.sentAt).getTime() + 4 * 3_600_000
+  const lastPhoneAt = recentSamePhone?.sentAt && pacing.perContactSpacingMs > 0
+    ? new Date(recentSamePhone.sentAt).getTime() + pacing.perContactSpacingMs
     : 0;
   const cooldownAt = state?.cooldownUntil
     ? new Date(state.cooldownUntil).getTime()

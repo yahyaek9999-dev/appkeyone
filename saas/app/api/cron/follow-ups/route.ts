@@ -140,7 +140,7 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const r = await wa.send(c.userId, c.phone, text);
+      const r = await wa.send(c.userId, c.phone, text, "followup");
       if (r.ok) {
         if (c.conversation) {
           await prisma.message

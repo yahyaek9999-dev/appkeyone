@@ -235,7 +235,7 @@ export async function processFollowUpTask(task: any, now: Date = new Date()) {
     .slice(0, 900);
   if (!text) return retryOrFail(task, "empty_followup");
 
-  const r = await wa.send(task.userId, customer.phone, text);
+  const r = await wa.send(task.userId, customer.phone, text, "followup");
   if (!r.ok)
     return retryOrFail(
       task,

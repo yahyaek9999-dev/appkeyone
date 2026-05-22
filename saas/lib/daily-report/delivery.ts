@@ -38,7 +38,7 @@ export async function sendDailyReportDelivery(row: any) {
     let provider = row.channel;
     let error = "";
     if (row.channel === "whatsapp") {
-      const r = await wa.send(row.userId, row.recipient, row.body);
+      const r = await wa.send(row.userId, row.recipient, row.body, "system");
       ok = !!r.ok;
       error = ok ? "" : errText((r as any).data);
     } else if (row.channel === "email") {

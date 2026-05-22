@@ -224,7 +224,7 @@ async function sendShipmentNotification(
     .replace(/\{shop\}/g, bot.name || "متجرك")
     .replace(/\{name\}/g, order?.customer?.name || "صديقنا");
 
-  const r = await wa.send(userId, to, message);
+  const r = await wa.send(userId, to, message, "order_update");
   if (!r.ok) {
     await prisma.safetyAudit
       .create({
