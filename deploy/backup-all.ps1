@@ -130,11 +130,28 @@ if (Test-Path $waSessions)
 {
     Write-Host "[+] Backing up WhatsApp sessions: $waSessions" -ForegroundColor Yellow
     $waDest = Join-Path $Snap "wa-sessions"
-    # Robocopy is the only reliable Windows option for deep-locked Chromium files
+    # Robocopy is the only reliable Windows option for deep-locked Chromium files.
+    # Live WhatsApp sessions can hold transient Chromium cache files open. Retry
+    # once with restartable/backup mode, then continue if we captured a non-empty
+    # best-effort snapshot; deployment must never delete or rewrite live sessions.
     & robocopy $waSessions $waDest /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
-    # Robocopy uses non-zero "success" exit codes (0-7); only 8+ is a real failure
-    if ($LASTEXITCODE -ge 8)
-    { throw "robocopy failed for sessions dir (exit $LASTEXITCODE)"
+    $rc = $LASTEXITCODE
+    if ($rc -ge 8)
+    {
+        Write-Warning "robocopy first pass reported exit $rc; retrying sessions backup with /ZB"
+        & robocopy $waSessions $waDest /E /COPY:DAT /ZB /R:2 /W:2 /NFL /NDL /NJH /NJS /NP | Out-Null
+        $rc = $LASTEXITCODE
+    }
+    # Robocopy uses non-zero "success" exit codes (0-7). Exit 8+ means at
+    # least one file failed; if the snapshot has useful contents, warn instead
+    # of aborting because LocalAuth remains untouched in-place on the VPS.
+    if ($rc -ge 8)
+    {
+        $copiedAny = (Test-Path $waDest) -and [bool](Get-ChildItem $waDest -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -First 1)
+        if (-not $copiedAny)
+        { throw "robocopy failed for sessions dir (exit $rc) and copied no files"
+        }
+        Write-Warning "WhatsApp sessions backup completed with warnings (robocopy exit $rc). Live session files were preserved in-place."
     }
     Write-Host "    -> $waDest" -ForegroundColor Green
 } else
