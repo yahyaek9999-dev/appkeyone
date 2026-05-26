@@ -85,12 +85,19 @@ Run 'git fetch origin main' { git fetch origin main }
 # failed previous deploy attempts cannot block a safe production update.
 Run 'git reset --hard origin/main' { git reset --hard origin/main }
 
-Step '3/10 Install dependencies'
+Step '3/10 Stop SaaS and install dependencies'
+Write-Host '  Stopping mse-saas to release Prisma/Next file locks...' -ForegroundColor Gray
+nssm stop mse-saas 2>&1
+if ($LASTEXITCODE -ne 0)
+{
+    Write-Host "  mse-saas stop returned exit $LASTEXITCODE; continuing because it may already be stopped." -ForegroundColor Yellow
+}
+Start-Sleep 5
 Set-Location $saasDir
 # Include dev dependencies for TypeScript + Prisma validation/build, then prune
 # after successful deploy if desired by the operator. This avoids npx fetching
 # unexpected package versions during production deploy.
-Run 'npm ci' { npm ci 2>&1 }
+Run 'npm ci' { npm ci }
 
 Step '4/10 Prisma validation and SQLite schema sync'
 Run 'prisma validate' { npx prisma validate 2>&1 }
@@ -112,10 +119,15 @@ Step '7/10 Production-safe verification suite'
 Run 'npm run verify:all' { npm run verify:all 2>&1 }
 
 Step '8/10 Restart services gracefully'
-Write-Host '  Restarting mse-saas...' -ForegroundColor Gray
-nssm restart mse-saas 2>&1
+Write-Host '  Starting mse-saas...' -ForegroundColor Gray
+nssm start mse-saas 2>&1
 if ($LASTEXITCODE -ne 0)
-{ throw 'mse-saas restart failed'
+{
+    Write-Host '  start failed; trying restart...' -ForegroundColor Yellow
+    nssm restart mse-saas 2>&1
+    if ($LASTEXITCODE -ne 0)
+    { throw 'mse-saas start/restart failed'
+    }
 }
 
 if ($RestartWhatsApp)
