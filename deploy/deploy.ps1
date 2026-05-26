@@ -34,9 +34,18 @@ function Step($label)
 function Run($description, $scriptBlock)
 {
     Write-Host "  -> $description" -ForegroundColor Gray
-    & $scriptBlock
-    if ($LASTEXITCODE -ne 0)
-    { throw "$description failed (exit $LASTEXITCODE)"
+    $oldEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try
+    {
+        & $scriptBlock
+        $exit = $LASTEXITCODE
+    } finally
+    {
+        $ErrorActionPreference = $oldEap
+    }
+    if ($exit -ne 0)
+    { throw "$description failed (exit $exit)"
     }
 }
 
@@ -70,7 +79,11 @@ if ($snapshot)
 
 Step '2/10 Pull latest code'
 Set-Location $repo
-Run 'git pull --ff-only' { git pull --ff-only 2>&1 }
+Run 'git fetch origin main' { git fetch origin main }
+# The pre-deploy backup has already captured runtime state. Reset only the
+# git working tree to the exact deployed commit so copied hotfix scripts or
+# failed previous deploy attempts cannot block a safe production update.
+Run 'git reset --hard origin/main' { git reset --hard origin/main }
 
 Step '3/10 Install dependencies'
 Set-Location $saasDir
