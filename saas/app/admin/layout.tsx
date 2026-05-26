@@ -11,6 +11,12 @@ import {
   BarChart3,
   Building2,
   Crown,
+  ShoppingBag,
+  Phone,
+  Brain,
+  Shield,
+  Activity,
+  UserCheck,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +25,14 @@ const ADMIN_LINKS = [
   { href: "/admin", label: "الرئيسية", icon: LayoutDashboard },
   { href: "/admin/users", label: "العملاء والاشتراكات", icon: Users },
   { href: "/admin/businesses", label: "الأعمال (Real-time)", icon: Building2 },
+  { href: "/admin/customers", label: "عملاء المنصة", icon: UserCheck },
+  { href: "/admin/orders", label: "إدارة الطلبات", icon: ShoppingBag },
   { href: "/admin/plans", label: "الباقات والحدود", icon: Crown },
   { href: "/admin/metrics", label: "المقاييس والاستخدام", icon: BarChart3 },
+  { href: "/admin/usage-stats", label: "إحصائيات الاستخدام", icon: Activity },
+  { href: "/admin/ai-logs", label: "سجل الذكاء الاصطناعي", icon: Brain },
+  { href: "/admin/protection-logs", label: "سجل الحماية", icon: Shield },
+  { href: "/admin/whatsapp", label: "حالة واتساب", icon: Phone },
   { href: "/admin/settings", label: "إعدادات الموقع", icon: Settings },
 ];
 
