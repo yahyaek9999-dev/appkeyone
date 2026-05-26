@@ -56,17 +56,20 @@ const COLORS = [
 const SIZES_AR_KEYS = ["مقاس","سايز","مقاسه","مقاسي","حجم"];
 
 const PAYMENT_KEYWORDS: Array<[string, string[]]> = [
-  ["cod",           ["كاش","عند الاستلام","الدفع عند","عند الباب","cod"]],
+  ["cod",           ["كاش","عند الاستلام","الدفع عند","عند الباب","الدفع كاش","cod","cash on delivery"]],
   ["instapay",      ["انستاباي","instapay","انستا باي"]],
   ["vodafone_cash", ["فودافون كاش","فودافون","vodafone cash","vodafone"]],
+  ["stc_pay",       ["stc pay","stcpay","اس تي سي باي","stc"]],
+  ["mada",          ["مدى","mada"]],
   ["card",          ["فيزا","ماستر","بطاقة","visa","master","card","credit"]],
   ["bank_transfer", ["تحويل بنكي","تحويل","حوّلت","حولت","حوالة","bank","transfer"]],
 ];
 
 const ADDRESS_HINTS = [
-  "العنوان","عنواني","عنوان","ابعت","ابعتلي","شارع","شقه","شقة","عماره","عمارة",
-  "دور","الدور","محافظه","محافظة","مدينه","مدينة","قريه","قرية","منطقه","منطقة",
-  "address","street","apt","building","floor","city","district",
+  "العنوان","عنواني","عنوان","ابعت","ابعتلي","ارسل","توصيل","وصل","الرياض","جدة","جده","مكة","مكه","الدمام","الخبر",
+  "حي","الحى","الحی","شارع","طريق","بجانب","جنب","قرب","عمارة","عماره","بناية","بوابة","دور","الدور","شقه","شقة",
+  "محافظه","محافظة","مدينه","مدينة","قريه","قرية","منطقه","منطقة","district","riyadh","jeddah","dammam",
+  "address","street","apt","building","floor","city","district","landmark",
 ];
 
 const ARABIC_NUMERALS: Record<string, string> = {
@@ -85,15 +88,18 @@ function arNumToWestern(s: string): string {
 function detectQuantity(text: string): number {
   const t = arNumToWestern(text);
   // "2 قطعة", "عدد 3", "كميه 4", "اتنين", explicit numbers
-  const m1 = t.match(/(?:عدد|كميه|كمية|قطع(?:ه|ة)?|×|x)\s*[:\-]?\s*(\d{1,3})/i);
+  const m1 = t.match(/(?:عدد|كميه|كمية|قطع(?:ه|ة)?|حبه|حبة|علبه|علبة|كرتون|كرتونة|باكيت|×|x)\s*[:\-]?\s*(\d{1,3})/i);
   if (m1) return clampQty(parseInt(m1[1], 10));
-  const m2 = t.match(/(\d{1,3})\s*(?:قطع(?:ه|ة)?|×|pcs?|x)/i);
+  const m2 = t.match(/(\d{1,3})\s*(?:قطع(?:ه|ة)?|حبه|حبة|علبه|علبة|كرتون|كرتونة|باكيت|×|pcs?|x)/i);
   if (m2) return clampQty(parseInt(m2[1], 10));
-  // Arabic word numbers
+  // Arabic word numbers (Egypt/Gulf/MSA common forms)
   const norm = normalizeAr(text);
-  if (/\bاتنين\b/.test(norm)) return 2;
-  if (/\bتلاته\b|\bتلاتة\b|\bثلاثه\b|\bثلاثة\b/.test(norm)) return 3;
-  if (/\bاربعه\b|\bأربعه\b|\bاربعة\b/.test(norm)) return 4;
+  if (/\b(واحد|وحده|وحدة)\b/.test(norm)) return 1;
+  if (/\b(اتنين|اثنين|إثنين|اثنان|ثنتين|ثنين)\b/.test(norm)) return 2;
+  if (/\b(تلاته|تلاتة|ثلاثه|ثلاثة|ثلاث)\b/.test(norm)) return 3;
+  if (/\b(اربعه|أربعه|اربعة|أربعة|اربع)\b/.test(norm)) return 4;
+  if (/\b(خمسه|خمسة|خمس)\b/.test(norm)) return 5;
+  if (/\b(سته|ستة|ست)\b/.test(norm)) return 6;
   return 1;
 }
 
@@ -130,21 +136,32 @@ function detectPhone(text: string): string | undefined {
   // Egyptian mobile (most common): 01XXXXXXXXX (11 digits)
   const eg = t.match(/(?<![\d])(01[0-9]{9})(?![\d])/);
   if (eg) return eg[1];
+  // Saudi local mobile: 05XXXXXXXX → +9665XXXXXXXX
+  const saLocal = t.match(/(?<![\d])0(5[0-9]{8})(?![\d])/);
+  if (saLocal) return `+966${saLocal[1]}`;
   // International with country code (8-15 digits)
   const intl = t.match(/(?<![\d])(\+?\d{8,15})(?![\d])/);
-  if (intl) return intl[1];
+  if (intl) return intl[1].startsWith("+") ? intl[1] : `+${intl[1]}`;
   return undefined;
 }
 
 function detectPrice(text: string): number {
   const t = arNumToWestern(text);
   // numbers near "جنيه", "ج", "EGP", "ل.م", "ر.س", "$"
-  const m = t.match(/(\d{2,6}(?:[.,]\d{1,2})?)\s*(?:جنيه|ج\b|egp|le|ر\.س|sar|aed|درهم|\$|usd)/i);
+  const m = t.match(/(\d{2,6}(?:[.,]\d{1,2})?)\s*(?:جنيه|ج\b|egp|le|ل\.م|ر\.س|ريال|sar|aed|درهم|\$|usd)/i);
   if (m) return Math.round(parseFloat(m[1].replace(",", ".")));
   // bare "بكام 350" / "السعر 250"
-  const m2 = t.match(/(?:بكام|السعر|سعرها|سعره|ثمنها|ثمنه|price|cost)\D{0,4}(\d{2,6})/i);
+  const m2 = t.match(/(?:بكام|السعر|سعرها|سعره|ثمنها|ثمنه|price|cost)\D{0,8}(\d{2,6})/i);
   if (m2) return parseInt(m2[1], 10);
   return 0;
+}
+
+function detectCurrency(text: string): string {
+  const t = normalizeAr(text).toLowerCase();
+  if (/ر\.س|ريال|sar|salla|zid/.test(t)) return "SAR";
+  if (/درهم|aed/.test(t)) return "AED";
+  if (/\$|usd|دولار/.test(t)) return "USD";
+  return "EGP";
 }
 
 /**
@@ -200,10 +217,11 @@ function detectName(text: string): string | undefined {
 }
 
 function detectProductName(text: string): string | undefined {
-  // Heuristic: tokens around "هاخد", "عاوز", "ابعتلي", "اطلب" — take ~3 words after
-  const m = text.match(/(?:هاخد(?:ه|ها)?|عاوز(?:ه|ها)?|ابعتلي|اطلب|احجز|اشتري|اشتراك|i want|i'll take|buy)\s+([\u0600-\u06FFA-Za-z][\u0600-\u06FF\s\w]{2,60})/i);
+  // Heuristic: tokens around order verbs — supports Egyptian + Gulf + MSA.
+  const m = text.match(/(?:هاخد(?:ه|ها)?|عاوز(?:ه|ها)?|عايز(?:ه|ها)?|ابعتلي|ارسلي|أرسل|ارسل|اطلب|أطلب|ابي|أبي|ابغى|أبغى|بغيت|اريد|أريد|احجز|اشتري|آخذ|اخذ|اشتراك|i want|i'll take|buy|order)\s+([\u0600-\u06FFA-Za-z0-9][\u0600-\u06FFA-Za-z0-9\s\-_/]{2,80})/i);
   if (m) {
     return m[1]
+      .replace(/(?:توصيل|على|الى|إلى|في|العنوان|عنوان|بكام|السعر|سعرها|سعره|كاش|تحويل|فيزا|مدى|cod|cash|price).*$/i, "")
       .replace(/[.,،؟?!\n].*$/, "")
       .replace(/\s+/g, " ")
       .trim()
@@ -271,6 +289,7 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
     unitPrice,
     lineTotal,
   };
+  const currency = detectCurrency(fullText);
 
   // Discount: scan customer text first (their request), then assistant text
   // (merchant's offer). Percentage takes priority over flat. Resolved value
@@ -296,7 +315,7 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
     shipping: 0,
     discount,
     total,
-    currency: "EGP",
+    currency,
     notes: "",
     confidence: 0,
   };

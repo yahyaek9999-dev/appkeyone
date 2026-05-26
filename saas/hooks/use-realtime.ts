@@ -17,6 +17,21 @@ export type RealtimeSnapshot = {
     commerceFailedEvents?: number;
     escalationActive?: number;
     escalationCritical?: number;
+    outgoingQueued?: number;
+    outgoingScheduled?: number;
+    outgoingSending?: number;
+    outgoingFailed24h?: number;
+    outgoingStaleQueued?: number;
+    outgoingOldestQueuedAgeSec?: number;
+  };
+  queue?: {
+    queued: number;
+    scheduled: number;
+    sending: number;
+    sent24h: number;
+    failed24h: number;
+    oldestQueuedAgeSec: number;
+    staleQueued: number;
   };
   latest: {
     messageAt: string | null;

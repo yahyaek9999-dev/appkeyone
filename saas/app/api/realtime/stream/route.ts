@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getCachedSnapshot } from "@/lib/snapshot-cache";
+import { getOutgoingQueueHealth } from "@/lib/messaging/outgoing-queue";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,6 +30,7 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     escalationCritical,
     latestEscalation,
     bot,
+    outgoingQueue,
   ] = await Promise.all([
     prisma.conversation
       .count({ where: { customer: { userId } } })
@@ -143,6 +145,15 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
         } as any,
       })
       .catch(() => null) as any,
+    getOutgoingQueueHealth(userId).catch(() => ({
+      queued: -1,
+      scheduled: -1,
+      sending: -1,
+      sent24h: -1,
+      failed24h: -1,
+      oldestQueuedAgeSec: -1,
+      staleQueued: -1,
+    })),
   ]);
 
   const [alerts24h, activeConversation] = await Promise.all([
@@ -211,6 +222,10 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
     active?.messageCount || 0,
     active?.lastMessageAt || "",
     bot?.whatsappStatus || "",
+    outgoingQueue.queued,
+    outgoingQueue.scheduled,
+    outgoingQueue.sending,
+    outgoingQueue.failed24h,
   ].join("|");
 
   return {
@@ -227,7 +242,14 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
       commerceFailedEvents,
       escalationActive,
       escalationCritical,
+      outgoingQueued: outgoingQueue.queued,
+      outgoingScheduled: outgoingQueue.scheduled,
+      outgoingSending: outgoingQueue.sending,
+      outgoingFailed24h: outgoingQueue.failed24h,
+      outgoingStaleQueued: outgoingQueue.staleQueued,
+      outgoingOldestQueuedAgeSec: outgoingQueue.oldestQueuedAgeSec,
     },
+    queue: outgoingQueue,
     latest,
     activeConversation: active,
     whatsapp: bot

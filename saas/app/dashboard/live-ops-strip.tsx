@@ -5,6 +5,7 @@ import {
   Megaphone,
   Phone,
   MessageSquareWarning,
+  Send,
 } from "lucide-react";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -14,9 +15,11 @@ export function LiveOpsStrip() {
   const { state, snapshot } = useRealtimeSnapshot({ fallbackMs: 30000 });
   const wa = snapshot?.whatsapp;
   const connected = wa?.status === "connected";
+  const queuePending = (snapshot?.totals.outgoingQueued || 0) + (snapshot?.totals.outgoingScheduled || 0);
+  const queueHasIssues = (snapshot?.totals.outgoingFailed24h || 0) > 0 || (snapshot?.totals.outgoingStaleQueued || 0) > 0;
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-5">
+    <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-6">
       <div className="card card-glow p-4 lg:col-span-1">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -57,6 +60,13 @@ export function LiveOpsStrip() {
         value={String(snapshot?.totals.broadcastsActive ?? "—")}
         tone={(snapshot?.totals.broadcastsActive || 0) > 0 ? "ai" : "neutral"}
         hint="queued / sending"
+      />
+      <LiveTile
+        icon={<Send className="size-4" />}
+        label="طابور الإرسال"
+        value={String(queuePending || snapshot?.totals.outgoingSending || "—")}
+        tone={queueHasIssues ? "warning" : queuePending > 0 ? "ai" : "online"}
+        hint={`${snapshot?.totals.outgoingSending || 0} إرسال · ${snapshot?.totals.outgoingFailed24h || 0} فشل/24س`}
       />
       <LiveTile
         icon={<AlertTriangle className="size-4" />}

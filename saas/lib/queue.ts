@@ -202,7 +202,7 @@ export function initQueues(): QueueSet | null {
 
     const makeQueue = (name: string, opts: object) =>
       new Queue(name, {
-        connection: _ioredis!,
+        connection: _ioredis! as any,
         defaultJobOptions: opts,
       });
 

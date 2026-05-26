@@ -362,7 +362,7 @@ export function startBroadcastWorker(): Worker {
       await processBroadcast(job);
     },
     {
-      connection,
+      connection: connection as any,
       concurrency: 1, // Never run two broadcast workers in parallel (WA rate-limit)
       lockDuration: 120_000, // 2 minutes — matches maxDuration of the cron route
     },

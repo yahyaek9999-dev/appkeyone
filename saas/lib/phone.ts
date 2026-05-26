@@ -78,11 +78,12 @@ function toLatinDigits(s: string): string {
  * Returns E.164 with a leading "+" when successful, otherwise null.
  *
  * Heuristics (in order):
- *   1. Explicit "+<digits>" anywhere in the text — accept if 8..13 digits.
+ *   1. Explicit "+<digits>" anywhere in the text — accept if 8..15 digits.
  *   2. Egyptian local "01[0-9]{9}" — prepend "+20" and drop the leading 0.
- *   3. A bare run of 10-13 digits with leading non-zero — accept as-is
+ *   3. Saudi local "05[0-9]{8}" — prepend "+966" and drop the leading 0.
+ *   4. A bare run of 10-15 digits with leading non-zero — accept as-is
  *      with a "+" prefix.
- * Discards anything > 13 digits (likely a LID) or < 8 (likely an order #).
+ * Discards anything > 15 digits (definitely non-E.164 / likely a LID) or < 8 (likely an order #).
  */
 export function extractPhone(text: string | null | undefined): string | null {
   if (!text) return null;
@@ -92,7 +93,7 @@ export function extractPhone(text: string | null | undefined): string | null {
   const plusMatch = norm.match(/\+\s?(\d[\d\s\-().]{7,})/);
   if (plusMatch) {
     const digits = plusMatch[1].replace(/\D/g, "");
-    if (digits.length >= 8 && digits.length <= 13 && !digits.startsWith("0")) {
+    if (digits.length >= 8 && digits.length <= 15 && !digits.startsWith("0")) {
       return "+" + digits;
     }
   }
@@ -103,10 +104,16 @@ export function extractPhone(text: string | null | undefined): string | null {
     return "+20" + egMatch[1];
   }
 
-  // 3) Any bare 10-13 digit run with non-zero leading digit
+  // 3) Saudi local: 05xxxxxxxx (10 digits starting with 05)
+  const saMatch = norm.match(/(?<!\d)0(5\d{8})(?!\d)/);
+  if (saMatch) {
+    return "+966" + saMatch[1];
+  }
+
+  // 4) Any bare 10-15 digit run with non-zero leading digit
   // Allow spaces/dashes inside — strip them when matching.
   const cleaned = norm.replace(/[\s\-().]/g, "");
-  const bareMatch = cleaned.match(/(?<!\d)([1-9]\d{9,12})(?!\d)/);
+  const bareMatch = cleaned.match(/(?<!\d)([1-9]\d{9,14})(?!\d)/);
   if (bareMatch) {
     return "+" + bareMatch[1];
   }

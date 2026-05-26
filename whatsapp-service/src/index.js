@@ -78,6 +78,43 @@ async function restoreSessions() {
 }
 
 const app = express();
+
+// Lightweight security headers for the internal WhatsApp bridge.
+// We avoid adding a dependency here so deploys stay low-risk and sessions are untouched.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
+const rateBuckets = new Map();
+const RATE_LIMIT_WINDOW_MS = Math.max(10_000, Number(process.env.WA_HTTP_RATE_WINDOW_MS || 60_000));
+const RATE_LIMIT_MAX = Math.max(30, Number(process.env.WA_HTTP_RATE_MAX || 600));
+function rateLimit(req, res, next) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+  bucket.count += 1;
+  if (bucket.count > RATE_LIMIT_MAX) {
+    const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+    res.setHeader('Retry-After', String(retryAfter));
+    return res.status(429).json({ error: 'too_many_requests', retryAfter });
+  }
+  next();
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) if (bucket.resetAt <= now) rateBuckets.delete(key);
+}, RATE_LIMIT_WINDOW_MS).unref?.();
+app.use(rateLimit);
+
 app.use(express.json({ limit: '10mb' }));
 
 // Internal auth: REQUIRED for every endpoint except /health.

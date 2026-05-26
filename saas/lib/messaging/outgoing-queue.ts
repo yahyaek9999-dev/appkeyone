@@ -44,8 +44,9 @@ const MAX_BATCH = 50;
 const DEFAULT_BATCH = 20;
 const DEFAULT_PER_USER_LIMIT = 6;
 const SEND_TIMEOUT_RETRY_MS = 5 * 60_000;
+const SESSION_RETRY_MS = 60_000;
 const RATE_RETRY_MS = 15 * 60_000;
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 const STALE_SENDING_MS = 10 * 60_000;
 const STALE_QUEUED_EXPIRE_MS = 7 * 24 * 3_600_000;
 const STALE_QUEUED_WARN_MS = 30 * 60_000;
@@ -96,7 +97,18 @@ function classifyRetryDelayMs(reason: string): number {
   if (r.includes("rate") || r.includes("429") || r.includes("too many")) {
     return RATE_RETRY_MS;
   }
-  if (r.includes("block") || r.includes("forbidden") || r.includes("not registered")) {
+  if (
+    r.includes("session not connected") ||
+    r.includes("status=disconnected") ||
+    r.includes("status=connecting") ||
+    r.includes("wa-service unreachable") ||
+    r.includes("econnrefused") ||
+    r.includes("socket") ||
+    r.includes("timeout")
+  ) {
+    return SESSION_RETRY_MS;
+  }
+  if (r.includes("block") || r.includes("forbidden") || r.includes("not registered") || r.includes("invalid phone")) {
     return 0;
   }
   return SEND_TIMEOUT_RETRY_MS;
@@ -435,9 +447,9 @@ async function durableAllowedSendAt(
 }
 
 function retryBackoffMs(attempts: number, baseMs: number): number {
-  const factor = Math.max(1, Math.min(4, 2 ** Math.max(0, attempts - 1)));
-  const jitter = Math.floor(Math.random() * 5_000);
-  return baseMs * factor + jitter;
+  const factor = Math.max(1, Math.min(8, 2 ** Math.max(0, attempts - 1)));
+  const jitter = Math.floor(Math.random() * Math.min(30_000, Math.max(1_000, baseMs * 0.25)));
+  return Math.min(60 * 60_000, baseMs * factor + jitter);
 }
 
 function extractProviderMessageId(data: unknown): string | null {

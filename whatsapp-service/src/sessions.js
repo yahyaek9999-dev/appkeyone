@@ -50,6 +50,29 @@ const AUTH_RESTORE_QR_MAX_RETRIES = Math.max(
   0,
   Number(process.env.AUTH_RESTORE_QR_MAX_RETRIES || 1),
 );
+const WA_HEALTH_CHECK_MS = Math.max(
+  30_000,
+  Number(process.env.WA_HEALTH_CHECK_SEC || 60) * 1000,
+);
+const WA_HEALTH_MAX_FAILURES = Math.max(
+  2,
+  Number(process.env.WA_HEALTH_MAX_FAILURES || 3),
+);
+const WA_SEND_MAX_ATTEMPTS = Math.max(
+  1,
+  Math.min(5, Number(process.env.WA_SEND_MAX_ATTEMPTS || 3)),
+);
+const WA_SEND_MIN_SESSION_SPACING_MS = Math.max(
+  300,
+  Number(process.env.WA_SEND_MIN_SESSION_SPACING_MS || 1200),
+);
+const WA_SEND_MIN_RECIPIENT_SPACING_MS = Math.max(
+  500,
+  Number(process.env.WA_SEND_MIN_RECIPIENT_SPACING_MS || 1500),
+);
+
+const lastSendBySession = new Map();
+const lastSendByRecipient = new Map();
 
 // Returns true if `digits` looks like a real E.164 phone number.
 // Per ITU-T E.164: 1-15 digits, leading digit is the country code so it
@@ -145,6 +168,50 @@ function getChromiumArgs() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+function sendBackoffMs(attempt) {
+  const base = Math.min(10_000, 750 * 2 ** Math.max(0, attempt - 1));
+  const jitter = Math.floor(Math.random() * Math.max(250, base * 0.25));
+  return base + jitter;
+}
+
+function isRetryableSendError(err) {
+  const msg = String(err?.message || err || "").toLowerCase();
+  if (!msg) return true;
+  if (/invalid phone|not registered|cannot initiate send|forbidden|blocked|logout|auth_failure/.test(msg)) {
+    return false;
+  }
+  return /timeout|timed out|network|socket|protocol|session|disconnected|closed|crash|target|navigation|wid|lid|getnumberid|rate|429|too many/.test(msg);
+}
+
+async function waitForOutboundSlot(userId, recipient) {
+  const now = Date.now();
+  const sessionDue = (lastSendBySession.get(userId) || 0) + WA_SEND_MIN_SESSION_SPACING_MS;
+  const recipientKey = `${userId}:${recipient}`;
+  const recipientDue = (lastSendByRecipient.get(recipientKey) || 0) + WA_SEND_MIN_RECIPIENT_SPACING_MS;
+  const waitMs = Math.max(0, sessionDue - now, recipientDue - now);
+  if (waitMs > 0) await sleep(waitMs + Math.floor(Math.random() * 250));
+  const sentAt = Date.now();
+  lastSendBySession.set(userId, sentAt);
+  lastSendByRecipient.set(recipientKey, sentAt);
+}
+
+async function sendMessageReliably({ client, userId, jid, recipient, text, loggerPrefix }) {
+  let lastErr;
+  for (let attempt = 1; attempt <= WA_SEND_MAX_ATTEMPTS; attempt++) {
+    try {
+      await waitForOutboundSlot(userId, recipient || jid);
+      return await client.sendMessage(jid, text);
+    } catch (err) {
+      lastErr = err;
+      if (attempt >= WA_SEND_MAX_ATTEMPTS || !isRetryableSendError(err)) break;
+      const pause = sendBackoffMs(attempt);
+      console.warn(`${loggerPrefix} send attempt ${attempt}/${WA_SEND_MAX_ATTEMPTS} failed; retrying in ${pause}ms:`, err?.message || err);
+      await sleep(pause);
+    }
+  }
+  throw lastErr;
+}
+
 async function hasSessionAuth(userId) {
   const folder = path.join(SESSIONS_DIR, `session-${userId}`);
   try {
@@ -179,11 +246,18 @@ class SessionManager {
     /** Auto-reconnect state */
     this._reconnectTimers = new Map(); // userId -> setTimeout handle
     this._reconnectAttempts = new Map(); // userId -> number of reconnect attempts
+    this._healthFailures = new Map(); // userId -> consecutive getState failures
 
     // Background sweep — close sessions that have been idle too long so
     // their Chromium RAM is reclaimed. Auth stays on disk for next /start.
     this._idleTimer = setInterval(() => this._sweepIdle(), IDLE_CHECK_MS);
     if (typeof this._idleTimer.unref === "function") this._idleTimer.unref();
+
+    // Keep-alive style drift detection. whatsapp-web.js doesn't expose the
+    // Baileys ping packet, so we use a conservative getState probe and only
+    // reconnect after several consecutive failures.
+    this._healthTimer = setInterval(() => this._healthCheck(), WA_HEALTH_CHECK_MS);
+    if (typeof this._healthTimer.unref === "function") this._healthTimer.unref();
 
     if (ENABLE_HIBERNATION) {
       console.log(
@@ -222,7 +296,40 @@ class SessionManager {
     if (s) s.lastActivityAt = Date.now();
   }
 
-  /** Returns sessions sorted oldest-to-newest by lastActivityAt. */
+  async _healthCheck() {
+    for (const [userId, session] of this.sessions) {
+      if (!session?.client || session.status !== "connected") continue;
+      try {
+        const state = await session.client.getState();
+        if (state && String(state).toUpperCase() === "CONNECTED") {
+          this._healthFailures.delete(userId);
+          continue;
+        }
+        const failures = (this._healthFailures.get(userId) || 0) + 1;
+        this._healthFailures.set(userId, failures);
+        console.warn(`[wa] [${userId}] health probe state=${state || "unknown"} failures=${failures}/${WA_HEALTH_MAX_FAILURES}`);
+        if (failures < WA_HEALTH_MAX_FAILURES) continue;
+      } catch (e) {
+        const failures = (this._healthFailures.get(userId) || 0) + 1;
+        this._healthFailures.set(userId, failures);
+        console.warn(`[wa] [${userId}] health probe failed ${failures}/${WA_HEALTH_MAX_FAILURES}:`, e?.message || e);
+        if (failures < WA_HEALTH_MAX_FAILURES) continue;
+      }
+
+      const live = this.sessions.get(userId);
+      if (!live || live !== session || live.status !== "connected") continue;
+      console.warn(`[wa] [${userId}] health probe marked session stale — reconnecting`);
+      live.status = "disconnected";
+      notifySaas({ event: "disconnected", userId, reason: "health_probe_stale" }).catch(() => {});
+      try {
+        await live.client.destroy();
+      } catch {}
+      live.client = null;
+      this._healthFailures.delete(userId);
+      this._scheduleReconnect(userId);
+    }
+  }
+
   _byOldest() {
     return Array.from(this.sessions.values())
       .filter((s) => s && s.client)
@@ -534,6 +641,11 @@ class SessionManager {
           0,
         ),
         perSession: Object.fromEntries(this._reconnectAttempts),
+      },
+      health: {
+        checkEveryMs: WA_HEALTH_CHECK_MS,
+        maxFailures: WA_HEALTH_MAX_FAILURES,
+        failingSessions: Object.fromEntries(this._healthFailures),
       },
       uptime: Math.floor(process.uptime()),
       memoryMB: Math.round(
@@ -911,7 +1023,14 @@ class SessionManager {
         } catch {}
 
         try {
-          await client.sendMessage(msg.from, result.reply);
+          await sendMessageReliably({
+            client,
+            userId,
+            jid: msg.from,
+            recipient: fromPhone,
+            text: result.reply,
+            loggerPrefix: `[wa] [${userId}] auto_reply`,
+          });
           const totalDelay = preDelayMs + typingDelayMs;
           console.log(
             `[wa] [${userId}] OUT ${fromPhone} (llm:${dt}ms+human:${totalDelay}ms): ${String(result.reply).slice(0, 80)}`,
@@ -1043,7 +1162,14 @@ class SessionManager {
       if (!numberId) {
         throw new Error("number not registered on WhatsApp");
       }
-      return await s.client.sendMessage(numberId._serialized, text);
+      return await sendMessageReliably({
+        client: s.client,
+        userId,
+        jid: numberId._serialized,
+        recipient: cleaned,
+        text,
+        loggerPrefix: `[wa] [${userId}] direct_send`,
+      });
     } catch (e) {
       notifySaas({
         event: "send_failed",
