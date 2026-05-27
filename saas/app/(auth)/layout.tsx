@@ -1,5 +1,4 @@
 import PublicNav from "@/components/ui/public-nav";
-import { AiBackground } from "@/components/ui/marketing";
 import { getSiteConfig } from "@/lib/admin";
 
 export default async function AuthLayout({
@@ -11,7 +10,9 @@ export default async function AuthLayout({
 
   return (
     <main className="ai-page flex min-h-screen items-center justify-center px-4 py-28 sm:py-32">
-      <AiBackground />
+      <div className="pointer-events-none fixed inset-0" aria-hidden="true">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-10%,rgba(34,197,94,0.06),transparent_60%)]" />
+      </div>
       <PublicNav
         brandName={cfg.brandName || "KEYONE"}
         supportWhatsapp={cfg.supportWhatsapp}

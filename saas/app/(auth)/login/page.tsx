@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Sparkles } from "lucide-react";
+import { Lock } from "lucide-react";
 
 export default function LoginPage() {
   const r = useRouter();
@@ -29,23 +29,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="card p-7 sm:p-8">
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7 sm:p-8">
       <div className="mb-7 text-center">
-        <div className="ai-badge mb-5">
-          <Sparkles className="h-3.5 w-3.5" /> دخول آمن للمنصة
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-brand-400">
+          <Lock className="h-5 w-5" />
         </div>
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-500/30 bg-brand-500/10 text-brand-300 shadow-[0_0_28px_rgba(34,197,94,0.18)]">
-          <Lock className="h-6 w-6" />
-        </div>
-        <h1 className="ai-heading text-3xl">تسجيل الدخول</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-300">
-          أهلاً برجوعك — ادخل إلى لوحة تشغيل KEYONE الذكية.
+        <h1 className="text-2xl font-bold text-white">تسجيل الدخول</h1>
+        <p className="mt-1.5 text-sm text-slate-400">
+          أهلاً برجوعك — ادخل إلى لوحة تشغيل KEYONE.
         </p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label className="label">البريد الإلكتروني</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-300">البريد الإلكتروني</label>
           <input
             name="email"
             type="email"
@@ -55,23 +52,23 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="label">كلمة المرور</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-300">كلمة المرور</label>
           <input name="password" type="password" required className="input" />
         </div>
         {err && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
             {err}
           </div>
         )}
         <button
           disabled={loading}
-          className="btn-primary w-full py-3.5 text-base"
+          className="inline-flex w-full items-center justify-center rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white transition hover:bg-brand-400 disabled:opacity-50"
         >
           {loading ? "..." : "دخول"}
         </button>
       </form>
 
-      <p className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center text-xs leading-relaxed text-slate-400">
+      <p className="mt-6 rounded-xl border border-white/[0.06] bg-white/[0.025] p-4 text-center text-xs leading-relaxed text-slate-500">
         الاشتراك يتم بتفعيل الإدارة فقط.
         <br />
         تواصل عبر واتساب لطلب حساب جديد.

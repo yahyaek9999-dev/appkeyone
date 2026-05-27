@@ -13,7 +13,7 @@ export function BrandMark({
   return (
     <span
       className={cn(
-        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-300 via-brand-500 to-brand-700 shadow-[0_0_30px_rgba(34,197,94,0.34)] ring-1 ring-white/15",
+        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-300 via-brand-500 to-brand-700 ring-1 ring-white/15",
         className,
       )}
     >
@@ -55,68 +55,49 @@ export function WhatsAppIcon({ className = "h-5 w-5" }: { className?: string }) 
 export function AiBackground({ className }: { className?: string }) {
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_18%,rgba(34,197,94,0.22),transparent_30%),radial-gradient(circle_at_15%_76%,rgba(34,197,94,0.11),transparent_36%),linear-gradient(180deg,#020806_0%,#06110d_48%,#020806_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_20%,rgba(34,197,94,0.10),transparent_50%),radial-gradient(circle_at_20%_80%,rgba(34,197,94,0.05),transparent_50%),linear-gradient(180deg,#020806_0%,#06110d_48%,#020806_100%)]" />
       <div
-        className="absolute inset-0 opacity-[0.14]"
+        className="absolute inset-0 opacity-[0.07]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(34,197,94,0.45) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.45) 1px, transparent 1px)",
-          backgroundSize: "92px 92px",
+            "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "72px 72px",
           maskImage:
-            "radial-gradient(ellipse 78% 58% at 74% 38%, black 18%, transparent 76%)",
+            "radial-gradient(ellipse 70% 50% at 50% 50%, black 18%, transparent 76%)",
           WebkitMaskImage:
-            "radial-gradient(ellipse 78% 58% at 74% 38%, black 18%, transparent 76%)",
+            "radial-gradient(ellipse 70% 50% at 50% 50%, black 18%, transparent 76%)",
         }}
       />
-      <div className="absolute left-[8%] top-[12%] h-44 w-44 rounded-full bg-brand-500/10 blur-3xl" />
-      <div className="absolute right-[8%] bottom-[12%] h-56 w-56 rounded-full bg-emerald-400/10 blur-[90px]" />
     </div>
   );
-}
-
-export function AiBadge({
-  children,
-  icon: Icon,
-  className,
-}: {
-  children: ReactNode;
-  icon?: IconComponent;
-  className?: string;
-}) {
-  return (
-    <div className={cn("ai-badge", className)}>
-      {Icon ? <Icon className="h-3.5 w-3.5" /> : <span className="h-2.5 w-2.5 rounded-full bg-brand-400 shadow-[0_0_16px_rgba(34,197,94,0.9)]" />}
-      <span>{children}</span>
-    </div>
-  );
-}
-
-export function AiCard({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return <div className={cn("ai-card", className)}>{children}</div>;
 }
 
 export function SectionHeader({
   eyebrow,
   title,
   description,
-  icon,
+  className,
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
-  icon?: IconComponent;
+  className?: string;
 }) {
   return (
-    <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-14">
-      {eyebrow && <AiBadge icon={icon} className="mb-4">{eyebrow}</AiBadge>}
-      <h2 className="ai-heading text-3xl sm:text-4xl">{title}</h2>
-      {description && <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">{description}</p>}
+    <div className={cn("mx-auto mb-14 max-w-2xl text-center", className)}>
+      {eyebrow && (
+        <span className="mb-4 inline-block text-xs font-semibold uppercase tracking-[0.12em] text-brand-400/70">
+          {eyebrow}
+        </span>
+      )}
+      <h2 className="text-3xl font-bold leading-tight tracking-[-0.03em] text-white sm:text-4xl">
+        {title}
+      </h2>
+      {description && (
+        <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
+          {description}
+        </p>
+      )}
     </div>
   );
 }
