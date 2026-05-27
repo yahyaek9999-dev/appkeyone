@@ -169,7 +169,7 @@ export async function POST(req: Request) {
     mimetype,
   } = body as {
     from: { phone: string; name?: string | null };
-    mediaType: "text" | "voice" | "image";
+    mediaType: "text" | "voice" | "image" | "video" | "document";
     text: string;
     mediaBase64?: string;
     mimetype?: string;
@@ -278,17 +278,25 @@ export async function POST(req: Request) {
 
   // ---- Decode media into a textual representation --------------------------
   let messageText = rawText || "";
-  if (mediaType === "voice" && mediaBase64) {
-    messageText = await transcribeAudio(mediaBase64, mimetype || "audio/ogg");
-  } else if (mediaType === "image" && mediaBase64) {
-    const desc = await describeImage(
-      mediaBase64,
-      mimetype || "image/jpeg",
-      rawText || "",
-    );
-    messageText =
-      `[العميل أرسل صورة]\nوصف الصورة: ${desc}` +
-      (rawText ? `\nتعليق العميل: ${rawText}` : "");
+  if (mediaType === "voice") {
+    if (mediaBase64) {
+      messageText = await transcribeAudio(mediaBase64, mimetype || "audio/ogg");
+    } else {
+      messageText = "[العميل أرسل رسالة صوتية]";
+    }
+  } else if (mediaType === "image") {
+    if (mediaBase64) {
+      const desc = await describeImage(mediaBase64, mimetype || "image/jpeg", rawText || "");
+      messageText =
+        `[العميل أرسل صورة]\nوصف الصورة: ${desc}` +
+        (rawText ? `\nتعليق العميل: ${rawText}` : "");
+    } else {
+      messageText = rawText || "[العميل أرسل صورة]";
+    }
+  } else if (mediaType === ("video" as string)) {
+    messageText = rawText || "[العميل أرسل مقطع فيديو]";
+  } else if (mediaType === ("document" as string)) {
+    messageText = rawText || "[العميل أرسل مستندًا]";
   }
   if (!messageText.trim()) {
     return NextResponse.json({ ok: true, reply: null });

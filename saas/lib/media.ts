@@ -1,6 +1,6 @@
 // Voice transcription + image vision adapters.
 // Uses OpenAI-compatible APIs if configured. Otherwise returns graceful placeholders
-// so the chat flow never breaks even without paid keys.
+// so the conversation flow never breaks — the AI will see the placeholder and reply naturally.
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const WHISPER_URL = process.env.WHISPER_API_URL || "https://api.openai.com/v1/audio/transcriptions";
@@ -20,17 +20,22 @@ function timeoutSignal(ms = MEDIA_TIMEOUT_MS): AbortSignal | undefined {
 
 export async function transcribeAudio(base64: string, mimetype = "audio/ogg"): Promise<string> {
   if (!OPENAI_KEY) {
-    return "[رسالة صوتية — لم يتم تفعيل خدمة التفريغ بعد]";
+    return "[العميل أرسل رسالة صوتية]";
   }
   try {
     const buf = Buffer.from(base64, "base64");
-    if (buf.length > MAX_AUDIO_BYTES) return "[رسالة صوتية كبيرة — لم تتم معالجتها]";
-    const ext = mimetype.includes("ogg") ? "ogg" : mimetype.includes("mp4") ? "m4a" : "wav";
+    if (buf.length > MAX_AUDIO_BYTES) return "[العميل أرسل رسالة صوتية طويلة]";
+    const ext = mimetype.includes("ogg") ? "ogg"
+      : mimetype.includes("mp4") ? "m4a"
+      : mimetype.includes("mpeg") ? "mp3"
+      : mimetype.includes("mp3") ? "mp3"
+      : mimetype.includes("wav") ? "wav"
+      : mimetype.includes("webm") ? "webm"
+      : "ogg";
     const blob = new Blob([buf], { type: mimetype });
     const fd = new FormData();
     fd.append("file", blob, `audio.${ext}`);
     fd.append("model", "whisper-1");
-    fd.append("language", "ar");
     const res = await fetch(WHISPER_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_KEY}` },
@@ -39,24 +44,24 @@ export async function transcribeAudio(base64: string, mimetype = "audio/ogg"): P
     });
     if (!res.ok) {
       console.error("[whisper] failed", res.status, await res.text().catch(() => ""));
-      return "[تعذر تفريغ الرسالة الصوتية]";
+      return "[العميل أرسل رسالة صوتية — تعذر التفريغ]";
     }
     const data = await res.json();
-    return data.text || "[رسالة صوتية فارغة]";
+    return data.text || "[العميل أرسل رسالة صوتية فارغة]";
   } catch (e: any) {
     console.error("[whisper] error", e);
-    return "[تعذر معالجة الرسالة الصوتية]";
+    return "[العميل أرسل رسالة صوتية — تعذرت المعالجة]";
   }
 }
 
 export async function describeImage(base64: string, mimetype = "image/jpeg", caption = ""): Promise<string> {
   if (!OPENAI_KEY) {
-    return caption ? `[صورة مع تعليق: ${caption}]` : "[صورة - لم يتم تفعيل خدمة الرؤية]";
+    return caption || "[العميل أرسل صورة]";
   }
   try {
     const imageBytes = Buffer.byteLength(base64, "base64");
     if (imageBytes > MAX_IMAGE_BYTES) {
-      return caption ? `[صورة كبيرة مع تعليق: ${caption}]` : "[صورة كبيرة — لم تتم معالجتها]";
+      return caption || "[العميل أرسل صورة — تعذرت المعالجة لكبر حجمها]";
     }
     const dataUrl = `data:${mimetype};base64,${base64}`;
     const res = await fetch(VISION_URL, {
@@ -74,26 +79,30 @@ export async function describeImage(base64: string, mimetype = "image/jpeg", cap
               {
                 type: "text",
                 text:
-                  "صف هذه الصورة بدقة باللغة العربية في 2-3 جمل قصيرة. ركز على المحتوى المهم (مثلاً: إيصال تحويل، منتج، إلخ). إذا كانت إيصال دفع/تحويل اذكر المبلغ والوقت والاسم إن وُجد." +
-                  (caption ? `\nتعليق العميل: ${caption}` : ""),
+                  "قم بتحليل هذه الصورة باللغة العربية. صِف المحتوى بدقة في 2-4 جمل قصيرة. حدد نوع الصورة: منتج، لقطة شاشة، قائمة طعام، مستند، فاتورة، إيصال تحويل بنكي، صورة شخصية، أو أخرى. " +
+                  "إذا كانت فاتورة أو إيصال تحويل: اذكر المبلغ والتاريخ والجهة إن وُجدت. " +
+                  "إذا كانت قائمة طعام: اذكر الأصناف والأسعار إن ظهرت. " +
+                  "إذا كانت لقطة شاشة: صِف ما تظهره. " +
+                  "إذا كانت صورة منتج: صِف المنتج واللون والتفاصيل. " +
+                  (caption ? `\nتعليق العميل على الصورة: ${caption}` : ""),
               },
               { type: "image_url", image_url: { url: dataUrl } },
             ],
           },
         ],
-        max_tokens: 180,
+        max_tokens: 300,
       }),
       signal: timeoutSignal(),
     });
     if (!res.ok) {
       console.error("[vision] failed", res.status);
-      return caption ? `[صورة: ${caption}]` : "[صورة]";
+      return caption || "[العميل أرسل صورة]";
     }
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content || "";
-    return text || "[صورة]";
+    return text || caption || "[العميل أرسل صورة]";
   } catch (e: any) {
     console.error("[vision] error", e);
-    return "[تعذر معالجة الصورة]";
+    return caption || "[العميل أرسل صورة — تعذر تحليلها]";
   }
 }

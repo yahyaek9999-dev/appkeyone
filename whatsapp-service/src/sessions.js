@@ -916,17 +916,19 @@ class SessionManager {
             mediaType = "voice";
           } else if (msg.type === "image") {
             mediaType = "image";
+          } else if (msg.type === "video") {
+            mediaType = "video";
+          } else if (msg.type === "document") {
+            mediaType = "document";
           }
-          if (mediaType !== "text") {
-            try {
-              const media = await msg.downloadMedia();
-              if (media) {
-                mediaBase64 = media.data;
-                mimetype = media.mimetype;
-              }
-            } catch (e) {
-              console.error("[wa] media download failed:", e.message);
+          try {
+            const media = await msg.downloadMedia();
+            if (media) {
+              mediaBase64 = media.data;
+              mimetype = media.mimetype;
             }
+          } catch (e) {
+            console.error("[wa] media download failed:", e.message);
           }
         }
 
