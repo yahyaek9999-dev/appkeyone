@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getSiteConfig } from "@/lib/admin";
 import { BrandMark } from "@/components/ui/marketing";
+import { LayoutDashboard, ShieldCheck } from "lucide-react";
 import LogoutButton from "./logout-button";
 import MobileNav from "./mobile-nav";
-import { NavLinks } from "./nav-items";
+import { NavLinks, SidebarNav } from "./nav-items";
 
 export default async function DashboardLayout({
   children,
@@ -17,29 +18,28 @@ export default async function DashboardLayout({
   const isAdmin = (user as any).role === "admin";
   const brandName = cfg.brandName || "KEYONE";
 
-  // Shared brand + user blocks rendered in both the desktop sidebar and the
-  // mobile drawer. Keeping the JSX inline avoids passing huge children trees
-  // through the client MobileNav component.
   const Brand = (
     <Link
-      href="/"
-      className="flex items-center gap-3 border-b border-brand-500/10 p-5 text-lg font-black tracking-tight text-white"
+      href="/dashboard"
+      className="flex items-center gap-3 px-4 py-5"
     >
-      <BrandMark className="h-10 w-10 rounded-2xl" iconClassName="h-5 w-5" />
-      <span>{brandName}</span>
+      <BrandMark className="h-8 w-8 rounded-xl" iconClassName="h-4 w-4" />
+      <div>
+        <div className="text-sm font-bold text-white">{brandName}</div>
+        <div className="text-[10px] text-slate-500">لوحة التحكم</div>
+      </div>
     </Link>
   );
 
   const UserFooter = (
-    <div className="p-3 border-t border-white/5">
-      <div className="px-3 py-2 mb-2">
-        <div className="text-sm font-semibold truncate">
-          {user.name || user.email}
-        </div>
-        <div className="text-xs text-slate-500 truncate">{user.email}</div>
+    <div className="border-t border-white/[0.06] p-3">
+      <div className="mb-2 px-3 py-2">
+        <div className="truncate text-sm font-medium text-white">{user.name || user.email}</div>
+        <div className="truncate text-xs text-slate-500">{user.email}</div>
         {user.subscription && (
-          <div className="mt-2 text-xs">
-            <span className="inline-block px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-300 border border-brand-500/30">
+          <div className="mt-2">
+            <span className="inline-flex items-center gap-1 rounded-md border border-brand-500/20 bg-brand-500/8 px-2 py-0.5 text-[10px] font-semibold text-brand-300">
+              <LayoutDashboard className="h-2.5 w-2.5" />
               {user.subscription.plan.name}
             </span>
           </div>
@@ -49,26 +49,35 @@ export default async function DashboardLayout({
     </div>
   );
 
+  const AdminLink = isAdmin ? (
+    <Link
+      href="/admin"
+      className="sidebar-link text-amber-400/70 hover:text-amber-300"
+    >
+      <ShieldCheck className="h-4 w-4" />
+      لوحة الإدارة
+    </Link>
+  ) : null;
+
   return (
-    <div className="ai-page min-h-screen min-w-0 md:flex">
-      {/* Mobile drawer (hidden on md+) */}
-      <MobileNav pageTitle={brandName}>
+    <div className="ai-page min-h-screen md:flex">
+      <MobileNav>
         {Brand}
-        <NavLinks isAdmin={isAdmin} />
+        <div className="px-3 pt-1">
+          {AdminLink}
+        </div>
+        <NavLinks />
         {UserFooter}
       </MobileNav>
 
-      {/* Desktop sidebar (hidden on mobile) */}
-      <aside className="hidden w-64 shrink-0 flex-col border-l border-brand-500/10 bg-[#020806]/86 shadow-[0_0_60px_rgba(0,0,0,0.26)] backdrop-blur-xl md:flex">
+      <aside className="hidden w-56 shrink-0 flex-col border-l border-white/[0.06] bg-[#020806] md:flex">
         {Brand}
-        <NavLinks isAdmin={isAdmin} />
+        <SidebarNav adminLink={AdminLink} />
         {UserFooter}
       </aside>
 
-      {/* Main content. We intentionally drop `max-h-screen overflow-y-auto` —
-          that combo breaks iOS momentum scrolling. Scroll lives on the body. */}
-      <main className="min-h-screen min-w-0 flex-1 bg-black/10">
-        <div className="mx-auto w-full max-w-6xl min-w-0 p-4 pb-safe md:p-6 lg:p-10">
+      <main className="min-h-screen min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-safe pt-6 md:px-6 md:pt-8 lg:px-8 lg:pt-10">
           {children}
         </div>
       </main>

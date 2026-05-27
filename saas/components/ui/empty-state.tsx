@@ -1,9 +1,3 @@
-/**
- * KEYONE Tier-1 — EmptyState
- * Source: reference-extracts/tier1/shared/EmptyState.tsx
- * Use anywhere a list/section is empty (inbox, leads, orders, search).
- */
-import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -21,39 +15,19 @@ const SIZE_CONFIG = {
 };
 
 export function EmptyState({
-  icon,
-  title,
-  description,
-  action,
-  size = "md",
-  className,
-  ...props
+  icon, title, description, action, size = "md", className, ...props
 }: EmptyStateProps) {
   const s = SIZE_CONFIG[size];
   return (
-    <div
-      className={cn(
-        "flex w-full flex-col items-center justify-center text-center px-6",
-        s.wrap,
-        className
-      )}
-      {...props}
-    >
+    <div className={cn("flex w-full flex-col items-center justify-center text-center px-6", s.wrap, className)} {...props}>
       {icon && (
-        <div
-          className={cn(
-            "flex items-center justify-center rounded-full bg-white/5 text-slate-400",
-            s.icon === "size-8" ? "p-2" : s.icon === "size-10" ? "p-2.5" : "p-3"
-          )}
-        >
-          <div className={s.icon}>{icon}</div>
+        <div className={cn("flex items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3 text-slate-400", s.icon)}>
+          {icon}
         </div>
       )}
-      <div className="space-y-1 max-w-sm">
-        <h3 className={cn("font-medium text-slate-100", s.title)}>{title}</h3>
-        {description && (
-          <p className={cn("text-slate-400", s.desc)}>{description}</p>
-        )}
+      <div className="max-w-sm space-y-1">
+        <h3 className={cn("font-semibold text-slate-200", s.title)}>{title}</h3>
+        {description && <p className={cn("text-slate-500", s.desc)}>{description}</p>}
       </div>
       {action && <div className="mt-2">{action}</div>}
     </div>

@@ -48,20 +48,20 @@ export default async function UsagePage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold mb-2">استخدام الباقة</h1>
-          <p className="text-slate-400 text-sm">حالة باقتك الفعلية وقيود الاستخدام لهذا الشهر.</p>
+          <h1 className="page-title mb-1">استخدام الباقة</h1>
+          <p className="page-desc">حالة باقتك الفعلية وقيود الاستخدام لهذا الشهر.</p>
         </div>
-        <Link href="/pricing" className="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-400 text-sm font-bold flex items-center gap-2">
-          <Crown className="w-4 h-4" /> ترقية الباقة
+        <Link href="/pricing" className="btn-primary">
+          <Crown className="h-4 w-4" /> ترقية الباقة
         </Link>
       </div>
 
       {plan.blocked && (
-        <div className="card p-4 bg-rose-500/10 border-rose-500/30 text-sm flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 text-rose-400 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/8 p-4 text-sm">
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
           <div>
-            <div className="font-bold text-rose-300">الحساب معلّق</div>
-            <div className="text-slate-300 mt-1">السبب: {plan.reason}. تواصل مع الدعم لإعادة التفعيل.</div>
+            <div className="font-semibold text-rose-300">الحساب معلّق</div>
+            <div className="mt-0.5 text-slate-400">السبب: {plan.reason}. تواصل مع الدعم لإعادة التفعيل.</div>
           </div>
         </div>
       )}
@@ -69,7 +69,7 @@ export default async function UsagePage() {
       {/* Plan banner */}
       <div className="card p-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className={`px-3 py-1 rounded-lg text-sm font-bold ${badge.color}`}>{badge.label}</span>
+          <span className={`rounded-lg px-3 py-1 text-sm font-bold ${badge.color}`}>{badge.label}</span>
           <div>
             <div className="font-bold">{plan.planName}</div>
             <div className="text-xs text-slate-400">
@@ -77,7 +77,7 @@ export default async function UsagePage() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 text-xs">
+        <div className="flex flex-wrap gap-2 text-xs">
           <Pill label="Meta Access" value={plan.metaAccess} tone={plan.metaAccess === "full" ? "ok" : plan.metaAccess === "limited" ? "warn" : "muted"} />
           <Pill label="Analytics" value={plan.analyticsAccess} />
           <Pill label="WA Sessions" value={String(plan.whatsappSessions)} />
@@ -88,18 +88,18 @@ export default async function UsagePage() {
       {/* Connection state */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card p-5">
-          <div className="text-sm text-slate-400 mb-2">حالة واتساب</div>
-          <div className="text-2xl font-bold mb-1">{mode === "meta_cloud" ? "Meta Cloud API" : "QR (whatsapp-web.js)"}</div>
-          <div className="text-sm text-slate-300">{bot?.whatsappStatus || "—"} {bot?.whatsappPhone ? `· ${bot.whatsappPhone}` : ""}</div>
+          <div className="kpi-label">حالة واتساب</div>
+          <div className="kpi-value mb-1">{mode === "meta_cloud" ? "Meta Cloud API" : "QR (whatsapp-web.js)"}</div>
+          <div className="text-sm text-slate-400">{bot?.whatsappStatus || "—"} {bot?.whatsappPhone ? `· ${bot.whatsappPhone}` : ""}</div>
         </div>
         <div className="card p-5">
-          <div className="text-sm text-slate-400 mb-2">Meta Cloud</div>
+          <div className="kpi-label">Meta Cloud</div>
           {bot?.metaPhoneNumberId ? (
             <>
-              <div className="text-2xl font-bold mb-1">
+              <div className="kpi-value mb-1">
                 {bot.metaVerifiedAt ? "مفعّل" : "قيد التفعيل"}
               </div>
-              <div className="text-sm text-slate-300">
+              <div className="text-sm text-slate-400">
                 Quality: <b className={
                   bot.metaQualityRating === "GREEN" ? "text-emerald-300" :
                   bot.metaQualityRating === "YELLOW" ? "text-amber-300" :
@@ -109,7 +109,7 @@ export default async function UsagePage() {
             </>
           ) : (
             <>
-              <div className="text-2xl font-bold mb-1 text-slate-500">غير مهيّأ</div>
+              <div className="kpi-value mb-1 text-slate-500">غير مهيّأ</div>
               <Link href="/dashboard/settings/meta-cloud" className="text-sm text-brand-300 hover:underline">إعداد Meta Cloud →</Link>
             </>
           )}
@@ -118,7 +118,7 @@ export default async function UsagePage() {
 
       {/* Usage counters */}
       <div className="space-y-3">
-        <h2 className="text-lg font-bold">عدّادات هذا الشهر</h2>
+        <h2 className="section-title">عدّادات هذا الشهر</h2>
         <Counter
           icon={<MessageSquare className="w-5 h-5" />}
           label="الرسائل"
@@ -142,7 +142,7 @@ export default async function UsagePage() {
 
       {/* Feature flags */}
       <div className="card p-5">
-        <h2 className="text-lg font-bold mb-3">الميزات المتاحة في باقتك</h2>
+        <h2 className="section-title mb-3">الميزات المتاحة في باقتك</h2>
         <div className="flex flex-wrap gap-2 text-xs">
           {Object.keys(plan.featureFlags).length === 0
             ? <span className="text-slate-500">لا توجد ميزات إضافية مفعّلة</span>
