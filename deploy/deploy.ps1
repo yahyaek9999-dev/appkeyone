@@ -87,7 +87,10 @@ Run 'git reset --hard origin/main' { git reset --hard origin/main }
 
 Step '3/10 Stop SaaS and install dependencies'
 Write-Host '  Stopping mse-saas to release Prisma/Next file locks...' -ForegroundColor Gray
+$oldEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 nssm stop mse-saas 2>&1
+$ErrorActionPreference = $oldEap
 if ($LASTEXITCODE -ne 0)
 {
     Write-Host "  mse-saas stop returned exit $LASTEXITCODE; continuing because it may already be stopped." -ForegroundColor Yellow
@@ -120,13 +123,17 @@ Run 'npm run verify:all' { npm run verify:all 2>&1 }
 
 Step '8/10 Restart services gracefully'
 Write-Host '  Starting mse-saas...' -ForegroundColor Gray
+$oldEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 nssm start mse-saas 2>&1
 if ($LASTEXITCODE -ne 0)
 {
     Write-Host '  start failed; trying restart...' -ForegroundColor Yellow
     nssm restart mse-saas 2>&1
     if ($LASTEXITCODE -ne 0)
-    { throw 'mse-saas start/restart failed'
+    {
+        $ErrorActionPreference = $oldEap
+        throw 'mse-saas start/restart failed'
     }
 }
 
@@ -135,9 +142,13 @@ if ($RestartWhatsApp)
     Write-Host '  Restarting mse-wa because -RestartWhatsApp was supplied...' -ForegroundColor Yellow
     nssm restart mse-wa 2>&1
     if ($LASTEXITCODE -ne 0)
-    { throw 'mse-wa restart failed'
+    {
+        $ErrorActionPreference = $oldEap
+        throw 'mse-wa restart failed'
     }
-} else
+}
+$ErrorActionPreference = $oldEap
+if (-not $RestartWhatsApp)
 {
     Write-Host '  Skipping mse-wa restart by default to preserve live WhatsApp sessions.' -ForegroundColor Yellow
     Write-Host '  Use -RestartWhatsApp only when deploying WhatsApp-service changes intentionally.' -ForegroundColor Yellow
