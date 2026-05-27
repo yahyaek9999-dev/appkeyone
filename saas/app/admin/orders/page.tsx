@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { OrderStatusUpdater } from "./order-status-updater";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
                 <th className="text-right p-3">الحالة</th>
                 <th className="text-right p-3">المصدر</th>
                 <th className="text-right p-3">التاريخ</th>
+                <th className="text-right p-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -82,9 +84,12 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
                   </td>
                   <td className="p-3 text-xs text-slate-400">{o.source || "—"}{o.externalSource ? ` (${o.externalSource})` : ""}</td>
                   <td className="p-3 text-xs text-slate-400">{new Date(o.createdAt).toLocaleString("ar-EG")}</td>
+                  <td className="p-3">
+                    <OrderStatusUpdater orderId={o.id} currentStatus={o.status} />
+                  </td>
                 </tr>
               ))}
-              {orders.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">لا توجد طلبات.</td></tr>}
+              {orders.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-slate-400">لا توجد طلبات.</td></tr>}
             </tbody>
           </table>
         </div>

@@ -63,12 +63,31 @@ const PAYMENT_KEYWORDS: Array<[string, string[]]> = [
   ["mada",          ["مدى","mada"]],
   ["card",          ["فيزا","ماستر","بطاقة","visa","master","card","credit"]],
   ["bank_transfer", ["تحويل بنكي","تحويل","حوّلت","حولت","حوالة","bank","transfer"]],
+  ["tabby",         ["تابي","tabby","تقسيط تابي","دفع بالتقسيط"]],
+  ["tamara",        ["تمارا","tamara","تمارة"]],
+  ["apple_pay",     ["ابل باي","apple pay","ابل بي"]],
+  ["urpay",         ["urpay","يور باي","يورباي"]],
+  ["valu",          ["val u","فالي","valu"]],
 ];
 
 const ADDRESS_HINTS = [
-  "العنوان","عنواني","عنوان","ابعت","ابعتلي","ارسل","توصيل","وصل","الرياض","جدة","جده","مكة","مكه","الدمام","الخبر",
+  "العنوان","عنواني","عنوان","ابعت","ابعتلي","ارسل","توصيل","وصل",
+  // Saudi Arabia
+  "الرياض","جدة","جده","مكة","مكه","الدمام","الخبر","المدينة","القصيم","تبوك","بريدة","حائل","الطائف","نجران","جازان","خميس مشيط","القطيف","الأحساء","الهفوف","عرعر","سكاكا",
+  // UAE
+  "دبي","أبوظبي","ابو ظبي","الشارقة","عجمان","رأس الخيمة","راس الخيمة","الفجيرة","أم القيوين","العين",
+  // Kuwait
+  "الكويت","مدينة الكويت","حولي","السالمية","الجهراء","الفروانية","الأحمدي","مبارك الكبير",
+  // Qatar
+  "الدوحة","الريان","الخور","الوكرة","مسيمير","الشحانية","أم صلال",
+  // Bahrain
+  "المنامة","المحرق","الرفاع","مدينة عيسى","سترة","البديع","الجفير","الدراز",
+  // Oman
+  "مسقط","صلالة","السيب","صحار","نزوى","الخابورة","إبرا","صور","بهلا",
+  // General address terms
   "حي","الحى","الحی","شارع","طريق","بجانب","جنب","قرب","عمارة","عماره","بناية","بوابة","دور","الدور","شقه","شقة",
-  "محافظه","محافظة","مدينه","مدينة","قريه","قرية","منطقه","منطقة","district","riyadh","jeddah","dammam",
+  "محافظه","محافظة","مدينه","مدينة","قريه","قرية","منطقه","منطقة",
+  "district","riyadh","jeddah","dammam","dubai","abu dhabi","doha","manama","kuwait",
   "address","street","apt","building","floor","city","district","landmark",
 ];
 
@@ -139,6 +158,21 @@ function detectPhone(text: string): string | undefined {
   // Saudi local mobile: 05XXXXXXXX → +9665XXXXXXXX
   const saLocal = t.match(/(?<![\d])0(5[0-9]{8})(?![\d])/);
   if (saLocal) return `+966${saLocal[1]}`;
+  // UAE: 05x/06x/04x (9 digits after 0)
+  const uaeLocal = t.match(/(?<![\d])0(5[024568]\d{7}|[46]\d{7})(?![\d])/);
+  if (uaeLocal) return `+971${uaeLocal[1]}`;
+  // Kuwait: 5xxxxxxx/6xxxxxxx/9xxxxxxx (8 digits)
+  const kwLocal = t.match(/(?<![\d])(5[0-9]{7}|6[0-9]{7}|9[0-9]{7})(?![\d])/);
+  if (kwLocal) return `+965${kwLocal[1]}`;
+  // Qatar: 3xxxxxxx/5xxxxxxx/6xxxxxxx/7xxxxxxx (8 digits)
+  const qaLocal = t.match(/(?<![\d])(3[0-9]{7}|[567][0-9]{7})(?![\d])/);
+  if (qaLocal) return `+974${qaLocal[1]}`;
+  // Bahrain: 3xxxxxxx (8 digits)
+  const bhLocal = t.match(/(?<![\d])(3[0-9]{7}|[17][0-9]{7})(?![\d])/);
+  if (bhLocal) return `+973${bhLocal[1]}`;
+  // Oman: 9xxxxxxx (8 digits)
+  const omLocal = t.match(/(?<![\d])(9[0-9]{7}|[7][0-9]{7})(?![\d])/);
+  if (omLocal) return `+968${omLocal[1]}`;
   // International with country code (8-15 digits)
   const intl = t.match(/(?<![\d])(\+?\d{8,15})(?![\d])/);
   if (intl) return intl[1].startsWith("+") ? intl[1] : `+${intl[1]}`;
@@ -230,6 +264,45 @@ function detectProductName(text: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Try to extract multiple product mentions from a message.
+ * Handles patterns like:
+ *   "عاوز 2 تيشيرت ابيض و 3 بنطلون اسود"
+ *   "اخد المنتج الاول والمنتج التاني"
+ * Splits on "و" / "and" / "," between product mentions when multiple verbs exist.
+ */
+function detectMultipleProducts(text: string): { name: string; quantity: number }[] {
+  const t = arNumToWestern(text);
+  const products: { name: string; quantity: number }[] = [];
+
+  // Pattern: "رقم ورقم" or "رقم, رقم" between products
+  // Try: "2 تيشيرت و 3 بنطلون" or "تيشيرت وبنطلون"
+  const segments = t.split(/\s+و\s+|\s*,\s*/).filter(Boolean);
+  for (const seg of segments) {
+    const qty = detectQuantity(seg);
+    const name = detectProductName(seg);
+    if (name && !products.some(p => p.name === name)) {
+      products.push({ name: name.slice(0, 80), quantity: qty });
+    }
+  }
+
+  // If only one found via split, try the "X + Y" pattern with Arabic numbers
+  if (products.length <= 1) {
+    const multiMatch = t.match(/(\d{1,2})\s*(?:قطع|حبات|حبتين|products|items)\s*(.+)/i);
+    if (multiMatch) {
+      const items = multiMatch[2].split(/\s+و\s+|\s*,\s*/).filter(Boolean);
+      for (const item of items) {
+        const name = detectProductName(`عاوز ${item}`) || item.trim().slice(0, 80);
+        if (name && !products.some(p => p.name === name)) {
+          products.push({ name, quantity: 1 });
+        }
+      }
+    }
+  }
+
+  return products;
+}
+
 // ---------------------------------------------------------------------------
 // Confidence scoring — pure heuristic.
 // ---------------------------------------------------------------------------
@@ -267,28 +340,42 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
     .map((m) => m.content).join("\n");
   const fullText = `${customerText}\n${assistantText}`;
 
-  const productName = detectProductName(customerText) || detectProductName(assistantText) || "منتج";
-  const quantity    = detectQuantity(customerText);
-  const size        = detectSize(customerText);
-  const color       = detectColor(customerText);
-  // Prefer price from the assistant (likely a confirmed quote) then customer.
-  const priceFromAsst = detectPrice(assistantText);
-  const priceFromUser = detectPrice(customerText);
-  const unitPrice   = priceFromAsst || priceFromUser || 0;
-  const lineTotal   = unitPrice * Math.max(1, quantity);
-
   const customerPhone = detectPhone(customerText) || (input.fallbackCustomerPhone || undefined);
   const shippingAddress = detectAddress(customerText);
   const paymentMethod = detectPayment(fullText);
   const customerName = detectName(customerText) || (input.fallbackCustomerName || undefined);
 
-  const item: OrderDraftItem = {
-    name: productName.slice(0, 80),
-    size, color,
-    quantity,
-    unitPrice,
-    lineTotal,
-  };
+  // Multi-product detection — try to extract multiple items
+  const multiProducts = detectMultipleProducts(customerText);
+  const size = detectSize(customerText);
+  const color = detectColor(customerText);
+  const priceFromAsst = detectPrice(assistantText);
+  const priceFromUser = detectPrice(customerText);
+  const unitPrice = priceFromAsst || priceFromUser || 0;
+
+  let items: OrderDraftItem[];
+  if (multiProducts.length > 1) {
+    // Multiple products found — create one item per product
+    items = multiProducts.map((p, i) => ({
+      name: p.name,
+      size: i === 0 ? size : undefined,
+      color: i === 0 ? color : undefined,
+      quantity: p.quantity,
+      unitPrice,
+      lineTotal: unitPrice * Math.max(1, p.quantity),
+    }));
+  } else {
+    const productName = detectProductName(customerText) || detectProductName(assistantText) || "منتج";
+    const quantity = detectQuantity(customerText);
+    const lineTotal = unitPrice * Math.max(1, quantity);
+    items = [{
+      name: productName.slice(0, 80),
+      size, color,
+      quantity: Math.max(1, quantity),
+      unitPrice,
+      lineTotal,
+    }];
+  }
   const currency = detectCurrency(fullText);
 
   // Discount: scan customer text first (their request), then assistant text
@@ -296,17 +383,17 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
   // is subtracted from subtotal so Order.total reflects what the customer pays.
   const dcCustomer = detectDiscount(customerText);
   const dcAssistant = (dcCustomer.pct > 0 || dcCustomer.flat > 0) ? dcCustomer : detectDiscount(assistantText);
-  const subtotal = lineTotal;
+  const subtotal = items.reduce((s, i) => s + i.lineTotal, 0);
   let discount = 0;
   if (dcAssistant.pct > 0) {
     discount = Math.round((subtotal * dcAssistant.pct) / 100);
   } else if (dcAssistant.flat > 0) {
-    discount = Math.min(dcAssistant.flat, subtotal); // never negative total
+    discount = Math.min(dcAssistant.flat, subtotal);
   }
   const total = Math.max(0, subtotal - discount);
 
   const draft: OrderDraft = {
-    items: [item],
+    items,
     customerName,
     customerPhone,
     shippingAddress,
@@ -314,7 +401,7 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
     subtotal,
     shipping: 0,
     discount,
-    total,
+    total: Math.max(0, subtotal - discount),
     currency,
     notes: "",
     confidence: 0,

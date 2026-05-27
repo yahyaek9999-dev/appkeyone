@@ -20,6 +20,7 @@ import {
   Link,
   Unlink,
   HelpCircle,
+  RotateCw,
 } from "lucide-react";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
@@ -235,6 +236,22 @@ export default function IntegrationsUi() {
     } finally { setBusyId(null); }
   }
 
+  async function retryEvent(eventId: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/commerce/events/retry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+      const json = await res.json();
+      if (!res.ok) showError(json.error || "فشلت إعادة المحاولة");
+      else showSuccess("تم إعادة معالجة الحدث");
+      await load(false);
+    } finally { setLoading(false); }
+  }
+
   const curlExample = useMemo(() => {
     if (!secret) return "";
     return [
@@ -408,6 +425,11 @@ export default function IntegrationsUi() {
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <EventStatus status={event.status} />
               <span>{new Date(event.receivedAt).toLocaleString("ar-EG")}</span>
+              {event.status === "failed" && (
+                <button onClick={() => retryEvent(event.id)} disabled={loading} className="px-2 py-1 rounded bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs hover:bg-amber-500/25 inline-flex items-center gap-1">
+                  <RotateCw className="w-3 h-3" /> إعادة
+                </button>
+              )}
             </div>
           </div>
         ))}

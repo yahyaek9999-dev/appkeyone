@@ -110,6 +110,36 @@ export function extractPhone(text: string | null | undefined): string | null {
     return "+966" + saMatch[1];
   }
 
+  // 3b) UAE local: 05x/06x/04x (9 digits after 0)
+  const uaeMatch = norm.match(/(?<!\d)0(5[024568]\d{7}|[46]\d{7})(?!\d)/);
+  if (uaeMatch) {
+    return "+971" + uaeMatch[1];
+  }
+
+  // 3c) Kuwait local: 5xxxxxxx/6xxxxxxx/9xxxxxxx (8 digits)
+  const kwMatch = norm.match(/(?<!\d)(5[0-9]{7}|6[0-9]{7}|9[0-9]{7})(?!\d)/);
+  if (kwMatch) {
+    return "+965" + kwMatch[1];
+  }
+
+  // 3d) Qatar local: 3xxxxxxx/5xxxxxxx/6xxxxxxx/7xxxxxxx (8 digits)
+  const qaMatch = norm.match(/(?<!\d)(3[0-9]{7}|[567][0-9]{7})(?!\d)/);
+  if (qaMatch) {
+    return "+974" + qaMatch[1];
+  }
+
+  // 3e) Bahrain local: 3xxxxxxx (8 digits)
+  const bhMatch = norm.match(/(?<!\d)(3[0-9]{7}|[17][0-9]{7})(?!\d)/);
+  if (bhMatch) {
+    return "+973" + bhMatch[1];
+  }
+
+  // 3f) Oman local: 9xxxxxxx (8 digits)
+  const omMatch = norm.match(/(?<!\d)(9[0-9]{7}|[7][0-9]{7})(?!\d)/);
+  if (omMatch) {
+    return "+968" + omMatch[1];
+  }
+
   // 4) Any bare 10-15 digit run with non-zero leading digit
   // Allow spaces/dashes inside — strip them when matching.
   const cleaned = norm.replace(/[\s\-().]/g, "");

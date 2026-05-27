@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { ResendQrButton } from "./resend-qr";
+import { DisconnectWaButton } from "./disconnect-wa";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export default async function AdminWhatsappPage({ searchParams }: { searchParams
                     <td className="p-3">
                       <div className="flex gap-2">
                         <ResendQrButton userId={u.id} />
+                        <DisconnectWaButton userId={u.id} />
                         {waStatus !== "connected" && (
                           <Link href={`/admin/whatsapp?reconnect=${u.id}`} className="px-2 py-1 rounded bg-amber-500/15 text-amber-200 text-xs hover:bg-amber-500/25 border border-amber-500/30">
                             إعادة ربط
