@@ -36,7 +36,7 @@ export default function MobileNav({ children }: Props) {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="فتح القائمة"
-          className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+          className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.06] hover:text-white touch-target"
         >
           <Menu className="h-5 w-5" />
         </button>
