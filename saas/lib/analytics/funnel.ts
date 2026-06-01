@@ -120,7 +120,10 @@ export async function computeFunnel(userId: string, days = 30): Promise<FunnelRe
 
     if (hasOrder && stats) {
       ordered++;
-      if (stats.orders >= 2) repeat++;
+      // "Repeat" sits below "Paid" in the funnel, so it must be a subset of
+      // paid buyers — count ≥2 PAID orders (not just any orders). Otherwise a
+      // customer with 2 pending/unpaid orders would make repeat > paid.
+      if (stats.paidOrders >= 2) repeat++;
       // time-to-close: first order vs first contact
       const start = c.firstInboundAt || c.createdAt;
       if (stats.firstOrderAt && start && stats.firstOrderAt > start) {

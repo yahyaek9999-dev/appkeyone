@@ -38,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   // customer.orderCount / totalOrderValue counters are not maintained on the
   // write path, so trusting them would show "0 orders" for real buyers. One
   // bounded aggregate + the most-recent order keeps this accurate and fast.
-  const [lastOrder, orderAgg] = await Promise.all([
+  const [lastOrder, orderAgg, msgCounts] = await Promise.all([
     prisma.order.findFirst({
       where: { userId: uid, customerId: c.id },
       orderBy: { createdAt: "desc" },
@@ -49,6 +49,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       _count: { _all: true },
       _sum: { total: true },
     }),
+    // Real message counts from the conversation. The trust counters
+    // (inboundCount/outboundCount) undercount here — outbound is often 0 for
+    // historically-imported chats — so the "total messages" headline would lie.
+    prisma.message
+      .groupBy({ by: ["role"], where: { conversation: { customerId: c.id } }, _count: { _all: true } })
+      .catch(() => [] as { role: string; _count: { _all: number } }[]),
   ]);
 
   const prefs = parseJson<Record<string, any>>(c.preferences, {});
@@ -56,6 +62,20 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const orderCount = orderAgg._count?._all || 0;
   const totalSpent = orderAgg._sum?.total || 0;
   const aov = orderCount > 0 ? Math.round(totalSpent / orderCount) : 0;
+
+  // Inbound = customer messages; outbound = bot + admin replies (skip system/tool).
+  let inboundCount = 0;
+  let outboundCount = 0;
+  for (const r of msgCounts as { role: string; _count: { _all: number } }[]) {
+    const n = r._count?._all || 0;
+    if (r.role === "user") inboundCount += n;
+    else if (r.role === "assistant" || r.role === "admin") outboundCount += n;
+  }
+  // Fall back to the trust counters only if the conversation has no rows yet.
+  if (inboundCount === 0 && outboundCount === 0) {
+    inboundCount = c.inboundCount || 0;
+    outboundCount = c.outboundCount || 0;
+  }
 
   return NextResponse.json({
     customer: {
@@ -66,9 +86,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       // ---- Profile facts ----
       firstContactAt: c.firstInboundAt || c.createdAt,
       lastMessageAt: c.lastInboundAt || c.lastSeenAt,
-      inboundCount: c.inboundCount || 0,
-      outboundCount: c.outboundCount || 0,
-      totalMessages: (c.inboundCount || 0) + (c.outboundCount || 0),
+      inboundCount,
+      outboundCount,
+      totalMessages: inboundCount + outboundCount,
       orderCount,
       totalSpent,
       aov,
