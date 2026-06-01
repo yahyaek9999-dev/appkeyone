@@ -17,7 +17,9 @@ import {
   X,
   Inbox as InboxIcon,
   ArrowRight,
+  IdCard,
 } from "lucide-react";
+import Customer360 from "./customer-360";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusDot } from "@/components/ui/status-dot";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -74,6 +76,7 @@ export default function InboxUi({
   const [sending, setSending] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
+  const [profileOpen, setProfileOpen] = useState(false); // Customer 360 drawer
   const scrollRef = useRef<HTMLDivElement>(null);
   const { state: liveState, snapshot } = useRealtimeSnapshot({
     activeCustomerId: activeId,
@@ -461,6 +464,13 @@ export default function InboxUi({
                   </span>
                 )}
                 <button
+                  onClick={() => setProfileOpen(true)}
+                  className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-semibold text-brand-300 transition hover:bg-brand-500/20"
+                  title="عرض ملف العميل الكامل"
+                >
+                  <IdCard className="w-3.5 h-3.5" /> ملف 360
+                </button>
+                <button
                   onClick={togglePause}
                   className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold ${
                     active.conversation?.botPaused
@@ -632,6 +642,13 @@ export default function InboxUi({
             })()}
           </div>
 
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="ai-btn ai-btn-ghost w-full justify-center border-brand-500/30 px-3 py-2 text-xs text-brand-200"
+          >
+            <IdCard className="w-3.5 h-3.5" /> الملف الكامل 360
+          </button>
+
           {active.customer.lastIntent && (
             <Field
               label="آخر نية"
@@ -682,6 +699,18 @@ export default function InboxUi({
           </div>
         </aside>
       )}
+
+      {/* ----- Customer 360 slide-over (additive; opens over the inbox, never blocks chat) ----- */}
+      <Customer360
+        customerId={activeId}
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onMutated={() => {
+          // CRM mutations may change tags/score/etc. — refresh the quick views.
+          loadConversations();
+          if (activeId) loadConversation(activeId, { silent: true });
+        }}
+      />
     </div>
   );
 }

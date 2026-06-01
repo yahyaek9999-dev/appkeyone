@@ -294,6 +294,13 @@ model Customer {
   frustrationScore Int      @default(0)       // 0-100 latest rolling frustration score
   lastEscalationAt DateTime?
 
+  // ---- Customer 360 CRM (additive, nullable/defaults — existing rows unaffected) ----
+  vip             Boolean   @default(false)  // admin-flagged VIP
+  blacklisted     Boolean   @default(false)  // admin-flagged blacklist
+  archivedAt      DateTime?                  // admin-archived (hidden from active views)
+  assignedAdmin   String?                    // free-text staff label handling this customer
+  photoUrl        String?                    // profile photo URL (null → initials avatar)
+
   // ---- Smart personalization (Wave 9) ----
   preferences     String    @default("{}")   // JSON: { products:[], sizes:[], colors:[], budget?:number, lastTopics?:[] }
   purchaseProb    Int       @default(0)      // 0-100 estimated buy probability (Wave 8 predictive)
