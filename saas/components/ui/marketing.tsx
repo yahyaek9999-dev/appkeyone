@@ -72,6 +72,38 @@ export function AiBackground({ className }: { className?: string }) {
   );
 }
 
+// Calm, premium ambient backdrop for public pages — a single low-opacity
+// brand wash + a masked fine grid. No strong glow, no blobs. Purely decorative.
+export function AmbientBackdrop({ className }: { className?: string }) {
+  return (
+    <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden="true">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_55%_at_50%_-10%,rgba(34,197,94,0.06),transparent_60%)]" />
+      <div
+        className="absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 10%, transparent 72%)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 10%, transparent 72%)",
+        }}
+      />
+    </div>
+  );
+}
+
+// Minimal QR-style glyph (decorative) for the WhatsApp connect visual.
+export function QrGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M6 6h14v14H6V6zm3 3v8h8V9H9z" />
+      <path d="M12 12h2v2h-2zM28 6h14v14H28V6zm3 3v8h8V9h-8z" />
+      <path d="M34 12h2v2h-2zM6 28h14v14H6V28zm3 3v8h8v-8H9z" />
+      <path d="M12 34h2v2h-2zM28 28h5v5h-5zM35 28h7v3h-4v4h-3zM28 35h3v7h-3zM34 36h4v3h-4zM39 33h3v9h-3zM34 39h3v3h-3z" />
+    </svg>
+  );
+}
+
 export function SectionHeader({
   eyebrow,
   title,

@@ -38,17 +38,33 @@ const config: Config = {
         "18": "4.5rem",
         "22": "5.5rem",
       },
-      // Named shadow tokens — more natural than ad-hoc shadow-[...]
+      // Named shadow tokens — layered (ambient + key) for realistic depth
       boxShadow: {
         card: "0 1px 3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.04)",
         nav: "0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.18)",
         btn: "0 1px 2px rgba(0,0,0,0.14)",
+        // Premium elevations — soft ambient + tighter key shadow + inner highlight
+        elevated:
+          "0 1px 0 rgba(255,255,255,0.05) inset, 0 2px 6px rgba(0,0,0,0.28), 0 16px 40px -12px rgba(0,0,0,0.55)",
+        float:
+          "0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px rgba(0,0,0,0.35), 0 32px 64px -24px rgba(0,0,0,0.65)",
+        glow: "0 0 0 1px rgba(34,197,94,0.18), 0 12px 40px -12px rgba(34,197,94,0.22)",
       },
       // Refined letter-spacing scale — tighter for premium headings
       letterSpacing: {
         tighter: "-0.035em",
         tight: "-0.02em",
         widest: "0.12em",
+      },
+      // Display type scale — for cinematic hero/section headings
+      fontSize: {
+        display: ["clamp(2.5rem, 6vw, 4.5rem)", { lineHeight: "1.04", letterSpacing: "-0.045em" }],
+        "display-sm": ["clamp(2rem, 4.5vw, 3.25rem)", { lineHeight: "1.08", letterSpacing: "-0.035em" }],
+      },
+      // Calm, expensive easing tokens
+      transitionTimingFunction: {
+        premium: "cubic-bezier(0.21, 0.47, 0.32, 0.98)",
+        "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",

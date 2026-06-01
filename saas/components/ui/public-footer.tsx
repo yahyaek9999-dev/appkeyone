@@ -39,15 +39,16 @@ export function PublicFooter({
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
 
   return (
-    <footer className={cn("border-t border-white/[0.06] px-5 py-16", className)}>
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-4">
-        <div>
-          <div className="mb-3 flex items-center gap-2 font-bold text-white">
+    <footer className={cn("relative border-t border-white/[0.06] px-5 py-16", className)}>
+      <div className="mx-auto mb-12 h-px max-w-6xl" />
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 md:grid-cols-4">
+        <div className="col-span-2 md:col-span-1">
+          <div className="mb-3 flex items-center gap-2.5 font-bold text-white">
             <BrandMark className="h-9 w-9 rounded-xl" iconClassName="h-[18px] w-[18px]" />
             <span className="text-base">{cfg.brandName}</span>
           </div>
           {cfg.brandTagline && (
-            <p className="text-xs leading-relaxed text-slate-500">
+            <p className="max-w-xs text-xs leading-relaxed text-slate-500">
               {cfg.brandTagline}
             </p>
           )}
@@ -123,8 +124,11 @@ export function PublicFooter({
           </ul>
         </div>
       </div>
-      <div className="mx-auto mt-12 max-w-6xl border-t border-white/[0.06] pt-6 text-center text-xs text-slate-600">
-        &copy; {new Date().getFullYear()} {cfg.brandName}. {m.copyright}
+      <div className="mx-auto mt-14 max-w-6xl">
+        <div className="hairline" />
+        <div className="pt-6 text-center text-xs text-slate-600">
+          &copy; {new Date().getFullYear()} {cfg.brandName}. {m.copyright}
+        </div>
       </div>
     </footer>
   );

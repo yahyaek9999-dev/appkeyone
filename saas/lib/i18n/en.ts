@@ -93,6 +93,54 @@ export const en = {
     ],
   },
 
+  integrations: {
+    eyebrow: "The core channel",
+    heading: "It all starts on WhatsApp",
+    subheading:
+      "KEYONE works right inside WhatsApp — where your customers already are. No new app for them to install, no friction.",
+    points: [
+      "Connect your WhatsApp number in minutes via QR scan",
+      "Instant AI replies that understand voice, images and text",
+      "Order alerts reach you on WhatsApp the moment they happen",
+      "Integrates with your store and automation tools when needed",
+    ],
+    chatName: "Customer",
+    chatStatus: "Replies in seconds",
+    chatBubbleIn: "How much is the order and when will it arrive?",
+    chatBubbleOut:
+      "Hi there 👋 The order is $25 and delivery is within 48 hours. Shall I confirm it?",
+  },
+
+  trust: {
+    eyebrow: "Why KEYONE",
+    heading: "Built on real credibility",
+    subheading: "A complete platform with genuine capabilities — no empty promises.",
+    chips: [
+      "WhatsApp automation",
+      "AI-powered replies",
+      "Voice & image understanding",
+      "Multi-language support",
+      "Commerce integrations",
+      "Real-time dashboard",
+      "Secure infrastructure",
+      "Setup in minutes",
+      "24/7 automated replies",
+      "Analytics & sales insights",
+    ],
+    badges: [
+      { title: "99.9% uptime", desc: "Always-on, uninterrupted service" },
+      { title: "Secure by design", desc: "Full encryption, daily backups" },
+      { title: "AI-powered", desc: "Natural, context-aware replies" },
+      { title: "Multi-channel", desc: "WhatsApp, commerce & automation" },
+    ],
+    metrics: [
+      { value: "~5", unit: "sec", label: "Response time" },
+      { value: "24/7", unit: "", label: "Automated" },
+      { value: "99.9%", unit: "", label: "Uptime SLA" },
+      { value: "100K+", unit: "", label: "Messages / mo" },
+    ],
+  },
+
   pricing: {
     heading: "Plans that scale with you",
     subheading: "Subscribe in minutes via WhatsApp. Upgrade or cancel anytime.",
