@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { checkLimit, incrementUsage } from "@/lib/membership/limits";
+import { buildAudienceWhere } from "@/lib/broadcasts/audience";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,25 @@ export async function POST(req: Request) {
   // through the LLM — confusing merchants who expected their exact text.
   const personalize = body.personalize === true;
 
+  // ---- Smart Campaign extras (all optional, additive) ----
+  const couponCode = body.couponCode ? String(body.couponCode).trim().slice(0, 60) : null;
+  const imageUrl =
+    typeof body.imageUrl === "string" && /^https?:\/\/\S+$/i.test(body.imageUrl.trim())
+      ? body.imageUrl.trim().slice(0, 500)
+      : null;
+  // Schedule: a valid future ISO timestamp holds the campaign until due. Past
+  // or missing → send immediately (scheduledAt stays null, exactly like today).
+  let scheduledAt: Date | null = null;
+  if (body.scheduledAt) {
+    const d = new Date(body.scheduledAt);
+    if (!isNaN(d.getTime()) && d.getTime() > Date.now() + 30_000) scheduledAt = d;
+  }
+  const audienceOpts = {
+    inactiveDays: body.inactiveDays != null ? Number(body.inactiveDays) : undefined,
+    from: body.from || null,
+    to: body.to || null,
+  };
+
   if (!template) {
     return NextResponse.json({ error: "نص الرسالة مطلوب" }, { status: 400 });
   }
@@ -59,14 +79,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Build audience filter
-  const where: any = { userId: uid };
-  if (audience === "hot") where.leadScore = { gte: 70 };
-  else if (audience === "warm") where.leadScore = { gte: 40, lt: 70 };
-  else if (audience.startsWith("tag:")) {
-    const tag = audience.slice(4);
-    if (tag) where.tags = { contains: JSON.stringify(tag).slice(1, -1) };
-  }
+  // Build audience filter (shared builder — supports the new smart segments).
+  const where: any = buildAudienceWhere(uid, audience, audienceOpts);
 
   const allMatched = await prisma.customer.findMany({
     where,
@@ -108,6 +122,9 @@ export async function POST(req: Request) {
       template: template.slice(0, 4000),
       audience,
       personalize,
+      couponCode,
+      imageUrl,
+      scheduledAt,
       total: customers.length,
       items: {
         create: customers.map((c: any) => ({
@@ -116,7 +133,7 @@ export async function POST(req: Request) {
           name: c.name,
         })),
       },
-    },
+    } as any,
   });
 
   // Membership: count this broadcast against the monthly cap. Best-effort —

@@ -456,12 +456,17 @@ model Broadcast {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
   template      String                 // body, may contain {name} {phone}
-  audience      String    @default("all")  // all | hot | warm | tag:<tag>
+  audience      String    @default("all")  // all | hot | warm | buyers | no_purchase | inactive | abandoned | date_range | tag:<tag>
   personalize   Boolean   @default(false)  // ask LLM to gently personalize per recipient (default OFF = exact mode for safety)
   status        String    @default("queued")  // queued | sending | done | canceled
   total         Int       @default(0)
   sent          Int       @default(0)
   failed        Int       @default(0)
+  // ---- Smart Campaigns (additive, nullable — existing rows unaffected) ----
+  kind          String    @default("campaign") // campaign | recovery
+  scheduledAt   DateTime?                       // null = send immediately; else cron holds until <= now
+  couponCode    String?                         // appended to body AFTER personalization
+  imageUrl      String?                         // appended as a link (WhatsApp auto-previews); no media upload
   startedAt     DateTime?
   finishedAt    DateTime?
   createdAt     DateTime  @default(now())
@@ -470,6 +475,20 @@ model Broadcast {
   items         BroadcastItem[]
 
   @@index([userId, status])
+  @@index([status, scheduledAt])
+}
+
+/// Recovery suggestions the merchant explicitly dismissed, so the Recovery
+/// view stops surfacing them. Detection itself stays in lib/intel/*.
+model RecoveryDismissal {
+  id         String   @id @default(cuid())
+  userId     String
+  customerId String
+  kind       String   // lost_customer | follow_up_op
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, customerId, kind])
+  @@index([userId])
 }
 
 model BroadcastItem {

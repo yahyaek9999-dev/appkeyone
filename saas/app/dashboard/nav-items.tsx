@@ -23,6 +23,7 @@ import {
   Brain,
   Crown,
   MessageSquareWarning,
+  HeartHandshake,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -36,6 +37,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Brain },
   { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap },
   { href: "/dashboard/broadcasts", label: "الإرسال الجماعي", icon: Megaphone },
+  { href: "/dashboard/recovery", label: "استعادة العملاء", icon: HeartHandshake },
   { href: "/dashboard/customers", label: "العملاء", icon: Users },
   { href: "/dashboard/bot", label: "إعدادات البوت", icon: Bot },
   { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare },

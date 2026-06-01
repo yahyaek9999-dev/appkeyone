@@ -32,6 +32,11 @@ ssh -i ~/.ssh/id_ed25519 Administrator@217.154.163.16 powershell.exe -Command "
   # 'npm run build' runs 'prisma generate && next build' using the local,
   # version-pinned Prisma 5.22.0 — do NOT call 'npx prisma' here.
   npm run build
+  # Sync additive schema changes (new nullable columns / tables) to the prod
+  # SQLite DB while the service is stopped. --no-install forces the LOCAL,
+  # pinned Prisma 5.22.0 (never fetches a newer incompatible CLI). Additive
+  # only → non-destructive, no --accept-data-loss needed.
+  npx --no-install prisma db push --skip-generate
 
   nssm start mse-saas
   Start-Sleep -Seconds 6

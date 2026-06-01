@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { wa } from "@/lib/wa";
 import { chat as llmChat } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
+import { appendExtras } from "@/lib/broadcasts/extras";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -23,9 +24,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Pick the oldest queued/sending broadcast across all users
+  // Pick the oldest due queued/sending broadcast across all users.
+  // Scheduled campaigns (scheduledAt in the future) are held until due;
+  // legacy/immediate broadcasts have scheduledAt = null and are always due.
   const bc = await prisma.broadcast.findFirst({
-    where: { status: { in: ["queued", "sending"] } },
+    where: {
+      status: { in: ["queued", "sending"] },
+      OR: [{ scheduledAt: null }, { scheduledAt: { lte: new Date() } }],
+    } as any,
     orderBy: { createdAt: "asc" },
     include: { user: { select: { id: true } } },
   });
@@ -200,6 +206,10 @@ export async function POST(req: Request) {
         console.warn("[broadcasts] personalize failed:", e?.message || e);
       }
     }
+
+    // Append optional coupon + image link AFTER personalization so the LLM
+    // can never reword/drop the coupon code. No-op when both are null.
+    body = appendExtras(body, (bc as any).couponCode, (bc as any).imageUrl);
 
     const r = await wa.send(bc.userId, it.phone, body, "broadcast");
     if (r.ok) {

@@ -25,6 +25,7 @@ import {
   getWorkerConnection,
   sendToDeadLetter,
 } from "../lib/queue";
+import { appendExtras } from "../lib/broadcasts/extras";
 
 // ---------------------------------------------------------------------------
 // Prisma — standalone connection (NOT the Next.js singleton from lib/db.ts)
@@ -283,6 +284,10 @@ async function processBroadcast(job: Job<BroadcastJobData>): Promise<void> {
         console.warn("[broadcast.worker] personalize failed:", e?.message);
       }
     }
+
+    // Append optional coupon + image link AFTER personalization (parity with
+    // the cron path). No-op when both are null.
+    body = appendExtras(body, (bc as any).couponCode, (bc as any).imageUrl);
 
     // Send via WhatsApp service
     const r = await waSend(userId, it.phone, body);
