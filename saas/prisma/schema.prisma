@@ -476,6 +476,9 @@ model Broadcast {
   imageUrl      String?                         // appended as a link (WhatsApp auto-previews); no media upload
   startedAt     DateTime?
   finishedAt    DateTime?
+  // ---- A/B testing (additive, nullable — existing rows unaffected) ----
+  abGroupId     String?                         // links the two variants of one A/B test
+  abVariant     String?                         // "A" | "B" — null for normal campaigns
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -483,6 +486,7 @@ model Broadcast {
 
   @@index([userId, status])
   @@index([status, scheduledAt])
+  @@index([userId, abGroupId])
 }
 
 /// Recovery suggestions the merchant explicitly dismissed, so the Recovery

@@ -24,6 +24,8 @@ import {
   Crown,
   MessageSquareWarning,
   HeartHandshake,
+  Filter,
+  TrendingUp,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -35,6 +37,9 @@ export const NAV_ITEMS = [
   { href: "/dashboard/integrations", label: "تكاملات التجارة", icon: Plug },
   { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain },
   { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Brain },
+  { href: "/dashboard/funnel", label: "مسار البيع", icon: Filter },
+  { href: "/dashboard/segments", label: "شرائح العملاء", icon: Users },
+  { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp },
   { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap },
   { href: "/dashboard/broadcasts", label: "الإرسال الجماعي", icon: Megaphone },
   { href: "/dashboard/recovery", label: "استعادة العملاء", icon: HeartHandshake },

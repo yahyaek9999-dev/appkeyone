@@ -18,6 +18,11 @@ import {
   CalendarClock,
   BarChart3,
   Wand2,
+  FlaskConical,
+  Gauge,
+  Target,
+  Trophy,
+  Lightbulb,
 } from "lucide-react";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
@@ -39,6 +44,24 @@ type Bc = {
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
+  abGroupId?: string | null;
+  abVariant?: string | null;
+};
+
+type OptimizeResult = {
+  bestSendTime: { label: string; topHours: number[] };
+  messageLength: { current: number; idealMin: number; idealMax: number; verdict: string };
+  ctas: string[];
+  bestSegment: { key: string; label: string; conversionPct: number; count: number } | null;
+  followUpTiming: string;
+  expectedConversionPct: number;
+  expectedBasis: string;
+};
+
+type AbCompare = {
+  variants: { variant: string; title: string; template: string; sent: number; replied: number; conversion: number; replyRatePct: number; convRatePct: number }[];
+  winner: string | null;
+  decided: boolean;
 };
 
 type Analytics = {
@@ -114,6 +137,14 @@ export default function BroadcastsUi() {
   const [openAnalytics, setOpenAnalytics] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, Analytics | "loading">>({});
 
+  // ---- Advanced Broadcast AI: A/B mode + optimizer + comparison ----
+  const [abMode, setAbMode] = useState(false);
+  const [templateB, setTemplateB] = useState("");
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimization, setOptimization] = useState<OptimizeResult | null>(null);
+  const [openAb, setOpenAb] = useState<string | null>(null); // abGroupId
+  const [abData, setAbData] = useState<Record<string, AbCompare | "loading">>({});
+
   const { state: liveState, snapshot } = useRealtimeSnapshot({
     fallbackMs: POLL_MS,
     onChange: (next, prev) => {
@@ -157,6 +188,87 @@ export default function BroadcastsUi() {
     setDateTo("");
     setGenProduct("");
     setGenOffer("");
+    setAbMode(false);
+    setTemplateB("");
+    setOptimization(null);
+  }
+
+  // Advanced Broadcast AI — fetch optimization suggestions for the draft.
+  async function optimize() {
+    setOptimizing(true);
+    try {
+      const r = await fetch("/api/broadcasts/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template, audience, product: genProduct, offer: genOffer }),
+      });
+      const j = await r.json();
+      if (r.ok && j.ok) setOptimization(j as OptimizeResult);
+      else alert(j.error ? "تعذّر التحليل" : "تعذّر التحليل");
+    } catch {
+      alert("خطأ بالشبكة");
+    } finally {
+      setOptimizing(false);
+    }
+  }
+
+  // Create an A/B test (two linked broadcasts, audience split 50/50).
+  async function submitAb() {
+    if (!template.trim() || !templateB.trim()) return;
+    setSubmitting(true);
+    try {
+      const payload: any = {
+        title: title.trim() || "اختبار A/B",
+        templateA: template.trim(),
+        templateB: templateB.trim(),
+        audience,
+        couponCode: couponCode.trim() || undefined,
+        imageUrl: imageUrl.trim() || undefined,
+      };
+      if (audience === "inactive") payload.inactiveDays = Number(inactiveDays) || 30;
+      if (audience === "date_range") {
+        if (dateFrom) payload.from = new Date(dateFrom).toISOString();
+        if (dateTo) payload.to = new Date(dateTo).toISOString();
+      }
+      const r = await fetch("/api/broadcasts/ab", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json();
+      if (r.ok) {
+        setCreating(false);
+        resetForm();
+        alert(`تم إطلاق اختبار A/B: النسخة A لـ ${j.a.total} والنسخة B لـ ${j.b.total} عميل.`);
+        load();
+      } else {
+        alert(j.error || "فشل إنشاء الاختبار");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function toggleAb(groupId: string) {
+    if (openAb === groupId) {
+      setOpenAb(null);
+      return;
+    }
+    setOpenAb(groupId);
+    if (!abData[groupId]) {
+      setAbData((a) => ({ ...a, [groupId]: "loading" }));
+      try {
+        const r = await fetch(`/api/broadcasts/ab/${groupId}`, { cache: "no-store" });
+        const j = await r.json();
+        setAbData((a) => ({ ...a, [groupId]: j }));
+      } catch {
+        setAbData((a) => {
+          const next = { ...a };
+          delete next[groupId];
+          return next;
+        });
+      }
+    }
   }
 
   async function generate() {
@@ -333,6 +445,12 @@ export default function BroadcastsUi() {
                           شخصي
                         </span>
                       )}
+                      {bc.abVariant && (
+                        <span className="text-xs text-cyan-300 inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5">
+                          <FlaskConical className="w-3 h-3" />
+                          اختبار A/B · {bc.abVariant}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-400 line-clamp-2 mb-2">{bc.template}</div>
                     <div className="flex items-center gap-3 text-xs">
@@ -359,6 +477,16 @@ export default function BroadcastsUi() {
                       <BarChart3 className="w-3 h-3" />
                       تحليلات
                     </button>
+                    {bc.abGroupId && bc.abVariant === "A" && (
+                      <button
+                        onClick={() => toggleAb(bc.abGroupId!)}
+                        title="مقارنة نتائج A/B"
+                        className="px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs inline-flex items-center gap-1 hover:bg-cyan-500/20"
+                      >
+                        <Trophy className="w-3 h-3" />
+                        نتيجة A/B
+                      </button>
+                    )}
                     {(bc.status === "queued" || bc.status === "sending") && (
                       <button
                         onClick={() => cancel(bc)}
@@ -398,6 +526,51 @@ export default function BroadcastsUi() {
                     )}
                   </div>
                 )}
+
+                {/* A/B comparison panel */}
+                {bc.abGroupId && bc.abVariant === "A" && openAb === bc.abGroupId && (
+                  <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.04] p-3">
+                    {abData[bc.abGroupId] === "loading" || !abData[bc.abGroupId] ? (
+                      <div className="text-xs text-slate-400 py-2 text-center">
+                        <Loader2 className="w-4 h-4 animate-spin inline-block me-1" /> جاري حساب نتيجة الاختبار...
+                      </div>
+                    ) : (
+                      (() => {
+                        const cmp = abData[bc.abGroupId!] as AbCompare;
+                        return (
+                          <>
+                            <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-cyan-300">
+                              <FlaskConical className="w-3.5 h-3.5" /> نتيجة اختبار A/B
+                              {cmp.decided && cmp.winner && (
+                                <span className="ms-auto inline-flex items-center gap-1 rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-amber-300">
+                                  <Trophy className="w-3 h-3" /> الفائز: النسخة {cmp.winner}
+                                </span>
+                              )}
+                              {!cmp.decided && <span className="ms-auto text-[11px] text-slate-500">لم يُحسم بعد</span>}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {cmp.variants.map((v) => (
+                                <div
+                                  key={v.variant}
+                                  className={`rounded-lg border p-2.5 ${cmp.winner === v.variant ? "border-amber-400/40 bg-amber-400/[0.06]" : "border-white/10 bg-white/[0.02]"}`}
+                                >
+                                  <div className="mb-1 text-xs font-bold text-white">النسخة {v.variant}</div>
+                                  <div className="mb-1.5 line-clamp-2 text-[11px] text-slate-400">{v.template}</div>
+                                  <div className="grid grid-cols-2 gap-1 text-center">
+                                    <Metric label="أُرسلت" value={v.sent} />
+                                    <Metric label="ردّوا" value={v.replied} tone="text-sky-300" sub={`${v.replyRatePct}%`} />
+                                    <Metric label="تحويل" value={v.conversion} tone="text-emerald-300" sub={`${v.convRatePct}%`} />
+                                    <Metric label="معدل التحويل" value={`${v.convRatePct}%`} tone="text-emerald-300" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        );
+                      })()
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -418,6 +591,22 @@ export default function BroadcastsUi() {
             </div>
 
             <div className="space-y-4">
+              {/* Mode: normal campaign vs A/B test */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAbMode(false)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold inline-flex items-center justify-center gap-1.5 ${!abMode ? "border-rose-500/40 bg-rose-500/15 text-rose-200" : "border-white/10 bg-white/5 text-slate-300"}`}
+                >
+                  <Megaphone className="w-3.5 h-3.5" /> حملة عادية
+                </button>
+                <button
+                  onClick={() => setAbMode(true)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold inline-flex items-center justify-center gap-1.5 ${abMode ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-200" : "border-white/10 bg-white/5 text-slate-300"}`}
+                >
+                  <FlaskConical className="w-3.5 h-3.5" /> اختبار A/B
+                </button>
+              </div>
+
               <div>
                 <label className="text-xs text-slate-400 mb-1 block">عنوان (داخلي للمتابعة فقط)</label>
                 <input
@@ -515,7 +704,79 @@ export default function BroadcastsUi() {
                   placeholder={"مرحباً {name}،\nعندنا عرض جديد هذا الأسبوع — راسلنا لو حابب التفاصيل."}
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 resize-none"
                 />
-                <div className="text-[11px] text-slate-500 mt-1">{template.length}/4000 حرف</div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  {abMode ? "النسخة A · " : ""}
+                  {template.length}/4000 حرف
+                </div>
+              </div>
+
+              {/* A/B — Version B message */}
+              {abMode && (
+                <div>
+                  <label className="text-xs text-cyan-300 mb-1 block flex items-center gap-1">
+                    <FlaskConical className="w-3.5 h-3.5" /> النسخة B (نص بديل للمقارنة)
+                  </label>
+                  <textarea
+                    value={templateB}
+                    onChange={(e) => setTemplateB(e.target.value)}
+                    rows={5}
+                    placeholder={"نص بديل لاختبار أيهما يحقق تحويلاً أعلى..."}
+                    className="w-full bg-white/5 border border-cyan-500/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 resize-none"
+                  />
+                  <div className="text-[11px] text-slate-500 mt-1">النسخة B · {templateB.length}/4000 حرف · سيُقسَّم الجمهور 50/50 تلقائياً</div>
+                </div>
+              )}
+
+              {/* Advanced Broadcast AI — optimizer */}
+              <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.05] p-3">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-cyan-200">
+                    <Gauge className="w-4 h-4" /> تحسين الحملة بالذكاء
+                  </div>
+                  <button
+                    onClick={optimize}
+                    disabled={optimizing}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-100 text-xs inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {optimizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Gauge className="w-3.5 h-3.5" />}
+                    تحليل وتوصيات
+                  </button>
+                </div>
+                {!optimization ? (
+                  <p className="text-[11px] text-slate-400">احصل على أفضل توقيت إرسال، الطول الأمثل، أقوى دعوات للفعل، أفضل شريحة، وتوقّع نسبة التحويل.</p>
+                ) : (
+                  <div className="space-y-2 text-xs">
+                    <OptRow icon={<Clock className="w-3.5 h-3.5 text-sky-300" />} label="أفضل توقيت" value={optimization.bestSendTime.label} />
+                    <OptRow icon={<Target className="w-3.5 h-3.5 text-violet-300" />} label="الطول الأمثل" value={optimization.messageLength.verdict} />
+                    <OptRow
+                      icon={<Users className="w-3.5 h-3.5 text-emerald-300" />}
+                      label="أفضل شريحة"
+                      value={optimization.bestSegment ? `${optimization.bestSegment.label} (${optimization.bestSegment.conversionPct}% تحويل)` : "—"}
+                    />
+                    <OptRow icon={<Clock className="w-3.5 h-3.5 text-amber-300" />} label="توقيت المتابعة" value={optimization.followUpTiming} />
+                    <OptRow
+                      icon={<Gauge className="w-3.5 h-3.5 text-cyan-300" />}
+                      label="تحويل متوقع"
+                      value={`${optimization.expectedConversionPct}% — ${optimization.expectedBasis}`}
+                    />
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
+                      <div className="mb-1 flex items-center gap-1 text-[11px] text-cyan-200">
+                        <Lightbulb className="w-3.5 h-3.5" /> أقوى دعوات للفعل (اضغط للإضافة)
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {optimization.ctas.map((c, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setTemplate((t) => (t ? `${t}\n\n${c}` : c))}
+                            className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-100 hover:bg-cyan-500/20"
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Coupon + image link */}
@@ -569,12 +830,17 @@ export default function BroadcastsUi() {
             <div className="flex justify-end gap-2 mt-6">
               <button onClick={() => setCreating(false)} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">إلغاء</button>
               <button
-                onClick={submit}
-                disabled={submitting || !template.trim() || (scheduleMode === "later" && !scheduledAt)}
+                onClick={abMode ? submitAb : submit}
+                disabled={
+                  submitting ||
+                  !template.trim() ||
+                  (abMode && !templateB.trim()) ||
+                  (!abMode && scheduleMode === "later" && !scheduledAt)
+                }
                 className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-sm inline-flex items-center gap-2"
               >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {scheduleMode === "later" ? "جدولة الحملة" : "إطلاق الحملة"}
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : abMode ? <FlaskConical className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                {abMode ? "إطلاق اختبار A/B" : scheduleMode === "later" ? "جدولة الحملة" : "إطلاق الحملة"}
               </button>
             </div>
           </div>
@@ -590,6 +856,18 @@ function Metric({ label, value, tone = "text-white", sub }: { label: string; val
       <div className={`text-lg font-bold tabular-nums ${tone}`}>{value}</div>
       <div className="text-[10px] text-slate-500">{label}</div>
       {sub && <div className="text-[10px] text-slate-400">{sub}</div>}
+    </div>
+  );
+}
+
+function OptRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <span className="text-slate-400">{label}: </span>
+        <span className="text-slate-200">{value}</span>
+      </div>
     </div>
   );
 }

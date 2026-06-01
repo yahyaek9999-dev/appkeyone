@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { checkLimit, incrementUsage } from "@/lib/membership/limits";
 import { buildAudienceWhere } from "@/lib/broadcasts/audience";
+import { resolveSegmentCustomers } from "@/lib/analytics/segments";
 
 export const dynamic = "force-dynamic";
 
@@ -79,13 +80,20 @@ export async function POST(req: Request) {
     );
   }
 
-  // Build audience filter (shared builder — supports the new smart segments).
-  const where: any = buildAudienceWhere(uid, audience, audienceOpts);
-
-  const allMatched = await prisma.customer.findMany({
-    where,
-    select: { id: true, phone: true, name: true },
-  });
+  // Resolve recipients. AI-segment audiences ("segment:<key>") are resolved
+  // from real order facts + scores via the segmentation engine; every other
+  // audience uses the existing shared where-builder. Both yield the same
+  // { id, phone, name } shape so the rest of the send pipeline is unchanged.
+  let allMatched: { id: string; phone: string | null; name: string | null }[];
+  if (audience.startsWith("segment:")) {
+    allMatched = await resolveSegmentCustomers(uid, audience.slice("segment:".length), { reachableOnly: false });
+  } else {
+    const where: any = buildAudienceWhere(uid, audience, audienceOpts);
+    allMatched = await prisma.customer.findMany({
+      where,
+      select: { id: true, phone: true, name: true },
+    });
+  }
 
   // Exclude unreachable contacts: rows whose stored phone is actually a
   // WhatsApp LID (privacy id, not a dialable number). We can never initiate
