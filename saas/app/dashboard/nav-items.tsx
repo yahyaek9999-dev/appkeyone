@@ -32,6 +32,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard/escalations", label: "التصعيدات", icon: MessageSquareWarning },
   { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag },
   { href: "/dashboard/integrations", label: "تكاملات التجارة", icon: Plug },
+  { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain },
   { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Brain },
   { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap },
   { href: "/dashboard/broadcasts", label: "الإرسال الجماعي", icon: Megaphone },
