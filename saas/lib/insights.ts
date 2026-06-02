@@ -242,7 +242,7 @@ export function matchQuickReply(
   text: string,
   rules: QuickReplyRow[]
 ): { id: string; reply: string } | null {
-  const norm = normalizeArabic(text);
+  const norm = normalizeAr(text);
   if (!norm) return null;
 
   let best: { id: string; reply: string; score: number } | null = null;
@@ -259,7 +259,7 @@ export function matchQuickReply(
     }
     let score = 0;
     for (const trig of triggers) {
-      const nt = normalizeArabic(trig);
+      const nt = normalizeAr(trig);
       if (!nt) continue;
       if (norm.includes(nt)) score += nt.length; // longer triggers win
     }
@@ -277,9 +277,6 @@ export function matchQuickReply(
  * the whole codebase uses the same rules (dialect variants, tatweel,
  * arabic/persian digits, etc.). Name kept for backward compatibility.
  */
-export function normalizeArabic(s: string): string {
-  return normalizeAr(s);
-}
 
 // ---------------------------------------------------------------------------
 // Working hours
@@ -352,10 +349,10 @@ const GAP_PHRASES = [
 /** True if the assistant's reply indicates the bot couldn't answer. */
 export function looksLikeGap(reply: string): boolean {
   if (!reply) return false;
-  const norm = normalizeArabic(reply);
+  const norm = normalizeAr(reply);
   let hits = 0;
   for (const p of GAP_PHRASES) {
-    if (norm.includes(normalizeArabic(p))) hits++;
+    if (norm.includes(normalizeAr(p))) hits++;
     if (hits >= 1) return true;
   }
   return false;
@@ -363,8 +360,8 @@ export function looksLikeGap(reply: string): boolean {
 
 /** Cluster two questions as the same: cheap Jaccard on words. */
 export function questionSimilarity(a: string, b: string): number {
-  const wa = new Set(normalizeArabic(a).split(/\s+/).filter((w) => w.length > 2));
-  const wb = new Set(normalizeArabic(b).split(/\s+/).filter((w) => w.length > 2));
+  const wa = new Set(normalizeAr(a).split(/\s+/).filter((w) => w.length > 2));
+  const wb = new Set(normalizeAr(b).split(/\s+/).filter((w) => w.length > 2));
   if (wa.size === 0 || wb.size === 0) return 0;
   let inter = 0;
   wa.forEach((w) => { if (wb.has(w)) inter++; });

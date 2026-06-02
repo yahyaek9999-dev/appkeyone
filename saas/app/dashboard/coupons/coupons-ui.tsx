@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { Ticket, Plus, Loader2, Trash2, X, Sparkles, Percent, BadgeDollarSign, CalendarClock } from "lucide-react";
+import { fmtMoney, fmtDate } from "@/lib/format";
 
 type Coupon = {
   id: string;
@@ -24,17 +25,6 @@ type Coupon = {
 
 const EMPTY: any = { code: "", type: "percent", value: 10, active: true, autoOffer: false, oneTime: false };
 
-function money(n: number) {
-  return `${(n || 0).toLocaleString("ar-EG")} ج.م`;
-}
-function fmtDate(s: string | null) {
-  if (!s) return "بدون انتهاء";
-  try {
-    return new Date(s).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return "—";
-  }
-}
 
 export default function CouponsUi() {
   const [items, setItems] = useState<Coupon[]>([]);
@@ -121,7 +111,7 @@ export default function CouponsUi() {
                   <div className="flex items-center gap-2">
                     <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 font-mono text-sm font-bold text-violet-200">{c.code}</span>
                     <span className="text-lg font-black text-white">
-                      {c.type === "percent" ? `${c.value}%` : money(c.value)}
+                      {c.type === "percent" ? `${c.value}%` : fmtMoney(c.value)}
                     </span>
                   </div>
                   <button onClick={() => remove(c)} className="rounded-lg border border-white/10 p-1 text-slate-400 transition hover:text-rose-300">
@@ -147,7 +137,7 @@ export default function CouponsUi() {
                   <Mini label="عُرض" value={String(c.offeredCount)} />
                   <Mini label="استُخدم" value={`${c.usedCount}${c.usageLimit != null ? "/" + c.usageLimit : ""}`} />
                   <Mini label="تحويل" value={`${c.conversionPct}%`} />
-                  <Mini label="إيراد" value={money(c.revenue)} />
+                  <Mini label="إيراد" value={fmtMoney(c.revenue)} />
                 </div>
 
                 <div className="mt-3 flex gap-2">

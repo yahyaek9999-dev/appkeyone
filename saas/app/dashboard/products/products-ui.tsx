@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { Package, Plus, Loader2, Pencil, Trash2, X, ImageIcon, Boxes, Tag as TagIcon, Link as LinkIcon } from "lucide-react";
+import { fmtMoney } from "@/lib/format";
 
 type Product = {
   id: string;
@@ -19,10 +20,6 @@ type Product = {
 };
 
 const EMPTY: Partial<Product> = { name: "", price: 0, stock: 0, active: true };
-
-function money(n: number) {
-  return `${(n || 0).toLocaleString("ar-EG")} ج.م`;
-}
 
 export default function ProductsUi() {
   const [items, setItems] = useState<Product[]>([]);
@@ -135,8 +132,8 @@ export default function ProductsUi() {
                   {p.category && <span className="chip shrink-0 px-2 py-0.5 text-[10px]">{p.category}</span>}
                 </div>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-base font-bold text-brand-300">{money(p.price)}</span>
-                  {p.compareAtPrice ? <span className="text-xs text-slate-500 line-through">{money(p.compareAtPrice)}</span> : null}
+                  <span className="text-base font-bold text-brand-300">{fmtMoney(p.price)}</span>
+                  {p.compareAtPrice ? <span className="text-xs text-slate-500 line-through">{fmtMoney(p.compareAtPrice)}</span> : null}
                 </div>
                 {p.description && <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">{p.description}</p>}
                 <div className="mt-3 flex items-center gap-1.5">

@@ -17,6 +17,7 @@ import {
   Bell,
   Lightbulb,
 } from "lucide-react";
+import { fmtMoney } from "@/lib/format";
 
 type Point = { date: string; revenue: number };
 type Insight = { kind: string; text: string };
@@ -34,10 +35,6 @@ type Data = {
   aov: number;
   insights: Insight[];
 };
-
-function money(n: number) {
-  return `${(n || 0).toLocaleString("ar-EG")} ج.م`;
-}
 
 const INSIGHT_ICON: Record<string, React.ReactNode> = {
   up: <TrendingUp className="h-4 w-4 text-emerald-400" />,
@@ -79,8 +76,8 @@ export default function ForecastUi() {
         <>
           {/* KPI row */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Kpi icon={<CalendarDays className="h-4 w-4" />} label="مبيعات 7 أيام (متوقع)" value={money(data.next7Revenue)} accent="border-emerald-500/30 bg-emerald-500/10 text-emerald-300" trend={data.growthPct} />
-            <Kpi icon={<TrendingUp className="h-4 w-4" />} label="إيراد 30 يوم (متوقع)" value={money(data.next30Revenue)} accent="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
+            <Kpi icon={<CalendarDays className="h-4 w-4" />} label="مبيعات 7 أيام (متوقع)" value={fmtMoney(data.next7Revenue)} accent="border-emerald-500/30 bg-emerald-500/10 text-emerald-300" trend={data.growthPct} />
+            <Kpi icon={<TrendingUp className="h-4 w-4" />} label="إيراد 30 يوم (متوقع)" value={fmtMoney(data.next30Revenue)} accent="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
             <Kpi icon={<ShoppingBag className="h-4 w-4" />} label="طلبات متوقعة (30ي)" value={(data.expectedOrders30 || 0).toLocaleString("ar-EG")} accent="border-sky-500/30 bg-sky-500/10 text-sky-300" />
             <Kpi icon={<Repeat className="h-4 w-4" />} label="نسبة العائدين" value={`${data.returningCustomersPct}%`} accent="border-violet-500/30 bg-violet-500/10 text-violet-300" />
           </div>
@@ -114,7 +111,7 @@ export default function ForecastUi() {
                 <Crown className="h-4 w-4" /> أعلى يوم متوقع
               </div>
               <div className="text-lg font-bold text-white">{data.highestDay ? data.highestDay.weekday : "—"}</div>
-              <div className="mt-0.5 text-xs text-slate-500">{data.highestDay ? money(data.highestDay.revenue) : ""}</div>
+              <div className="mt-0.5 text-xs text-slate-500">{data.highestDay ? fmtMoney(data.highestDay.revenue) : ""}</div>
             </div>
             <div className="card-hover p-4">
               <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-rose-300">

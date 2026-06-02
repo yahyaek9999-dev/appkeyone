@@ -11,6 +11,7 @@ import {
   Sparkles,
   AlertTriangle,
 } from "lucide-react";
+import { timeAgo } from "@/lib/format";
 
 type Gap = {
   id: string;
@@ -291,12 +292,3 @@ export default function SuggestionsUi() {
   );
 }
 
-function timeAgo(s: string) {
-  if (!s) return "";
-  const d = new Date(s);
-  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (diffMin < 1) return "الآن";
-  if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
-  if (diffMin < 60 * 24) return `منذ ${Math.floor(diffMin / 60)} ساعة`;
-  return `منذ ${Math.floor(diffMin / (60 * 24))} يوم`;
-}

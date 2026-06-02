@@ -8,6 +8,10 @@ This folder is the **single source of truth** for the KEYONE production system
 - On-call engineers responding to production incidents
 - Anyone proposing a change to a hot path
 
+> **⚠️ Updated 2026-06-02:** Most reference docs have been archived to `archive/`.
+> Start with [`KEYONE_MASTER_STATE_EXPORT.md`](KEYONE_MASTER_STATE_EXPORT.md) for
+> the complete, up-to-date platform overview. See `archive/` for older docs.
+
 Everything here is grounded in the **actual code at `C:\app` on the VPS and
 the source tree at `/Users/yahyaemad/Desktop/mse_ai_api-main`** as of
 **2026-05-17**. When something is uncertain it is **explicitly marked**.

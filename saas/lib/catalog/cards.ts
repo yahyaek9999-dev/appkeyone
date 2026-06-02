@@ -6,12 +6,9 @@
 // existing protected pipeline by the caller.
 
 import { prisma } from "@/lib/db";
+import { fmtMoney } from "@/lib/format";
 
 const MAX_CARDS = 4;
-
-function money(n: number): string {
-  return `${(n || 0).toLocaleString("ar-EG")} ج.م`;
-}
 
 /**
  * Returns a formatted product-card block (Arabic, WhatsApp-friendly) for the
@@ -31,8 +28,8 @@ export async function buildCatalogCards(userId: string): Promise<string | null> 
 
   const lines: string[] = ["🛍️ *المنتجات المتاحة:*", ""];
   for (const p of products) {
-    let line = `• *${p.name}* — ${money(p.price)}`;
-    if (p.compareAtPrice && p.compareAtPrice > p.price) line += ` (كان ${money(p.compareAtPrice)})`;
+    let line = `• *${p.name}* — ${fmtMoney(p.price)}`;
+    if (p.compareAtPrice && p.compareAtPrice > p.price) line += ` (كان ${fmtMoney(p.compareAtPrice)})`;
     lines.push(line);
     if (p.description) lines.push(`  ${String(p.description).slice(0, 120)}`);
     const link = p.productLink || p.imageUrl;
@@ -68,7 +65,7 @@ export async function maybeBuildAutoCoupon(userId: string): Promise<string | nul
   // Record that it was offered (best-effort; never block the reply).
   await prisma.coupon.update({ where: { id: coupon.id }, data: { offeredCount: { increment: 1 } } }).catch(() => {});
 
-  const amount = coupon.type === "percent" ? `${coupon.value}%` : money(coupon.value);
+  const amount = coupon.type === "percent" ? `${coupon.value}%` : fmtMoney(coupon.value);
   let line = `🎟️ عرض خاص ليك: استخدم كود *${coupon.code}* واحصل على خصم ${amount}`;
   if (coupon.expiresAt) {
     line += ` — صالح حتى ${coupon.expiresAt.toLocaleDateString("ar-EG", { day: "numeric", month: "short" })}`;

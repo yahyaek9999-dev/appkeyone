@@ -22,6 +22,7 @@ import {
   Phone,
 } from "lucide-react";
 import { formatCustomerPhone } from "@/lib/phone";
+import { fmtNumber, fmtMoney, timeAgo as taAgo } from "@/lib/format";
 
 type Segment = {
   key: string;
@@ -58,21 +59,6 @@ const TONE: Record<string, string> = {
   cold_leads: "border-slate-500/30 bg-slate-500/10 text-slate-300",
   ghost_customers: "border-slate-500/30 bg-slate-500/10 text-slate-400",
 };
-
-function fmt(n: number) {
-  return (n || 0).toLocaleString("ar-EG");
-}
-function money(n: number) {
-  return `${fmt(n)} ج.م`;
-}
-function timeAgo(s: string | null) {
-  if (!s) return "—";
-  const d = Math.floor((Date.now() - new Date(s).getTime()) / 86400000);
-  if (d <= 0) return "اليوم";
-  if (d === 1) return "أمس";
-  if (d < 30) return `منذ ${d} يوم`;
-  return `منذ ${Math.round(d / 30)} شهر`;
-}
 
 export default function SegmentsUi() {
   const [data, setData] = useState<Segment[] | null>(null);
@@ -115,7 +101,7 @@ export default function SegmentsUi() {
           شرائح العملاء الذكية
         </h1>
         <p className="page-desc mt-1">
-          تجميع تلقائي لعملائك إلى شرائح قابلة للتنفيذ — {fmt(total)} عميل
+          تجميع تلقائي لعملائك إلى شرائح قابلة للتنفيذ — {fmtNumber(total)} عميل
         </p>
       </div>
 
@@ -134,15 +120,15 @@ export default function SegmentsUi() {
                   {ICON[s.key]}
                   {s.label}
                 </div>
-                <div className="text-2xl font-black text-white">{fmt(s.count)}</div>
+                <div className="text-2xl font-black text-white">{fmtNumber(s.count)}</div>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">{s.description}</p>
 
               <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-                <Mini label="الإيراد" value={money(s.revenue)} />
-                <Mini label="متوسط الطلب" value={s.aov ? money(s.aov) : "—"} />
+                <Mini label="الإيراد" value={fmtMoney(s.revenue)} />
+                <Mini label="متوسط الطلب" value={s.aov ? fmtMoney(s.aov) : "—"} />
                 <Mini label="نسبة الشراء" value={`${s.conversionPct}%`} />
-                <Mini label="آخر نشاط" value={timeAgo(s.lastActivity)} />
+                <Mini label="آخر نشاط" value={s.lastActivity ? taAgo(s.lastActivity) : "—"} />
               </div>
 
               <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5 text-[11px] text-slate-300">
@@ -265,7 +251,7 @@ function SegmentBroadcastModal({ segment, onClose }: { segment: Segment | null; 
         ) : (
           <>
             <p className="mb-3 text-xs text-slate-500">
-              <Users className="mb-0.5 inline h-3 w-3" /> {fmt(segment.count)} عميل · ترسل عبر نفس نظام البث المحمي
+              <Users className="mb-0.5 inline h-3 w-3" /> {fmtNumber(segment.count)} عميل · ترسل عبر نفس نظام البث المحمي
             </p>
             <input value={title} onChange={(e) => setTitle(e.target.value)} className="input mb-2 px-3 py-2 text-sm" placeholder="عنوان الحملة" />
             <textarea

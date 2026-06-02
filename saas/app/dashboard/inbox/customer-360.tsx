@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCustomerPhone } from "@/lib/phone";
+import { fmtMoney, fmtDate, timeAgo } from "@/lib/format";
 
 type Profile = {
   customer: {
@@ -135,25 +136,6 @@ const INTENT_AR: Record<string, string> = {
   other: "أخرى",
 };
 
-function fmtMoney(n: number) {
-  return `${(n || 0).toLocaleString("ar-EG")} ج.م`;
-}
-function fmtDate(s: string | null | undefined) {
-  if (!s) return "—";
-  try {
-    return new Date(s).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return "—";
-  }
-}
-function timeAgo(s: string) {
-  const sec = Math.floor((Date.now() - new Date(s).getTime()) / 1000);
-  if (sec < 60) return "الآن";
-  if (sec < 3600) return `منذ ${Math.floor(sec / 60)} د`;
-  if (sec < 86400) return `منذ ${Math.floor(sec / 3600)} س`;
-  if (sec < 86400 * 30) return `منذ ${Math.floor(sec / 86400)} يوم`;
-  return fmtDate(s);
-}
 
 export default function Customer360({
   customerId,
