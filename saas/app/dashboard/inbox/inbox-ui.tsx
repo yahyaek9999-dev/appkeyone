@@ -77,6 +77,12 @@ export default function InboxUi({
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [profileOpen, setProfileOpen] = useState(false); // Customer 360 drawer
+  // ---- Growth Suite: team inbox (assign + internal notes thread) ----
+  const [assignDraft, setAssignDraft] = useState("");
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [thread, setThread] = useState<{ id: string; body: string; authorName: string | null; createdAt: string }[]>([]);
+  const [noteThreadDraft, setNoteThreadDraft] = useState("");
+  const [postingNote, setPostingNote] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { state: liveState, snapshot } = useRealtimeSnapshot({
     activeCustomerId: activeId,
@@ -197,6 +203,10 @@ export default function InboxUi({
       if (alive) {
         setActive(j);
         setNotesDraft((cur) => cur || j.customer?.notes || "");
+        if (!opts.silent) {
+          setAssignDraft(j.customer?.assignedAdmin || "");
+          loadInternalNotes(id);
+        }
       }
     } catch {
     } finally {
@@ -254,6 +264,48 @@ export default function InboxUi({
       });
     } finally {
       setSavingNotes(false);
+    }
+  }
+
+  async function assignAdmin() {
+    if (!activeId) return;
+    setAssignSaving(true);
+    try {
+      await fetch(`/api/customers/${activeId}/crm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "assign", assignedAdmin: assignDraft.trim() }),
+      });
+      loadConversations();
+    } finally {
+      setAssignSaving(false);
+    }
+  }
+
+  async function loadInternalNotes(id: string) {
+    try {
+      const r = await fetch(`/api/inbox/conversation/${id}/internal-notes`, { cache: "no-store" });
+      if (!r.ok) return;
+      const j = await r.json();
+      setThread(j.notes || []);
+    } catch {}
+  }
+
+  async function addInternalNote() {
+    if (!activeId || !noteThreadDraft.trim()) return;
+    setPostingNote(true);
+    try {
+      const r = await fetch(`/api/inbox/conversation/${activeId}/internal-notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: noteThreadDraft.trim() }),
+      });
+      if (r.ok) {
+        setNoteThreadDraft("");
+        loadInternalNotes(activeId);
+      }
+    } finally {
+      setPostingNote(false);
     }
   }
 
@@ -429,6 +481,21 @@ export default function InboxUi({
                           : "البوت نشط"
                       }
                     />
+                    {(() => {
+                      const hs = (active.conversation as any)?.handoffState || "ai_active";
+                      const map: Record<string, { l: string; c: string }> = {
+                        ai_active: { l: "AI نشط", c: "text-brand-300 border-brand-500/30 bg-brand-500/10" },
+                        human_active: { l: "تدخل بشري", c: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" },
+                        escalation_pending: { l: "بانتظار البشر", c: "text-amber-300 border-amber-500/30 bg-amber-500/10" },
+                        human_required: { l: "تصعيد", c: "text-rose-300 border-rose-500/30 bg-rose-500/10" },
+                      };
+                      const m = map[hs] || map.ai_active;
+                      return (
+                        <span className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${m.c}`}>
+                          {m.l}
+                        </span>
+                      );
+                    })()}
                   </div>
                   {(() => {
                     const p = formatCustomerPhone(active.customer.phone);
@@ -480,11 +547,11 @@ export default function InboxUi({
                 >
                   {active.conversation?.botPaused ? (
                     <>
-                      <Play className="w-3 h-3" /> استئناف البوت
+                      <Play className="w-3 h-3" /> إرجاع للـ AI
                     </>
                   ) : (
                     <>
-                      <Pause className="w-3 h-3" /> إيقاف البوت
+                      <Pause className="w-3 h-3" /> تسلّم المحادثة
                     </>
                   )}
                 </button>
@@ -697,6 +764,57 @@ export default function InboxUi({
               {savingNotes ? "جاري الحفظ..." : "حفظ"}
             </button>
           </div>
+
+          {/* Assign to teammate (reuses CRM assign) */}
+          <div>
+            <div className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+              <User className="w-3 h-3" /> إسناد المحادثة
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={assignDraft}
+                onChange={(e) => setAssignDraft(e.target.value)}
+                placeholder="اسم الموظف..."
+                className="input flex-1 rounded-2xl px-3 py-1.5 text-xs"
+              />
+              <button onClick={assignAdmin} disabled={assignSaving} className="ai-btn ai-btn-ghost shrink-0 px-3 py-1.5 text-xs">
+                {assignSaving ? "..." : "إسناد"}
+              </button>
+            </div>
+          </div>
+
+          {/* Internal team notes thread (admin-only, never sent to the customer) */}
+          <div>
+            <div className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+              <MessageSquare className="w-3 h-3" /> ملاحظات الفريق
+            </div>
+            <div className="mb-2 max-h-48 space-y-1.5 overflow-y-auto">
+              {thread.length === 0 && <div className="text-[11px] text-slate-600">لا توجد ملاحظات فريق بعد.</div>}
+              {thread.map((n) => (
+                <div key={n.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
+                  <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                    <span className="font-semibold text-slate-400">{n.authorName || "موظف"}</span>
+                    <span>{timeShort(n.createdAt)}</span>
+                  </div>
+                  <div className="whitespace-pre-wrap text-xs text-slate-200">{renderMentions(n.body)}</div>
+                </div>
+              ))}
+            </div>
+            <textarea
+              value={noteThreadDraft}
+              onChange={(e) => setNoteThreadDraft(e.target.value)}
+              rows={2}
+              placeholder="اكتب ملاحظة للفريق... استخدم @اسم للإشارة"
+              className="input min-h-[52px] w-full resize-none rounded-2xl p-2 text-xs"
+            />
+            <button
+              onClick={addInternalNote}
+              disabled={postingNote || !noteThreadDraft.trim()}
+              className="ai-btn ai-btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
+            >
+              {postingNote ? "..." : "إضافة ملاحظة"}
+            </button>
+          </div>
         </aside>
       )}
 
@@ -769,6 +887,20 @@ function Field({ label, value }: { label: string; value: string }) {
       <div className="text-xs text-slate-400 mb-0.5">{label}</div>
       <div className="text-sm">{value}</div>
     </div>
+  );
+}
+
+function renderMentions(body: string) {
+  // Highlight @mentions inline (display-only; routing is Phase 2).
+  const parts = body.split(/(@[\p{L}\p{N}_.-]{2,40})/gu);
+  return parts.map((p, i) =>
+    p.startsWith("@") ? (
+      <span key={i} className="font-semibold text-brand-300">
+        {p}
+      </span>
+    ) : (
+      <span key={i}>{p}</span>
+    ),
   );
 }
 

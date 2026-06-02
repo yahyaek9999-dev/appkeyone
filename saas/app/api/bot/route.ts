@@ -23,6 +23,9 @@ const Body = z.object({
   // ---- Wave 12 performance / cache ----
   cacheEnabled: z.boolean().optional(),
   cacheTtlHours: z.number().int().min(1).max(168).optional(),
+  // ---- Growth Suite: shipping auto-updates ----
+  orderStatusNotifyEnabled: z.boolean().optional(),
+  shippingTemplates: z.string().max(4000).optional(),
 });
 
 export async function POST(req: Request) {

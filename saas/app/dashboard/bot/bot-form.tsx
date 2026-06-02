@@ -30,6 +30,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
     negotiationFloorPct: initial.negotiationFloorPct ?? 10,
     cacheEnabled: initial.cacheEnabled !== false,
     cacheTtlHours: initial.cacheTtlHours ?? 24,
+    orderStatusNotifyEnabled: !!initial.orderStatusNotifyEnabled,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -251,6 +252,26 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
                   لما يلاحظ نية شراء عند العميل، يثبّت قراره ويقترح خطوة عملية واحدة (دون مبالغة).
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div className={`card p-6 border-2 ${data.orderStatusNotifyEnabled ? "border-sky-500/40" : "border-white/10"}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.orderStatusNotifyEnabled}
+                onChange={(e) => update("orderStatusNotifyEnabled", e.target.checked)}
+                className="mt-1 w-5 h-5 accent-sky-500"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 font-bold text-lg">
+                  <ShoppingCart className="w-5 h-5 text-sky-400" />
+                  تحديثات الشحن التلقائية للعميل
+                </div>
+                <p className="text-sm text-slate-400 mt-1">
+                  يرسل رسالة واتساب للعميل تلقائياً عند كل تغيير لحالة الطلب (تجهيز، تغليف، شحن، خرج للتوصيل، تم التسليم...). تُرسل عبر طابور الإرسال الآمن.
                 </p>
               </div>
             </label>

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { wa } from "@/lib/wa";
 import { dispatchCommerceAutomations } from "@/lib/commerce/notifications";
 import { usageIdempotencyKey } from "@/lib/usage-ledger";
+import { maybeSendShippingUpdate } from "@/lib/shipping/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +12,12 @@ const ALLOWED_STATUS = new Set([
   "pending",
   "confirmed",
   "preparing",
+  "packed",
   "shipped",
   "out_for_delivery",
   "delivered",
   "canceled",
+  "returned",
 ]);
 const ALLOWED_FULFILLMENT = new Set(["unfulfilled", "partial", "fulfilled"]);
 
@@ -76,7 +79,10 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     data.trackingCode = body.trackingCode.slice(0, 100);
   if (typeof body.trackingUrl === "string")
     data.trackingUrl = body.trackingUrl.slice(0, 500);
+  if (typeof body.courierName === "string")
+    data.courierName = body.courierName.slice(0, 100);
   if (body.status === "preparing") data.shippingStatus = "preparing";
+  if (body.status === "packed") data.shippingStatus = "preparing";
   if (body.status === "shipped") data.shippingStatus = "shipped";
   if (body.status === "out_for_delivery") {
     data.shippingStatus = "shipped";
@@ -138,6 +144,14 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
         console.error("[orders] shipment notify failed:", e?.message || e),
       );
     }
+
+    // Growth Suite: built-in per-status shipping update (easy mode). No-op
+    // unless the merchant enabled Bot.orderStatusNotifyEnabled; queued + safe.
+    maybeSendShippingUpdate({
+      userId: user.id,
+      orderId: ctx.params.id,
+      status: data.status,
+    }).catch((e) => console.error("[orders] shipping update failed:", e?.message || e));
   }
 
   return NextResponse.json({ ok: true, order: updated });

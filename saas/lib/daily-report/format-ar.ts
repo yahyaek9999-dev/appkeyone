@@ -6,11 +6,13 @@
 
 import { DailyAggregate } from "./aggregate";
 import { Insight, recommend, topN } from "./insights";
+import type { DigestExtras } from "./extras";
 
 export interface FormatInput {
   shopName: string;
   agg: DailyAggregate;
   insights: Insight[];
+  extras?: DigestExtras | null;
 }
 
 export interface FormattedReport {
@@ -46,7 +48,7 @@ const AR_MONTHS = [
 ];
 
 export function formatReport(input: FormatInput): FormattedReport {
-  const { shopName, agg, insights } = input;
+  const { shopName, agg, insights, extras } = input;
 
   // Skip empty days entirely — never spam a quiet day with a "0 messages"
   // report. Single defensive check; cron uses this to no-op silently.
@@ -78,6 +80,22 @@ export function formatReport(input: FormatInput): FormattedReport {
   lines.push(`• معدل التحويل التقريبي: ${agg.conversionRatePct}%`);
   if (agg.unresolvedEscalations > 0) {
     lines.push(`• ${agg.unresolvedEscalations} تصعيد غير محلول`);
+  }
+
+  // ---- Growth Suite extras (only render the lines that carry signal) ----
+  if (extras) {
+    const ex: string[] = [];
+    if (extras.bestSeller && extras.bestSeller.qty > 0) ex.push(`• الأفضل مبيعاً: ${extras.bestSeller.name} (${extras.bestSeller.qty})`);
+    if (agg.hotLeadsAwaiting > 0) ex.push(`• ${agg.hotLeadsAwaiting} محادثة بانتظار ردّك`);
+    if (extras.followUpsNeeded > 0) ex.push(`• ${extras.followUpsNeeded} عميل يحتاجون متابعة`);
+    if (extras.atRiskCount > 0) ex.push(`• ${extras.atRiskCount} عميل في خطر الفقدان`);
+    if (extras.topCampaign && extras.topCampaign.convRatePct > 0) ex.push(`• أفضل حملة: ${extras.topCampaign.title} (${extras.topCampaign.convRatePct}% تحويل)`);
+    if (extras.lowStockCount > 0) ex.push(`• ⚠️ ${extras.lowStockCount} منتج مخزونه منخفض${extras.lowStockSample.length ? `: ${extras.lowStockSample.slice(0, 3).join("، ")}` : ""}`);
+    if (ex.length > 0) {
+      lines.push("");
+      lines.push("نظرة الأعمال:");
+      lines.push(...ex);
+    }
   }
 
   if (top.length > 0) {

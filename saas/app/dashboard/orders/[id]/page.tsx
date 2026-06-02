@@ -125,7 +125,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </Card>
 
           <Card title="الإجراءات">
-            <OrderActions orderId={order.id} status={order.status} fulfillmentStatus={order.fulfillmentStatus} />
+            <OrderActions orderId={order.id} status={order.status} fulfillmentStatus={order.fulfillmentStatus} trackingCode={order.trackingCode || ""} courierName={order.courierName || ""} trackingUrl={order.trackingUrl || ""} />
           </Card>
         </div>
       </div>

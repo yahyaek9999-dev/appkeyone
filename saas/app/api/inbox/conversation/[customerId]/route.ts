@@ -41,6 +41,7 @@ export async function GET(
         }
       })(),
       notes: (customer as any).notes || "",
+      assignedAdmin: (customer as any).assignedAdmin || null,
     },
     conversation: customer.conversation
       ? {

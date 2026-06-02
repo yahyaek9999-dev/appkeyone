@@ -28,6 +28,7 @@ import {
 import { fuzzyMatchQuickReplies } from "@/lib/semantic-match";
 import {
   detectSignals,
+  detectCatalogIntent,
   classifyPsychology,
   chooseMode,
   buildSalesBlock,
@@ -35,6 +36,7 @@ import {
   readNegotiation,
   applySignalsToNegotiation,
 } from "@/lib/sales-engine";
+import { buildCatalogCards, maybeBuildAutoCoupon } from "@/lib/catalog/cards";
 import { assessOutbound } from "@/lib/anti-ban";
 import {
   assessAndShape,
@@ -1122,9 +1124,30 @@ export async function POST(req: Request) {
     });
   }
 
+  // ---- Growth Suite: additive, gated product-cards / coupon append --------
+  // Runs ONLY after the reply is fully shaped, and ONLY when an intent gate
+  // matches — so normal replies are byte-for-byte unchanged. Deterministic
+  // text (prices/links) is appended AFTER safety shaping so it stays intact.
+  let outboundText = safety.text;
+  try {
+    if (detectCatalogIntent(messageText)) {
+      const cards = await buildCatalogCards(userId);
+      if (cards) outboundText += "\n\n" + cards;
+    } else {
+      const sig = detectSignals(messageText);
+      if ((sig.discountAsk || sig.objections.price) && !(customer as any).vip) {
+        const coupon = await maybeBuildAutoCoupon(userId);
+        if (coupon) outboundText += "\n\n" + coupon;
+      }
+    }
+  } catch {
+    // never let catalog/coupon enrichment break the reply
+    outboundText = safety.text;
+  }
+
   return NextResponse.json({
     ok: true,
-    reply: safety.text,
+    reply: outboundText,
     preDelayMs: safety.preDelayMs,
     typingDelayMs: safety.typingDelayMs,
     risk: safety.risk,

@@ -155,6 +155,9 @@ model Bot {
   // status="shipped". Disabled by default to avoid surprise outbound traffic.
   shipmentNotifyEnabled  Boolean @default(false)
   shipmentNotifyTemplate String  @default("📦 طلبك في الطريق إليك! رقم التتبع: {tracking}. شكراً لاختيارك {shop}.")
+  // ---- Growth Suite: per-status shipping templates (JSON status→text). Empty
+  // {} → use built-in Arabic defaults. Master toggle reuses orderStatusNotifyEnabled.
+  shippingTemplates      String  @default("{}")
 
   // ---- Policy grounding (Issue #11) ----
   // Free-form merchant-authored rules ("لا نوفر شحن للمحافظات", "أقل سعر للجملة 50",
@@ -575,6 +578,7 @@ model Order {
   deliveryStatus    String        @default("not_started") // not_started | out_for_delivery | delivered | failed
   trackingCode      String?
   trackingUrl       String?
+  courierName       String?
   lastNotifiedStatus String?
   lastCustomerNotifiedAt DateTime?
   // ---- Extraction quality ----
@@ -1194,4 +1198,86 @@ model SiteConfig {
   supportEmail    String   @default("support@keyone1.com")
   paymentNote     String   @default("")
   updatedAt       DateTime @updatedAt
+}
+
+// ===========================================================================
+// Growth & Conversion Suite — Phase 1 (additive, self-contained)
+// All scope by a scalar `userId` + index (same pattern as SafetyAudit), so no
+// existing model's relation list changes. Non-destructive `prisma db push`.
+// ===========================================================================
+
+/// Product Catalog — merchant products the AI can surface as WhatsApp cards.
+model Product {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  imageUrl       String?
+  price          Int      @default(0)   // whole EGP
+  compareAtPrice Int?                    // optional "was" price
+  stock          Int      @default(0)
+  description    String?
+  category       String?
+  productLink     String?
+  active         Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, active])
+  @@index([userId, category])
+}
+
+/// Coupon / Discount Engine.
+model Coupon {
+  id           String   @id @default(cuid())
+  userId       String
+  code         String
+  type         String   @default("percent") // percent | fixed
+  value        Int      @default(0)          // percent (0-100) or fixed EGP
+  expiresAt    DateTime?
+  usageLimit   Int?                          // null = unlimited
+  usedCount    Int      @default(0)
+  offeredCount Int      @default(0)          // times offered (AI/admin)
+  oneTime      Boolean  @default(false)      // one redemption per customer
+  autoOffer    Boolean  @default(false)      // AI may offer this dynamically
+  active       Boolean  @default(true)
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  redemptions  CouponRedemption[]
+
+  @@unique([userId, code])
+  @@index([userId, active])
+}
+
+model CouponRedemption {
+  id         String   @id @default(cuid())
+  couponId   String
+  coupon     Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  userId     String
+  customerId String?
+  orderId    String?
+  revenue    Int      @default(0) // order value attributed to this redemption (EGP)
+  redeemedAt DateTime @default(now())
+
+  @@index([couponId])
+  @@index([userId, redeemedAt])
+}
+
+/// Internal (admin-only) notes thread inside a conversation. Never sent to the
+/// customer. @mentions are captured for Phase 2 routing.
+model ConversationNote {
+  id             String   @id @default(cuid())
+  conversationId String
+  customerId     String
+  userId         String
+  authorId       String?
+  authorName     String?
+  body           String
+  mentions       String   @default("[]") // JSON array of @handles
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([userId, createdAt])
 }

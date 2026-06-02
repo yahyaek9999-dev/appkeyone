@@ -26,6 +26,8 @@ import {
   HeartHandshake,
   Filter,
   TrendingUp,
+  Package,
+  Ticket,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -34,6 +36,8 @@ export const NAV_ITEMS = [
   { href: "/dashboard/inbox", label: "الواردات", icon: Inbox },
   { href: "/dashboard/escalations", label: "التصعيدات", icon: MessageSquareWarning },
   { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag },
+  { href: "/dashboard/products", label: "المنتجات", icon: Package },
+  { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket },
   { href: "/dashboard/integrations", label: "تكاملات التجارة", icon: Plug },
   { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain },
   { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Brain },

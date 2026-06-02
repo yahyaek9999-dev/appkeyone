@@ -21,6 +21,7 @@ import { wa } from "@/lib/wa";
 import { aggregateForUser } from "@/lib/daily-report/aggregate";
 import { deriveInsights } from "@/lib/daily-report/insights";
 import { formatReport } from "@/lib/daily-report/format-ar";
+import { buildDigestExtras } from "@/lib/daily-report/extras";
 import { localHour, localYmd } from "@/lib/tz";
 import {
   drainDailyReportRetries,
@@ -139,10 +140,12 @@ export async function POST(req: Request) {
     try {
       const agg = await aggregateForUser(u.id, now);
       const insights = deriveInsights(agg);
+      const extras = await buildDigestExtras(u.id, now).catch(() => null);
       const report = formatReport({
         shopName: bot.name || "متجرك",
         agg,
         insights,
+        extras,
       });
 
       if (!report.shouldSend) {

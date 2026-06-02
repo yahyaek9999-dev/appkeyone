@@ -99,6 +99,22 @@ export function detectSignals(text: string): SalesSignals {
   };
 }
 
+// Growth Suite — catalog request detector ("send me the products/prices/menu").
+// Used additively to attach product cards to a reply. Kept tight to avoid
+// firing on generic price questions about a single item already in context.
+const CATALOG_REQUEST = [
+  "عاوز المنتجات", "عايز المنتجات", "ابعتلي المنتجات", "ابعتلي الاسعار", "ابعت الاسعار",
+  "ايه المتاح", "ايه عندكم", "ايه اللي متوفر", "المنتجات المتاحة", "قائمة المنتجات",
+  "الكتالوج", "الكاتالوج", "المنيو", "المعروضات", "اعرضلي", "وريني المنتجات", "عندكم ايه",
+  "قائمة الاسعار", "الاصناف", "المنتجات",
+  "catalog", "catalogue", "menu", "products", "price list", "show me products", "what do you have",
+];
+
+export function detectCatalogIntent(text: string): boolean {
+  const n = normalizeAr(text);
+  return hits(n, CATALOG_REQUEST) > 0;
+}
+
 export function hasAnyObjection(s: SalesSignals): boolean {
   const o = s.objections;
   return o.price || o.trust || o.shipping || o.quality;
