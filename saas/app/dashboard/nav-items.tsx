@@ -28,6 +28,7 @@ import {
   TrendingUp,
   Package,
   Ticket,
+  Activity,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -57,6 +58,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone },
   { href: "/dashboard/safety", label: "الأمان والحماية", icon: Shield },
   { href: "/dashboard/usage", label: "استخدام الباقة", icon: Crown },
+  { href: "/dashboard/system-health", label: "مراقبة النظام", icon: Activity },
   { href: "/dashboard/settings", label: "حسابي", icon: Settings },
 ];
 

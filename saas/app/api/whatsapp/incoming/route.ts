@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { chat as llmChat, buildMessages, detectOrderIntent } from "@/lib/llm";
@@ -890,6 +891,7 @@ export async function POST(req: Request) {
       });
     } catch (e: any) {
       console.error("[wa/incoming] llmChat failed:", e?.message || e);
+      Sentry.captureException(e, { tags: { context: "wa_incoming_llm" } });
       reply = "عذراً، يبدو أن هناك خلل تقني مؤقت. سأعود لك خلال لحظات.";
     }
     // Cache the LLM-generated reply (best-effort). Skip the fallback error

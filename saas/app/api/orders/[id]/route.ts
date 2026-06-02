@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -131,9 +132,10 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
       orderId: ctx.params.id,
       status: data.status,
       trackingCode: body.trackingCode || data.trackingCode || null,
-    }).catch((e) =>
-      console.error("[orders] status automation failed:", e?.message || e),
-    );
+    }).catch((e) => {
+      console.error("[orders] status automation failed:", e?.message || e);
+      Sentry.captureException(e, { tags: { context: "order_status_automation" } });
+    });
 
     if (data.status === "shipped") {
       sendShipmentNotification(
@@ -151,7 +153,10 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
       userId: user.id,
       orderId: ctx.params.id,
       status: data.status,
-    }).catch((e) => console.error("[orders] shipping update failed:", e?.message || e));
+    }).catch((e) => {
+      console.error("[orders] shipping update failed:", e?.message || e);
+      Sentry.captureException(e, { tags: { context: "order_shipping_update" } });
+    });
   }
 
   return NextResponse.json({ ok: true, order: updated });
