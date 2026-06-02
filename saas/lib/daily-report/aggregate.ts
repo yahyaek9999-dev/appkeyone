@@ -139,6 +139,12 @@ export async function aggregateForUser(
       : Promise.resolve(0),
     // best hour: group user messages by hour-of-day for yesterday
     prisma.$queryRawUnsafe<{ h: number; n: number }[]>(
+      // PostgreSQL equivalent:
+      // SELECT EXTRACT(HOUR FROM m.createdAt)::int AS h, COUNT(*) AS n
+      // FROM "Message" m JOIN "Conversation" c ON ... JOIN "Customer" cu ON ...
+      // WHERE cu.userId = $1 AND m.role = 'user'
+      //   AND m.createdAt >= $2 AND m.createdAt < $3
+      // GROUP BY h ORDER BY n DESC LIMIT 1
       `SELECT CAST(strftime('%H', m.createdAt) AS INTEGER) AS h, COUNT(*) AS n
        FROM Message m
        JOIN Conversation c ON c.id = m.conversationId
@@ -147,8 +153,8 @@ export async function aggregateForUser(
          AND m.createdAt >= ? AND m.createdAt < ?
        GROUP BY h ORDER BY n DESC LIMIT 1`,
       userId,
-      dayStart.toISOString(),
-      now.toISOString(),
+      dayStart,
+      now,
     ),
   ]);
 

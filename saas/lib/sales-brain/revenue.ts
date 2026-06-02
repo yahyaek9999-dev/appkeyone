@@ -83,9 +83,12 @@ export async function revenueIntelligence(
        ORDER BY qty DESC
        LIMIT 8`,
       userId,
-      // Prisma's SQLite connector stores DateTime as INTEGER epoch-ms, so the
-      // raw comparison must use epoch-ms (not an ISO string, which never matches).
-      monthStart.getTime(),
+      // Pass the Date object directly — Prisma's raw query adapter converts it
+      // to the correct DB representation (INTEGER epoch-ms on SQLite,
+      // TIMESTAMP on PostgreSQL). Avoid .toISOString() which sends TEXT
+      // and fails to match SQLite's INTEGER storage, AND avoid .getTime()
+      // which sends a bare integer that PG won't understand.
+      monthStart,
     ).catch(() => []),
   ]);
 

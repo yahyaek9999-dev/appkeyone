@@ -358,6 +358,7 @@ model Customer {
   @@index([userId, retentionScore])
   @@index([userId, lastEngagedAt])
   @@index([userId, keyoneActivatedAt])
+  @@index([createdAt])                    // analytics: cohort analysis (funnel, segments)
 }
 
 /// Phase 1 — Memory Engine. One row per Customer. Stores a rolling Arabic
@@ -435,6 +436,7 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@unique([conversationId, providerMessageId])
+  @@index([createdAt])                    // analytics: date-range queries (funnel, forecast)
 }
 
 model Document {
@@ -517,6 +519,7 @@ model BroadcastItem {
   sentAt        DateTime?
 
   @@index([broadcastId, status])
+  @@index([customerId, status])            // Customer 360: timeline shows received broadcasts
 }
 
 /// Logs unanswerable questions. When the bot tells the user "I don't know",
@@ -603,6 +606,7 @@ model Order {
   @@index([userId, createdAt])
   @@index([customerId])
   @@index([commerceIntegrationId])
+  @@index([userId, status, total])            // analytics: revenue aggregation
   @@unique([userId, externalSource, externalOrderId])
 }
 

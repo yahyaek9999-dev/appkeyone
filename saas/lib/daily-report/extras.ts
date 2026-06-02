@@ -21,7 +21,7 @@ export interface DigestExtras {
 }
 
 export async function buildDigestExtras(userId: string, now: Date = new Date()): Promise<DigestExtras> {
-  const weekAgo = new Date(now.getTime() - 7 * DAY).getTime();
+  const weekAgo = new Date(now.getTime() - 7 * DAY);
 
   const [bestSellerRows, lowStock, followUps, atRiskCount, recentBroadcasts] = await Promise.all([
     prisma.$queryRawUnsafe<{ name: string; qty: number }[]>(

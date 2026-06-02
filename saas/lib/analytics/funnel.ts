@@ -83,7 +83,7 @@ export async function computeFunnel(userId: string, days = 30): Promise<FunnelRe
        WHERE o.userId = ? AND o.createdAt >= ? AND o.status IN ${PAID_SQL}
        GROUP BY oi.name ORDER BY qty DESC LIMIT 1`,
       userId,
-      since.getTime(), // SQLite stores DateTime as epoch-ms for raw queries
+      since, // Date object — works on SQLite (Int) and PostgreSQL (Timestamp)
     ).catch(() => [] as { name: string; qty: number }[]),
   ]);
 

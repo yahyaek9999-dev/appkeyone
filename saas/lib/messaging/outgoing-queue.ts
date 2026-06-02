@@ -28,6 +28,8 @@ export interface DrainOptions {
   perUserLimit?: number;
   now?: Date;
   userId?: string;
+  /** @deprecated Phase 2: route through a specific provider instead of QR always. */
+  routeProvider?: "qr" | "meta_cloud" | "auto";
 }
 
 export interface DrainResult {
