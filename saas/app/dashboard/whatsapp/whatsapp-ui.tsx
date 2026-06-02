@@ -103,15 +103,10 @@ export default function WhatsappUI({ initial }: { initial: any }) {
           <div className="flex items-start gap-2 text-red-300">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
-              <div className="font-bold mb-1">خدمة الواتساب غير متاحة</div>
-              <p className="text-sm text-red-200/80 leading-relaxed mb-2">
-                شغل خدمة الواتساب أولاً:
+              <div className="font-bold mb-1">خدمة الواتساب غير متاحة مؤقتاً</div>
+              <p className="text-sm text-red-200/80 leading-relaxed">
+                الخادم لا يستجيب حالياً. يرجى الانتظار لحظة ثم إعادة المحاولة. إذا استمرت المشكلة، تواصل مع الدعم الفني.
               </p>
-              <pre className="bg-black/30 px-3 py-2 rounded text-xs overflow-x-auto" dir="ltr">
-{`cd whatsapp-service
-npm install
-npm run dev`}
-              </pre>
             </div>
           </div>
         </div>

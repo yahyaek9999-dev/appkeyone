@@ -120,7 +120,13 @@ export default function FunnelUi() {
           <Loader2 className="h-7 w-7 animate-spin" />
         </div>
       ) : !data ? (
-        <div className="card p-10 text-center text-sm text-slate-500">تعذّر تحميل بيانات المسار.</div>
+        <div className="card p-10 text-center space-y-3">
+          <Filter className="h-8 w-8 mx-auto text-slate-600" />
+          <div className="text-sm text-slate-400">تعذّر تحميل بيانات المسار.</div>
+          <button onClick={() => { setLoading(true); fetch(`/api/funnel?days=${days}`, { cache: "no-store" }).then(r => r.json()).then(j => setData(j?.error ? null : j)).catch(() => setData(null)).finally(() => setLoading(false)); }} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm hover:bg-white/10">
+            إعادة المحاولة
+          </button>
+        </div>
       ) : (
         <>
           {/* KPI row */}
@@ -198,9 +204,6 @@ export default function FunnelUi() {
             <Kpi icon={<Users className="h-4 w-4" />} label="إجمالي الزوار بالفترة" value={fmt(top)} accent="border-slate-500/30 bg-slate-500/10 text-slate-300" />
           </div>
 
-          {data.truncated && (
-            <p className="text-center text-[11px] text-slate-600">* تم احتساب عيّنة كبيرة من البيانات للحفاظ على السرعة.</p>
-          )}
         </>
       )}
     </div>

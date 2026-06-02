@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 function maskEnc(enc: string | null | undefined): { mask: string; hasValue: boolean } {
   if (!enc) return { mask: "", hasValue: false };
   try { const raw = decryptSecret(enc); return { mask: maskSecret(raw), hasValue: raw.length > 0 }; }
-  catch { return { mask: "•••• (غير قابل للقراءة — أعد الإدخال)", hasValue: true }; }
+  catch { return { mask: "•••• (يرجى إعادة الإدخال)", hasValue: true }; }
 }
 
 export default async function MetaCloudPage() {
@@ -49,8 +49,8 @@ export default async function MetaCloudPage() {
 
       {!initial.globalEnabled && (
         <div className="card p-4 bg-amber-500/10 border-amber-500/30 text-sm text-slate-200">
-          <b className="text-amber-300">ملاحظة:</b> وضع Meta Cloud معطّل حالياً على المنصة (`META_CLOUD_ENABLED=0`). تقدر تحفظ بياناتك،
-          لكن الرسائل هتفضل تتبعت عبر QR لحد ما المدير يفعّل الوضع.
+          <b className="text-amber-300">ملاحظة:</b> وضع Meta Cloud API غير مفعّل حالياً على المنصة. يمكنك حفظ بياناتك الآن،
+          وستنتقل الرسائل إليه تلقائياً بمجرد تفعيله. تواصل مع الدعم لمعرفة موعد الإتاحة.
         </div>
       )}
 
@@ -65,15 +65,14 @@ export default async function MetaCloudPage() {
       </div>
 
       <div className="card p-6 max-w-3xl text-sm text-slate-300 space-y-2">
-        <h3 className="font-bold text-slate-100 mb-2">إعداد سريع</h3>
-        <p>1. أنشئ Meta Business Account و WhatsApp Business App على <a className="text-brand-300 underline" href="https://developers.facebook.com" target="_blank" rel="noreferrer">developers.facebook.com</a>.</p>
-        <p>2. خد <b>Phone Number ID</b> و <b>WhatsApp Business Account ID</b> من لوحة Meta وأدخلهم هنا.</p>
-        <p>3. أنشئ <b>System User Access Token</b> طويل المدة (≥ 60 يوم) وألصقه في خانة "Access Token".</p>
-        <p>4. خد <b>App Secret</b> من إعدادات التطبيق وألصقه — مطلوب لتوقيع الـ webhooks.</p>
-        <p>5. اختر <b>Webhook Verify Token</b> (أي نص عشوائي قوي) واستخدمه في إعدادات webhook في Meta.</p>
-        <p>6. ضبط webhook URL في Meta على: <code className="text-brand-300">{`https://<your-domain>/api/whatsapp/meta-webhook`}</code></p>
-        <p>7. اشترك في الـ fields: <code>messages</code>, <code>message_template_status_update</code>, <code>account_alerts</code>.</p>
-        <p className="text-slate-400 pt-2 border-t border-white/10">⚙️ كل المفاتيح بتتخزّن بتشفير AES-256-GCM، ومش بتظهر تاني بعد الحفظ.</p>
+        <h3 className="font-bold text-slate-100 mb-2">خطوات الربط</h3>
+        <p>1. اذهب إلى <a className="text-brand-300 underline" href="https://business.facebook.com" target="_blank" rel="noreferrer">Meta Business Manager</a> وأنشئ تطبيق WhatsApp Business.</p>
+        <p>2. من إعدادات التطبيق، انسخ <b>معرّف رقم الهاتف</b> و<b>معرّف حساب الأعمال</b> وأدخلهما في الحقول أعلاه.</p>
+        <p>3. أنشئ رمز وصول دائم (System User Token) من لوحة Meta وألصقه في خانة <b>رمز الوصول</b>.</p>
+        <p>4. انسخ <b>سر التطبيق</b> من إعدادات Meta وألصقه — ضروري لتأمين الاتصال.</p>
+        <p>5. اكتب كلمة مرور سرية في خانة <b>رمز التحقق</b> واستخدم نفس الكلمة عند إعداد الـ Webhook في Meta.</p>
+        <p>6. عيّن رابط الـ Webhook في Meta على الرابط التالي: <span className="font-mono text-brand-300 text-xs">https://app.keyone1.com/api/whatsapp/meta-webhook</span></p>
+        <p className="text-slate-400 pt-2 border-t border-white/10">🔒 جميع المفاتيح والرموز محفوظة بتشفير كامل ولا تُعرض مجدداً بعد الحفظ.</p>
       </div>
     </div>
   );

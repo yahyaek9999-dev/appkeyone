@@ -230,7 +230,7 @@ export default function IntegrationsUi() {
     try {
       const res = await fetch(`/api/commerce/integrations/${item.id}/sync`, { method: "POST" });
       const json = await res.json();
-      if (!res.ok) showError(json.error || "فشت المزامنة");
+      if (!res.ok) showError(json.error || "فشلت المزامنة");
       else showSuccess(`تمت المزامنة: ${json.synced || 0} حدث`);
       await load(false);
     } finally { setBusyId(null); }
@@ -539,9 +539,16 @@ function SecretBox({ label, value }: { label: string; value: string }) {
   );
 }
 
+const EVENT_STATUS_LABELS: Record<string, string> = {
+  processed: "تمت المعالجة",
+  failed: "فاشل",
+  received: "مستلم",
+  retrying: "إعادة محاولة",
+};
+
 function EventStatus({ status }: { status: string }) {
   const cls = status === "processed" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : status === "failed" ? "border-rose-500/30 bg-rose-500/10 text-rose-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300";
-  return <span className={`rounded-full border px-2 py-0.5 ${cls}`}>{status}</span>;
+  return <span className={`rounded-full border px-2 py-0.5 ${cls}`}>{EVENT_STATUS_LABELS[status] || status}</span>;
 }
 
 function Kpi({ icon: Icon, label, value, tone }: { icon: any; label: string; value: any; tone: string }) {

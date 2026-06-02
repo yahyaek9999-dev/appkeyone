@@ -4,10 +4,32 @@ import {
   CheckCircle2,
   Clock,
   MessageSquareWarning,
+  ShieldAlert,
 } from "lucide-react";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import EscalationActions from "@/app/dashboard/escalations/ticket-actions";
+
+const SEVERITY_LABELS: Record<string, string> = {
+  low: "منخفضة",
+  medium: "متوسطة",
+  high: "عالية",
+  critical: "حرجة",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  open: "مفتوح",
+  acknowledged: "تم الاستلام",
+  human_active: "تدخل بشري",
+  resolved: "محلول",
+};
+
+const HANDOFF_LABELS: Record<string, string> = {
+  ai_active: "البوت نشط",
+  human_active: "موظف نشط",
+  escalated: "مصعّد",
+  waiting_human: "ينتظر موظف",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -84,8 +106,12 @@ export default async function EscalationsPage() {
           قائمة التصعيدات
         </div>
         {tickets.length === 0 && (
-          <div className="p-8 text-center text-sm text-slate-400">
-            لا توجد تصعيدات مفتوحة حالياً.
+          <div className="p-10 text-center space-y-3">
+            <ShieldAlert className="w-10 h-10 mx-auto text-slate-600" />
+            <div className="text-sm font-semibold text-slate-300">لا توجد محادثات تحتاج تدخلاً</div>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+              حين يرصد البوت عميلاً غاضباً أو موقفاً يحتاج مساعدة بشرية، ستظهر بطاقة التصعيد هنا مباشرةً.
+            </p>
           </div>
         )}
         {tickets.map((t: any) => (
@@ -97,7 +123,7 @@ export default async function EscalationsPage() {
                     {t.summary || "تصعيد"}
                   </span>
                   <Badge
-                    text={t.severity}
+                    text={SEVERITY_LABELS[t.severity] || t.severity}
                     tone={
                       t.severity === "critical" || t.severity === "high"
                         ? "rose"
@@ -105,15 +131,24 @@ export default async function EscalationsPage() {
                     }
                   />
                   <Badge
-                    text={t.status}
+                    text={STATUS_LABELS[t.status] || t.status}
                     tone={t.status === "open" ? "amber" : "sky"}
                   />
-                  <Badge text={t.handoffState} tone="slate" />
+                  <Badge text={HANDOFF_LABELS[t.handoffState] || t.handoffState} tone="slate" />
                 </div>
-                <div className="text-xs text-slate-400">
-                  الغضب {t.angerScore}/100 · الثقة {t.confidenceScore}/100 ·
-                  الإحباط {t.frustrationScore}/100
-                </div>
+                {(t.angerScore > 0 || t.frustrationScore > 0) && (
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {t.angerScore >= 60 && (
+                      <span className="rounded-full border border-rose-500/25 bg-rose-500/10 px-2 py-0.5 text-rose-300">مزاج صعب</span>
+                    )}
+                    {t.frustrationScore >= 60 && (
+                      <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-amber-300">إحباط واضح</span>
+                    )}
+                    {t.confidenceScore < 40 && (
+                      <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-sky-300">يحتاج طمأنة</span>
+                    )}
+                  </div>
+                )}
                 <div className="whitespace-pre-wrap rounded-xl bg-black/20 p-3 text-sm text-slate-200">
                   {t.lastCustomerMessage}
                 </div>

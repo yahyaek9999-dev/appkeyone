@@ -66,8 +66,8 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
         <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border ${mode === "qr" ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/5 border-white/10"}`}>
           <input type="radio" name="mode" checked={mode === "qr"} onChange={() => setMode("qr")} className="mt-1 w-4 h-4 accent-emerald-500" />
           <div className="flex-1">
-            <div className="text-sm font-bold">📱 QR Code (whatsapp-web.js)</div>
-            <div className="text-xs text-slate-400 mt-1">السلوك الحالي. متاح للجميع. مناسب لحساب واتساب شخصي/تجاري بدون ترخيص Meta.</div>
+            <div className="text-sm font-bold">📱 ربط برمز QR</div>
+            <div className="text-xs text-slate-400 mt-1">الوضع الافتراضي. متاح لجميع الباقات. سريع ولا يحتاج موافقة Meta.</div>
           </div>
         </label>
         <label className={`flex items-start gap-3 p-3 rounded-lg border ${mode === "meta_cloud" ? "bg-brand-500/10 border-brand-500/30" : "bg-white/5 border-white/10"} ${planBlocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
@@ -80,8 +80,8 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
             className="mt-1 w-4 h-4 accent-brand-500"
           />
           <div className="flex-1">
-            <div className="text-sm font-bold">☁️ Meta Cloud API (Official)</div>
-            <div className="text-xs text-slate-400 mt-1">رسمي ومستقر. يحتاج موافقة Meta + قوالب معتمدة + التزام بنافذة 24 ساعة. متاح في باقتي Max و Companies.</div>
+            <div className="text-sm font-bold">☁️ Meta Cloud API الرسمي {planBlocked && <span className="text-xs font-normal text-rose-300 mr-1">(يتطلب باقة Max أو أعلى)</span>}</div>
+            <div className="text-xs text-slate-400 mt-1">اتصال مباشر عبر Meta. أكثر استقراراً على المدى الطويل. يتطلب موافقة Meta وقوالب رسائل معتمدة.</div>
           </div>
         </label>
       </div>
@@ -102,11 +102,11 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
       {/* Fields */}
       {mode === "meta_cloud" && (
         <div className="space-y-3">
-          <Field label="Phone Number ID" value={phoneNumberId} onChange={setPhoneNumberId} placeholder="e.g. 1234567890123456" />
-          <Field label="WhatsApp Business Account ID" value={businessAccountId} onChange={setBusinessAccountId} placeholder="e.g. 9876543210123456" />
-          <Field label="Webhook Verify Token" value={webhookVerifyToken} onChange={setWebhookVerifyToken} placeholder="نص عشوائي قوي" />
-          <SecretField label="Access Token" mask={initial.accessToken.mask} hasValue={initial.accessToken.hasValue} value={accessToken} onChange={setAccessToken} placeholder="EAAB..." />
-          <SecretField label="App Secret" mask={initial.appSecret.mask} hasValue={initial.appSecret.hasValue} value={appSecret} onChange={setAppSecret} placeholder="32-char hex" />
+          <Field label="معرّف رقم الهاتف (Phone Number ID)" value={phoneNumberId} onChange={setPhoneNumberId} placeholder="مثال: 1234567890123456" />
+          <Field label="معرّف حساب الأعمال (WABA ID)" value={businessAccountId} onChange={setBusinessAccountId} placeholder="مثال: 9876543210123456" />
+          <Field label="رمز التحقق للـ Webhook" value={webhookVerifyToken} onChange={setWebhookVerifyToken} placeholder="كلمة سرية من اختيارك" />
+          <SecretField label="رمز الوصول (Access Token)" mask={initial.accessToken.mask} hasValue={initial.accessToken.hasValue} value={accessToken} onChange={setAccessToken} placeholder="EAAB..." />
+          <SecretField label="سر التطبيق (App Secret)" mask={initial.appSecret.mask} hasValue={initial.appSecret.hasValue} value={appSecret} onChange={setAppSecret} placeholder="مفتاح من 32 حرف" />
         </div>
       )}
 

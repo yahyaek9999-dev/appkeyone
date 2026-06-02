@@ -45,7 +45,7 @@ export async function GET() {
   const mask = (enc: string | null | undefined): { mask: string; hasValue: boolean } => {
     if (!enc) return { mask: "", hasValue: false };
     try { return { mask: maskSecret(decryptSecret(enc)), hasValue: true }; }
-    catch { return { mask: "•••• (decrypt error)", hasValue: true }; }
+    catch { return { mask: "•••• (يرجى إعادة الإدخال)", hasValue: true }; }
   };
 
   return NextResponse.json({

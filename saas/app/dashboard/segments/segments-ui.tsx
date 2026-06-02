@@ -110,7 +110,13 @@ export default function SegmentsUi() {
           <Loader2 className="h-7 w-7 animate-spin" />
         </div>
       ) : !data ? (
-        <div className="card p-10 text-center text-sm text-slate-500">تعذّر تحميل الشرائح.</div>
+        <div className="card p-10 text-center space-y-3">
+          <Users className="h-8 w-8 mx-auto text-slate-600" />
+          <div className="text-sm text-slate-400">تعذّر تحميل شرائح العملاء.</div>
+          <button onClick={() => { setLoading(true); fetch("/api/segments", { cache: "no-store" }).then(r => r.json()).then(j => { if (!j?.error) { setData(j.segments || []); setTotal(j.totalCustomers || 0); } }).finally(() => setLoading(false)); }} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm hover:bg-white/10">
+            إعادة المحاولة
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {data.map((s) => (
