@@ -7,7 +7,13 @@ import {
   CheckCircle2, XCircle, BarChart3, Shield, Megaphone,
 } from "lucide-react";
 
+type SubsystemState = "ok" | "degraded" | "down" | "unknown";
+type Subsystem = { status: SubsystemState; detail: string };
+
 type Metric = {
+  overall?: SubsystemState;
+  version?: string;
+  subsystems?: Record<string, Subsystem>;
   server: { cpuModel: string; cpuCores: number; totalMemMB: number; freeMemMB: number; usedMemMB: number; heapUsedMB: number; heapTotalMB: number; rssMB: number; uptimeSec: number };
   database: { sizeBytes: number | null; messages: number; customers: number; orders: number };
   queue: { queued: number; failed24h: number; deadLetter: number };
@@ -144,6 +150,31 @@ export default function SystemHealthUi() {
               )}
             </div>
           </div>
+
+          {/* Per-subsystem status grid — each dependency reports ok/degraded/down
+              independently so a single failure is visible without crashing. */}
+          {data.subsystems && (
+            <div className="card p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="section-title flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-cyan-400" /> حالة الأنظمة الفرعية
+                </h3>
+                {data.version && (
+                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-[11px] text-slate-400">
+                    إصدار: {data.version}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                <SubsystemCard name="قاعدة البيانات" icon={<Database className="h-4 w-4" />} sub={data.subsystems.database} />
+                <SubsystemCard name="واتساب" icon={<Smartphone className="h-4 w-4" />} sub={data.subsystems.whatsapp} />
+                <SubsystemCard name="الطابور" icon={<Activity className="h-4 w-4" />} sub={data.subsystems.queue} />
+                <SubsystemCard name="مزود الذكاء الاصطناعي" icon={<Brain className="h-4 w-4" />} sub={data.subsystems.aiProvider} />
+                <SubsystemCard name="العامل (Worker)" icon={<Server className="h-4 w-4" />} sub={data.subsystems.worker} />
+                <SubsystemCard name="Redis" icon={<Zap className="h-4 w-4" />} sub={data.subsystems.redis} />
+              </div>
+            </div>
+          )}
 
           {/* Server */}
           <div className="card p-5">
@@ -288,6 +319,29 @@ function ErrorState({ error, onRetry, retrying }: { error: LoadError | null; onR
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// Per-subsystem status card — colored dot + label + one-line detail.
+function SubsystemCard({ name, icon, sub }: { name: string; icon: React.ReactNode; sub?: Subsystem }) {
+  const status = sub?.status ?? "unknown";
+  const cfg = {
+    ok: { dot: "bg-emerald-400", border: "border-emerald-500/30", label: "سليم", text: "text-emerald-300" },
+    degraded: { dot: "bg-amber-400", border: "border-amber-500/30", label: "متدهور", text: "text-amber-300" },
+    down: { dot: "bg-rose-500", border: "border-rose-500/40", label: "متوقف", text: "text-rose-300" },
+    unknown: { dot: "bg-slate-500", border: "border-white/10", label: "غير معروف", text: "text-slate-400" },
+  }[status];
+  return (
+    <div className={`rounded-xl border ${cfg.border} bg-white/[0.02] p-3`}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">{icon}{name}</div>
+        <span className={`flex items-center gap-1 text-[10px] font-medium ${cfg.text}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot} ${status === "down" ? "animate-pulse" : ""}`} />
+          {cfg.label}
+        </span>
+      </div>
+      <div className="truncate text-xs text-slate-400" title={sub?.detail}>{sub?.detail ?? "—"}</div>
     </div>
   );
 }
