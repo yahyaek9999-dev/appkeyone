@@ -30,6 +30,8 @@ import {
   ShoppingBag,
   AlertTriangle,
   ArrowLeft,
+  GraduationCap,
+  Share2,
 } from "lucide-react";
 
 interface BestSeller {
@@ -47,6 +49,27 @@ interface Revenue {
   customersWithOrders: number;
   bestSellers: BestSeller[];
 }
+interface KindPerf {
+  kind: string;
+  sent: number;
+  replied: number;
+  converted: number;
+  revenue: number;
+  replyRate: number;
+  conversionRate: number;
+  learnedWeight: number;
+}
+interface Learning {
+  windowDays: number;
+  totalSent: number;
+  overallReplyRate: number;
+  overallConversionRate: number;
+  totalRevenue: number;
+  bestKind: string | null;
+  worstKind: string | null;
+  sampleConfidence: "low" | "medium" | "high";
+  byKind: KindPerf[];
+}
 interface Resp {
   generatedAt: string;
   revenue: Revenue;
@@ -59,9 +82,21 @@ interface Resp {
     ordersCount: number;
     unresolvedEscalations: number;
   };
+  learning?: Learning | null;
+  memoryGraphInsights?: string[];
 }
 
 const egp = (n: number) => `${(n || 0).toLocaleString("en-US")} ج`;
+
+const KIND_AR: Record<string, string> = {
+  price_question: "سؤال عن السعر",
+  pending_order: "طلب معلّق",
+  hesitation_recovery: "استعادة متردد",
+  product_view: "اهتمام بمنتج",
+  abandoned_conversation: "محادثة متروكة",
+  smart_nudge: "تذكير ذكي",
+  unknown: "غير مصنّف",
+};
 
 export default function SalesBrainUi() {
   const [data, setData] = useState<Resp | null>(null);
@@ -304,6 +339,31 @@ export default function SalesBrainUi() {
             </div>
           )}
 
+          {/* Memory-graph insight (relationships extracted from real chats) */}
+          {(data.memoryGraphInsights?.length ?? 0) > 0 && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-sm font-medium text-white mb-3">
+                <Share2 className="w-4 h-4 text-fuchsia-400" />
+                روابط من محادثاتك
+              </div>
+              <ul className="space-y-2">
+                {data.memoryGraphInsights!.map((t, i) => (
+                  <li
+                    key={i}
+                    className="text-sm text-slate-200 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2"
+                  >
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Self-learning panel — which follow-up types actually convert */}
+          {data.learning && data.learning.totalSent > 0 && (
+            <SelfLearningCard learn={data.learning} />
+          )}
+
           <div className="text-xs text-slate-500 text-center pt-1">
             آخر تحديث{" "}
             {new Date(data.generatedAt).toLocaleTimeString("ar-EG", {
@@ -312,6 +372,74 @@ export default function SalesBrainUi() {
             })}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function SelfLearningCard({ learn }: { learn: NonNullable<Learning> }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <GraduationCap className="w-4 h-4 text-violet-300" />
+        <h2 className="text-sm font-bold text-slate-200">التعلّم من النتائج</h2>
+        <span className="text-[11px] text-slate-500">
+          آخر {learn.windowDays} يوم · {learn.totalSent} متابعة · دقة العيّنة:{" "}
+          {learn.sampleConfidence === "high"
+            ? "عالية"
+            : learn.sampleConfidence === "medium"
+              ? "متوسطة"
+              : "منخفضة"}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+          <div className="text-[10px] text-slate-500">نسبة الرد</div>
+          <div className="mt-0.5 text-sm font-bold text-slate-100">
+            {Math.round(learn.overallReplyRate * 100)}%
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+          <div className="text-[10px] text-slate-500">نسبة التحويل</div>
+          <div className="mt-0.5 text-sm font-bold text-slate-100">
+            {Math.round(learn.overallConversionRate * 100)}%
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+          <div className="text-[10px] text-slate-500">إيراد منسوب</div>
+          <div className="mt-0.5 text-sm font-bold text-slate-100">
+            {egp(learn.totalRevenue)}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+          <div className="text-[10px] text-slate-500">أفضل نوع متابعة</div>
+          <div className="mt-0.5 text-sm font-bold text-slate-100">
+            {learn.bestKind ? KIND_AR[learn.bestKind] || learn.bestKind : "—"}
+          </div>
+        </div>
+      </div>
+      {learn.byKind.filter((k) => k.sent >= 1).length > 0 && (
+        <div className="space-y-1.5">
+          {learn.byKind
+            .filter((k) => k.sent >= 1)
+            .slice(0, 6)
+            .map((k) => (
+              <div key={k.kind} className="flex items-center gap-3 text-[12px]">
+                <span className="w-28 shrink-0 text-slate-300">
+                  {KIND_AR[k.kind] || k.kind}
+                </span>
+                <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-violet-400/70"
+                    style={{ width: `${Math.round(k.conversionRate * 100)}%` }}
+                  />
+                </div>
+                <span className="w-32 shrink-0 text-left text-slate-400">
+                  تحويل {Math.round(k.conversionRate * 100)}% · {k.sent} إرسال
+                </span>
+              </div>
+            ))}
+        </div>
       )}
     </div>
   );

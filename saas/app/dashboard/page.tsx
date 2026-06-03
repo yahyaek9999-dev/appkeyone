@@ -16,6 +16,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 import { LiveOpsStrip } from "./live-ops-strip";
 import { GettingStarted } from "./_getting-started";
+import ActivationChecklist from "./_activation-checklist";
+import { syncUserMilestones } from "@/lib/activation/track";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +52,7 @@ export default async function DashboardOverview() {
     msgs7d, msgsPrior7d, msgs30dToday,
     recentMsgs, topCustomers, dailySeries,
     docCount, integrationCount, broadcastCount,
+    milestones,
   ] = await Promise.all([
     prisma.customer.count({ where: { userId: user.id } }),
     prisma.message.count({ where: { conversation: { customer: { userId: user.id } } } }),
@@ -77,6 +80,7 @@ export default async function DashboardOverview() {
     prisma.document.count({ where: { userId: user.id } }),
     (prisma as any).commerceIntegration.count({ where: { userId: user.id, enabled: true } }).catch(() => 0),
     prisma.broadcast.count({ where: { userId: user.id } }).catch(() => 0),
+    syncUserMilestones(user.id).catch(() => null),
   ]);
 
   const gettingStartedSteps = {
@@ -124,6 +128,8 @@ export default async function DashboardOverview() {
         </div>
         <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
       </div>
+
+      {milestones && <ActivationChecklist milestones={milestones} />}
 
       <GettingStarted steps={gettingStartedSteps} />
 

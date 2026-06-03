@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { crawlUrl } from "@/lib/knowledge-import";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
 
@@ -9,6 +10,11 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     const user = await requirePermission("settings");
+
+    // Abuse/SSRF guard: external URL fetch — rate-limit per workspace.
+    const limited = enforceRateLimit(req, { name: "knowledge-import-url", identifier: user.id, ...RATE_LIMITS.api });
+    if (limited) return limited;
+
     const { url } = await req.json();
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "url required" }, { status: 400 });

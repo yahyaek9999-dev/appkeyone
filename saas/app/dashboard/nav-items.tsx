@@ -31,6 +31,8 @@ import {
   Ticket,
   Activity,
   Download,
+  Sparkles,
+  ScrollText,
 } from "lucide-react";
 
 export const NAV_SECTIONS: {
@@ -42,7 +44,9 @@ export const NAV_SECTIONS: {
     items: [
       { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
       { href: "/dashboard/analytics", label: "الإحصائيات", icon: BarChart3, perm: "analytics" },
+      { href: "/dashboard/business", label: "تحليلات الأعمال", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
+      { href: "/dashboard/demo", label: "جرّب النظام", icon: Sparkles, perm: "analytics" },
     ],
   },
   {
@@ -67,6 +71,7 @@ export const NAV_SECTIONS: {
   {
     title: "النمو والذكاء",
     items: [
+      { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
       { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Lightbulb, perm: "analytics" },
       { href: "/dashboard/funnel", label: "مسار البيع", icon: Filter, perm: "analytics" },
@@ -91,6 +96,7 @@ export const NAV_SECTIONS: {
     title: "الحساب والنظام",
     items: [
       { href: "/dashboard/safety", label: "الأمان والحماية", icon: Shield, perm: "settings" },
+      { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
       { href: "/dashboard/usage", label: "استخدام الباقة", icon: Crown, perm: "analytics" },
       { href: "/dashboard/system-health", label: "مراقبة النظام", icon: Activity, perm: "analytics" },
       { href: "/dashboard/export", label: "تصدير البيانات", icon: Download, perm: "customers" },

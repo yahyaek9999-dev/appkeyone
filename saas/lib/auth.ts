@@ -202,3 +202,15 @@ export async function requirePagePermission(permission: Permission): Promise<Aut
   if (!can(ctx.role, permission)) redirect("/dashboard");
   return ctx;
 }
+
+/**
+ * Map an error thrown by requireUser()/requirePermission() to an HTTP status.
+ * UNAUTHORIZED → 401, FORBIDDEN → 403, anything else → 500. Lets route catch
+ * blocks return the correct code without leaking a 403 as a 500.
+ */
+export function authErrorStatus(err: unknown): number {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg === "UNAUTHORIZED") return 401;
+  if (msg === "FORBIDDEN") return 403;
+  return 500;
+}

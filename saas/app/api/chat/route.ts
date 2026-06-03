@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { evaluateSubscription, getSiteConfig } from "@/lib/admin";
 import { chat as llmChat, buildMessages, detectOrderIntent } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
@@ -24,7 +24,7 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   try {
-    const user = await requireUser();
+    const user = await requirePermission("inbox");
 
     // ---- Suspension gate (membership foundation) ----
     if ((user as any).suspended) {
@@ -295,6 +295,8 @@ export async function POST(req: Request) {
     console.error("[chat] error:", e);
     if (e.message === "UNAUTHORIZED")
       return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    if (e.message === "FORBIDDEN")
+      return NextResponse.json({ error: "ليس لديك صلاحية" }, { status: 403 });
     return NextResponse.json(
       { error: e.message || "خطأ داخلي" },
       { status: 500 },

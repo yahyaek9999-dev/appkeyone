@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { hashPassword, createSession } from "@/lib/auth";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { recordMilestone } from "@/lib/activation/track";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,9 @@ export async function POST(req: Request) {
       bot: { create: {} },
     } as any,
   });
+
+  // Activation funnel: first milestone. Fire-and-forget — never blocks signup.
+  recordMilestone(user.id, "signed_up", { approved }).catch(() => {});
 
   if (approved) {
     await createSession(user.id);

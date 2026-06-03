@@ -8,6 +8,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { readNegotiation } from "@/lib/sales-engine";
+import { decideNextBestAction } from "@/lib/intelligence/next-best-action";
+import {
+  classifyValueTier,
+  valueTierLabel,
+} from "@/lib/intelligence/value-tier";
+import {
+  computeChurnProbability,
+  churnBand,
+  churnBandLabel,
+  computeSentimentTrend,
+  sentimentTrendLabel,
+} from "@/lib/intelligence/churn";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +51,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   // customer.orderCount / totalOrderValue counters are not maintained on the
   // write path, so trusting them would show "0 orders" for real buyers. One
   // bounded aggregate + the most-recent order keeps this accurate and fast.
-  const [lastOrder, orderAgg, msgCounts] = await Promise.all([
+  const [lastOrder, orderAgg, msgCounts, memory, lastMsg] = await Promise.all([
     prisma.order.findFirst({
       where: { userId: uid, customerId: c.id },
       orderBy: { createdAt: "desc" },
@@ -55,6 +68,18 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     prisma.message
       .groupBy({ by: ["role"], where: { conversation: { customerId: c.id } }, _count: { _all: true } })
       .catch(() => [] as { role: string; _count: { _all: number } }[]),
+    // Memory facts (objections + negotiation + sentiment history) for the
+    // additive intelligence advice block. Read-only.
+    (prisma as any).customerMemory
+      .findUnique({ where: { customerId: c.id }, select: { factsJson: true, sentimentHistory: true } })
+      .catch(() => null),
+    prisma.message
+      .findFirst({
+        where: { conversation: { customerId: c.id } },
+        orderBy: { createdAt: "desc" },
+        select: { role: true, createdAt: true },
+      })
+      .catch(() => null),
   ]);
 
   const prefs = parseJson<Record<string, any>>(c.preferences, {});
@@ -76,6 +101,73 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     inboundCount = c.inboundCount || 0;
     outboundCount = c.outboundCount || 0;
   }
+
+  // ---- Additive AI intelligence advice (read-only derivations) -------------
+  // Fuses the scores the pipeline already wrote into one merchant-facing
+  // recommendation + value tier + churn outlook + sentiment trend. Never
+  // recomputes/overwrites any stored score. See lib/intelligence/*.
+  const now = new Date();
+  const DAY = 24 * 60 * 60 * 1000;
+  const lastInboundTs = c.lastInboundAt || c.lastSeenAt;
+  const daysSinceLastInbound = lastInboundTs
+    ? Math.floor((now.getTime() - new Date(lastInboundTs).getTime()) / DAY)
+    : 999;
+  const lastOrderTs = lastOrder?.createdAt || null;
+  const daysSinceLastOrder = lastOrderTs
+    ? Math.floor((now.getTime() - new Date(lastOrderTs).getTime()) / DAY)
+    : null;
+  const awaitingReply = !!lastMsg && (lastMsg as any).role === "user";
+
+  let memObjections: any = {};
+  let memDiscountAsks = 0;
+  try {
+    const facts = JSON.parse(memory?.factsJson || "{}");
+    const objArr: string[] = Array.isArray(facts.objections) ? facts.objections : [];
+    memObjections = {
+      price: objArr.includes("price"),
+      trust: objArr.includes("trust"),
+      shipping: objArr.includes("shipping"),
+      quality: objArr.includes("quality"),
+    };
+    memDiscountAsks = readNegotiation(facts).discountAsks || 0;
+  } catch {}
+
+  const valueTier = classifyValueTier({
+    revenue: totalSpent,
+    orderCount,
+    daysSinceLastOrder,
+    leadScore: c.leadScore || 0,
+  });
+
+  const churnProbability = computeChurnProbability({
+    churnRiskScore: c.churnRiskScore || 0,
+    retentionScore: c.retentionScore ?? 50,
+    loyaltyScore: c.loyaltyScore || 0,
+    daysSinceLastInbound,
+    orderCount,
+    hesitationScore: c.hesitationScore || 0,
+  });
+  const cBand = churnBand(churnProbability);
+  const sentimentTrend = computeSentimentTrend(memory?.sentimentHistory);
+
+  const nba = decideNextBestAction({
+    customerName: c.name,
+    leadScore: c.leadScore || 0,
+    conversionScore: c.conversionScore || 0,
+    hesitationScore: c.hesitationScore || 0,
+    churnRiskScore: churnProbability,
+    loyaltyScore: c.loyaltyScore || 0,
+    purchaseProb: c.purchaseProb || 0,
+    frustrationScore: c.frustrationScore || 0,
+    lastIntent: c.lastIntent,
+    lastSentiment: c.lastSentiment,
+    orderCount,
+    daysSinceLastInbound,
+    awaitingReply,
+    valueTier,
+    objections: memObjections,
+    discountAsks: memDiscountAsks,
+  });
 
   return NextResponse.json({
     customer: {
@@ -125,6 +217,25 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       // Negotiation tendency: higher hesitation → more likely to negotiate.
       negotiationTendency: c.hesitationScore || 0,
       frustrationScore: c.frustrationScore || 0,
+    },
+    // ---- Additive AI advice block (read-only derivations) ----
+    advice: {
+      valueTier,
+      valueTierLabel: valueTierLabel(valueTier),
+      churnProbability,
+      churnBand: cBand,
+      churnBandLabel: churnBandLabel(cBand),
+      sentimentTrend,
+      sentimentTrendLabel: sentimentTrendLabel(sentimentTrend),
+      daysSinceLastInbound,
+      nextBestAction: {
+        action: nba.action,
+        title: nba.title,
+        reason: nba.reason,
+        confidence: nba.confidence,
+        suggestedMessage: nba.suggestedMessage,
+        factors: nba.factors,
+      },
     },
   });
 }

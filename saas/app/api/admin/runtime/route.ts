@@ -9,16 +9,20 @@
 // Auth: requires admin role. Not public.
 // ---------------------------------------------------------------------------
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin";
+import { authErrorStatus } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { wa } from "@/lib/wa";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user || (user as any).role !== "admin") {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // requireAdmin enforces an OWNER session with User.role === "admin"; a team
+  // member session (even of an admin owner) is correctly rejected.
+  try {
+    await requireAdmin();
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: authErrorStatus(e) });
   }
 
   const start = Date.now();

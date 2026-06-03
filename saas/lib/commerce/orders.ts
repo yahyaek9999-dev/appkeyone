@@ -5,6 +5,7 @@ import {
 } from "./normalize";
 import { markCommerceEventFailed, markCommerceEventProcessed } from "./events";
 import { markFollowUpsConvertedForCustomer } from "@/lib/follow-ups";
+import { evaluateAutomations } from "@/lib/automations/engine";
 
 function safeJson(value: unknown): string {
   try {
@@ -164,6 +165,21 @@ export async function syncCommerceOrderFromEvent(args: {
       .catch(() => {});
 
     await markFollowUpsConvertedForCustomer(customer.id);
+
+    // Agent 3 (additive, background-only): let merchant automations react to an
+    // order status change. Only fires when the status actually changed on an
+    // existing order. Routes through safe action paths, throttled + capped.
+    if (existing && existing.status !== normalized.status) {
+      await evaluateAutomations({
+        userId: args.userId,
+        event: {
+          type: "order_status_changed",
+          customerId: customer.id,
+          status: normalized.status,
+        },
+      }).catch(() => {});
+    }
+
     await markCommerceEventProcessed(args.eventId);
     return {
       skipped: false,

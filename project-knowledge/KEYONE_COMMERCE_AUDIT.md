@@ -146,3 +146,48 @@
 2. **Test orders** — add a way to delete or mark test orders, or prevent test orders from appearing in the orders list
 3. **Platform OAuth** — future work for Shopify/WooCommerce native integration (pull model)
 4. **Product sync** — future work once OAuth is implemented
+
+---
+
+## Agent 3 Execution — Shipped Automations (2026-06-03)
+
+### Trigger / Action Catalog
+
+| Trigger | Source Path | Notes |
+|---------|------------|-------|
+| `score_crossed` | `classifyAndScore` background tail | Evaluates after every inbound message is scored |
+| `stage_changed` | `syncCommerceOrderFromEvent` | Fires when a commerce order status changes |
+| `order_status_changed` | `syncCommerceOrderFromEvent` | Same path; status-specific rules |
+| `cart_abandoned` | `runAbandonedCartSweep` | Additive call after built-in recovery |
+| `idle_hours` | `runIdleAutomations` cron (every 30 min) | Time-based; separate from event path |
+
+| Action | Safe Path | Anti-Spam |
+|--------|----------|-----------|
+| `queue_follow_up` | `queueSmartFollowUp` → FollowUpTask → `wa.send` | opt-out, per-customer cap, pacing |
+| `tag_customer` | `Customer.tags` update only | no send |
+| `notify_admin` | `notifyAdmin()` → `wa.send("system")` | throttled per-rule |
+| `add_to_segment_broadcast` | `Customer.tags` marker (no direct broadcast) | no send |
+
+### Anti-Ban Safeguards Proven
+- Per-rule throttle: `AutomationRule.throttleSeconds` (default 86400 s)
+- Global customer cap: 3 automation actions / 24h / customer across all rules
+- All rules `enabled=false` by default; merchant must explicitly enable
+- Opt-out (`Customer.optedOutAt`) respected before any action
+- Engine runs exclusively in background tails and crons — never on the blocking reply path
+
+### New Additive Tables
+- `ProductAffinity` — daily co-purchase matrix; feeds upsell detector with specific complement names
+- `AutomationRule` — merchant-authored if-this-then-that rules
+- `AutomationActionLog` — append-only fire/throttle/cap audit ledger
+
+### New Additive Columns
+- `Bot.abandonedCartEnabled / abandonedCartDelayHours / abandonedCartWindowHours` (all default-safe)
+- `Product.sku / externalSource / externalId / lastSyncedAt` (nullable; existing rows unaffected)
+
+### Verification Output
+```
+verify:commerce  PASS (3/3)  29ms
+verify:orders    PASS (4/4)  20ms
+verify:system    PASS (4/4)  26ms
+tsc --noEmit     0 new errors
+```

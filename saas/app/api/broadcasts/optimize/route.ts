@@ -1,6 +1,7 @@
 // Advanced Broadcast AI — campaign optimization suggestions.
 import { NextResponse } from "next/server";
 import { getUserIdForPermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { optimizeCampaign } from "@/lib/broadcasts/ai-optimize";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,10 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+
+  // AI cost guard — rate-limit optimization (LLM-backed) per workspace.
+  const limited = enforceRateLimit(req, { name: "broadcast-optimize", identifier: uid, ...RATE_LIMITS.chat });
+  if (limited) return limited;
 
   let body: any = {};
   try {

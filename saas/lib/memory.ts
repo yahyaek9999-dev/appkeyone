@@ -304,6 +304,25 @@ async function runExtractor(args: {
       },
     })
     .catch(() => {});
+
+  // ---- Memory Graph (Agent 1 — Task 3) ----
+  // Sibling extractor: derive append-only objection↔outcome / customer↔product
+  // edges from the facts we JUST wrote. Runs in the SAME background cycle, does
+  // not touch the rolling-summary write above, and is fully fail-closed — a
+  // failure here can never affect memory or the reply path. Dynamic import keeps
+  // the memory engine's dependency graph unchanged when the flag is off.
+  const merchantUserId = customer?.userId;
+  if (merchantUserId) {
+    import("@/lib/intelligence/memory-graph")
+      .then((m) =>
+        m.extractMemoryEdges({
+          userId: merchantUserId,
+          customerId,
+          facts: mergedFacts,
+        }),
+      )
+      .catch(() => {});
+  }
 }
 
 // ---------------------------------------------------------------------------

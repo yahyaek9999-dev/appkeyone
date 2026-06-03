@@ -1,0 +1,37 @@
+{
+  // ---------------------------------------------------------------------------
+  // Standalone TypeScript build for the BullMQ worker process (Agent 4).
+  //
+  // The worker (`workers/index.ts` → broadcast.worker.ts → lib/queue.ts …) runs
+  // OUTSIDE Next.js as a plain Node process. The main tsconfig.json is Next-only
+  // (noEmit, jsx:preserve, bundler resolution) and cannot emit runnable JS, so
+  // the REDIS_WORKERS_PLAN.md Phase B step ("npm run build:workers") needs this
+  // dedicated config. It emits CommonJS to dist/ so `node dist/workers/index.js`
+  // runs directly under NSSM.
+  //
+  // The worker dependency tree uses ONLY relative imports + npm packages (no
+  // "@/..." path alias), so a plain tsc emit produces correct require() paths —
+  // no path-rewrite step is needed. This file is independent of the Next build
+  // and does not change how the app is built or how messages are sent; it only
+  // makes the dormant worker compilable for the documented (still-gated)
+  // activation. DORMANT until ENABLE_BULLMQ=1.
+  // ---------------------------------------------------------------------------
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["workers/index.ts", "workers/broadcast.worker.ts", "lib/queue.ts", "lib/redis.ts", "lib/broadcasts/extras.ts"],
+  "exclude": ["node_modules", ".next", "dist", "workers/baileys.worker.js"]
+}

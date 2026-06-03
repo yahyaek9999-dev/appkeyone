@@ -41,6 +41,14 @@ import {
   PackagePlus,
   Bot as BotIcon,
   User as UserIcon,
+  Sparkles,
+  Copy,
+  Check,
+  Crown,
+  TrendingDown,
+  Users,
+  Wallet,
+  Lightbulb,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCustomerPhone } from "@/lib/phone";
@@ -90,6 +98,44 @@ type Profile = {
     negotiationTendency: number;
     frustrationScore: number;
   };
+  advice?: {
+    valueTier: "platinum" | "gold" | "silver" | "bronze" | "lead";
+    valueTierLabel: string;
+    churnProbability: number;
+    churnBand: "safe" | "watch" | "at_risk" | "critical";
+    churnBandLabel: string;
+    sentimentTrend: "improving" | "declining" | "stable" | "unknown";
+    sentimentTrendLabel: string;
+    daysSinceLastInbound: number;
+    nextBestAction: {
+      action: string;
+      title: string;
+      reason: string;
+      confidence: number;
+      suggestedMessage: string;
+      factors?: { signal: string; value: string; weight: "high" | "medium" | "low"; labelAr: string }[];
+    };
+  };
+};
+
+type TwinNeighbor = {
+  customerId: string;
+  customerName: string | null;
+  similarity: number;
+  closed: boolean;
+  orderValue: number;
+  precedingAction: string;
+};
+type Twin = {
+  neighborsConsidered: number;
+  neighborsMatched: number;
+  closedRate: number;
+  avgClosedOrderValue: number;
+  predictedAction: string | null;
+  predictedActionLabel: string | null;
+  predictedActionCloseRate: number;
+  headline: string | null;
+  neighbors: TwinNeighbor[];
 };
 
 type TimelineEvent = {
@@ -151,6 +197,7 @@ export default function Customer360({
 }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[] | null>(null);
+  const [twin, setTwin] = useState<Twin | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"overview" | "activity">("overview");
   const [busy, setBusy] = useState<string | null>(null);
@@ -195,17 +242,31 @@ export default function Customer360({
     } catch {}
   }, [customerId]);
 
+  // Customer Twin (lookalike outcomes) — additive, fail-closed. Streams in
+  // after the profile so it never blocks the header/NBA render.
+  const loadTwin = useCallback(async () => {
+    if (!customerId) return;
+    try {
+      const r = await fetch(`/api/customers/${customerId}/twin`, { cache: "no-store" });
+      if (!r.ok) return;
+      const j = await r.json();
+      setTwin(j?.twin || null);
+    } catch {}
+  }, [customerId]);
+
   // Fetch on open / when the customer changes. Timeline streams in after.
   useEffect(() => {
     if (!open || !customerId) return;
     setProfile(null);
     setTimeline(null);
+    setTwin(null);
     setTab("overview");
     setShowOrderForm(false);
     setLoading(true);
     loadProfile().finally(() => setLoading(false));
     loadTimeline();
-  }, [open, customerId, loadProfile, loadTimeline]);
+    loadTwin();
+  }, [open, customerId, loadProfile, loadTimeline, loadTwin]);
 
   // Close on Escape.
   useEffect(() => {
@@ -398,6 +459,14 @@ export default function Customer360({
 
             {tab === "overview" ? (
               <div className="space-y-5 p-4">
+                {/* ── Next Best Action (additive AI advice) ── */}
+                {profile!.advice && <NextBestActionCard advice={profile!.advice} />}
+
+                {/* ── Customer Twin (similar customers) ── */}
+                {twin && twin.neighborsMatched >= 3 && (
+                  <CustomerTwinCard twin={twin} />
+                )}
+
                 {/* ── AI intelligence ── */}
                 <Section title="ذكاء العميل" icon={<Target className="h-3.5 w-3.5" />}>
                   <LeadTempCard intel={intel!} />
@@ -846,6 +915,183 @@ const PILL_TONE: Record<string, string> = {
   danger: "border-rose-500/30 bg-rose-500/10 text-rose-300",
   neutral: "border-white/10 bg-white/[0.03] text-slate-300",
 };
+
+const VALUE_TIER_META: Record<string, { label: string; cls: string }> = {
+  platinum: { label: "بلاتيني", cls: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" },
+  gold: { label: "ذهبي", cls: "border-amber-400/40 bg-amber-400/10 text-amber-200" },
+  silver: { label: "فضي", cls: "border-slate-300/30 bg-slate-300/10 text-slate-200" },
+  bronze: { label: "برونزي", cls: "border-orange-700/40 bg-orange-700/10 text-orange-300" },
+  lead: { label: "محتمل", cls: "border-white/10 bg-white/[0.03] text-slate-400" },
+};
+
+function CustomerTwinCard({ twin }: { twin: Twin }) {
+  return (
+    <div className="rounded-2xl border border-fuchsia-500/30 bg-gradient-to-b from-fuchsia-500/[0.06] to-transparent p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-fuchsia-300">
+          <Users className="h-3.5 w-3.5" /> عملاء مشابهون
+        </span>
+        <span className="text-[11px] text-fuchsia-200/70">
+          {twin.neighborsMatched} من أصل {twin.neighborsConsidered}
+        </span>
+      </div>
+
+      {twin.headline && (
+        <p className="text-[13px] leading-relaxed text-slate-200 mb-3">
+          {twin.headline}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2 mb-2">
+        <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-200">
+          <TrendingUp className="h-3 w-3" />{" "}
+          {Math.round(twin.closedRate * 100)}% أتموا الشراء
+        </span>
+        {twin.avgClosedOrderValue > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-lg border border-brand-500/30 bg-brand-500/10 px-2 py-1 text-[11px] font-semibold text-brand-200">
+            <Wallet className="h-3 w-3" />{" "}
+            {(twin.avgClosedOrderValue || 0).toLocaleString("en-US")} ج متوسط الطلب
+          </span>
+        )}
+      </div>
+
+      {twin.predictedActionLabel && twin.predictedActionCloseRate > 0 && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
+          <div className="text-[11px] text-slate-400">
+            أكثر إجراء سبق الإغلاق:{" "}
+            <span className="font-semibold text-slate-100">
+              {twin.predictedActionLabel}
+            </span>{" "}
+            بنسبة نجاح{" "}
+            {Math.round(twin.predictedActionCloseRate * 100)}%
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const NBA_ACTION_META: Record<string, { cls: string }> = {
+  close_now: { cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" },
+  answer_fast: { cls: "border-sky-500/40 bg-sky-500/10 text-sky-200" },
+  escalate: { cls: "border-rose-500/40 bg-rose-500/10 text-rose-200" },
+  win_back: { cls: "border-violet-500/40 bg-violet-500/10 text-violet-200" },
+  upsell: { cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" },
+  build_trust: { cls: "border-amber-500/40 bg-amber-500/10 text-amber-200" },
+  offer_value: { cls: "border-amber-500/40 bg-amber-500/10 text-amber-200" },
+  reduce_friction: { cls: "border-sky-500/30 bg-sky-500/10 text-sky-200" },
+  nudge_followup: { cls: "border-slate-400/30 bg-slate-400/10 text-slate-200" },
+  nurture: { cls: "border-white/10 bg-white/[0.03] text-slate-300" },
+  hold: { cls: "border-white/10 bg-white/[0.03] text-slate-400" },
+};
+
+const FACTOR_WEIGHT_CLS = {
+  high: "border-amber-500/40 bg-amber-500/10 text-amber-200",
+  medium: "border-slate-400/30 bg-slate-400/10 text-slate-200",
+  low: "border-white/10 bg-white/[0.03] text-slate-400",
+};
+
+function NextBestActionCard({ advice }: { advice: NonNullable<Profile["advice"]> }) {
+  const [copied, setCopied] = useState(false);
+  const [showFactors, setShowFactors] = useState(false);
+  const nba = advice.nextBestAction;
+  const actionCls = NBA_ACTION_META[nba.action]?.cls || NBA_ACTION_META.nurture.cls;
+  const tier = VALUE_TIER_META[advice.valueTier] || VALUE_TIER_META.lead;
+  const churnTone =
+    advice.churnBand === "critical"
+      ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
+      : advice.churnBand === "at_risk"
+        ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
+        : advice.churnBand === "watch"
+          ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+
+  async function copyMsg() {
+    if (!nba.suggestedMessage) return;
+    try {
+      await navigator.clipboard.writeText(nba.suggestedMessage);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {}
+  }
+
+  const factors = nba.factors || [];
+
+  return (
+    <div className="rounded-2xl border border-brand-500/30 bg-gradient-to-b from-brand-500/[0.08] to-transparent p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-300">
+          <Sparkles className="h-3.5 w-3.5" /> الخطوة التالية الأفضل
+        </span>
+        <span className="text-[11px] font-bold text-brand-200">ثقة {nba.confidence}%</span>
+      </div>
+
+      <div className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold ${actionCls}`}>
+        {nba.title}
+      </div>
+      <p className="mt-2 text-[13px] leading-relaxed text-slate-300">{nba.reason}</p>
+
+      {/* Reasoning expander — "ليه الاقتراح ده؟" */}
+      {factors.length > 0 && (
+        <div className="mt-2">
+          <button
+            onClick={() => setShowFactors((v) => !v)}
+            className="inline-flex items-center gap-1 text-[11px] text-brand-300/70 hover:text-brand-300 transition"
+          >
+            <Lightbulb className="h-3 w-3" />
+            {showFactors ? "إخفاء التفاصيل" : "ليه الاقتراح ده؟"}
+          </button>
+          {showFactors && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {factors.map((f, i) => (
+                <span
+                  key={`${f.signal}-${i}`}
+                  className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-semibold ${FACTOR_WEIGHT_CLS[f.weight]}`}
+                >
+                  {f.labelAr}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {nba.suggestedMessage && (
+        <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <div className="text-[13px] leading-relaxed text-slate-200">{nba.suggestedMessage}</div>
+          <button
+            onClick={copyMsg}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/[0.08]"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? "تم النسخ" : "نسخ الرسالة"}
+          </button>
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold ${tier.cls}`}>
+          <Crown className="h-3 w-3" /> {advice.valueTierLabel}
+        </span>
+        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold ${churnTone}`}>
+          <AlertTriangle className="h-3 w-3" /> {advice.churnBandLabel} ({advice.churnProbability}%)
+        </span>
+        {advice.sentimentTrend !== "unknown" && (
+          <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] font-semibold text-slate-300">
+            {advice.sentimentTrend === "declining" ? (
+              <TrendingDown className="h-3 w-3 text-rose-400" />
+            ) : advice.sentimentTrend === "improving" ? (
+              <TrendingUp className="h-3 w-3 text-emerald-400" />
+            ) : (
+              <ArrowDownUp className="h-3 w-3" />
+            )}
+            {advice.sentimentTrendLabel}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function FactPill({ label, value, tone }: { label: string; value: string; tone: keyof typeof PILL_TONE }) {
   return (

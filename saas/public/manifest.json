@@ -1,18 +1,42 @@
 {
-  "name": "KEYONE — WhatsApp Bot Platform",
+  "id": "/",
+  "name": "KEYONE — منصة بوت واتساب احترافي",
   "short_name": "KEYONE",
-  "description": "منصة بوت واتساب احترافي للأعمال",
-  "start_url": "/",
+  "description": "منصة بوت واتساب احترافي للأعمال — ردود آلية، طلبات، وتقارير",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#0b1220",
   "theme_color": "#0b1220",
   "lang": "ar",
   "dir": "rtl",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/robot.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الواردات",
+      "url": "/dashboard/inbox",
+      "description": "فتح صندوق المحادثات"
+    },
+    {
+      "name": "الطلبات",
+      "url": "/dashboard/orders",
+      "description": "عرض الطلبات الجديدة"
     }
   ]
 }

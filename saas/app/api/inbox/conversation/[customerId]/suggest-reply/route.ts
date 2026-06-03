@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { chat as llmChat } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 
@@ -12,12 +13,16 @@ export const dynamic = "force-dynamic";
  * different angles (e.g. polite, sales-pushy, factual). Costs ~1 LLM call.
  */
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: { customerId: string } }
 ) {
   let user;
   try { user = await requirePermission("inbox"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
+
+  // AI cost guard — ~1 LLM call per request; rate-limit per workspace.
+  const limited = enforceRateLimit(req, { name: "inbox-suggest-reply", identifier: user.id, ...RATE_LIMITS.chat });
+  if (limited) return limited;
 
   const customerId = params.customerId;
   const customer = await prisma.customer.findFirst({

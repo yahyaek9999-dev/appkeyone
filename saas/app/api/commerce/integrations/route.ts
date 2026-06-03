@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, getAuthContext } from "@/lib/auth";
+import { auditCtx } from "@/lib/audit/log";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { COMMERCE_PLATFORMS } from "@/lib/commerce/types";
@@ -48,6 +49,15 @@ export async function POST(req: Request) {
     userId: user.id,
     name: parsed.data.name,
     platform: parsed.data.platform,
+  });
+
+  // Audit the connection — NEVER the returned credentials (raw key/secret).
+  void auditCtx(await getAuthContext(), "integration.connected", {
+    userId: user.id,
+    targetType: "integration",
+    targetId: result.integration.id,
+    metadata: { name: parsed.data.name, platform: parsed.data.platform },
+    req,
   });
 
   return NextResponse.json({

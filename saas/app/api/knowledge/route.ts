@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requirePermission, authErrorStatus } from "@/lib/auth";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
 
 const Body = z.object({
@@ -12,7 +12,7 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   try {
-    const user = await requireUser();
+    const user = await requirePermission("settings");
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
     const { title, content, source } = parsed.data;
@@ -22,6 +22,6 @@ export async function POST(req: Request) {
     invalidateKnowledgeCache(user.id);
     return NextResponse.json({ ok: true, doc });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: e.message === "UNAUTHORIZED" ? 401 : 500 });
+    return NextResponse.json({ error: e.message }, { status: authErrorStatus(e) });
   }
 }

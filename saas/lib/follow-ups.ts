@@ -4,6 +4,8 @@ import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { wa } from "@/lib/wa";
 import { recordUsage, usageIdempotencyKey } from "@/lib/usage-ledger";
 import { isOptOut } from "@/lib/sentiment";
+import { getLearnedKindWeightsCached } from "@/lib/intelligence/self-learning";
+import { intelFlag } from "@/lib/intelligence/flags";
 
 function safeJson(value: unknown): string {
   try {
@@ -75,7 +77,7 @@ export async function queueSmartFollowUp(args: {
     kind,
     args.conversationId || "",
   ]);
-  const priority =
+  let priority =
     kind === "pending_order"
       ? 85
       : kind === "price_question"
@@ -85,6 +87,22 @@ export async function queueSmartFollowUp(args: {
           : kind === "product_view"
             ? 55
             : 40;
+
+  // Self-learning loop (read-only at queue time): bias the queued priority toward
+  // the follow-up kinds that historically reply/convert better for THIS merchant.
+  // This only reorders the worklist — it never changes whether or how a follow-up
+  // is sent (those gates live in processFollowUpTask). Fail-open: a missing weight
+  // (default) leaves priority untouched. See lib/intelligence/self-learning.ts.
+  if (intelFlag("INTEL_LEARNED_FOLLOWUP_WEIGHTS")) {
+    try {
+      const w = (await getLearnedKindWeightsCached(args.userId))[kind];
+      if (typeof w === "number" && isFinite(w) && w > 0) {
+        priority = Math.round(Math.max(1, Math.min(100, priority * w)));
+      }
+    } catch {
+      /* never block queueing on the learning read */
+    }
+  }
 
   try {
     const task = await (prisma as any).followUpTask.upsert({

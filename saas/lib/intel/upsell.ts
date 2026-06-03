@@ -16,6 +16,7 @@
 
 import { prisma } from "@/lib/db";
 import { IntelItem } from "./types";
+import { topComplementForCustomer } from "@/lib/commerce/affinity";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -103,6 +104,10 @@ export async function detectUpsell(userId: string, now: Date = new Date()): Prom
 
     const aboveAvg = avg > 0 && (o.total || 0) >= avg;
 
+    // Cross-sell engine: name a real, data-driven complement from the affinity
+    // matrix when we have one. Falls back to the generic soft message otherwise.
+    const complement = await topComplementForCustomer({ userId, customerId: cust.id }).catch(() => null);
+
     out.push({
       id: `upsell-${o.id}`,
       kind: "upsell",
@@ -110,14 +115,22 @@ export async function detectUpsell(userId: string, now: Date = new Date()): Prom
       customerName: cust.name,
       customerPhone: cust.phone,
       urgency: u,
-      title: aboveAvg ? "عميل اشترى مؤخراً بقيمة عالية" : "عميل اشترى مؤخراً",
-      reason: `طلب من ${days} يوم بقيمة ${(o.total || 0).toLocaleString("en-US")} ج${
-        aboveAvg ? " — أعلى من متوسط طلباتك" : ""
-      }.`,
+      title: complement
+        ? "اقتراح مكمّل مبني على المشتريات"
+        : aboveAvg
+          ? "عميل اشترى مؤخراً بقيمة عالية"
+          : "عميل اشترى مؤخراً",
+      reason: complement
+        ? `طلب من ${days} يوم — العملاء اللي اشتروا نفس المنتج عادةً بياخدوا "${complement.label}" كمان (ثقة ${complement.confidence}%).`
+        : `طلب من ${days} يوم بقيمة ${(o.total || 0).toLocaleString("en-US")} ج${
+            aboveAvg ? " — أعلى من متوسط طلباتك" : ""
+          }.`,
       suggestedMessage: buildMessage({
         name: cust.name,
         aboveAvg,
+        complement: complement?.label || null,
       }),
+      insightLabel: complement ? "Cross-sell" : undefined,
       orderId: o.id,
       orderTotal: o.total || 0,
       leadScore: cust.leadScore || 0,
@@ -127,8 +140,16 @@ export async function detectUpsell(userId: string, now: Date = new Date()): Prom
   return out.sort((a, b) => b.urgency - a.urgency).slice(0, 50);
 }
 
-function buildMessage(arg: { name: string | null; aboveAvg: boolean }): string {
+function buildMessage(arg: { name: string | null; aboveAvg: boolean; complement?: string | null }): string {
   const greet = arg.name ? `أهلاً ${arg.name},` : "أهلاً،";
+  // Specific cross-sell: name the real complementary product.
+  if (arg.complement) {
+    return (
+      `${greet} شكراً ليك على طلبك الأخير 🙏. ` +
+      `كتير من عملائنا اللي اشتروا نفس المنتج أخدوا معاه "${arg.complement}" وكان مكمّل ممتاز. ` +
+      `تحب أبعتلك تفاصيله؟`
+    );
+  }
   if (arg.aboveAvg) {
     return (
       `${greet} شكراً ليك على طلبك الأخير 🙏. ` +

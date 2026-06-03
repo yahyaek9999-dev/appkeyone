@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { chat as llmChat } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 
@@ -27,6 +28,10 @@ const TYPE_GUIDE: Record<string, string> = {
 export async function POST(req: Request) {
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+
+  // AI cost guard: one bounded LLM call per request — rate-limit per workspace.
+  const limited = enforceRateLimit(req, { name: "broadcast-generate", identifier: uid, ...RATE_LIMITS.chat });
+  if (limited) return limited;
 
   let body: any = {};
   try {

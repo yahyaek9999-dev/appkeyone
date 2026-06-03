@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, getAuthContext } from "@/lib/auth";
+import { auditCtx } from "@/lib/audit/log";
 
 const Body = z.object({
   name: z.string().min(1).max(100),
@@ -39,9 +40,15 @@ export async function POST(req: Request) {
       update: parsed.data as any,
       create: { userId: user.id, ...parsed.data } as any,
     });
+    void auditCtx(await getAuthContext(), "settings.bot_updated", {
+      userId: user.id,
+      targetType: "bot",
+      metadata: { fields: Object.keys(parsed.data) },
+    });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     if (e.message === "UNAUTHORIZED") return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    if (e.message === "FORBIDDEN") return NextResponse.json({ error: "ليس لديك صلاحية" }, { status: 403 });
     return NextResponse.json({ error: "خطأ" }, { status: 500 });
   }
 }

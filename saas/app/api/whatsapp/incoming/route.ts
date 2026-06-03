@@ -70,6 +70,8 @@ import {
   updateConversionScores,
 } from "@/lib/conversion-engine";
 import { evaluateInboundProtection } from "@/lib/protection";
+import { evaluateAutomations } from "@/lib/automations/engine";
+import { recordCartInterest } from "@/lib/commerce/abandoned-cart";
 
 const SECRET =
   process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
@@ -1377,6 +1379,30 @@ async function classifyAndScore(args: {
       leadScore: score,
       followUpSent: !!(cust as any).followUpSent,
       followUpCount: (cust as any).followUpCount || 0,
+    }).catch(() => {});
+
+    // Agent 3 (additive, background-only): capture a cart-interest signal on
+    // strong buy intent so the abandoned-cart engine has data to recover from.
+    // This only writes the Customer.cart* columns (no send); the recovery sweep
+    // itself is OFF by default and flag-gated, so this is harmless metadata.
+    if (c.intent === "buy" && !args.flagged) {
+      recordCartInterest({
+        customerId: args.customerId,
+        items: [args.text.slice(0, 80)],
+      }).catch(() => {});
+    }
+
+    // Agent 3 (additive, background-only): evaluate merchant automation rules.
+    // Runs AFTER scores are persisted so score_crossed sees fresh values. Never
+    // blocks the reply path; every action routes through an existing safe path
+    // and is throttled + capped. No-op when the merchant has no enabled rules.
+    evaluateAutomations({
+      userId: args.userId,
+      event: {
+        type: "message_classified",
+        customerId: args.customerId,
+        conversationId: args.conversationId,
+      },
     }).catch(() => {});
   }
 

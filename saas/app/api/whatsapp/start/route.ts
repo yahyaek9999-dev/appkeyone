@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requirePermission, authErrorStatus, getAuthContext } from "@/lib/auth";
 import { wa } from "@/lib/wa";
 import { prisma } from "@/lib/db";
+import { auditCtx } from "@/lib/audit/log";
 
 export async function POST() {
   try {
-    const user = await requireUser();
+    const user = await requirePermission("settings");
     const r = await wa.start(user.id);
     if (!r.ok) {
       return NextResponse.json(
@@ -17,8 +18,12 @@ export async function POST() {
       where: { userId: user.id },
       data: { whatsappStatus: "connecting" },
     });
+    void auditCtx(await getAuthContext(), "whatsapp.connected", {
+      userId: user.id,
+      targetType: "bot",
+    });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: e.message === "UNAUTHORIZED" ? 401 : 500 });
+    return NextResponse.json({ error: e.message }, { status: authErrorStatus(e) });
   }
 }

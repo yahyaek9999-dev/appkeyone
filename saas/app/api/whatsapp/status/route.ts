@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { wa } from "@/lib/wa";
 import { prisma } from "@/lib/db";
+import { recordMilestone } from "@/lib/activation/track";
 
 export async function GET() {
   try {
@@ -18,6 +19,9 @@ export async function GET() {
         where: { userId: user.id },
         data: { whatsappStatus: "connected", whatsappPhone: data.phone || undefined },
       });
+      // Activation funnel: WhatsApp linked. This is a status SYNC route (read of
+      // the service's session state), not the send pipeline — safe to emit here.
+      recordMilestone(user.id, "whatsapp_connected").catch(() => {});
     } else if (data.status === "disconnected" && user.bot?.whatsappStatus !== "disconnected") {
       await prisma.bot.update({
         where: { userId: user.id },

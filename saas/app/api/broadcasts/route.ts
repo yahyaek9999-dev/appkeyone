@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserIdForPermission } from "@/lib/auth";
+import { getUserIdForPermission, getAuthContext } from "@/lib/auth";
+import { auditCtx } from "@/lib/audit/log";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { checkLimit, incrementUsage } from "@/lib/membership/limits";
 import { buildAudienceWhere } from "@/lib/broadcasts/audience";
 import { resolveSegmentCustomers } from "@/lib/analytics/segments";
@@ -22,6 +24,11 @@ export async function GET() {
 export async function POST(req: Request) {
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+
+  // Abuse guard: cap how often a workspace can fire broadcast-create. The
+  // monthly plan cap still applies downstream; this is a per-minute burst gate.
+  const limited = enforceRateLimit(req, { name: "broadcast-create", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   let body: any = {};
   try { body = await req.json(); } catch {}
@@ -147,6 +154,14 @@ export async function POST(req: Request) {
   // Membership: count this broadcast against the monthly cap. Best-effort —
   // a counter write failure must never undo a successful broadcast creation.
   await incrementUsage(uid, "broadcast", 1);
+
+  void auditCtx(await getAuthContext(), "broadcast.created", {
+    userId: uid,
+    targetType: "broadcast",
+    targetId: bc.id,
+    metadata: { title, audience, recipients: customers.length },
+    req,
+  });
 
   return NextResponse.json({ ok: true, broadcast: bc, skipped });
 }

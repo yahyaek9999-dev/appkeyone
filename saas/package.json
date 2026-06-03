@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "prisma generate && next build",
+    "build:workers": "tsc --project tsconfig.workers.json",
     "start": "next start -p 3000",
     "lint": "next lint",
     "db:push": "prisma db push",
@@ -19,6 +20,8 @@
     "verify:mobile": "node scripts/verify/run.js mobile",
     "verify:baileys": "node scripts/verify/run.js baileys",
     "verify:reliability": "node scripts/verify/run.js reliability",
+    "verify:schema-parity": "node scripts/verify/schema-parity.js",
+    "verify:rbac": "node scripts/verify/rbac-coverage.js",
     "verify:all": "node scripts/verify/run.js all",
     "worker:baileys": "node workers/baileys.worker.js"
   },

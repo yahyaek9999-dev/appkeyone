@@ -1,11 +1,12 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserForPermission } from "@/lib/auth";
+import { getUserForPermission, getAuthContext } from "@/lib/auth";
 import { wa } from "@/lib/wa";
 import { dispatchCommerceAutomations } from "@/lib/commerce/notifications";
 import { usageIdempotencyKey } from "@/lib/usage-ledger";
 import { maybeSendShippingUpdate } from "@/lib/shipping/notify";
+import { auditCtx } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,14 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   const updated = await (prisma as any).order.update({
     where: { id: ctx.params.id },
     data,
+  });
+
+  void auditCtx(await getAuthContext(), "order.updated", {
+    userId: user.id,
+    targetType: "order",
+    targetId: ctx.params.id,
+    metadata: { fields: Object.keys(data) },
+    req,
   });
 
   // Timeline event when status changes
@@ -284,5 +293,13 @@ export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
   if (!existing)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   await (prisma as any).order.delete({ where: { id: ctx.params.id } });
+
+  void auditCtx(await getAuthContext(), "order.deleted", {
+    userId: user.id,
+    targetType: "order",
+    targetId: ctx.params.id,
+    req: _req,
+  });
+
   return NextResponse.json({ ok: true });
 }

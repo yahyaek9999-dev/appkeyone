@@ -11,10 +11,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, getAuthContext } from "@/lib/auth";
 import { decryptSecret, encryptSecret, maskSecret } from "@/lib/crypto-util";
 import { isProviderId, DEFAULT_MODELS, PROVIDER_LABELS } from "@/lib/providers/types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { auditCtx } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
 
@@ -134,5 +135,15 @@ export async function PUT(req: NextRequest) {
   }
 
   await prisma.bot.update({ where: { id: bot.id }, data: data as any });
+
+  // Audit the provider switch — record ONLY the provider id, never the key.
+  void auditCtx(await getAuthContext(), "settings.ai_provider_changed", {
+    userId: user.id,
+    targetType: "bot",
+    targetId: bot.id,
+    metadata: { provider, keyChanged: typeof apiKey === "string" && apiKey.trim().length > 0 },
+    req,
+  });
+
   return NextResponse.json({ ok: true });
 }

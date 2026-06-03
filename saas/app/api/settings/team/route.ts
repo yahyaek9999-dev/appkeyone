@@ -13,10 +13,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, getAuthContext } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ASSIGNABLE_ROLES } from "@/lib/rbac";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { auditCtx } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,14 @@ export async function POST(req: Request) {
   const origin = new URL(req.url).origin;
   const acceptUrl = `${origin}/team/accept?token=${rawToken}`;
 
+  void auditCtx(await getAuthContext(), "team.member_invited", {
+    userId: user.id,
+    targetType: "member",
+    targetId: member.id,
+    metadata: { email, role },
+    req,
+  });
+
   return NextResponse.json({ ok: true, member, acceptUrl, expiresAt: inviteExpiresAt });
 }
 
@@ -108,10 +117,19 @@ export async function PATCH(req: Request) {
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });
 
-  const member = await prisma.teamMember.findFirst({ where: { id: parsed.data.id, ownerId: user.id }, select: { id: true } });
+  const member = await prisma.teamMember.findFirst({ where: { id: parsed.data.id, ownerId: user.id }, select: { id: true, role: true } });
   if (!member) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   await prisma.teamMember.update({ where: { id: member.id }, data: { role: parsed.data.role } });
+
+  void auditCtx(await getAuthContext(), "team.role_changed", {
+    userId: user.id,
+    targetType: "member",
+    targetId: member.id,
+    metadata: { from: member.role, to: parsed.data.role },
+    req,
+  });
+
   return NextResponse.json({ ok: true });
 }
 
@@ -123,9 +141,18 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
 
-  const member = await prisma.teamMember.findFirst({ where: { id, ownerId: user.id }, select: { id: true } });
+  const member = await prisma.teamMember.findFirst({ where: { id, ownerId: user.id }, select: { id: true, email: true, role: true } });
   if (!member) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   await prisma.teamMember.delete({ where: { id: member.id } });
+
+  void auditCtx(await getAuthContext(), "team.member_removed", {
+    userId: user.id,
+    targetType: "member",
+    targetId: member.id,
+    metadata: { email: member.email, role: member.role },
+    req,
+  });
+
   return NextResponse.json({ ok: true });
 }

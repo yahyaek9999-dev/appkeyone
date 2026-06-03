@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requirePermission, authErrorStatus } from "@/lib/auth";
 import { wa } from "@/lib/wa";
 
 export async function POST(req: Request) {
   try {
-    const user = await requireUser();
+    const user = await requirePermission("settings");
     const { phone } = await req.json();
     if (!phone) return NextResponse.json({ error: "رقم الهاتف مطلوب" }, { status: 400 });
     // Make sure session is started first
@@ -17,6 +17,6 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ ok: true, code: r.data.code });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: e.message === "UNAUTHORIZED" ? 401 : 500 });
+    return NextResponse.json({ error: e.message }, { status: authErrorStatus(e) });
   }
 }

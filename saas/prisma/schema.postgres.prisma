@@ -17,6 +17,15 @@ model User {
   role         String   @default("user") // user | admin
   createdAt    DateTime @default(now())
 
+  // ---- Self-service signup approval (Launch: waitlist-gated signup) ----
+  // Public signups land as "pending" and an admin approves them before they
+  // can log in. Default "approved" keeps every existing row (and admin-created
+  // users) usable without a data migration. Flip SIGNUP_AUTO_APPROVE=1 to make
+  // signups self-activate.
+  approvalStatus String   @default("approved") // pending | approved | rejected
+  approvedAt     DateTime?
+  approvedBy     String?
+
   // ---- Membership: account suspension (Phase: membership foundation) ----
   // Suspended users keep their data but cannot send/receive WA messages,
   // run AI requests, or send broadcasts. Reactivation is admin-only.
@@ -27,6 +36,7 @@ model User {
 
   bot            Bot?
   subscription   Subscription?
+  teamMembers    TeamMember[] @relation("TeamOwner")
   customers      Customer[]
   documents      Document[]
   apiCalls       ApiCall[]
@@ -39,6 +49,33 @@ model User {
   commerceNotifications CommerceNotificationLog[]
   commerceEmailProviders CommerceEmailProvider[]
   commerceEmailTemplates CommerceEmailTemplate[]
+}
+
+/// Team members who can log into a workspace under the OWNER's account with a
+/// scoped role. The owner is the original User; members authenticate with their
+/// own email + password but every query still scopes to `ownerId` (= the
+/// owner's User.id), so data isolation is unchanged. Replaces the legacy
+/// Bot.teamMembersJson blob (which is kept for backward-compat but unused).
+model TeamMember {
+  id              String   @id @default(cuid())
+  ownerId         String
+  owner           User     @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  email           String
+  name            String?
+  role            String   @default("viewer") // admin | sales | support | viewer
+  passwordHash    String?                      // null until the invite is accepted
+  status          String   @default("invited") // invited | active | disabled
+  inviteTokenHash String?  @unique             // sha256 of the raw invite token
+  inviteExpiresAt DateTime?
+  invitedAt       DateTime @default(now())
+  acceptedAt      DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([ownerId, email])
+  @@index([ownerId])
+  @@index([email])
 }
 
 model Bot {
@@ -165,6 +202,18 @@ model Bot {
   // "لا نتعامل بالدولار"...). Injected into the system prompt VERBATIM so the
   // AI never invents promises that contradict company policy.
   policyRules     String   @default("")
+
+  // ---- Abandoned-cart recovery (Agent 3, Task #7) ----
+  // OFF by default — opt-in only. When enabled, the abandoned-cart cron may
+  // queue ONE recovery follow-up (via the protected queueSmartFollowUp path)
+  // for customers whose cart went stale without an order. Honors opt-out,
+  // subscription, follow-up caps, and pacing exactly like every other send.
+  abandonedCartEnabled     Boolean @default(false)
+  abandonedCartDelayHours  Int     @default(4)   // wait this long after cartUpdatedAt before reminding
+  abandonedCartWindowHours Int     @default(24)  // ignore carts older than this (avoid reminding ancient interest)
+
+  // ---- Team members (Phase 1: role registry, Phase 2: login enforcement) ----
+  teamMembersJson String   @default("[]") // JSON: [{email,role,addedAt}]
 
   updatedAt       DateTime @updatedAt
   createdAt       DateTime @default(now())
@@ -898,6 +947,37 @@ model FollowUpTask {
   @@index([customerId, status])
 }
 
+// ---------------------------------------------------------------------------
+// Memory Graph (Agent 1 — Task 3). Append-only edges between the entities the
+// memory extractor already identifies (products, objections) and outcomes
+// (won / lost). A sibling of the rolling-summary extractor in lib/memory.ts —
+// it NEVER modifies CustomerMemory; it only writes here. Powers merchant-facing
+// correlations like "اعتراض الشحن يسبق 60% من الصفقات الضائعة".
+//
+// Edge model: (subjectType, subjectKey) --relation--> (objectType, objectKey)
+// scoped per merchant (userId) and per customer. Re-extraction upserts on the
+// natural key and bumps `weight`, so the table stays bounded per customer.
+// ---------------------------------------------------------------------------
+model MemoryEdge {
+  id          String   @id @default(cuid())
+  userId      String                       // merchant — strict per-tenant scoping
+  customerId  String                       // the conversation this edge came from
+  subjectType String                       // "customer" | "objection" | "product"
+  subjectKey  String                       // normalized key (e.g. "shipping", "<customerId>")
+  relation    String                       // "raised" | "interested_in" | "preceded_outcome"
+  objectType  String                       // "objection" | "product" | "outcome"
+  objectKey   String                       // normalized key (e.g. "lost", "won", "price")
+  weight      Int      @default(1)          // times this edge was observed
+  lastContext String?                       // short Arabic evidence snippet (optional)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, customerId, subjectType, subjectKey, relation, objectType, objectKey])
+  @@index([userId, subjectType, subjectKey])
+  @@index([userId, objectType, objectKey])
+  @@index([userId, relation])
+}
+
 model DailyReportDelivery {
   id             String   @id @default(cuid())
   userId         String
@@ -994,6 +1074,27 @@ model ProviderUsage {
   @@unique([userId, day, provider, model])
   @@index([userId, day])
   @@index([provider, day])
+}
+
+// ---------------------------------------------------------------------------
+// ActivationEvent (Activation Funnel) — append-only milestone ledger.
+//
+// Records, at most once per (user, milestone), the FIRST time a merchant
+// reaches a step on the signup→value journey. Powers the dashboard activation
+// checklist and the admin funnel drop-off view. The @@unique makes recording
+// idempotent (first occurrence wins, so `at` = time-to-first-X). See
+// lib/activation/track.ts. Kept in sync with schema.prisma (sqlite).
+// ---------------------------------------------------------------------------
+model ActivationEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  milestone String   // signed_up | onboarding_completed | whatsapp_connected | first_ai_reply_sent | first_order_extracted | first_broadcast_sent
+  at        DateTime @default(now())
+  metadata  String?  // optional JSON blob (stringified)
+
+  @@unique([userId, milestone])
+  @@index([milestone, at])
+  @@index([userId, at])
 }
 
 // ---------------------------------------------------------------------------
@@ -1225,9 +1326,18 @@ model Product {
   productLink     String?
   active         Boolean  @default(true)
   sortOrder      Int      @default(0)
+  // ---- Catalog sync (Agent 3, Task #10) — additive, nullable ----
+  // When a product is imported from a connected store, we record its origin so
+  // re-imports update in place (idempotent) instead of duplicating. Manually
+  // created products leave these null and are never touched by the importer.
+  sku            String?                 // merchant/platform SKU (affinity + cards)
+  externalSource String?                 // shopify | woocommerce | salla | zid
+  externalId     String?                 // platform product/variant id
+  lastSyncedAt   DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@unique([userId, externalSource, externalId])
   @@index([userId, active])
   @@index([userId, category])
 }
@@ -1285,4 +1395,98 @@ model ConversationNote {
 
   @@index([conversationId, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Product affinity / cross-sell matrix (Agent 3, Task #9).
+/// One row per ordered (productKey -> relatedKey) co-purchase pair per merchant,
+/// recomputed by a bounded daily batch from OrderItem history. Read-only feed
+/// for the upsell detector + NBA upsell template — never sends anything itself.
+/// `productKey` / `relatedKey` are normalized item names (or SKUs when present).
+model ProductAffinity {
+  id            String   @id @default(cuid())
+  userId        String
+  productKey    String                 // normalized name/SKU of the anchor item
+  productLabel  String                 // human-readable anchor name (display)
+  relatedKey    String                 // normalized name/SKU of the complement
+  relatedLabel  String                 // human-readable complement name (display)
+  coCount       Int      @default(0)   // # orders containing both items
+  support       Int      @default(0)   // # orders containing the anchor item
+  confidence    Int      @default(0)   // 0-100 = coCount / support
+  computedAt    DateTime @default(now())
+
+  @@unique([userId, productKey, relatedKey])
+  @@index([userId, productKey, confidence])
+  @@index([userId, computedAt])
+}
+
+/// Visual automation builder rules (Agent 3, Task #8).
+/// Merchant-authored if-this-then-that. Evaluated ONLY in background paths
+/// (the classify/score tail + crons), never the blocking reply path. Every
+/// action routes through an existing safe path (queueSmartFollowUp, tagging,
+/// admin notify). OFF by default; hard per-rule throttle + global per-customer
+/// action cap enforced via AutomationActionLog.
+model AutomationRule {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String   @default("قاعدة جديدة")
+  enabled        Boolean  @default(false)
+  // trigger: score_crossed | stage_changed | idle_hours | order_status_changed | cart_abandoned
+  triggerType    String
+  conditions     String   @default("{}")   // JSON — trigger-specific (metric, op, value, fromStage, toStage, hours, status...)
+  // action: queue_follow_up | tag_customer | notify_admin | add_to_segment_broadcast
+  actionType     String
+  actionConfig   String   @default("{}")   // JSON — action params (tag, message hint, delayHours, segment...)
+  throttleSeconds Int     @default(86400)  // min seconds between two fires of THIS rule for the SAME customer
+  lastFiredAt    DateTime?
+  fireCount      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  logs           AutomationActionLog[]
+
+  @@index([userId, enabled])
+  @@index([userId, triggerType, enabled])
+}
+
+/// Append-only audit + throttle ledger for automation rule fires. Used both for
+/// merchant visibility ("what fired and why") and to enforce the per-rule /
+/// per-customer anti-spam caps before an action is taken.
+model AutomationActionLog {
+  id          String   @id @default(cuid())
+  userId      String
+  ruleId      String
+  rule        AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  customerId  String?
+  actionType  String
+  status      String   @default("fired")  // fired | throttled | capped | skipped | failed
+  detail      String?
+  firedAt     DateTime @default(now())
+
+  @@index([ruleId, customerId, firedAt])
+  @@index([userId, firedAt])
+  @@index([userId, customerId, firedAt])
+}
+
+/// AuditLog: append-only record of sensitive workspace actions (Agent 5 —
+/// Enterprise & Security). Distinct from SafetyAudit (anti-ban) and
+/// WaComplianceAudit (messaging policy). Scoped by `userId` (the workspace
+/// owner) so owners/admins can review "who on my team did what".
+/// SECURITY: `metadata` is JSON and MUST be redacted — never store secrets,
+/// tokens, API keys, or message bodies. Additive table; existing flows ignore
+/// it (the emitter is best-effort and never blocks an action).
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String                      // workspace owner — data scope
+  actorId    String?                     // principal who acted (User.id or TeamMember.id)
+  actorEmail String?                     // principal email at action time
+  actorRole  String   @default("owner")  // owner | admin | sales | support | viewer
+  action     String                      // e.g. team.role_changed, order.updated
+  targetType String?                     // e.g. order | broadcast | integration | member
+  targetId   String?
+  metadata   String   @default("{}")     // JSON; redacted — never secrets
+  ip         String?
+  at         DateTime @default(now())
+
+  @@index([userId, at])
+  @@index([userId, action, at])
 }
