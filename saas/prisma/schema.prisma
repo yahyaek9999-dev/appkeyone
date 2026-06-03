@@ -33,6 +33,11 @@ model User {
   suspendedAt     DateTime?
   suspendedReason String?
 
+  // ---- Knowledge Brain: paid add-on gate (Phase 5) ----
+  // OFF by default; a platform admin enables it per tenant. Additive, nullable
+  // default so existing users are unaffected by the migration.
+  knowledgeBrainEnabled Boolean @default(false)
+
   bot            Bot?
   subscription   Subscription?
   teamMembers    TeamMember[] @relation("TeamOwner")

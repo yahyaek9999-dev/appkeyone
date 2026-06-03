@@ -20,6 +20,7 @@ export const ADMIN_LINKS = [
   { href: "/admin/tenant-costs", label: "التكلفة والأداء لكل تاجر", icon: Coins },
   { href: "/admin/usage-stats", label: "إحصائيات الاستخدام", icon: Activity },
   { href: "/admin/ai-logs", label: "سجل الذكاء الاصطناعي", icon: Brain },
+  { href: "/admin/knowledge-brain", label: "العقل المعرفي", icon: Brain },
   { href: "/admin/protection-logs", label: "سجل الحماية", icon: Shield },
   { href: "/admin/whatsapp", label: "حالة واتساب", icon: Phone },
   { href: "/admin/settings", label: "إعدادات الموقع", icon: Settings },

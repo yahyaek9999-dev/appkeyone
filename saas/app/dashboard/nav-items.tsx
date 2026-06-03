@@ -71,6 +71,7 @@ export const NAV_SECTIONS: {
   {
     title: "النمو والذكاء",
     items: [
+      { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال اللحظي", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/command-center", label: "مركز القيادة الذكي", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
@@ -88,6 +89,7 @@ export const NAV_SECTIONS: {
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Clock, perm: "settings" },
       { href: "/dashboard/knowledge", label: "مركز التدريب", icon: BookOpen, perm: "settings" },
+      { href: "/dashboard/knowledge-brain", label: "العقل المعرفي", icon: Brain, perm: "settings" },
       { href: "/dashboard/suggestions", label: "اقتراحات المعرفة", icon: Lightbulb, perm: "settings" },
       { href: "/dashboard/playground", label: "تجربة البوت", icon: Bot, perm: "settings" },
       { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },

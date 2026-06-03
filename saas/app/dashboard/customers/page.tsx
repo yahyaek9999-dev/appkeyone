@@ -6,6 +6,7 @@ import { timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
+import AiCopilotStrip from "@/components/ai-copilot-strip";
 
 export default async function CustomersPage() {
   const { user } = await requirePagePermission("customers");
@@ -28,6 +29,11 @@ export default async function CustomersPage() {
           <h1 className="text-2xl md:text-3xl font-extrabold mb-1">العملاء</h1>
           <p className="text-slate-400">{customers.length} عميل</p>
         </div>
+      </div>
+
+      {/* Phase 3: AI Copilot — top opportunity + recommendation for customers */}
+      <div className="mb-6">
+        <AiCopilotStrip context="customers" />
       </div>
 
       {customers.length === 0 ? (

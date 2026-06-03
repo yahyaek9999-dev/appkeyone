@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import AiCopilotStrip from "@/components/ai-copilot-strip";
 import {
   ShoppingBag,
   AlertTriangle,
@@ -96,6 +97,9 @@ export default async function OrdersPage({
           </p>
         </div>
       </div>
+
+      {/* Phase 3: AI Copilot — one insight + recommendation + action for orders */}
+      <AiCopilotStrip context="orders" />
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

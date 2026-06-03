@@ -7,6 +7,7 @@ import { LayoutDashboard, ShieldCheck } from "lucide-react";
 import LogoutButton from "./logout-button";
 import MobileNav from "./mobile-nav";
 import { NavLinks, SidebarNav } from "./nav-items";
+import HelpDrawer from "./help-drawer";
 import { ToastProvider } from "@/components/ui/toast";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
@@ -96,6 +97,7 @@ export default async function DashboardLayout({
             <div className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-safe pt-6 md:px-6 md:pt-8 lg:px-8 lg:pt-10">
               {children}
             </div>
+            <HelpDrawer />
           </main>
         </div>
       </ConfirmProvider>

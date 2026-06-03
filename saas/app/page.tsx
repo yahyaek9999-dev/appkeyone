@@ -15,6 +15,8 @@ import TrustSection from "@/components/ui/trust-section";
 import IntegrationsWhatsApp from "@/components/ui/integrations-whatsapp";
 import FaqAccordion from "@/components/ui/faq-accordion";
 import PricingCards, { type PricingPlan } from "@/components/ui/pricing-cards";
+import RoiSection from "@/components/ui/roi-section";
+import SocialProof from "@/components/ui/social-proof";
 import {
   MessageSquare,
   BarChart3,
@@ -227,8 +229,12 @@ export default async function LandingPage({
                 <h1 className="display-heading text-[2.5rem] sm:text-[3.5rem] md:text-[4rem]">
                   <span className="block">{m.hero.h1Line1}</span>
                   <span className="block">{m.hero.h1Line2}</span>
-                  <span className="block bg-gradient-to-l from-brand-200 via-brand-400 to-brand-500 bg-clip-text text-transparent">
+                  <span className="relative inline-block text-brand-400">
                     {m.hero.h1Line3}
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 -bottom-1 h-[3px] rounded-full bg-brand-500/40"
+                    />
                   </span>
                 </h1>
               </FadeIn>
@@ -242,19 +248,19 @@ export default async function LandingPage({
               <FadeIn delay={0.28}>
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                   {waNum ? (
-                    <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-12">
+                    <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-12 w-full sm:w-auto">
                       <WhatsAppIcon className="h-4 w-4" />
                       {m.hero.ctaPrimary}
                     </a>
                   ) : (
-                    <Link href="/pricing" className="btn-premium h-12">
+                    <Link href="/pricing" className="btn-premium h-12 w-full sm:w-auto">
                       {m.hero.ctaPrimary}
                       <Arrow className="h-4 w-4" />
                     </Link>
                   )}
                   <Link
                     href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
-                    className="btn-outline h-12"
+                    className="btn-outline h-12 w-full sm:w-auto"
                   >
                     {m.hero.ctaSecondary}
                   </Link>
@@ -416,6 +422,9 @@ export default async function LandingPage({
         </div>
       </section>
 
+      {/* ───────── Social proof ───────── */}
+      <SocialProof locale={locale} dir={m.dir} />
+
       {/* ───────── Features (bento) ───────── */}
       <section id="features" className="ai-section">
         <div className="ai-container">
@@ -454,6 +463,14 @@ export default async function LandingPage({
 
       {/* ───────── Integrations (WhatsApp) ───────── */}
       <IntegrationsWhatsApp m={m.integrations} dir={m.dir} />
+
+      {/* ───────── ROI / outcome estimator ───────── */}
+      <RoiSection
+        locale={locale}
+        dir={m.dir}
+        ctaHref={waHref || `/pricing${locale === "en" ? "?lang=en" : ""}`}
+        ctaLabel={locale === "ar" ? "ابدأ وحوّل رسائلك لمبيعات" : "Turn messages into sales"}
+      />
 
       {/* ───────── How it works ───────── */}
       <section id="how" className="ai-section">
@@ -543,7 +560,7 @@ export default async function LandingPage({
         <div className="ai-container max-w-3xl">
           <SectionReveal>
             <div className="surface noise relative overflow-hidden rounded-3xl px-6 py-14 text-center shadow-float sm:px-12">
-              <div className="absolute inset-x-0 -top-1/2 h-full bg-[radial-gradient(ellipse_60%_60%_at_50%_50%,rgba(34,197,94,0.12),transparent_70%)]" aria-hidden="true" />
+              <div className="absolute inset-x-0 -top-1/2 h-full bg-[radial-gradient(ellipse_55%_55%_at_50%_50%,rgba(34,197,94,0.07),transparent_72%)]" aria-hidden="true" />
               <div className="relative">
                 <h2 className="display-heading text-3xl sm:text-4xl">{m.cta.heading}</h2>
                 <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-slate-400">
@@ -559,18 +576,18 @@ export default async function LandingPage({
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-premium h-12"
+                      className="btn-premium h-12 w-full sm:w-auto"
                     >
                       <Phone className="h-4 w-4" /> {m.cta.primary}
                     </a>
                   ) : (
-                    <Link href="/pricing" className="btn-premium h-12">
+                    <Link href="/pricing" className="btn-premium h-12 w-full sm:w-auto">
                       {m.cta.primary} <Arrow className="h-4 w-4" />
                     </Link>
                   )}
                   <Link
                     href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
-                    className="btn-outline h-12"
+                    className="btn-outline h-12 w-full sm:w-auto"
                   >
                     {m.cta.secondary}
                   </Link>

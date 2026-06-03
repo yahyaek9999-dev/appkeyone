@@ -18,6 +18,7 @@ import { LiveOpsStrip } from "./live-ops-strip";
 import { GettingStarted } from "./_getting-started";
 import ActivationChecklist from "./_activation-checklist";
 import { syncUserMilestones } from "@/lib/activation/track";
+import AiCopilotStrip from "@/components/ai-copilot-strip";
 
 export const dynamic = "force-dynamic";
 
@@ -180,6 +181,9 @@ export default async function DashboardOverview() {
       {milestones && <ActivationChecklist milestones={milestones} />}
       <GettingStarted steps={gettingStartedSteps} />
       <LiveOpsStrip />
+
+      {/* Phase 3: AI Copilot — one insight + recommendation + action */}
+      <AiCopilotStrip context="dashboard" />
 
       {/* Subscription banner */}
       {!sub.active && (
