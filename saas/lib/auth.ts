@@ -150,7 +150,7 @@ export async function getCurrentUser() {
 
 export async function requireUser() {
   const u = await getCurrentUser();
-  if (!u) throw new Error("UNAUTHORIZED");
+  if (!u) redirect("/login");
   return u;
 }
 
