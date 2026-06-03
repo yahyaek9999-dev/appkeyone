@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, ctx: { params: { id: string } }) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   const bc = await prisma.broadcast.findFirst({
@@ -22,7 +22,7 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   let body: any = {};
@@ -46,7 +46,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   await prisma.broadcast.deleteMany({

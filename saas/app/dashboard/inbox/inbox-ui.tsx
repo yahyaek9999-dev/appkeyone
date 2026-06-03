@@ -31,6 +31,7 @@ import {
   MessageBubbleSkeleton,
 } from "@/components/ui/skeleton";
 import { formatCustomerPhone } from "@/lib/phone";
+import { useToast } from "@/components/ui/toast";
 
 type Conv = {
   customerId: string;
@@ -73,6 +74,7 @@ export default function InboxUi({
   const [loadingActive, setLoadingActive] = useState(false);
   const [search, setSearch] = useState("");
   const [reply, setReply] = useState("");
+  const { error: toastError } = useToast();
   const [sending, setSending] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
@@ -232,7 +234,7 @@ export default function InboxUi({
         if (fresh.ok) setActive(await fresh.json());
       } else {
         const j = await r.json().catch(() => ({}));
-        alert(j.error || "تعذر الإرسال — تأكد من اتصال واتساب.");
+        toastError(j.error || "تعذر الإرسال — تأكد من اتصال واتساب.");
       }
     } finally {
       setSending(false);

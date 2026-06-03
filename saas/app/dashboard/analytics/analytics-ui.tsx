@@ -6,6 +6,7 @@ import {
   DollarSign, Tag, Activity, ArrowUpRight, ArrowDownRight, Loader2,
 } from "lucide-react";
 import { formatCustomerPhone } from "@/lib/phone";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Analytics = {
   days: number;
@@ -171,9 +172,12 @@ export default function AnalyticsUi() {
             أكثر الوسوم تكراراً
           </h3>
           {data.topTags.length === 0 ? (
-            <div className="text-sm text-slate-500 text-center py-8">
-              لا توجد وسوم بعد. ستظهر هنا تلقائياً مع نشاط العملاء.
-            </div>
+            <EmptyState
+              icon={<Tag className="h-full w-full" />}
+              title="لا توجد وسوم بعد"
+              description="ستظهر هنا تلقائيًا مع نشاط العملاء."
+              size="sm"
+            />
           ) : (
             <div className="flex flex-wrap gap-2">
               {data.topTags.map((t) => (
@@ -200,7 +204,12 @@ export default function AnalyticsUi() {
             العملاء الأكثر نشاطاً
           </h3>
           {data.topCustomers.length === 0 ? (
-            <div className="text-sm text-slate-500 text-center py-8">لا توجد بيانات.</div>
+            <EmptyState
+              icon={<Users className="h-full w-full" />}
+              title="لا توجد بيانات"
+              description="ستظهر بيانات العملاء الأكثر نشاطًا هنا."
+              size="sm"
+            />
           ) : (
             <div className="space-y-1.5">
               {data.topCustomers.map((c, i) => (
@@ -359,7 +368,7 @@ function DailyChart({ data }: { data: { date: string; in: number; out: number }[
 
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[600px] h-auto" preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-0 sm:min-w-[600px] h-auto" preserveAspectRatio="none">
         <defs>
           <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="rgb(56,189,248)" stopOpacity="0.4" />

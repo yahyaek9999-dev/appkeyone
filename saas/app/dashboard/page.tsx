@@ -15,6 +15,7 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 import { LiveOpsStrip } from "./live-ops-strip";
+import { GettingStarted } from "./_getting-started";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,8 @@ export default async function DashboardOverview() {
   const user = await requireUser();
   const bot = await prisma.bot.findUnique({
     where: { userId: user.id },
-    select: { id: true, name: true },
-  });
+    select: { id: true, name: true, whatsappStatus: true } as any,
+  }) as any;
   if (!bot) redirect("/onboarding");
 
   const cfg = await getSiteConfig();
@@ -48,6 +49,7 @@ export default async function DashboardOverview() {
     customerCount, msgCount, flaggedCount,
     msgs7d, msgsPrior7d, msgs30dToday,
     recentMsgs, topCustomers, dailySeries,
+    docCount, integrationCount, broadcastCount,
   ] = await Promise.all([
     prisma.customer.count({ where: { userId: user.id } }),
     prisma.message.count({ where: { conversation: { customer: { userId: user.id } } } }),
@@ -72,7 +74,18 @@ export default async function DashboardOverview() {
        GROUP BY day ORDER BY day ASC`,
       user.id, start30.toISOString(),
     ).catch(() => []),
+    prisma.document.count({ where: { userId: user.id } }),
+    (prisma as any).commerceIntegration.count({ where: { userId: user.id, enabled: true } }).catch(() => 0),
+    prisma.broadcast.count({ where: { userId: user.id } }).catch(() => 0),
   ]);
+
+  const gettingStartedSteps = {
+    whatsapp: bot.whatsappStatus === "connected",
+    aiBot: Boolean(bot.name && bot.name.trim().length > 0),
+    knowledge: docCount > 0,
+    store: (integrationCount as number) > 0,
+    campaign: (broadcastCount as number) > 0,
+  };
 
   const seriesMap = new Map<string, number>();
   for (const row of dailySeries) seriesMap.set(row.day, Number(row.total));
@@ -111,6 +124,8 @@ export default async function DashboardOverview() {
         </div>
         <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
       </div>
+
+      <GettingStarted steps={gettingStartedSteps} />
 
       <LiveOpsStrip />
 
@@ -246,7 +261,7 @@ export default async function DashboardOverview() {
           <div className="divide-y divide-white/[0.04]">
             {recentMsgs.map((m) => (
               <div key={m.id} className="flex items-start gap-3 py-3">
-                <Avatar name={m.role === "user" ? m.conversation.customer.name || m.conversation.customer.phone : "BOT"} size="md" />
+                <Avatar name={m.role === "user" ? m.conversation.customer.name || m.conversation.customer.phone : bot.name || "البوت"} size="md" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span className="font-medium text-slate-300">{m.conversation.customer.name || m.conversation.customer.phone}</span>

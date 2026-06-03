@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { decryptSecret, encryptSecret, maskSecret } from "@/lib/crypto-util";
 import { isProviderId, DEFAULT_MODELS, PROVIDER_LABELS } from "@/lib/providers/types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -31,7 +31,7 @@ const PutBody = z.object({
 
 export async function GET() {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const bot = await prisma.bot.findUnique({ where: { userId: user.id } });
@@ -72,7 +72,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const limited = enforceRateLimit(req, {

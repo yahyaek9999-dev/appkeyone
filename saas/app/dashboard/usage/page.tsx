@@ -78,10 +78,10 @@ export default async function UsagePage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
-          <Pill label="Meta Access" value={plan.metaAccess} tone={plan.metaAccess === "full" ? "ok" : plan.metaAccess === "limited" ? "warn" : "muted"} />
-          <Pill label="Analytics" value={plan.analyticsAccess} />
-          <Pill label="WA Sessions" value={String(plan.whatsappSessions)} />
-          <Pill label="Priority" value={String(plan.queuePriority)} />
+          <Pill label="Meta Cloud" value={plan.metaAccess === "none" ? "غير متاحة" : "متاحة"} tone={plan.metaAccess === "none" ? "muted" : "ok"} />
+          <Pill label="التحليلات" value={analyticsLabel(plan.analyticsAccess)} />
+          <Pill label="جلسات واتساب" value={String(plan.whatsappSessions)} />
+          <Pill label="أولوية الإرسال" value={priorityLabel(plan.queuePriority)} />
         </div>
       </div>
 
@@ -89,8 +89,8 @@ export default async function UsagePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card p-5">
           <div className="kpi-label">حالة واتساب</div>
-          <div className="kpi-value mb-1">{mode === "meta_cloud" ? "Meta Cloud API" : "QR (whatsapp-web.js)"}</div>
-          <div className="text-sm text-slate-400">{bot?.whatsappStatus || "—"} {bot?.whatsappPhone ? `· ${bot.whatsappPhone}` : ""}</div>
+          <div className="kpi-value mb-1">{mode === "meta_cloud" ? "Meta Cloud API" : "ربط QR Code"}</div>
+          <div className="text-sm text-slate-400">{waStatusLabel(bot?.whatsappStatus)} {bot?.whatsappPhone ? `· ${bot.whatsappPhone}` : ""}</div>
         </div>
         <div className="card p-5">
           <div className="kpi-label">Meta Cloud</div>
@@ -100,11 +100,11 @@ export default async function UsagePage() {
                 {bot.metaVerifiedAt ? "مفعّل" : "قيد التفعيل"}
               </div>
               <div className="text-sm text-slate-400">
-                Quality: <b className={
+                جودة الرقم: <b className={
                   bot.metaQualityRating === "GREEN" ? "text-emerald-300" :
                   bot.metaQualityRating === "YELLOW" ? "text-amber-300" :
                   bot.metaQualityRating === "RED" ? "text-rose-300" : "text-slate-400"
-                }>{bot.metaQualityRating || "—"}</b>
+                }>{qualityLabel(bot.metaQualityRating)}</b>
               </div>
             </>
           ) : (
@@ -133,7 +133,7 @@ export default async function UsagePage() {
         />
         <Counter
           icon={<Megaphone className="w-5 h-5" />}
-          label="حملات البث (Broadcasts)"
+          label="حملات البث"
           used={counters.broadcast.used}
           cap={counters.broadcast.cap}
           disabled={plan.featureFlags?.broadcasts === false}
@@ -148,7 +148,7 @@ export default async function UsagePage() {
             ? <span className="text-slate-500">لا توجد ميزات إضافية مفعّلة</span>
             : Object.entries(plan.featureFlags).filter(([_, v]) => v).map(([k]) => (
                 <span key={k} className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                  ✓ {k}
+                  ✓ {featureFlagLabel(k)}
                 </span>
               ))
           }
@@ -156,6 +156,52 @@ export default async function UsagePage() {
       </div>
     </div>
   );
+}
+
+const FEATURE_FLAG_LABELS: Record<string, string> = {
+  broadcasts: "حملات البث",
+  knowledge_base: "قاعدة المعرفة",
+  follow_ups: "المتابعات التلقائية",
+  api_access: "الوصول البرمجي",
+  templates: "القوالب الجاهزة",
+  daily_report: "التقرير اليومي",
+  custom_persona: "شخصية بوت مخصصة",
+};
+
+function featureFlagLabel(key: string): string {
+  return FEATURE_FLAG_LABELS[key] || key.replace(/_/g, " ");
+}
+
+function analyticsLabel(v: string): string {
+  if (v === "advanced") return "متقدمة";
+  if (v === "basic") return "أساسية";
+  return v || "—";
+}
+
+function priorityLabel(p: number): string {
+  if (p >= 3) return "عالية جدًا";
+  if (p === 2) return "عالية";
+  if (p === 1) return "عادية";
+  return "عادية";
+}
+
+function waStatusLabel(s?: string | null): string {
+  switch (s) {
+    case "connected": return "متصل";
+    case "connecting": return "جارٍ الاتصال";
+    case "disconnected": return "غير متصل";
+    case "qr": return "بانتظار المسح";
+    default: return s || "غير متصل";
+  }
+}
+
+function qualityLabel(q?: string | null): string {
+  switch (q) {
+    case "GREEN": return "ممتازة";
+    case "YELLOW": return "متوسطة";
+    case "RED": return "ضعيفة";
+    default: return "—";
+  }
 }
 
 function Pill({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" | "muted" }) {

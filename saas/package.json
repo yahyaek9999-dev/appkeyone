@@ -18,6 +18,7 @@
     "verify:email": "node scripts/verify/run.js email",
     "verify:mobile": "node scripts/verify/run.js mobile",
     "verify:baileys": "node scripts/verify/run.js baileys",
+    "verify:reliability": "node scripts/verify/run.js reliability",
     "verify:all": "node scripts/verify/run.js all",
     "worker:baileys": "node workers/baileys.worker.js"
   },

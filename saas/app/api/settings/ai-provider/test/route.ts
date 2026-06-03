@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { decryptSecret } from "@/lib/crypto-util";
 import { isProviderId } from "@/lib/providers/types";
 import { testProviderKey } from "@/lib/providers/provider-router";
@@ -28,7 +28,7 @@ const Body = z.object({
 
 export async function POST(req: NextRequest) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   // Tight rate limit — test calls hit external paid APIs.

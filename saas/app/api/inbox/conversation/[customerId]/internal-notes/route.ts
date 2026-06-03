@@ -2,7 +2,7 @@
 // NEVER sent to the customer. @mentions captured for Phase 2 routing.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getUserForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ async function resolveConversation(uid: string, customerId: string) {
 }
 
 export async function GET(_req: Request, { params }: { params: { customerId: string } }) {
-  const user = await getCurrentUser();
+  const user = await getUserForPermission("inbox");
   if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   const customer = await prisma.customer.findFirst({
@@ -63,7 +63,7 @@ export async function GET(_req: Request, { params }: { params: { customerId: str
 }
 
 export async function POST(req: Request, { params }: { params: { customerId: string } }) {
-  const user = await getCurrentUser();
+  const user = await getUserForPermission("inbox");
   if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   let b: any = {};

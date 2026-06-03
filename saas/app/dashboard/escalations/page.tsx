@@ -6,9 +6,10 @@ import {
   MessageSquareWarning,
   ShieldAlert,
 } from "lucide-react";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import EscalationActions from "@/app/dashboard/escalations/ticket-actions";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const SEVERITY_LABELS: Record<string, string> = {
   low: "منخفضة",
@@ -34,8 +35,8 @@ const HANDOFF_LABELS: Record<string, string> = {
 export const dynamic = "force-dynamic";
 
 export default async function EscalationsPage() {
-  const uid = await getUserId();
-  if (!uid) redirect("/login");
+  const uid = await getUserIdForPermission("escalations");
+  if (!uid) redirect("/dashboard");
 
   const [tickets, metrics] = await Promise.all([
     (prisma as any).escalationTicket
@@ -106,13 +107,11 @@ export default async function EscalationsPage() {
           قائمة التصعيدات
         </div>
         {tickets.length === 0 && (
-          <div className="p-10 text-center space-y-3">
-            <ShieldAlert className="w-10 h-10 mx-auto text-slate-600" />
-            <div className="text-sm font-semibold text-slate-300">لا توجد محادثات تحتاج تدخلاً</div>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-              حين يرصد البوت عميلاً غاضباً أو موقفاً يحتاج مساعدة بشرية، ستظهر بطاقة التصعيد هنا مباشرةً.
-            </p>
-          </div>
+          <EmptyState
+            icon={<ShieldAlert className="h-full w-full" />}
+            title="لا توجد محادثات تحتاج تدخلاً"
+            description="حين يرصد البوت عميلاً غاضباً أو موقفاً يحتاج مساعدة بشرية، ستظهر بطاقة التصعيد هنا مباشرةً."
+          />
         )}
         {tickets.map((t: any) => (
           <div key={t.id} className="border-b border-white/5 p-4">

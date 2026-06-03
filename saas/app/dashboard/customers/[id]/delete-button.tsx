@@ -3,13 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 export default function DeleteCustomerButton({ customerId }: { customerId: string }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
+  const { error } = useToast();
+  const confirm = useConfirm();
 
   async function handleDelete() {
-    if (!confirm("هل أنت متأكد من حذف هذا العميل؟\n\nسيتم حذف المحادثة وكل الرسائل المرتبطة به نهائياً.")) {
+    if (!(await confirm({ title: "حذف العميل", body: "سيتم حذف المحادثة وكل الرسائل المرتبطة به نهائياً.", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) {
       return;
     }
     setDeleting(true);
@@ -19,10 +23,10 @@ export default function DeleteCustomerButton({ customerId }: { customerId: strin
         router.push("/dashboard/customers");
       } else {
         const j = await r.json().catch(() => ({}));
-        alert(j.error || "فشل الحذف");
+        error(j.error || "فشل الحذف");
       }
     } catch {
-      alert("فشل الاتصال بالخادم");
+      error("فشل الاتصال بالخادم");
     } finally {
       setDeleting(false);
     }

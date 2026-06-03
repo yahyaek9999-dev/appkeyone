@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requirePagePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Users, Search, MessageSquare } from "lucide-react";
@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 
 export default async function CustomersPage() {
-  const user = await requireUser();
+  const { user } = await requirePagePermission("customers");
   const customers = await prisma.customer.findMany({
     where: { userId: user.id },
     orderBy: { lastSeenAt: "desc" },

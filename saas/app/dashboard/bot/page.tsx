@@ -1,9 +1,9 @@
-import { requireUser } from "@/lib/auth";
+import { requirePagePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import BotForm from "./bot-form";
 
 export default async function BotSettingsPage() {
-  const user = await requireUser();
+  const { user } = await requirePagePermission("settings");
   const bot = user.bot ||
     (await prisma.bot.create({ data: { userId: user.id, notifyPhone: user.phone || undefined } }));
 

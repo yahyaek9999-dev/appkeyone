@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { recordCommerceWebhookEvent } from "@/lib/commerce/events";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const limited = enforceRateLimit(req, { name: "commerce-integration-test", identifier: user.id, ...RATE_LIMITS.api });

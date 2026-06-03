@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   const bc = await prisma.broadcast.findFirst({

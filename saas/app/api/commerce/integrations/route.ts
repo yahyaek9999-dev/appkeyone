@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { COMMERCE_PLATFORMS } from "@/lib/commerce/types";
@@ -15,7 +15,7 @@ const CreateBody = z.object({
 
 export async function GET(req: Request) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const rows = await (prisma as any).commerceIntegration.findMany({
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const limited = enforceRateLimit(req, { name: "commerce-integration-create", identifier: user.id, ...RATE_LIMITS.api });

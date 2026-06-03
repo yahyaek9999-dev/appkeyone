@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { acknowledgeEscalation, resolveEscalation } from "@/lib/escalation";
 
@@ -14,7 +14,7 @@ const Body = z.object({
 
 export async function GET(_req: Request, ctx: { params: { id: string } }) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("escalations"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const ticket = await (prisma as any).escalationTicket.findFirst({ where: { id: ctx.params.id, userId: user.id } }).catch(() => null);
@@ -25,7 +25,7 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("escalations"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));

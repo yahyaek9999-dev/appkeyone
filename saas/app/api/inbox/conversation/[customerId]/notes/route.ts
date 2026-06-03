@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 
 export async function POST(
   req: Request,
   ctx: { params: { customerId: string } }
 ) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("inbox");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   let body: any = {};

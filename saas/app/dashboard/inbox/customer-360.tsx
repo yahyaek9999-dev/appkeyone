@@ -8,6 +8,7 @@
 // It never touches chat/realtime/queue logic.
 
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   X,
   Flame,
@@ -153,6 +154,7 @@ export default function Customer360({
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"overview" | "activity">("overview");
   const [busy, setBusy] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   // local editable drafts
   const [noteDraft, setNoteDraft] = useState("");
@@ -253,7 +255,7 @@ export default function Customer360({
       const j = await r.json().catch(() => ({}));
       if (r.ok) {
         setFollowUpText("");
-        flash("تم جدولة المتابعة عبر الطابور الآمن ✓");
+        flash("تم جدولة المتابعة ✓");
       } else {
         flash(j.error || "تعذّر إرسال المتابعة");
       }
@@ -532,7 +534,13 @@ export default function Customer360({
                     />
                     <ActionToggle
                       active={c.blacklisted}
-                      onClick={() => crm("set_blacklist", { value: !c.blacklisted })}
+                      onClick={async () => {
+                        if (!c.blacklisted) {
+                          const ok = await confirm({ title: "تأكيد الحظر", body: "سيتم حظر هذا العميل ولن يتلقى رسائل. متابعة؟", confirmLabel: "حظر", cancelLabel: "إلغاء", danger: true });
+                          if (!ok) return;
+                        }
+                        crm("set_blacklist", { value: !c.blacklisted });
+                      }}
                       disabled={busy === "set_blacklist"}
                       icon={<Ban className="h-3.5 w-3.5" />}
                       label={c.blacklisted ? "رفع الحظر" : "حظر"}
@@ -582,7 +590,7 @@ export default function Customer360({
                       value={followUpText}
                       onChange={(e) => setFollowUpText(e.target.value)}
                       rows={2}
-                      placeholder="رسالة متابعة تُرسل عبر الطابور الآمن..."
+                      placeholder="رسالة متابعة تُرسل للعميل مباشرة..."
                       className="input min-h-[56px] w-full resize-none p-2.5 text-xs"
                     />
                     <button

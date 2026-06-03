@@ -3,6 +3,21 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+const QUALITY_LABEL: Record<string, string> = {
+  GREEN: "ممتازة",
+  YELLOW: "متوسطة",
+  RED: "ضعيفة",
+};
+
+const MESSAGING_LIMIT_LABEL: Record<string, string> = {
+  TIER_50: "50 رسالة/يوم",
+  TIER_250: "250 رسالة/يوم",
+  TIER_1K: "1,000 رسالة/يوم",
+  TIER_10K: "10,000 رسالة/يوم",
+  TIER_100K: "100,000 رسالة/يوم",
+  TIER_UNLIMITED: "غير محدود",
+};
+
 interface MaskedSecret { mask: string; hasValue: boolean }
 interface InitialState {
   mode: "qr" | "meta_cloud";
@@ -14,9 +29,7 @@ interface InitialState {
   qualityRating: string | null;
   messagingLimit: string | null;
   verifiedAt: string | null;
-  globalEnabled: boolean;
   planAccess: "none" | "limited" | "full";
-  eligibilityReason: string;
 }
 
 export function MetaCloudForm({ initial }: { initial: InitialState }) {
@@ -80,7 +93,7 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
             className="mt-1 w-4 h-4 accent-brand-500"
           />
           <div className="flex-1">
-            <div className="text-sm font-bold">☁️ Meta Cloud API الرسمي {planBlocked && <span className="text-xs font-normal text-rose-300 mr-1">(يتطلب باقة Max أو أعلى)</span>}</div>
+            <div className="text-sm font-bold">☁️ Meta Cloud API الرسمي {planBlocked && <span className="text-xs font-normal text-amber-300 mr-1">(متاحة في باقات Max و Companies)</span>}</div>
             <div className="text-xs text-slate-400 mt-1">اتصال مباشر عبر Meta. أكثر استقراراً على المدى الطويل. يتطلب موافقة Meta وقوالب رسائل معتمدة.</div>
           </div>
         </label>
@@ -91,10 +104,10 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
         <div className="card p-4 bg-white/5 text-sm space-y-1">
           <div><span className="text-slate-400">آخر تأكيد صحي:</span> <b>{new Date(initial.verifiedAt).toLocaleString("ar-EG")}</b></div>
           {initial.qualityRating && (
-            <div><span className="text-slate-400">جودة الرقم (Meta):</span> <b className={initial.qualityRating === "GREEN" ? "text-emerald-300" : initial.qualityRating === "YELLOW" ? "text-amber-300" : "text-rose-300"}>{initial.qualityRating}</b></div>
+            <div><span className="text-slate-400">جودة الرقم (Meta):</span> <b className={initial.qualityRating === "GREEN" ? "text-emerald-300" : initial.qualityRating === "YELLOW" ? "text-amber-300" : "text-rose-300"}>{QUALITY_LABEL[initial.qualityRating] ?? "—"}</b></div>
           )}
           {initial.messagingLimit && (
-            <div><span className="text-slate-400">حد المراسلة الحالي:</span> <b>{initial.messagingLimit}</b></div>
+            <div><span className="text-slate-400">حد المراسلة الحالي:</span> <b>{MESSAGING_LIMIT_LABEL[initial.messagingLimit] ?? initial.messagingLimit}</b></div>
           )}
         </div>
       )}
@@ -117,7 +130,7 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
           disabled={pending}
           className="px-5 py-2 rounded-lg bg-brand-500 hover:bg-brand-400 text-white font-bold disabled:opacity-50"
         >
-          {pending ? "..." : "حفظ التغييرات"}
+          {pending ? "جاري الحفظ..." : "حفظ التغييرات"}
         </button>
         {msg && (
           <span className={msg.kind === "ok" ? "text-emerald-300 text-sm" : "text-rose-300 text-sm"}>{msg.text}</span>

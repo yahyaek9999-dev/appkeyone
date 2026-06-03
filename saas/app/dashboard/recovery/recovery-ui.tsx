@@ -13,6 +13,8 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { formatCustomerPhone } from "@/lib/phone";
+import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Kind = "lost_customer" | "follow_up_op";
 
@@ -109,10 +111,11 @@ export default function RecoveryUi() {
       )}
 
       {!loading && !error && data && data.items.length === 0 && (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center">
-          <div className="text-slate-300 font-medium">لا توجد فرص استعادة الآن 🎉</div>
-          <div className="text-xs text-slate-500 mt-1">ارجع لاحقاً لمّا تتجمع إشارات جديدة.</div>
-        </div>
+        <EmptyState
+          icon={<HeartHandshake className="h-full w-full" />}
+          title="لا توجد فرص استعادة الآن"
+          description="ارجع لاحقًا لمّا تتجمع إشارات جديدة."
+        />
       )}
 
       {!loading && data && data.items.length > 0 && (
@@ -134,6 +137,7 @@ function RecoveryCard({ item, onResolved }: { item: RecItem; onResolved: () => v
   const [done, setDone] = useState<string | null>(null);
   const meta = KIND_META[item.kind] || KIND_META.lost_customer;
   const Icon = meta.icon;
+  const { error } = useToast();
 
   async function act(action: "send_now" | "schedule" | "dismiss") {
     setBusy(action);
@@ -160,10 +164,10 @@ function RecoveryCard({ item, onResolved }: { item: RecItem; onResolved: () => v
           setTimeout(onResolved, 1400);
         }
       } else {
-        alert(j.error || "تعذّر تنفيذ الإجراء");
+        error(j.error || "تعذّر تنفيذ الإجراء");
       }
     } catch {
-      alert("خطأ بالشبكة");
+      error("خطأ بالشبكة");
     } finally {
       setBusy(null);
     }

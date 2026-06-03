@@ -13,7 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 import { createEscalationTicket } from "@/lib/escalation";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ function parseTags(s: string | null | undefined): string[] {
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("customers");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   let body: any = {};

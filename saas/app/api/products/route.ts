@@ -1,12 +1,12 @@
 // Growth Suite — Product Catalog (list + create). userId-scoped, additive.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   const items = await prisma.product.findMany({
     where: { userId: uid },
@@ -22,7 +22,7 @@ function clampInt(v: any, min = 0, max = 100_000_000): number {
 }
 
 export async function POST(req: Request) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   let b: any = {};

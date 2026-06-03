@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { encryptSecret, maskSecret, decryptSecret } from "@/lib/crypto-util";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -44,7 +44,7 @@ function maskProvider(row: any) {
 
 export async function GET() {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const rows = await (prisma as any).commerceEmailProvider.findMany({ where: { userId: user.id }, orderBy: { updatedAt: "desc" } });
@@ -53,7 +53,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const limited = enforceRateLimit(req, { name: "commerce-email-provider", identifier: user.id, ...RATE_LIMITS.api });

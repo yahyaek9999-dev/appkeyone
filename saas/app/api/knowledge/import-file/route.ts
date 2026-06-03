@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { parsePdf, parseDocx } from "@/lib/knowledge-import";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
 
@@ -10,7 +10,7 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    const user = await requireUser();
+    const user = await requirePermission("settings");
     const form = await req.formData();
     const file = form.get("file");
     if (!file || !(file instanceof File)) {
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const lowerName = file.name.toLowerCase();
     let text: string | undefined;
     let title: string | undefined;
-    let kind: "pdf" | "docx" = "pdf";
+    let kind: "pdf" | "docx" | "txt" = "pdf";
 
     if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
       const r = await parsePdf(buf);
@@ -34,8 +34,14 @@ export async function POST(req: Request) {
       const r = await parseDocx(buf);
       if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
       text = r.text; kind = "docx";
+    } else if (lowerName.endsWith(".txt") || file.type === "text/plain") {
+      const raw = buf.toString("utf8").replace(/\r\n/g, "\n").trim();
+      if (!raw || raw.length < 2) {
+        return NextResponse.json({ error: "الملف فارغ" }, { status: 400 });
+      }
+      text = raw.slice(0, 60_000); kind = "txt";
     } else {
-      return NextResponse.json({ error: "نوع الملف غير مدعوم. ادعم PDF و DOCX فقط." }, { status: 400 });
+      return NextResponse.json({ error: "نوع الملف غير مدعوم. ندعم PDF و Word و TXT فقط." }, { status: 400 });
     }
 
     const finalTitle = (title && title.trim())

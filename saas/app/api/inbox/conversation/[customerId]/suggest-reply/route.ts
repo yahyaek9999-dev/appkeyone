@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { chat as llmChat } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 
@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: { customerId: string } }
 ) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("inbox"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const customerId = params.customerId;

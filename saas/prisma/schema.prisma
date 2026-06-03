@@ -16,6 +16,15 @@ model User {
   role         String   @default("user") // user | admin
   createdAt    DateTime @default(now())
 
+  // ---- Self-service signup approval (Launch: waitlist-gated signup) ----
+  // Public signups land as "pending" and an admin approves them before they
+  // can log in. Default "approved" keeps every existing row (and admin-created
+  // users) usable without a data migration. Flip SIGNUP_AUTO_APPROVE=1 to make
+  // signups self-activate.
+  approvalStatus String   @default("approved") // pending | approved | rejected
+  approvedAt     DateTime?
+  approvedBy     String?
+
   // ---- Membership: account suspension (Phase: membership foundation) ----
   // Suspended users keep their data but cannot send/receive WA messages,
   // run AI requests, or send broadcasts. Reactivation is admin-only.
@@ -26,6 +35,7 @@ model User {
 
   bot            Bot?
   subscription   Subscription?
+  teamMembers    TeamMember[] @relation("TeamOwner")
   customers      Customer[]
   documents      Document[]
   apiCalls       ApiCall[]
@@ -38,6 +48,33 @@ model User {
   commerceNotifications CommerceNotificationLog[]
   commerceEmailProviders CommerceEmailProvider[]
   commerceEmailTemplates CommerceEmailTemplate[]
+}
+
+/// Team members who can log into a workspace under the OWNER's account with a
+/// scoped role. The owner is the original User; members authenticate with their
+/// own email + password but every query still scopes to `ownerId` (= the
+/// owner's User.id), so data isolation is unchanged. Replaces the legacy
+/// Bot.teamMembersJson blob (which is kept for backward-compat but unused).
+model TeamMember {
+  id              String   @id @default(cuid())
+  ownerId         String
+  owner           User     @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  email           String
+  name            String?
+  role            String   @default("viewer") // admin | sales | support | viewer
+  passwordHash    String?                      // null until the invite is accepted
+  status          String   @default("invited") // invited | active | disabled
+  inviteTokenHash String?  @unique             // sha256 of the raw invite token
+  inviteExpiresAt DateTime?
+  invitedAt       DateTime @default(now())
+  acceptedAt      DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([ownerId, email])
+  @@index([ownerId])
+  @@index([email])
 }
 
 model Bot {
@@ -164,6 +201,9 @@ model Bot {
   // "لا نتعامل بالدولار"...). Injected into the system prompt VERBATIM so the
   // AI never invents promises that contradict company policy.
   policyRules     String   @default("")
+
+  // ---- Team members (Phase 1: role registry, Phase 2: login enforcement) ----
+  teamMembersJson String   @default("[]") // JSON: [{email,role,addedAt}]
 
   updatedAt       DateTime @updatedAt
   createdAt       DateTime @default(now())

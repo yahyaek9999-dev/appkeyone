@@ -1,7 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { type Role, type Permission, can, normalizeRole } from "./rbac";
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-please-change-min-32-chars-long"
@@ -16,6 +18,7 @@ export async function verifyPassword(pw: string, hash: string) {
   return bcrypt.compare(pw, hash);
 }
 
+/** Owner session — token payload `{ uid }`. Unchanged from the original. */
 export async function createSession(userId: string) {
   const token = await new SignJWT({ uid: userId })
     .setProtectedHeader({ alg: ALG })
@@ -29,29 +32,173 @@ export async function createSession(userId: string) {
     maxAge: 60 * 60 * 24 * 30,
   });
 }
+
+/** Team-member session — token payload `{ mid }` (the TeamMember.id). */
+export async function createMemberSession(memberId: string) {
+  const token = await new SignJWT({ mid: memberId })
+    .setProtectedHeader({ alg: ALG })
+    .setIssuedAt()
+    .setExpirationTime("30d")
+    .sign(SECRET);
+  cookies().set(COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
 export function clearSession() {
   cookies().delete(COOKIE);
 }
-export async function getUserId(): Promise<string | null> {
+
+/** Decode the session cookie. Returns the raw payload or null. */
+async function readToken(): Promise<{ uid?: string; mid?: string } | null> {
   const tok = cookies().get(COOKIE)?.value;
   if (!tok) return null;
   try {
     const { payload } = await jwtVerify(tok, SECRET);
-    return (payload.uid as string) ?? null;
+    return payload as { uid?: string; mid?: string };
   } catch {
     return null;
   }
 }
-export async function getCurrentUser() {
-  const id = await getUserId();
-  if (!id) return null;
+
+/**
+ * Legacy helper kept for any caller that only needs the owner User.id. For
+ * member sessions this returns the OWNER's id (so existing `where:{userId}`
+ * scoping is unchanged).
+ */
+export async function getUserId(): Promise<string | null> {
+  const ctx = await getAuthContext();
+  return ctx?.user.id ?? null;
+}
+
+type OwnerUser = NonNullable<Awaited<ReturnType<typeof loadOwner>>>;
+
+function loadOwner(id: string) {
   return prisma.user.findUnique({
     where: { id },
     include: { bot: true, subscription: { include: { plan: true } } },
   });
 }
+
+export interface AuthContext {
+  /** The OWNER User row — what all data queries scope to. */
+  user: OwnerUser;
+  /** Effective role of the authenticated principal. */
+  role: Role;
+  /** True when the principal is the workspace owner (not a team member). */
+  isOwner: boolean;
+  /** The TeamMember row when the principal is a team member; else null. */
+  member: { id: string; email: string; role: string; name: string | null } | null;
+  /** Email of the actual logged-in principal (owner or member). */
+  principalEmail: string;
+}
+
+/**
+ * Resolve the full auth context from the session cookie.
+ *   - `{ uid }`  → owner session: role "owner", isOwner true.
+ *   - `{ mid }`  → member session: must be status "active"; role = member.role;
+ *                  `user` is the OWNER row so all scoping keeps working.
+ * Returns null when unauthenticated or the principal is no longer valid.
+ */
+export async function getAuthContext(): Promise<AuthContext | null> {
+  const payload = await readToken();
+  if (!payload) return null;
+
+  // Owner session
+  if (payload.uid) {
+    const user = await loadOwner(payload.uid);
+    if (!user) return null;
+    return {
+      user,
+      role: "owner",
+      isOwner: true,
+      member: null,
+      principalEmail: user.email,
+    };
+  }
+
+  // Member session
+  if (payload.mid) {
+    const member = await prisma.teamMember.findUnique({ where: { id: payload.mid } });
+    if (!member || member.status !== "active") return null;
+    const owner = await loadOwner(member.ownerId);
+    if (!owner) return null;
+    return {
+      user: owner,
+      role: normalizeRole(member.role),
+      isOwner: false,
+      member: { id: member.id, email: member.email, role: member.role, name: member.name },
+      principalEmail: member.email,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Backward-compatible: returns the OWNER User (with bot + subscription) for the
+ * current session, whether the principal is the owner or a team member. Callers
+ * that need the role/principal should use getAuthContext().
+ */
+export async function getCurrentUser() {
+  const ctx = await getAuthContext();
+  return ctx?.user ?? null;
+}
+
 export async function requireUser() {
   const u = await getCurrentUser();
   if (!u) throw new Error("UNAUTHORIZED");
   return u;
+}
+
+/**
+ * Require the current principal to hold `permission`. Returns the OWNER User
+ * (drop-in replacement for requireUser) so route bodies are unchanged. Owners
+ * always pass. Throws "UNAUTHORIZED" (no session) or "FORBIDDEN" (no perm).
+ */
+export async function requirePermission(permission: Permission) {
+  const ctx = await getAuthContext();
+  if (!ctx) throw new Error("UNAUTHORIZED");
+  if (!can(ctx.role, permission)) throw new Error("FORBIDDEN");
+  return ctx.user;
+}
+
+/**
+ * Permission-aware variant of getUserId(). Returns the OWNER's User.id when the
+ * current principal holds `permission`, else null. Lets routes that use the
+ * `getUserId()` → `if (!uid) 401` pattern enforce RBAC with a one-line swap:
+ * a member lacking the permission is treated as unauthenticated (no data leak).
+ */
+export async function getUserIdForPermission(permission: Permission): Promise<string | null> {
+  const ctx = await getAuthContext();
+  if (!ctx) return null;
+  if (!can(ctx.role, permission)) return null;
+  return ctx.user.id;
+}
+
+/**
+ * Like getCurrentUser() but returns the OWNER User only when the principal
+ * holds `permission`; otherwise null. For routes using the
+ * `getCurrentUser()` → `if (!user) 401` pattern.
+ */
+export async function getUserForPermission(permission: Permission) {
+  const ctx = await getAuthContext();
+  if (!ctx) return null;
+  if (!can(ctx.role, permission)) return null;
+  return ctx.user;
+}
+
+/**
+ * Server-component page guard. Redirects to /login when unauthenticated and to
+ * /dashboard when the principal lacks `permission`. Returns the AuthContext so
+ * pages can read role/owner/member. Use at the top of sensitive pages.
+ */
+export async function requirePagePermission(permission: Permission): Promise<AuthContext> {
+  const ctx = await getAuthContext();
+  if (!ctx) redirect("/login");
+  if (!can(ctx.role, permission)) redirect("/dashboard");
+  return ctx;
 }

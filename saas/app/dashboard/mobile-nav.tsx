@@ -4,14 +4,28 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { NAV_ITEMS } from "./nav-items";
 
 type Props = {
   children: React.ReactNode;
+  brandName?: string;
 };
 
-export default function MobileNav({ children }: Props) {
+function currentPageLabel(pathname: string): string | null {
+  // Longest-prefix match so nested routes resolve to their section label.
+  let best: { href: string; label: string } | null = null;
+  for (const n of NAV_ITEMS) {
+    if (pathname === n.href || pathname.startsWith(n.href + "/")) {
+      if (!best || n.href.length > best.href.length) best = n;
+    }
+  }
+  return best?.label ?? null;
+}
+
+export default function MobileNav({ children, brandName = "KEYONE" }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const pageLabel = currentPageLabel(pathname);
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -40,8 +54,14 @@ export default function MobileNav({ children }: Props) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2 text-sm font-bold text-white">
-          KEYONE
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-sm font-bold text-white">{brandName}</span>
+          {pageLabel && (
+            <>
+              <span className="text-slate-600">/</span>
+              <span className="truncate text-sm text-slate-400">{pageLabel}</span>
+            </>
+          )}
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 import { checkLimit, incrementUsage } from "@/lib/membership/limits";
 import { buildAudienceWhere } from "@/lib/broadcasts/audience";
 import { resolveSegmentCustomers } from "@/lib/analytics/segments";
@@ -8,7 +8,7 @@ import { resolveSegmentCustomers } from "@/lib/analytics/segments";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   const items = await prisma.broadcast.findMany({
@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   let body: any = {};

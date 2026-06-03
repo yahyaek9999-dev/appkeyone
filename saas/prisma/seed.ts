@@ -165,6 +165,7 @@ async function main() {
         phone: process.env.SUPPORT_WHATSAPP || "+201000000000",
         passwordHash: await bcrypt.hash(adminPassword, 10),
         role: "admin",
+        approvalStatus: "approved",
         bot: { create: { notifyPhone: process.env.SUPPORT_WHATSAPP || "+201000000000" } },
       },
     });

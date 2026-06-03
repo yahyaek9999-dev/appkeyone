@@ -26,6 +26,7 @@ export default async function AdminUsersPage() {
           phone: u.phone,
           role: u.role,
           createdAt: u.createdAt.toISOString(),
+          approvalStatus: u.approvalStatus ?? "approved",
           suspended: u.suspended ?? false,
           suspendedReason: u.suspendedReason ?? null,
           subscription: u.subscription

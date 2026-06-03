@@ -35,6 +35,7 @@ type User = {
   phone: string | null;
   role: string;
   createdAt: string;
+  approvalStatus: string;
   suspended: boolean;
   suspendedReason: string | null;
   subscription: Sub | null;
@@ -79,6 +80,53 @@ function statusBadge(s: string | undefined) {
   };
 }
 
+function ApproveButtons({ userId }: { userId: string }) {
+  const [loading, setLoading] = useState<"" | "approve" | "reject">("");
+
+  async function act(kind: "approve" | "reject") {
+    if (kind === "reject" && !confirm("رفض هذا الطلب؟ لن يتمكن صاحبه من الدخول.")) return;
+    setLoading(kind);
+    try {
+      const r = await fetch(`/api/admin/users/${userId}/approve`, {
+        method: kind === "approve" ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: kind === "reject" ? JSON.stringify({ reason: "rejected_by_admin" }) : undefined,
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        alert(j.error || "فشل الإجراء");
+        setLoading("");
+        return;
+      }
+      window.location.reload();
+    } catch {
+      alert("فشل الإجراء");
+      setLoading("");
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => act("approve")}
+        disabled={!!loading}
+        title="الموافقة على الحساب"
+        className="px-2 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-200 text-xs inline-flex items-center disabled:opacity-50"
+      >
+        <CheckCircle2 className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={() => act("reject")}
+        disabled={!!loading}
+        title="رفض الحساب"
+        className="px-2 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-200 text-xs inline-flex items-center disabled:opacity-50"
+      >
+        <XCircle className="w-3.5 h-3.5" />
+      </button>
+    </>
+  );
+}
+
 export default function UsersUi({
   users,
   plans,
@@ -97,6 +145,8 @@ export default function UsersUi({
   const filtered = useMemo(() => {
     return users.filter((u) => {
       if (u.role === "admin") return false;
+      if (filter === "pending_approval" && u.approvalStatus !== "pending")
+        return false;
       if (filter === "active" && u.subscription?.status !== "active")
         return false;
       if (filter === "pending" && u.subscription?.status !== "pending")
@@ -134,6 +184,7 @@ export default function UsersUi({
         <div className="flex gap-2">
           {[
             ["all", "الكل"],
+            ["pending_approval", "بانتظار الموافقة"],
             ["none", "بدون اشتراك"],
             ["pending", "بانتظار"],
             ["active", "نشط"],
@@ -187,7 +238,15 @@ export default function UsersUi({
                     <td className="p-3 text-slate-300">{u.phone || "—"}</td>
                     <td className="p-3">{u.subscription?.planName || "—"}</td>
                     <td className="p-3">
-                      {u.suspended ? (
+                      {u.approvalStatus === "pending" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs bg-amber-500/15 text-amber-300 border-amber-500/30">
+                          <Clock className="w-3 h-3" /> بانتظار الموافقة
+                        </span>
+                      ) : u.approvalStatus === "rejected" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs bg-rose-500/15 text-rose-300 border-rose-500/30">
+                          <XCircle className="w-3 h-3" /> مرفوض
+                        </span>
+                      ) : u.suspended ? (
                         <span
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs bg-rose-500/15 text-rose-300 border-rose-500/30"
                           title={u.suspendedReason || ""}
@@ -229,6 +288,9 @@ export default function UsersUi({
                     </td>
                     <td className="p-3 text-left">
                       <div className="flex gap-1.5 justify-end">
+                        {u.approvalStatus === "pending" && (
+                          <ApproveButtons userId={u.id} />
+                        )}
                         {u.subscription && (
                           <button
                             onClick={() => setResetUsageTarget(u.id)}

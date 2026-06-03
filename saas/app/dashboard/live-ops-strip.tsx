@@ -13,12 +13,12 @@ export function LiveOpsStrip() {
   const queueHasIssues = (snapshot?.totals.outgoingFailed24h || 0) > 0 || (snapshot?.totals.outgoingStaleQueued || 0) > 0;
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <div className="card p-4 lg:col-span-1">
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="kpi-label">حالة المنصة</div>
-            <div className="mt-0.5 text-sm font-semibold text-white">Realtime Ops</div>
+            <div className="mt-0.5 text-sm font-semibold text-white">مباشر</div>
           </div>
           <LiveBadge state={state} />
         </div>
@@ -27,7 +27,7 @@ export function LiveOpsStrip() {
       <LiveTile icon={<Phone className="h-4 w-4" />} label="واتساب"
         value={connected ? "متصل" : wa?.status || "غير متصل"}
         tone={connected ? "online" : "warning"}
-        hint={wa?.phone || (wa?.mode === "meta_cloud" ? "Meta Cloud" : "QR mode")} />
+        hint={wa?.phone || (wa?.mode === "meta_cloud" ? "Meta Cloud" : "ربط QR")} />
       <LiveTile icon={<MessageSquareWarning className="h-4 w-4" />} label="تصعيدات مفتوحة"
         value={String(snapshot?.totals.escalationActive ?? "—")}
         tone={(snapshot?.totals.escalationCritical || 0) > 0 ? "warning" : (snapshot?.totals.escalationActive || 0) > 0 ? "ai" : "online"}
@@ -35,7 +35,7 @@ export function LiveOpsStrip() {
       <LiveTile icon={<Megaphone className="h-4 w-4" />} label="حملات نشطة"
         value={String(snapshot?.totals.broadcastsActive ?? "—")}
         tone={(snapshot?.totals.broadcastsActive || 0) > 0 ? "ai" : "neutral"}
-        hint="queued / sending" />
+        hint="قيد الإرسال / منتظرة" />
       <LiveTile icon={<Send className="h-4 w-4" />} label="طابور الإرسال"
         value={String(queuePending || snapshot?.totals.outgoingSending || "—")}
         tone={queueHasIssues ? "warning" : queuePending > 0 ? "ai" : "online"}
@@ -43,7 +43,7 @@ export function LiveOpsStrip() {
       <LiveTile icon={<AlertTriangle className="h-4 w-4" />} label="تنبيهات آخر 24 ساعة"
         value={String(snapshot?.totals.alerts24h ?? "—")}
         tone={(snapshot?.totals.alerts24h || 0) > 0 ? "warning" : "online"}
-        hint="Safety + angry alerts" />
+        hint="أمان وتنبيهات الغضب" />
     </div>
   );
 }

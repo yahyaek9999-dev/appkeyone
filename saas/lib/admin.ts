@@ -1,12 +1,16 @@
-import { getCurrentUser } from "./auth";
+import { getAuthContext } from "./auth";
 import { prisma } from "./db";
 
-/** Throws if the request is not made by an admin. */
+/**
+ * Throws if the request is not made by a platform admin.
+ * SECURITY: requires an OWNER session whose User.role is "admin". A team member
+ * (member session) NEVER inherits platform-admin, even if their owner is one.
+ */
 export async function requireAdmin() {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("UNAUTHORIZED");
-  if ((user as any).role !== "admin") throw new Error("FORBIDDEN");
-  return user;
+  const ctx = await getAuthContext();
+  if (!ctx) throw new Error("UNAUTHORIZED");
+  if (!ctx.isOwner || (ctx.user as any).role !== "admin") throw new Error("FORBIDDEN");
+  return ctx.user;
 }
 
 /** Returns the singleton site config row, creating it on first access. */

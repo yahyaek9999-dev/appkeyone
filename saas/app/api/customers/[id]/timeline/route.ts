@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +54,7 @@ const ORDER_STATUS_AR: Record<string, string> = {
 };
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("customers");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   // Verify ownership + grab the conversation id in one go.

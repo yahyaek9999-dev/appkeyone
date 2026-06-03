@@ -7,12 +7,22 @@ export default async function KnowledgePage() {
   const docs = await prisma.document.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      source: true,
+      sourceUrl: true,
+      hitCount: true,
+      lastMatchedAt: true,
+      createdAt: true,
+    },
   });
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-2">قاعدة المعرفة</h1>
-      <p className="text-slate-400 mb-8">
-        ارفع داتا شركتك (منتجات, أسعار, FAQ, سياسات). البوت هيستخدمها كمصدر رئيسي للرد.
+      <h1 className="page-title mb-1">مركز تدريب الذكاء الاصطناعي</h1>
+      <p className="page-desc mb-6">
+        أضف منتجاتك وأسعارك وسياساتك وأسئلتك الشائعة — البوت يستخدمها كمصدر رئيسي للإجابة.
       </p>
       <KnowledgeUI docs={JSON.parse(JSON.stringify(docs))} />
     </div>

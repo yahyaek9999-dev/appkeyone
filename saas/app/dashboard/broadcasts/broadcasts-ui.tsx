@@ -26,6 +26,9 @@ import {
 } from "lucide-react";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Bc = {
   id: string;
@@ -118,6 +121,9 @@ export default function BroadcastsUi() {
   const [personalize, setPersonalize] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const { success, error, info } = useToast();
+  const confirm = useConfirm();
+
   // ---- Smart Campaign builder state ----
   const [couponCode, setCouponCode] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -204,9 +210,9 @@ export default function BroadcastsUi() {
       });
       const j = await r.json();
       if (r.ok && j.ok) setOptimization(j as OptimizeResult);
-      else alert(j.error ? "تعذّر التحليل" : "تعذّر التحليل");
+      else error("تعذّر التحليل");
     } catch {
-      alert("خطأ بالشبكة");
+      error("خطأ بالشبكة");
     } finally {
       setOptimizing(false);
     }
@@ -239,10 +245,10 @@ export default function BroadcastsUi() {
       if (r.ok) {
         setCreating(false);
         resetForm();
-        alert(`تم إطلاق اختبار A/B: النسخة A لـ ${j.a.total} والنسخة B لـ ${j.b.total} عميل.`);
+        success(`تم إطلاق اختبار A/B: النسخة A لـ ${j.a.total} والنسخة B لـ ${j.b.total} عميل.`);
         load();
       } else {
-        alert(j.error || "فشل إنشاء الاختبار");
+        error(j.error || "فشل إنشاء الاختبار");
       }
     } finally {
       setSubmitting(false);
@@ -281,9 +287,9 @@ export default function BroadcastsUi() {
       });
       const j = await r.json();
       if (r.ok && j.text) setTemplate(j.text);
-      else alert(j.error === "llm_error" ? "تعذّر توليد النص — تحقق من مزود الذكاء" : "تعذّر التوليد");
+      else error(j.error === "llm_error" ? "تعذّر توليد النص — تحقق من مزود الذكاء" : "تعذّر التوليد");
     } catch {
-      alert("خطأ بالشبكة");
+      error("خطأ بالشبكة");
     } finally {
       setGenerating(false);
     }
@@ -317,11 +323,11 @@ export default function BroadcastsUi() {
         setCreating(false);
         resetForm();
         if (typeof j.skipped === "number" && j.skipped > 0) {
-          alert(`تم إنشاء الحملة. تم استثناء ${j.skipped} عميل لا نملك رقم هاتف لهم (معرّف واتساب فقط).`);
+          info(`تم إنشاء الحملة. تم استثناء ${j.skipped} عميل لا نملك رقم هاتف لهم (معرّف واتساب فقط).`);
         }
         load();
       } else {
-        alert(j.error || "فشل إنشاء الحملة");
+        error(j.error || "فشل إنشاء الحملة");
       }
     } finally {
       setSubmitting(false);
@@ -329,7 +335,7 @@ export default function BroadcastsUi() {
   }
 
   async function cancel(bc: Bc) {
-    if (!confirm("إيقاف الحملة؟ الرسائل المرسلة لن تتراجع.")) return;
+    if (!(await confirm({ title: "إيقاف الحملة", body: "الرسائل المرسلة لن تتراجع.", confirmLabel: "إيقاف", cancelLabel: "إلغاء", danger: true }))) return;
     await fetch(`/api/broadcasts/${bc.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -339,7 +345,7 @@ export default function BroadcastsUi() {
   }
 
   async function remove(bc: Bc) {
-    if (!confirm("حذف الحملة وكل سجلاتها؟")) return;
+    if (!(await confirm({ title: "حذف الحملة", body: "سيتم حذف الحملة وكل سجلاتها.", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
     await fetch(`/api/broadcasts/${bc.id}`, { method: "DELETE" });
     load();
   }
@@ -401,11 +407,11 @@ export default function BroadcastsUi() {
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
         {loading && <div className="p-8 text-center text-slate-400 text-sm">جاري التحميل...</div>}
         {!loading && items.length === 0 && (
-          <div className="p-12 text-center text-slate-400 text-sm">
-            <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <div>لا توجد حملات بعد.</div>
-            <div className="text-xs mt-1">ابدأ حملة جديدة من الزر أعلاه.</div>
-          </div>
+          <EmptyState
+            icon={<Megaphone className="h-full w-full" />}
+            title="لا توجد حملات بعد"
+            description="ابدأ حملة جديدة من الزر أعلاه."
+          />
         )}
         {!loading &&
           items.map((bc) => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Shield, AlertTriangle, Activity, Zap, Power, RefreshCw, CheckCircle2 } from "lucide-react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface SafetyData {
   state: any;
@@ -62,6 +63,7 @@ export default function SafetyDashboard() {
   const [data, setData] = useState<SafetyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const confirm = useConfirm();
 
   async function load() {
     try {
@@ -78,7 +80,7 @@ export default function SafetyDashboard() {
   }, []);
 
   async function clearKill() {
-    if (!confirm("سيتم إلغاء الإيقاف الطارئ والسماح بالإرسال مرة أخرى. متأكد؟")) return;
+    if (!(await confirm({ title: "إلغاء الإيقاف الطارئ", body: "سيتم إلغاء الإيقاف الطارئ والسماح بالإرسال مرة أخرى. متأكد؟", confirmLabel: "تأكيد", cancelLabel: "إلغاء", danger: true }))) return;
     setClearing(true);
     await fetch("/api/safety/clear-kill", { method: "POST" });
     await load();

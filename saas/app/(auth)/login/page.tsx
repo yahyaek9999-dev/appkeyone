@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Lock } from "lucide-react";
 
 export default function LoginPage() {
@@ -68,10 +69,11 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p className="mt-6 rounded-xl border border-white/[0.06] bg-white/[0.025] p-4 text-center text-xs leading-relaxed text-slate-500">
-        الاشتراك يتم بتفعيل الإدارة فقط.
-        <br />
-        تواصل عبر واتساب لطلب حساب جديد.
+      <p className="mt-6 text-center text-sm text-slate-400">
+        ليس لديك حساب؟{" "}
+        <Link href="/signup" className="font-medium text-brand-400 hover:text-brand-300">
+          إنشاء حساب جديد
+        </Link>
       </p>
     </div>
   );

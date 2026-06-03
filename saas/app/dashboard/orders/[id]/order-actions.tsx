@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "pending", label: "قيد المراجعة" },
@@ -35,6 +36,7 @@ export default function OrderActions({
   const [current, setCurrent] = useState(status);
   const [track, setTrack] = useState({ trackingCode, courierName, trackingUrl });
   const [savingTrack, setSavingTrack] = useState(false);
+  const confirm = useConfirm();
 
   async function update(patch: any) {
     setErr(null);
@@ -55,7 +57,7 @@ export default function OrderActions({
   }
 
   async function remove() {
-    if (!confirm("هل تريد حذف هذا الطلب؟")) return;
+    if (!(await confirm({ title: "حذف الطلب", body: "هل تريد حذف هذا الطلب؟", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
     setErr(null);
     try {
       const r = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });

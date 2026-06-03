@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getUserForPermission } from "@/lib/auth";
 import { wa } from "@/lib/wa";
 import { dispatchCommerceAutomations } from "@/lib/commerce/notifications";
 import { usageIdempotencyKey } from "@/lib/usage-ledger";
@@ -23,7 +23,7 @@ const ALLOWED_STATUS = new Set([
 const ALLOWED_FULFILLMENT = new Set(["unfulfilled", "partial", "fulfilled"]);
 
 export async function GET(_req: Request, ctx: { params: { id: string } }) {
-  const user = await getCurrentUser();
+  const user = await getUserForPermission("customers");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -41,7 +41,7 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
-  const user = await getCurrentUser();
+  const user = await getUserForPermission("customers");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -274,7 +274,7 @@ async function sendShipmentNotification(
 }
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
-  const user = await getCurrentUser();
+  const user = await getUserForPermission("customers");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const existing = await (prisma as any).order.findFirst({

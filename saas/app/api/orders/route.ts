@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getUserForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const user = await getCurrentUser();
+  const user = await getUserForPermission("customers");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

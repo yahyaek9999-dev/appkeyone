@@ -819,6 +819,206 @@ async function verifyBaileys() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Reliability scope (Agent 3): readiness, queue visibility, WhatsApp health,
+// backup recency, and Meta Cloud production posture. Read-only — never sends,
+// never drains, never mutates. Designed to be safe to run on the live VPS as
+// a post-deploy gate.
+// ---------------------------------------------------------------------------
+async function verifyReliability() {
+  // ---- Outgoing queue depth (raw DB read — runtime-agnostic) --------------
+  // The outgoing-queue helper is TypeScript and may not be require-able from
+  // this plain-node script depending on build state, so we read the WaMessage
+  // ledger directly. This matches what getOutgoingQueueHealth() computes.
+  await safe("reliability:outgoing-queue", async () => {
+    const now = Date.now();
+    const staleCutoff = new Date(now - 30 * 60_000); // 30 min — STALE_QUEUED_WARN_MS
+    const since24h = new Date(now - 24 * 60 * 60_000);
+    const [queued, sending, staleQueued, failed24h, oldest] = await Promise.all([
+      prisma.waMessage.count({ where: { status: "queued" } }).catch(() => -1),
+      prisma.waMessage.count({ where: { status: "sending" } }).catch(() => -1),
+      prisma.waMessage
+        .count({ where: { status: "queued", queuedAt: { lt: staleCutoff } } })
+        .catch(() => -1),
+      prisma.waMessage
+        .count({ where: { status: "failed", failedAt: { gte: since24h } } })
+        .catch(() => -1),
+      prisma.waMessage
+        .findFirst({
+          where: { status: "queued" },
+          orderBy: { queuedAt: "asc" },
+          select: { queuedAt: true },
+        })
+        .catch(() => null),
+    ]);
+    const oldestQueuedAgeSec = oldest?.queuedAt
+      ? Math.floor((now - new Date(oldest.queuedAt).getTime()) / 1000)
+      : 0;
+    const q = { queued, sending, staleQueued, failed24h, oldestQueuedAgeSec };
+    const status = staleQueued > 0 ? "warn" : "pass";
+    add(
+      "reliability:outgoing-queue",
+      status,
+      staleQueued > 0 ? "Outgoing queue has stale messages" : "Outgoing queue healthy",
+      q,
+    );
+  });
+
+  // ---- Broadcast queue depth ----------------------------------------------
+  await safe("reliability:broadcast-queue", async () => {
+    const [queued, sending] = await Promise.all([
+      prisma.broadcast.count({ where: { status: "queued" } }).catch(() => -1),
+      prisma.broadcast.count({ where: { status: "sending" } }).catch(() => -1),
+    ]);
+    pass("reliability:broadcast-queue", "Broadcast queue queryable", {
+      queued,
+      sending,
+    });
+  });
+
+  // ---- Meta Cloud production posture --------------------------------------
+  await safe("reliability:meta-quality", async () => {
+    const bots = await prisma.bot.findMany({
+      where: { metaPhoneNumberId: { not: null } },
+      select: { metaQualityRating: true, metaVerifiedAt: true },
+    });
+    if (bots.length === 0) {
+      skip(
+        "reliability:meta-quality",
+        "No Meta Cloud-configured bots (QR-only deployment)",
+      );
+      return;
+    }
+    const red = bots.filter(
+      (b) => (b.metaQualityRating || "").toUpperCase() === "RED",
+    ).length;
+    const yellow = bots.filter(
+      (b) => (b.metaQualityRating || "").toUpperCase() === "YELLOW",
+    ).length;
+    const status = red > 0 ? "fail" : yellow > 0 ? "warn" : "pass";
+    add(
+      "reliability:meta-quality",
+      status,
+      red > 0
+        ? "One or more Meta numbers at RED quality"
+        : yellow > 0
+          ? "One or more Meta numbers at YELLOW quality"
+          : "All Meta numbers GREEN/healthy",
+      { configured: bots.length, yellow, red },
+    );
+  });
+
+  // ---- Webhook dead-letter check (Meta) -----------------------------------
+  await safe("reliability:meta-webhooks", async () => {
+    const deadLetter = await prisma.waWebhookEvent
+      .count({ where: { processed: false, attempts: { gte: 5 } } })
+      .catch(() => -1);
+    const unprocessed = await prisma.waWebhookEvent
+      .count({ where: { processed: false } })
+      .catch(() => -1);
+    const status = deadLetter > 0 ? "warn" : "pass";
+    add(
+      "reliability:meta-webhooks",
+      status,
+      deadLetter > 0
+        ? "Meta webhook events stuck in dead-letter (attempts>=5)"
+        : "No dead-lettered Meta webhook events",
+      { unprocessed, deadLetter },
+    );
+  });
+
+  // ---- WhatsApp service reachability (optional, live) ---------------------
+  const waBase = process.env.WHATSAPP_SERVICE_URL;
+  if (waBase) {
+    await safe("reliability:wa-service", async () => {
+      const r = await fetchJson(new URL("/health", waBase).toString());
+      if (r.ok && r.body?.ok) {
+        pass("reliability:wa-service", "whatsapp-service /health reachable", {
+          sessions: Array.isArray(r.body.sessions) ? r.body.sessions.length : 0,
+        });
+      } else {
+        warn(
+          "reliability:wa-service",
+          `whatsapp-service /health unexpected status=${r.status}`,
+        );
+      }
+    });
+  } else {
+    skip(
+      "reliability:wa-service",
+      "Set WHATSAPP_SERVICE_URL to verify the whatsapp-service health endpoint",
+    );
+  }
+
+  // ---- Readiness endpoint (optional, live) --------------------------------
+  const base = process.env.KEYONE_VERIFY_BASE_URL;
+  if (base) {
+    await safe("reliability:ready", async () => {
+      const r = await fetchJson(new URL("/api/ready", base).toString());
+      if (r.ok && r.body && typeof r.body.ready === "boolean") {
+        add(
+          "reliability:ready",
+          r.body.ready ? "pass" : "warn",
+          `readiness verdict=${r.body.verdict}`,
+          r.body,
+        );
+      } else {
+        fail("reliability:ready", `unexpected /api/ready response status=${r.status}`);
+      }
+    });
+  } else {
+    skip(
+      "reliability:ready",
+      "Set KEYONE_VERIFY_BASE_URL to verify the live /api/ready readiness probe",
+    );
+  }
+
+  // ---- Backup recency (optional, VPS-only) --------------------------------
+  // KEYONE_BACKUP_DIR points at the backups folder on the VPS. We assert the
+  // newest *.db.gz is < 26h old (daily backup at 03:30 + slack).
+  const backupDir = process.env.KEYONE_BACKUP_DIR;
+  if (backupDir) {
+    await safe("reliability:backup-recency", async () => {
+      if (!fs.existsSync(backupDir)) {
+        warn("reliability:backup-recency", `Backup dir not found: ${backupDir}`);
+        return;
+      }
+      const entries = fs
+        .readdirSync(backupDir)
+        .filter((f) => f.endsWith(".db.gz") || f.startsWith("pre-deploy-"))
+        .map((f) => {
+          const full = path.join(backupDir, f);
+          let mtime = 0;
+          try {
+            mtime = fs.statSync(full).mtimeMs;
+          } catch {
+            /* ignore */
+          }
+          return { f, mtime };
+        })
+        .sort((a, b) => b.mtime - a.mtime);
+      if (entries.length === 0) {
+        fail("reliability:backup-recency", "No backups found in backup dir");
+        return;
+      }
+      const newest = entries[0];
+      const ageH = (Date.now() - newest.mtime) / 3_600_000;
+      const status = ageH > 26 ? "fail" : ageH > 13 ? "warn" : "pass";
+      add(
+        "reliability:backup-recency",
+        status,
+        `Newest backup is ${ageH.toFixed(1)}h old`,
+        { newest: newest.f, ageHours: Number(ageH.toFixed(1)), count: entries.length },
+      );
+    });
+  } else {
+    skip(
+      "reliability:backup-recency",
+      "Set KEYONE_BACKUP_DIR to verify backup recency on the VPS",
+    );
+  }
+}
+
 async function run() {
   if (["system", "all"].includes(scope)) await verifySystem();
   if (["whatsapp", "all"].includes(scope)) await verifyWhatsapp();
@@ -828,6 +1028,7 @@ async function run() {
   if (["email", "all"].includes(scope)) await verifyEmail();
   if (["mobile", "all"].includes(scope)) await verifyMobile();
   if (["baileys", "all"].includes(scope)) await verifyBaileys();
+  if (["reliability", "all"].includes(scope)) await verifyReliability();
   if (
     ![
       "system",
@@ -838,6 +1039,7 @@ async function run() {
       "email",
       "mobile",
       "baileys",
+      "reliability",
       "all",
     ].includes(scope)
   ) {

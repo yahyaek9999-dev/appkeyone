@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 import { checkLimit, incrementUsage } from "@/lib/membership/limits";
 import { buildAudienceWhere } from "@/lib/broadcasts/audience";
 import { resolveSegmentCustomers } from "@/lib/analytics/segments";
@@ -22,7 +22,7 @@ function isReachable(ph: string | null | undefined): boolean {
 }
 
 export async function POST(req: Request) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   let body: any = {};

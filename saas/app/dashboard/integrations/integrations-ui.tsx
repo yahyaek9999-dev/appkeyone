@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Integration = {
   id: string;
@@ -127,6 +129,7 @@ export default function IntegrationsUi() {
     webhookUrl: string;
   } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const confirm = useConfirm();
   const [wizardPlatform, setWizardPlatform] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -191,7 +194,7 @@ export default function IntegrationsUi() {
   }
 
   async function remove(item: Integration) {
-    if (!confirm("سيتم فصل التكامل ولن تستقبل أحداث جديدة. متابعة؟")) return;
+    if (!(await confirm({ title: "فصل التكامل", body: "سيتم فصل التكامل ولن تستقبل أحداث جديدة. متابعة؟", confirmLabel: "فصل", cancelLabel: "إلغاء", danger: true }))) return;
     setBusyId(item.id);
     try {
       await fetch(`/api/commerce/integrations/${item.id}`, { method: "DELETE" });
@@ -201,7 +204,7 @@ export default function IntegrationsUi() {
   }
 
   async function rotate(item: Integration) {
-    if (!confirm("تدوير المفاتيح سيجعل المفاتيح القديمة غير صالحة. متابعة؟")) return;
+    if (!(await confirm({ title: "تدوير المفاتيح", body: "تدوير المفاتيح سيجعل المفاتيح القديمة غير صالحة. متابعة؟", confirmLabel: "تدوير", cancelLabel: "إلغاء", danger: true }))) return;
     setBusyId(item.id);
     try {
       const res = await fetch(`/api/commerce/integrations/${item.id}/rotate`, { method: "POST" });
@@ -302,9 +305,9 @@ export default function IntegrationsUi() {
             <KeyRound className="w-4 h-4" /> احفظ المفاتيح الآن
           </div>
           <p className="text-xs text-amber-100/80">لن يتم عرض مفتاح الـ API أو سر التوقيع مرة أخرى بعد مغادرة هذه الرسالة.</p>
-          <SecretBox label="Webhook URL" value={secret.webhookUrl} />
-          <SecretBox label="API Key" value={secret.apiKey} />
-          <SecretBox label="Webhook Secret" value={secret.webhookSecret} />
+          <SecretBox label="رابط الاستقبال (Webhook URL)" value={secret.webhookUrl} />
+          <SecretBox label="مفتاح الربط (API Key)" value={secret.apiKey} />
+          <SecretBox label="رمز التحقق (Webhook Secret)" value={secret.webhookSecret} />
           <pre dir="ltr" className="overflow-x-auto rounded-xl bg-black/40 p-3 text-xs text-slate-200">{curlExample}</pre>
         </div>
       )}
@@ -356,11 +359,11 @@ export default function IntegrationsUi() {
         </div>
         {loading && <div className="p-6 text-sm text-slate-400">جاري التحميل...</div>}
         {!loading && items.length === 0 && (
-          <div className="p-8 text-center text-sm text-slate-400">
-            <Plug className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <div>لا توجد تكاملات بعد.</div>
-            <div className="text-xs mt-1">اختر منصة أعلاه لربط متجرك.</div>
-          </div>
+          <EmptyState
+            icon={<Plug className="h-full w-full" />}
+            title="لا توجد متاجر مربوطة بعد"
+            description="اربط متجرك لمزامنة الطلبات والمنتجات تلقائيًا."
+          />
         )}
         {items.map((item) => {
           const badge = STATUS_BADGE[item.connectionStatus || "untested"] || STATUS_BADGE.untested;
@@ -395,8 +398,8 @@ export default function IntegrationsUi() {
                 <button onClick={() => test(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="اختبار الاتصال">
                   {busyId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} اختبار
                 </button>
-                <button onClick={() => syncNow(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="مزامنة الآن">
-                  <RefreshCw className={`w-3 h-3 ${busyId === item.id ? "animate-spin" : ""}`} /> مزامنة
+                <button onClick={() => syncNow(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="عرض آخر الأحداث">
+                  <RefreshCw className={`w-3 h-3 ${busyId === item.id ? "animate-spin" : ""}`} /> آخر الأحداث
                 </button>
                 <button onClick={() => rotate(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="تدوير المفاتيح">
                   <RotateCcw className="w-3 h-3" /> تدوير
@@ -415,11 +418,17 @@ export default function IntegrationsUi() {
 
       <section className="rounded-2xl border border-white/10 bg-slate-900/40 overflow-hidden">
         <div className="border-b border-white/10 p-4 font-bold">آخر أحداث المزامنة</div>
-        {events.length === 0 && <div className="p-6 text-sm text-slate-400">لا توجد أحداث بعد.</div>}
+        {events.length === 0 && (
+          <EmptyState
+            icon={<Send className="h-full w-full" />}
+            title="لا توجد أحداث بعد"
+            description="تظهر الأحداث هنا بعد ربط متجر وبدء وصول الطلبات."
+          />
+        )}
         {events.map((event) => (
           <div key={event.id} className="border-b border-white/5 p-4 text-sm flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="font-mono text-xs text-slate-300" dir="ltr">{event.eventType} · {event.externalOrderId || "—"}</div>
+              <div className="font-mono text-xs text-slate-300" dir="ltr">{labelForEventType(event.eventType)} · {event.externalOrderId || "—"}</div>
               {event.lastError && <div className="text-xs text-rose-300 mt-1">{event.lastError}</div>}
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -449,8 +458,8 @@ export default function IntegrationsUi() {
           <HelpCircle className="w-4 h-4" /> مساعدة سريعة
         </h2>
         <ul className="text-xs text-slate-400 space-y-1.5 leading-relaxed">
-          <li>• <strong>اختبار الاتصال:</strong> يرسل طلب اختبار للتأكد من أن المتجر يستقبل الأحداث.</li>
-          <li>• <strong>مزامنة:</strong> يسحب آخر الطلبات من المتجر بشكل يدوي.</li>
+          <li>• <strong>اختبار الاتصال:</strong> يرسل طلب اختبار للتأكد من أن المتجر يستقبل الأحداث (يُنشئ طلباً تجريبياً مؤقتاً).</li>
+          <li>• <strong>آخر الأحداث:</strong> يعرض آخر 10 أحداث وصلت من المتجر — لا يسحب طلبات جديدة.</li>
           <li>• <strong>تدوير المفاتيح:</strong> يولّد مفتاح API وسر Webhook جديدين. المفاتيح القديمة تتوقف فوراً.</li>
           <li>• <strong>فصل:</strong> يوقف استقبال الأحداث من المتجر دون حذف البيانات السابقة.</li>
           <li>• <strong>تفعيل/إيقاف:</strong> تحكم مؤقت في استقبال الأحداث.</li>
@@ -549,6 +558,20 @@ const EVENT_STATUS_LABELS: Record<string, string> = {
 function EventStatus({ status }: { status: string }) {
   const cls = status === "processed" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : status === "failed" ? "border-rose-500/30 bg-rose-500/10 text-rose-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300";
   return <span className={`rounded-full border px-2 py-0.5 ${cls}`}>{EVENT_STATUS_LABELS[status] || status}</span>;
+}
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  "order.created": "طلب جديد",
+  "order.updated": "تحديث طلب",
+  "order.paid": "تم الدفع",
+  "payment.failed": "فشل الدفع",
+  "order.cancelled": "إلغاء طلب",
+  "order.fulfilled": "تم التنفيذ",
+};
+
+function labelForEventType(type: string): string {
+  const label = EVENT_TYPE_LABELS[type];
+  return label ? `${label} (${type})` : type;
 }
 
 function Kpi({ icon: Icon, label, value, tone }: { icon: any; label: string; value: any; tone: string }) {

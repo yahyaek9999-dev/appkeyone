@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Phone, QrCode, AlertCircle, CheckCircle, Loader2, LogOut, KeyRound, X } from "lucide-react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type WAState = {
   status: string;
@@ -20,6 +21,7 @@ export default function WhatsappUI({ initial }: { initial: any }) {
   const [err, setErr] = useState("");
   const [mode, setMode] = useState<"qr" | "code">("qr");
   const [pairPhone, setPairPhone] = useState("");
+  const confirm = useConfirm();
 
   // Poll status every 2s
   useEffect(() => {
@@ -71,7 +73,13 @@ export default function WhatsappUI({ initial }: { initial: any }) {
   }
 
   async function logout() {
-    if (!confirm("متأكد من فصل واتساب؟")) return;
+    const ok = await confirm({
+      title: "فصل واتساب",
+      body: "سيتوقف البوت عن الرد على رسائل عملائك حتى تعيد الربط. متأكد؟",
+      confirmLabel: "فصل",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     await fetch("/api/whatsapp/logout", { method: "POST" });
     setBusy(false);

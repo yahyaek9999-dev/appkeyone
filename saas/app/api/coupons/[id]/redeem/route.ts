@@ -2,12 +2,12 @@
 // records a redemption row + attributed revenue, bumps usedCount atomically.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getUserIdForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const uid = await getUserId();
+  const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   const coupon = await prisma.coupon.findFirst({ where: { id: params.id, userId: uid } });

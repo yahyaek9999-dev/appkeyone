@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Lightbulb,
   Plus,
@@ -32,6 +33,7 @@ export default function SuggestionsUi() {
   const [answer, setAnswer] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   async function load() {
     setLoading(true);
@@ -94,7 +96,7 @@ export default function SuggestionsUi() {
   }
 
   async function remove(g: Gap) {
-    if (!confirm("حذف هذا الاقتراح؟")) return;
+    if (!(await confirm({ title: "حذف الاقتراح", body: "هل تريد حذف هذا الاقتراح؟", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
     await fetch(`/api/knowledge-gaps/${g.id}`, { method: "DELETE" });
     load();
   }

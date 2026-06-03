@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getUserForPermission } from "@/lib/auth";
 import { syncCommerceOrderFromEvent } from "@/lib/commerce/orders";
 
 export async function POST(req: Request) {
-  const user = await getCurrentUser();
+  const user = await getUserForPermission("settings");
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   let body: any;

@@ -5,6 +5,9 @@
 import { useEffect, useState } from "react";
 import { Package, Plus, Loader2, Pencil, Trash2, X, ImageIcon, Boxes, Tag as TagIcon, Link as LinkIcon } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Product = {
   id: string;
@@ -26,6 +29,8 @@ export default function ProductsUi() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [saving, setSaving] = useState(false);
+  const { error: toastError } = useToast();
+  const confirm = useConfirm();
 
   async function load() {
     try {
@@ -55,7 +60,7 @@ export default function ProductsUi() {
         load();
       } else {
         const j = await r.json().catch(() => ({}));
-        alert(j.error || "تعذّر الحفظ");
+        toastError(j.error || "تعذّر الحفظ");
       }
     } finally {
       setSaving(false);
@@ -63,7 +68,7 @@ export default function ProductsUi() {
   }
 
   async function remove(p: Product) {
-    if (!confirm(`حذف "${p.name}"؟`)) return;
+    if (!(await confirm({ title: "حذف منتج", body: `حذف "${p.name}"؟`, confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
     await fetch(`/api/products/${p.id}`, { method: "DELETE" });
     load();
   }
@@ -102,10 +107,12 @@ export default function ProductsUi() {
           <Loader2 className="h-7 w-7 animate-spin" />
         </div>
       ) : items.length === 0 ? (
-        <div className="card p-12 text-center">
-          <Package className="mx-auto mb-3 h-10 w-10 text-slate-600" />
-          <div className="text-sm text-slate-400">لا توجد منتجات بعد.</div>
-          <div className="mt-1 text-xs text-slate-500">أضف أول منتج ليبدأ الذكاء الاصطناعي بعرضه للعملاء.</div>
+        <div className="card">
+          <EmptyState
+            icon={<Package className="h-full w-full" />}
+            title="لا توجد منتجات بعد"
+            description="أضف أول منتج ليبدأ الذكاء الاصطناعي بعرضه للعملاء."
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { formatCustomerPhone } from "@/lib/phone";
 import { fmtNumber, fmtMoney, timeAgo as taAgo } from "@/lib/format";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Segment = {
   key: string;
@@ -167,7 +168,11 @@ export default function SegmentsUi() {
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
                   ) : members[s.key].length === 0 ? (
-                    <div className="py-3 text-center text-[11px] text-slate-500">لا يوجد عملاء.</div>
+                    <EmptyState
+                      icon={<Users className="h-full w-full" />}
+                      title="لا يوجد عملاء"
+                      size="sm"
+                    />
                   ) : (
                     members[s.key].map((m) => {
                       const p = formatCustomerPhone(m.phone);

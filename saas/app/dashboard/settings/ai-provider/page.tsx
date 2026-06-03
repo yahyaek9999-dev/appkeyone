@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requirePagePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { decryptSecret, maskSecret } from "@/lib/crypto-util";
@@ -8,7 +8,7 @@ import { AIProviderForm } from "./ai-provider-form";
 export const dynamic = "force-dynamic";
 
 export default async function AIProviderPage() {
-  const user = await requireUser();
+  const { user } = await requirePagePermission("settings");
   const bot = await prisma.bot.findUnique({ where: { userId: user.id } });
   if (!bot) redirect("/dashboard");
 

@@ -86,100 +86,151 @@ export default async function LeadsPage() {
         <Stat label="إجمالي" value={leads.length} cls="text-sky-300" />
       </StatGrid>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead className="bg-white/5 text-slate-400">
-            <tr>
-              <th className="p-3 text-right">العميل</th>
-              <th className="p-3 text-right">النقاط</th>
-              <th className="p-3 text-right">النية</th>
-              <th className="p-3 text-right">المشاعر</th>
-              <th className="p-3 text-right">آخر رسالة</th>
-              <th className="p-3 text-right">الرسائل</th>
-              <th className="p-3"></th>
-            </tr>
-          </thead>
-          <tbody>
+      {leads.length === 0 ? (
+        <div className="bg-white/5 border border-white/10 rounded-2xl">
+          <EmptyState
+            icon={<Users className="w-full h-full" />}
+            title="لا يوجد عملاء بعد"
+            description="لما يبدأوا التواصل، هيظهروا هنا مرتّبين حسب نقاطهم."
+            size="md"
+          />
+        </div>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-3 md:hidden">
             {leads.map((c: any) => {
               const sent = SENTIMENT_BADGE[c.lastSentiment || "neutral"] || SENTIMENT_BADGE.neutral;
               const intent = INTENT_BADGE[c.lastIntent || "other"] || INTENT_BADGE.other;
               const lastMsg = c.conversation?.messages[0]?.content || "—";
               return (
-                <tr key={c.id} className="border-t border-white/5 hover:bg-white/[0.02]">
-                  <td className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative shrink-0">
-                        <Avatar name={c.name || c.phone} size="md" />
-                        {c.leadScore >= 70 && (
-                          <span className="absolute -top-0.5 -left-0.5">
-                            <StatusDot tone="busy" pulse size="sm" label="عميل ساخن" />
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{c.name || "—"}</div>
-                        <div className="text-xs text-slate-400" dir="ltr">{c.phone}</div>
-                      </div>
+                <div key={c.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <Avatar name={c.name || c.phone} size="md" />
+                      {c.leadScore >= 70 && (
+                        <span className="absolute -top-0.5 -left-0.5">
+                          <StatusDot tone="busy" pulse size="sm" label="عميل ساخن" />
+                        </span>
+                      )}
                     </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2 min-w-[140px]">
-                      <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div className={`h-full bg-gradient-to-r ${scoreColor(c.leadScore)}`}
-                             style={{ width: `${c.leadScore}%` }} />
-                      </div>
-                      <span className="text-xs font-mono tabular-nums">{c.leadScore}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{c.name || "—"}</div>
+                      <div className="text-xs text-slate-400" dir="ltr">{c.phone}</div>
                     </div>
-                    <div className="mt-1">
-                      <LeadStatusBadge status={scoreToStatus(c.leadScore)} size="sm" />
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <span className={`inline-flex px-2 py-1 rounded-md text-xs border ${intent.cls}`}>
-                      {intent.label}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <span className={`inline-flex px-2 py-1 rounded-md text-xs border ${sent.cls}`}>
-                      {sent.label}
-                    </span>
-                  </td>
-                  <td className="p-3 max-w-[280px]">
-                    <div className="text-xs text-slate-300 truncate">{lastMsg.slice(0, 80)}</div>
-                  </td>
-                  <td className="p-3 text-slate-300">
-                    {c.conversation?._count.messages ?? 0}
-                  </td>
-                  <td className="p-3">
-                    {c.conversation && (
-                      <Link
-                        href={`/dashboard/inbox?c=${c.id}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        فتح
-                        <ChevronLeft className="w-3 h-3" />
-                      </Link>
-                    )}
-                  </td>
-                </tr>
+                    <span className="text-sm font-mono tabular-nums shrink-0">{c.leadScore}</span>
+                  </div>
+                  <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className={`h-full bg-gradient-to-r ${scoreColor(c.leadScore)}`}
+                         style={{ width: `${c.leadScore}%` }} />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <LeadStatusBadge status={scoreToStatus(c.leadScore)} size="sm" />
+                    <span className={`inline-flex px-2 py-1 rounded-md text-xs border ${intent.cls}`}>{intent.label}</span>
+                    <span className={`inline-flex px-2 py-1 rounded-md text-xs border ${sent.cls}`}>{sent.label}</span>
+                    <span className="text-xs text-slate-400">{c.conversation?._count.messages ?? 0} رسالة</span>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-300 line-clamp-2">{lastMsg.slice(0, 120)}</div>
+                  {c.conversation && (
+                    <Link
+                      href={`/dashboard/inbox?c=${c.id}`}
+                      className="mt-3 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs"
+                    >
+                      <MessageSquare className="w-3 h-3" />
+                      فتح المحادثة
+                      <ChevronLeft className="w-3 h-3" />
+                    </Link>
+                  )}
+                </div>
               );
             })}
-            {leads.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-0">
-                  <EmptyState
-                    icon={<Users className="w-full h-full" />}
-                    title="لا يوجد عملاء بعد"
-                    description="لما يبدأوا التواصل، هيظهروا هنا مرتّبين حسب نقاطهم."
-                    size="md"
-                  />
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-white/5 text-slate-400">
+                <tr>
+                  <th className="p-3 text-right">العميل</th>
+                  <th className="p-3 text-right">النقاط</th>
+                  <th className="p-3 text-right">النية</th>
+                  <th className="p-3 text-right">المشاعر</th>
+                  <th className="p-3 text-right">آخر رسالة</th>
+                  <th className="p-3 text-right">الرسائل</th>
+                  <th className="p-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map((c: any) => {
+                  const sent = SENTIMENT_BADGE[c.lastSentiment || "neutral"] || SENTIMENT_BADGE.neutral;
+                  const intent = INTENT_BADGE[c.lastIntent || "other"] || INTENT_BADGE.other;
+                  const lastMsg = c.conversation?.messages[0]?.content || "—";
+                  return (
+                    <tr key={c.id} className="border-t border-white/5 hover:bg-white/[0.02]">
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative shrink-0">
+                            <Avatar name={c.name || c.phone} size="md" />
+                            {c.leadScore >= 70 && (
+                              <span className="absolute -top-0.5 -left-0.5">
+                                <StatusDot tone="busy" pulse size="sm" label="عميل ساخن" />
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{c.name || "—"}</div>
+                            <div className="text-xs text-slate-400" dir="ltr">{c.phone}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2 min-w-[140px]">
+                          <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div className={`h-full bg-gradient-to-r ${scoreColor(c.leadScore)}`}
+                                 style={{ width: `${c.leadScore}%` }} />
+                          </div>
+                          <span className="text-xs font-mono tabular-nums">{c.leadScore}</span>
+                        </div>
+                        <div className="mt-1">
+                          <LeadStatusBadge status={scoreToStatus(c.leadScore)} size="sm" />
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <span className={`inline-flex px-2 py-1 rounded-md text-xs border ${intent.cls}`}>
+                          {intent.label}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <span className={`inline-flex px-2 py-1 rounded-md text-xs border ${sent.cls}`}>
+                          {sent.label}
+                        </span>
+                      </td>
+                      <td className="p-3 max-w-[280px]">
+                        <div className="text-xs text-slate-300 truncate">{lastMsg.slice(0, 80)}</div>
+                      </td>
+                      <td className="p-3 text-slate-300">
+                        {c.conversation?._count.messages ?? 0}
+                      </td>
+                      <td className="p-3">
+                        {c.conversation && (
+                          <Link
+                            href={`/dashboard/inbox?c=${c.id}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            فتح
+                            <ChevronLeft className="w-3 h-3" />
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

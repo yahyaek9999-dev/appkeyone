@@ -5,6 +5,9 @@
 import { useEffect, useState } from "react";
 import { Ticket, Plus, Loader2, Trash2, X, Sparkles, Percent, BadgeDollarSign, CalendarClock } from "lucide-react";
 import { fmtMoney, fmtDate } from "@/lib/format";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Coupon = {
   id: string;
@@ -31,6 +34,8 @@ export default function CouponsUi() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
+  const { error: toastError } = useToast();
+  const confirm = useConfirm();
 
   async function load() {
     try {
@@ -59,7 +64,7 @@ export default function CouponsUi() {
         setCreating(null);
         load();
       } else {
-        alert(j.error || "تعذّر الحفظ");
+        toastError(j.error || "تعذّر الحفظ");
       }
     } finally {
       setSaving(false);
@@ -71,7 +76,7 @@ export default function CouponsUi() {
     load();
   }
   async function remove(c: Coupon) {
-    if (!confirm(`حذف الكوبون ${c.code}؟`)) return;
+    if (!(await confirm({ title: "حذف كوبون", body: `حذف الكوبون ${c.code}؟`, confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
     await fetch(`/api/coupons/${c.id}`, { method: "DELETE" });
     load();
   }
@@ -96,9 +101,12 @@ export default function CouponsUi() {
           <Loader2 className="h-7 w-7 animate-spin" />
         </div>
       ) : items.length === 0 ? (
-        <div className="card p-12 text-center">
-          <Ticket className="mx-auto mb-3 h-10 w-10 text-slate-600" />
-          <div className="text-sm text-slate-400">لا توجد كوبونات بعد.</div>
+        <div className="card">
+          <EmptyState
+            icon={<Ticket className="h-full w-full" />}
+            title="لا توجد كوبونات بعد"
+            description="أنشئ كوبونًا ليقدّمه الذكاء الاصطناعي تلقائيًا للعملاء المترددين."
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -133,7 +141,7 @@ export default function CouponsUi() {
                   {exhausted && <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-300">مستنفد</span>}
                 </div>
 
-                <div className="mt-3 grid grid-cols-4 gap-1.5 text-center">
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center">
                   <Mini label="عُرض" value={String(c.offeredCount)} />
                   <Mini label="استُخدم" value={`${c.usedCount}${c.usageLimit != null ? "/" + c.usageLimit : ""}`} />
                   <Mini label="تحويل" value={`${c.conversionPct}%`} />

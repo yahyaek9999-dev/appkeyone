@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Zap, Plus, Trash2, Save, Loader2, Power, PowerOff } from "lucide-react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type QR = {
   id: string;
@@ -17,6 +19,7 @@ export default function QuickRepliesUi() {
   const [adding, setAdding] = useState(false);
   const [newTriggers, setNewTriggers] = useState("");
   const [newReply, setNewReply] = useState("");
+  const confirm = useConfirm();
 
   async function load() {
     setLoading(true);
@@ -58,7 +61,7 @@ export default function QuickRepliesUi() {
   }
 
   async function remove(id: string) {
-    if (!confirm("حذف هذا الرد السريع؟")) return;
+    if (!(await confirm({ title: "حذف الرد السريع", body: "هل تريد حذف هذا الرد السريع؟", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
     await fetch(`/api/quick-replies/${id}`, { method: "DELETE" });
     load();
   }
@@ -121,9 +124,11 @@ export default function QuickRepliesUi() {
           <div className="p-8 text-center text-slate-400 text-sm">جاري التحميل...</div>
         )}
         {!loading && items.length === 0 && (
-          <div className="p-12 text-center text-slate-400 text-sm">
-            لا توجد ردود سريعة بعد. ابدأ بإضافة الأسئلة المتكررة من أعلى.
-          </div>
+          <EmptyState
+            icon={<Zap className="h-full w-full" />}
+            title="لا توجد ردود سريعة بعد"
+            description="ابدأ بإضافة الأسئلة المتكررة من أعلى."
+          />
         )}
         {!loading && items.map((q) => (
           <QuickReplyRow key={q.id} q={q} onUpdate={update} onDelete={remove} />
