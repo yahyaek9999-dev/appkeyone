@@ -29,37 +29,26 @@
 import { prisma } from "@/lib/db";
 import { queueSmartFollowUp } from "@/lib/follow-ups";
 import { notifyAdmin } from "@/lib/notify";
+import {
+  AUTOMATION_TRIGGERS,
+  AUTOMATION_ACTIONS,
+  SCORE_METRICS,
+  type AutomationTrigger,
+  type AutomationAction,
+  type ScoreMetric,
+} from "./constants";
 
-export const AUTOMATION_TRIGGERS = [
-  "score_crossed",
-  "stage_changed",
-  "idle_hours",
-  "order_status_changed",
-  "cart_abandoned",
-] as const;
-
-export const AUTOMATION_ACTIONS = [
-  "queue_follow_up",
-  "tag_customer",
-  "notify_admin",
-  "add_to_segment_broadcast",
-] as const;
-
-export type AutomationTrigger = (typeof AUTOMATION_TRIGGERS)[number];
-export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
-
-// Numeric customer metrics a score_crossed rule may threshold on.
-export const SCORE_METRICS = [
-  "leadScore",
-  "conversionScore",
-  "hesitationScore",
-  "churnRiskScore",
-  "loyaltyScore",
-  "retentionScore",
-  "purchaseProb",
-  "frustrationScore",
-] as const;
-export type ScoreMetric = (typeof SCORE_METRICS)[number];
+// Re-export constants from the client-safe module so server code can still
+// import them from here. Client components must import from constants.ts
+// directly to avoid bundling prisma into the browser.
+export {
+  AUTOMATION_TRIGGERS,
+  AUTOMATION_ACTIONS,
+  SCORE_METRICS,
+  type AutomationTrigger,
+  type AutomationAction,
+  type ScoreMetric,
+};
 
 const GLOBAL_CUSTOMER_DAILY_CAP = 3; // max automation actions per customer / 24h
 const HOUR = 60 * 60 * 1000;

@@ -57,6 +57,15 @@ type EventLog = {
   receivedAt: string;
 };
 
+const PLATFORM_CARDS: Array<{ id: string; label: string; emoji: string; desc: string; popular?: boolean }> = [
+  { id: "shopify",     label: "Shopify",      emoji: "🛍️", desc: "ربط تلقائي عبر Admin API", popular: true },
+  { id: "woocommerce", label: "WooCommerce",  emoji: "🏪", desc: "ربط عبر مفاتيح REST API" },
+  { id: "salla",       label: "سلة",          emoji: "🟢", desc: "ربط تلقائي عبر OAuth", popular: true },
+  { id: "zid",         label: "Zid",          emoji: "🔵", desc: "ربط عبر سوق التطبيقات" },
+  { id: "custom",      label: "مخصص",         emoji: "🔗", desc: "Webhook / API لأي منصة" },
+  { id: "api",         label: "API",           emoji: "⚡", desc: "تكامل مباشر بالكود" },
+];
+
 const PLATFORM_LABEL: Record<string, string> = {
   custom: "موقع مخصص",
   woocommerce: "WooCommerce",
@@ -349,29 +358,37 @@ export default function IntegrationsUi() {
           setName={setName}
         />
       ) : (
-        <section className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
-          <h2 className="font-bold mb-3 flex items-center gap-2">
-            <Settings2 className="w-4 h-4" /> ربط متجر جديد
-          </h2>
-          <p className="text-xs text-slate-400 mb-4">
-            اختر منصة متجرك الإلكتروني لبدء الربط. إذا كانت منصتك غير مدعومة، اختر "موقع مخصص" لاستخدام Webhook.
-          </p>
+        <section className="card p-5">
+          <div className="mb-5">
+            <h2 className="section-title mb-1 flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-brand-400" /> ربط متجر جديد
+            </h2>
+            <p className="text-xs text-slate-500">
+              اختر منصتك — الربط يكتمل خلال دقيقتين بدون مساعدة تقنية.
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {Object.entries(PLATFORM_LABEL).filter(([k]) => k !== "custom" && k !== "api").map(([id, label]) => (
+            {PLATFORM_CARDS.filter(p => p.id !== "custom" && p.id !== "api").map((p) => (
               <button
-                key={id}
-                onClick={() => { setWizardPlatform(id); setStoreUrl(""); setPlatform(id); }}
-                className="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-brand-500/10 hover:border-brand-500/30 transition text-center"
+                key={p.id}
+                onClick={() => { setWizardPlatform(p.id); setStoreUrl(""); setPlatform(p.id); }}
+                className="group flex flex-col items-start gap-3 p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:border-brand-500/30 hover:bg-brand-500/[0.04] transition text-start"
               >
-                <div className="font-semibold text-sm">{label}</div>
-                <div className="text-xs text-slate-500 mt-1">اربط متجرك</div>
+                <div className="text-2xl">{p.emoji}</div>
+                <div>
+                  <div className="font-semibold text-sm text-white">{p.label}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{p.desc}</div>
+                </div>
+                {p.popular && (
+                  <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-medium text-brand-300">شائع</span>
+                )}
               </button>
             ))}
           </div>
-          <div className="mt-3 flex gap-2">
-            <button onClick={() => setWizardPlatform("custom")} className="px-4 py-2 rounded-lg border border-white/10 text-sm hover:bg-white/5">
-              <Link className="w-3.5 h-3.5 inline ml-1" />
-              موقع مخصص (API / Webhook)
+          <div className="mt-3 border-t border-white/[0.05] pt-3">
+            <button onClick={() => { setWizardPlatform("custom"); setPlatform("custom"); }} className="flex items-center gap-2 rounded-lg border border-white/[0.07] px-3 py-2 text-sm text-slate-400 hover:bg-white/[0.04] hover:text-white transition">
+              <Link className="w-3.5 h-3.5 shrink-0" />
+              Webhook / API مخصص — لأي منصة أخرى
             </button>
           </div>
         </section>

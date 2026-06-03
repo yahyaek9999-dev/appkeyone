@@ -4,12 +4,12 @@ import { evaluateSubscription, getSiteConfig } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import {
   MessageSquare, Users, BellRing, TrendingUp, Phone, AlertCircle, CheckCircle2,
-  Crown, Clock, Inbox, UserPlus,
+  Crown, Clock, Inbox, UserPlus, ShoppingCart, DollarSign, Zap, ArrowUpRight,
+  Activity, Bot,
 } from "lucide-react";
 import Link from "next/link";
 import { timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
-import { StatGrid } from "@/components/ui/stat-grid";
 import { TrendBadge } from "@/components/ui/trend-badge";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -53,6 +53,13 @@ export default async function DashboardOverview() {
     recentMsgs, topCustomers, dailySeries,
     docCount, integrationCount, broadcastCount,
     milestones,
+    // Orders & revenue
+    orderCount7d, orderCountPrior7d,
+    revenueResult7d, revenueResultPrior7d,
+    pendingOrderCount,
+    recentOrders,
+    // AI usage
+    aiCalls7d,
   ] = await Promise.all([
     prisma.customer.count({ where: { userId: user.id } }),
     prisma.message.count({ where: { conversation: { customer: { userId: user.id } } } }),
@@ -62,12 +69,12 @@ export default async function DashboardOverview() {
     prisma.message.count({ where: { createdAt: { gte: new Date(now.getTime() - day) }, conversation: { customer: { userId: user.id } } } }),
     prisma.message.findMany({
       where: { conversation: { customer: { userId: user.id } } },
-      orderBy: { createdAt: "desc" }, take: 8,
+      orderBy: { createdAt: "desc" }, take: 6,
       include: { conversation: { include: { customer: true } } },
     }),
     prisma.customer.findMany({
       where: { userId: user.id },
-      orderBy: { lastSeenAt: "desc" }, take: 6,
+      orderBy: { lastSeenAt: "desc" }, take: 5,
     }),
     prisma.$queryRawUnsafe<{ day: string; total: number }[]>(
       `SELECT strftime('%Y-%m-%d', m.createdAt) AS day, COUNT(*) AS total
@@ -81,6 +88,18 @@ export default async function DashboardOverview() {
     (prisma as any).commerceIntegration.count({ where: { userId: user.id, enabled: true } }).catch(() => 0),
     prisma.broadcast.count({ where: { userId: user.id } }).catch(() => 0),
     syncUserMilestones(user.id).catch(() => null),
+    // Orders 7d
+    prisma.order.count({ where: { userId: user.id, createdAt: { gte: start7 } } }).catch(() => 0),
+    prisma.order.count({ where: { userId: user.id, createdAt: { gte: start14, lt: start7 } } }).catch(() => 0),
+    // Revenue 7d
+    prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start7 }, status: { not: "canceled" } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
+    prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start14, lt: start7 }, status: { not: "canceled" } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
+    // Pending orders
+    prisma.order.count({ where: { userId: user.id, status: { in: ["pending", "confirmed"] } } }).catch(() => 0),
+    // Recent orders
+    prisma.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 4, select: { id: true, customerName: true, customerPhone: true, total: true, currency: true, status: true, createdAt: true } }).catch(() => []),
+    // AI calls
+    prisma.providerUsage.aggregate({ where: { userId: user.id, day: { gte: start7.toISOString().slice(0, 10) } }, _sum: { calls: true } }).catch(() => ({ _sum: { calls: null } })),
   ]);
 
   const gettingStartedSteps = {
@@ -106,6 +125,21 @@ export default async function DashboardOverview() {
     ? ((msgs7d - msgsPrior7d) / msgsPrior7d) * 100
     : msgs7d > 0 ? 100 : null;
 
+  const orders7d = orderCount7d as number;
+  const ordersPrior = orderCountPrior7d as number;
+  const ordersDelta = ordersPrior > 0 ? ((orders7d - ordersPrior) / ordersPrior) * 100 : orders7d > 0 ? 100 : null;
+
+  const rev7d = (revenueResult7d as any)?._sum?.total ?? 0;
+  const revPrior = (revenueResultPrior7d as any)?._sum?.total ?? 0;
+  const revDelta = revPrior > 0 ? ((rev7d - revPrior) / revPrior) * 100 : rev7d > 0 ? 100 : null;
+
+  const aiCalls = (aiCalls7d as any)?._sum?.calls ?? 0;
+
+  // Conversion: orders / unique customers who messaged in last 7d (approximate)
+  const conversionPct = msgs7d > 0 && orders7d > 0
+    ? Math.min(99, Math.round((orders7d / Math.max(1, customerCount)) * 100))
+    : null;
+
   const plan = sub.subscription?.plan;
   const usagePct = plan && plan.monthlyMsgs > 0 && sub.subscription
     ? Math.min(100, Math.round((sub.subscription.msgsUsed / plan.monthlyMsgs) * 100))
@@ -115,138 +149,185 @@ export default async function DashboardOverview() {
     : 0;
 
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
+  const hasOrders = orders7d > 0 || (pendingOrderCount as number) > 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-5">
+      {/* Header row */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="page-title mb-1">
-            أهلاً, {user.name || "صديقي"}
+          <h1 className="text-xl font-bold text-white tracking-tight">
+            أهلاً, {user.name || "صديقي"} 👋
           </h1>
-          <p className="page-desc">نظرة عامة على أداء بوتك</p>
+          <p className="text-sm text-slate-500 mt-0.5">آخر تحديث: {new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</p>
         </div>
-        <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
+          {bot.whatsappStatus === "connected" ? (
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-brand-500/20 bg-brand-500/8 px-2.5 py-1.5 text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-400 animate-pulse shrink-0" />
+              <span className="text-brand-300 font-medium">واتساب متصل</span>
+            </div>
+          ) : (
+            <Link href="/dashboard/whatsapp" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-xs text-amber-300 hover:bg-amber-500/15 transition">
+              <Phone className="h-3 w-3 shrink-0" />
+              اربط واتساب
+            </Link>
+          )}
+        </div>
       </div>
 
       {milestones && <ActivationChecklist milestones={milestones} />}
-
       <GettingStarted steps={gettingStartedSteps} />
-
       <LiveOpsStrip />
 
       {/* Subscription banner */}
       {!sub.active && (
-        <div className="card-hover flex flex-wrap items-center gap-4 border-amber-500/20 bg-amber-500/5 p-4">
-          <AlertCircle className="h-6 w-6 shrink-0 text-amber-400" />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-white">
-              {sub.subscription?.status === "pending"
-                ? "اشتراكك بانتظار التفعيل من الإدارة"
-                : sub.subscription?.status === "expired"
-                  ? "انتهت صلاحية اشتراكك"
-                  : sub.reason === "quota_exceeded"
-                    ? "وصلت الحد الأقصى من الرسائل لهذا الشهر"
-                    : "ليس لديك اشتراك نشط"}
-            </div>
-            <div className="mt-0.5 text-xs text-slate-400">تواصل معنا عبر واتساب لتفعيل أو ترقية الاشتراك.</div>
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <AlertCircle className="h-5 w-5 shrink-0 text-amber-400" />
+          <div className="min-w-0 flex-1 text-sm">
+            <span className="font-semibold text-white">
+              {sub.subscription?.status === "pending" ? "اشتراكك بانتظار التفعيل" :
+               sub.subscription?.status === "expired" ? "انتهت صلاحية اشتراكك" :
+               sub.reason === "quota_exceeded" ? "وصلت الحد الأقصى من الرسائل" :
+               "ليس لديك اشتراك نشط"}
+            </span>
+            <span className="text-slate-400 mr-2">تواصل معنا عبر واتساب للتفعيل أو الترقية.</span>
           </div>
           {waNum && (
             <a href={`https://wa.me/${waNum}?text=${encodeURIComponent("أريد تفعيل/ترقية اشتراكي")}`}
                target="_blank" rel="noopener noreferrer"
-               className="btn-primary shrink-0 text-xs">
+               className="btn-primary shrink-0 text-xs h-8">
               تواصل واتساب
             </a>
           )}
         </div>
       )}
 
-      {/* KPI Cards */}
-      <StatGrid cols={4}>
-        <KpiCard icon={<Users className="h-4 w-4" />} label="إجمالي العملاء"
-          value={customerCount.toLocaleString()} accent="from-blue-500/20 to-blue-600/5 text-blue-400 border-blue-500/15" />
-        <KpiCard icon={<MessageSquare className="h-4 w-4" />} label="إجمالي الرسائل"
-          value={msgCount.toLocaleString()} accent="from-brand-500/20 to-emerald-500/5 text-brand-400 border-brand-500/15" />
-        <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="آخر 7 أيام"
-          value={msgs7d.toLocaleString()} accent="from-purple-500/20 to-pink-500/5 text-purple-400 border-purple-500/15"
-          trend={msgs7dDelta} sparkline={last7Series} />
-        <KpiCard icon={<BellRing className="h-4 w-4" />} label="تنبيهات الطلبات"
-          value={flaggedCount.toLocaleString()} accent="from-amber-500/20 to-orange-500/5 text-amber-400 border-amber-500/15" />
-      </StatGrid>
+      {/* ── Executive KPI row (above the fold) ── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {/* Revenue */}
+        <ExecKpi
+          icon={<DollarSign className="h-4 w-4" />}
+          label="إيرادات 7 أيام"
+          value={rev7d > 0 ? `${(rev7d / 100).toLocaleString("ar-EG")} ج` : "—"}
+          delta={revDelta}
+          tone="emerald"
+          href="/dashboard/orders"
+          prominent
+        />
+        {/* Orders */}
+        <ExecKpi
+          icon={<ShoppingCart className="h-4 w-4" />}
+          label="طلبات 7 أيام"
+          value={orders7d.toLocaleString("ar-EG")}
+          delta={ordersDelta}
+          sub={pendingOrderCount > 0 ? `${pendingOrderCount} معلّق` : undefined}
+          tone="blue"
+          href="/dashboard/orders"
+          prominent
+        />
+        {/* Conversations */}
+        <ExecKpi
+          icon={<MessageSquare className="h-4 w-4" />}
+          label="محادثات 7 أيام"
+          value={msgs7d.toLocaleString("ar-EG")}
+          delta={msgs7dDelta}
+          tone="brand"
+          href="/dashboard/inbox"
+        />
+        {/* Conversion */}
+        <ExecKpi
+          icon={<TrendingUp className="h-4 w-4" />}
+          label="معدل التحويل"
+          value={conversionPct !== null ? `${conversionPct}%` : "—"}
+          tone="violet"
+          href="/dashboard/analytics"
+        />
+        {/* AI impact */}
+        <ExecKpi
+          icon={<Bot className="h-4 w-4" />}
+          label="ردود الذكاء الاصطناعي"
+          value={aiCalls > 0 ? aiCalls.toLocaleString("ar-EG") : msgs7d.toLocaleString("ar-EG")}
+          sub="آخر 7 أيام"
+          tone="purple"
+          href="/dashboard/analytics"
+        />
+      </div>
 
-      {/* Usage card */}
+      {/* Usage bar (compact) */}
       {sub.subscription && plan && (
-        <div className="card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2">
-              <Crown className="h-4 w-4 text-amber-400" />
-              <span className="text-xs text-slate-500">{plan.name}</span>
-            </div>
-            <div className="text-xs text-slate-400">
-              {sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()} رسالة
-            </div>
-          </div>
-          <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <Crown className="h-4 w-4 text-amber-400 shrink-0" />
+          <span className="text-xs text-slate-400">{plan.name}</span>
+          <div className="flex-1 min-w-[120px] h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${
-                usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"
-              }`}
+              className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`}
               style={{ width: `${usagePct}%` }}
             />
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 mt-2 text-[11px] text-slate-500">
-            <span>اليوم: {msgs30dToday.toLocaleString()} رسالة</span>
-            <span>متبقي {daysLeft} يوم على التجديد</span>
-          </div>
+          <span className="text-[11px] text-slate-500">
+            {sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()} رسالة
+          </span>
+          <span className="text-[11px] text-slate-600">·</span>
+          <span className="text-[11px] text-slate-500">يتجدد خلال {daysLeft} يوم</span>
         </div>
       )}
 
-      {/* Chart + Top customers */}
+      {/* ── Main content grid ── */}
       <div className="grid gap-5 lg:grid-cols-3">
+        {/* Activity chart — spans 2 cols */}
         <div className="card p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="section-title">نشاط آخر 30 يوم</h2>
-            <span className="text-[11px] text-slate-500">{msgCount.toLocaleString()} رسالة</span>
+            <div>
+              <h2 className="section-title">نشاط الرسائل</h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">آخر 30 يوم · {msgs30dToday} رسالة اليوم</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5 text-brand-400" />
+              <span className="text-[11px] text-brand-300 font-medium">{msgCount.toLocaleString()} إجمالي</span>
+            </div>
           </div>
-          <div className="flex h-36 items-end gap-px">
+          <div className="flex h-28 items-end gap-0.5">
             {last30.map((d) => (
               <div key={d.day} className="group relative flex flex-1 items-end justify-center"
                    title={`${d.day}: ${d.total}`}>
                 <div
-                  className="w-full rounded-t bg-brand-500/20 transition hover:bg-brand-500/40"
+                  className="w-full min-h-[2px] rounded-t bg-brand-500/25 transition-all hover:bg-brand-400/50"
                   style={{ height: `${Math.max((d.total / maxDaily) * 100, 2)}%` }}
                 />
               </div>
             ))}
           </div>
-          <div className="mt-1 flex justify-between text-[10px] text-slate-600">
+          <div className="mt-2 flex justify-between text-[10px] text-slate-600">
             <span>{last30[0]?.day?.slice(5) || ""}</span>
             <span>{last30[14]?.day?.slice(5) || ""}</span>
             <span>{last30[29]?.day?.slice(5) || ""}</span>
           </div>
         </div>
 
-        <div className="card p-5">
-          <div className="mb-4 flex items-center justify-between">
+        {/* Active customers */}
+        <div className="card p-4">
+          <div className="mb-3 flex items-center justify-between">
             <h2 className="section-title">عملاء نشطون</h2>
-            <Link href="/dashboard/customers" className="text-[11px] text-brand-400 hover:underline">الكل ←</Link>
+            <Link href="/dashboard/customers" className="flex items-center gap-1 text-[11px] text-brand-400 hover:underline">
+              الكل <ArrowUpRight className="h-3 w-3" />
+            </Link>
           </div>
           {topCustomers.length === 0 ? (
-            <EmptyState icon={<UserPlus className="h-full w-full" />} title="لسه ما فيش عملاء"
-              description="أول ما حد يكلّم البوت هيظهر هنا." size="sm" />
+            <EmptyState icon={<UserPlus className="h-full w-full" />} title="لا عملاء بعد"
+              description="أول محادثة ستظهر هنا." size="sm" />
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {topCustomers.map((c) => (
                 <Link key={c.id} href={`/dashboard/customers/${c.id}`}
-                  className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-white/[0.04]">
-                  <Avatar name={c.name || c.phone} size="md" />
+                  className="flex items-center gap-2.5 rounded-lg p-2 transition hover:bg-white/[0.04]">
+                  <Avatar name={c.name || c.phone} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-white">{c.name || "بدون اسم"}</div>
-                    <div className="truncate text-[11px] text-slate-500">
-                      {formatCustomerPhone(c.phone).display}
-                    </div>
+                    <div className="truncate text-sm font-medium text-white leading-tight">{c.name || "—"}</div>
+                    <div className="truncate text-[10px] text-slate-500">{formatCustomerPhone(c.phone).display}</div>
                   </div>
-                  <div className="shrink-0 text-[11px] text-slate-600">{timeAgo(c.lastSeenAt)}</div>
+                  <div className="shrink-0 text-[10px] text-slate-600">{timeAgo(c.lastSeenAt)}</div>
                 </Link>
               ))}
             </div>
@@ -254,101 +335,183 @@ export default async function DashboardOverview() {
         </div>
       </div>
 
-      {/* Recent messages */}
-      <div className="card p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="section-title">آخر الرسائل</h2>
-          <Link href="/dashboard/inbox" className="text-[11px] text-brand-400 hover:underline">عرض الكل ←</Link>
-        </div>
-        {recentMsgs.length === 0 ? (
-          <EmptyState icon={<Inbox className="h-full w-full" />} title="لسه ما فيش رسائل"
-            description="اربط واتساب أو جرّب البوت." size="md" />
-        ) : (
-          <div className="divide-y divide-white/[0.04]">
-            {recentMsgs.map((m) => (
-              <div key={m.id} className="flex items-start gap-3 py-3">
-                <Avatar name={m.role === "user" ? m.conversation.customer.name || m.conversation.customer.phone : bot.name || "البوت"} size="md" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="font-medium text-slate-300">{m.conversation.customer.name || m.conversation.customer.phone}</span>
-                    <span>·</span>
-                    <span>{timeAgo(m.createdAt)}</span>
-                    {m.flagged && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">تنبيه</span>}
-                  </div>
-                  <div className="mt-0.5 truncate text-sm text-slate-400">{m.content}</div>
-                </div>
-              </div>
-            ))}
+      {/* ── Orders + Recent Messages side by side ── */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        {/* Recent orders */}
+        <div className="card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="section-title">آخر الطلبات</h2>
+            <Link href="/dashboard/orders" className="flex items-center gap-1 text-[11px] text-brand-400 hover:underline">
+              الكل <ArrowUpRight className="h-3 w-3" />
+            </Link>
           </div>
-        )}
+          {!hasOrders || (recentOrders as any[]).length === 0 ? (
+            <EmptyState
+              icon={<ShoppingCart className="h-full w-full" />}
+              title="لا طلبات بعد"
+              description="الطلبات المستخرجة من محادثات واتساب تظهر هنا."
+              size="sm"
+            />
+          ) : (
+            <div className="space-y-0.5">
+              {(recentOrders as any[]).map((o) => (
+                <div key={o.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/[0.03]">
+                  <div className={`h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                    o.status === "delivered" ? "bg-brand-500/15 text-brand-300" :
+                    o.status === "canceled" ? "bg-rose-500/15 text-rose-300" :
+                    "bg-amber-500/15 text-amber-300"
+                  }`}>
+                    {o.status === "delivered" ? "✓" : o.status === "canceled" ? "✕" : "•"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-white leading-tight">{o.customerName || o.customerPhone || "—"}</div>
+                    <div className="text-[10px] text-slate-500">{timeAgo(o.createdAt)}</div>
+                  </div>
+                  <div className="shrink-0 text-sm font-semibold text-white">
+                    {o.total > 0 ? `${(o.total / 100).toLocaleString("ar-EG")} ج` : "—"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent messages */}
+        <div className="card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="section-title">آخر الرسائل</h2>
+            <Link href="/dashboard/inbox" className="flex items-center gap-1 text-[11px] text-brand-400 hover:underline">
+              الكل <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+          {recentMsgs.length === 0 ? (
+            <EmptyState icon={<Inbox className="h-full w-full" />} title="لا رسائل بعد"
+              description="اربط واتساب أو جرّب البوت." size="sm" />
+          ) : (
+            <div className="space-y-0.5">
+              {recentMsgs.map((m) => (
+                <div key={m.id} className="flex items-start gap-2.5 rounded-lg p-2 hover:bg-white/[0.03]">
+                  <Avatar name={m.role === "user" ? m.conversation.customer.name || m.conversation.customer.phone : bot.name || "AI"} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                      <span className="font-medium text-slate-300 truncate max-w-[100px]">{m.conversation.customer.name || m.conversation.customer.phone}</span>
+                      <span>·</span>
+                      <span className="shrink-0">{timeAgo(m.createdAt)}</span>
+                      {m.flagged && <span className="rounded bg-amber-500/15 px-1 text-[9px] font-semibold text-amber-300 shrink-0">طلب</span>}
+                    </div>
+                    <div className="mt-0.5 truncate text-sm text-slate-400">{m.content}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* WhatsApp connect prompt */}
-      {user.bot?.whatsappStatus !== "connected" && (
-        <div className="card p-5 flex flex-wrap items-center gap-4 border-brand-500/20 bg-gradient-to-br from-brand-500/[0.06] to-transparent">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/15">
-            <Phone className="h-5 w-5 text-brand-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-white">اربط واتساب لتفعيل البوت</h3>
-            <p className="text-xs text-slate-400">امسح QR code من موبايلك في 30 ثانية</p>
-          </div>
-          <Link href="/dashboard/whatsapp" className="btn-primary shrink-0 text-xs">ابدأ الربط</Link>
-        </div>
-      )}
+      {/* Quick stats bar — KPIs not shown above */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <SmallStat label="إجمالي العملاء" value={customerCount.toLocaleString("ar-EG")} icon={<Users className="h-3.5 w-3.5" />} href="/dashboard/customers" />
+        <SmallStat label="إجمالي الرسائل" value={msgCount.toLocaleString("ar-EG")} icon={<MessageSquare className="h-3.5 w-3.5" />} href="/dashboard/inbox" />
+        <SmallStat label="تنبيهات طلبات" value={flaggedCount.toLocaleString("ar-EG")} icon={<BellRing className="h-3.5 w-3.5" />} href="/dashboard/inbox" accent={flaggedCount > 0 ? "text-amber-300" : undefined} />
+        <SmallStat label="مستندات المعرفة" value={docCount.toLocaleString("ar-EG")} icon={<Zap className="h-3.5 w-3.5" />} href="/dashboard/knowledge" />
+      </div>
     </div>
   );
+}
+
+// ── Executive KPI card (top row) ────────────────────────────────────────────
+function ExecKpi({
+  icon, label, value, delta, sub, tone = "brand", href, prominent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  delta?: number | null;
+  sub?: string;
+  tone?: "brand" | "emerald" | "blue" | "violet" | "purple";
+  href?: string;
+  prominent?: boolean;
+}) {
+  const toneMap: Record<string, string> = {
+    brand:   "border-brand-500/20 bg-brand-500/[0.04]",
+    emerald: "border-emerald-500/20 bg-emerald-500/[0.04]",
+    blue:    "border-blue-500/20 bg-blue-500/[0.04]",
+    violet:  "border-violet-500/20 bg-violet-500/[0.04]",
+    purple:  "border-purple-500/20 bg-purple-500/[0.04]",
+  };
+  const iconMap: Record<string, string> = {
+    brand:   "text-brand-400",
+    emerald: "text-emerald-400",
+    blue:    "text-blue-400",
+    violet:  "text-violet-400",
+    purple:  "text-purple-400",
+  };
+  const valueMap: Record<string, string> = {
+    brand:   "text-brand-100",
+    emerald: "text-emerald-100",
+    blue:    "text-blue-100",
+    violet:  "text-violet-100",
+    purple:  "text-purple-100",
+  };
+  const base = `rounded-xl border p-4 transition ${toneMap[tone]} ${prominent ? "sm:col-span-1" : ""}`;
+  const inner = (
+    <>
+      <div className={`mb-2 flex items-center gap-1.5 text-[11px] font-medium ${iconMap[tone]}`}>
+        {icon} <span>{label}</span>
+      </div>
+      <div className={`text-2xl font-bold tracking-tight ${valueMap[tone]}`}>{value}</div>
+      {(delta !== undefined || sub) && (
+        <div className="mt-1 flex items-center gap-1.5">
+          {delta !== undefined && <TrendBadge delta={delta ?? null} size="sm" />}
+          {sub && <span className="text-[10px] text-slate-500">{sub}</span>}
+        </div>
+      )}
+    </>
+  );
+  if (href)
+    return <Link href={href} className={`${base} hover:border-white/10 hover:bg-white/[0.04] group`}>{inner}</Link>;
+  return <div className={base}>{inner}</div>;
+}
+
+// ── Small stat bar ────────────────────────────────────────────────────────────
+function SmallStat({ label, value, icon, href, accent }: {
+  label: string; value: string; icon: React.ReactNode; href?: string; accent?: string;
+}) {
+  const inner = (
+    <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition">
+      <div className={`shrink-0 ${accent || "text-slate-500"}`}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className={`text-sm font-bold ${accent || "text-white"}`}>{value}</div>
+        <div className="text-[11px] text-slate-500 truncate">{label}</div>
+      </div>
+    </div>
+  );
+  if (href) return <Link href={href}>{inner}</Link>;
+  return inner;
 }
 
 function SubscriptionBadge({ sub, daysLeft, waNum }: { sub: any; daysLeft: number; waNum: string }) {
   if (sub.active)
     return (
-      <div className="inline-flex items-center gap-2.5 rounded-xl border border-emerald-500/15 bg-emerald-500/8 px-3.5 py-2">
-        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+      <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/8 px-2.5 py-1.5">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
         <div className="text-xs">
-          <div className="font-semibold text-white">{sub.subscription?.plan?.name || "اشتراك نشط"}</div>
-          <div className="text-emerald-400/70">باقي {daysLeft} يوم</div>
+          <span className="font-semibold text-white">{sub.subscription?.plan?.name || "نشط"}</span>
+          <span className="text-emerald-400/70 mr-1.5">· {daysLeft} يوم</span>
         </div>
       </div>
     );
   if (sub.subscription?.status === "pending")
     return (
-      <div className="inline-flex items-center gap-2.5 rounded-xl border border-amber-500/15 bg-amber-500/8 px-3.5 py-2">
-        <Clock className="h-4 w-4 text-amber-400" />
-        <div className="text-xs">
-          <div className="font-semibold text-white">بانتظار التفعيل</div>
-          {waNum && <a href={`https://wa.me/${waNum}`} target="_blank" rel="noopener noreferrer" className="text-amber-300/70 hover:underline">راسل الإدارة</a>}
-        </div>
+      <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/8 px-2.5 py-1.5">
+        <Clock className="h-3.5 w-3.5 text-amber-400" />
+        <span className="text-xs font-semibold text-white">بانتظار التفعيل</span>
       </div>
     );
   return (
-    <Link href="/pricing" className="inline-flex items-center gap-2.5 rounded-xl border border-brand-500/15 bg-brand-500/8 px-3.5 py-2 transition hover:bg-brand-500/15">
-      <Crown className="h-4 w-4 text-brand-400" />
-      <div className="text-xs">
-        <div className="font-semibold text-white">اختر باقتك</div>
-        <div className="text-brand-400/70">ابدأ الاشتراك الآن</div>
-      </div>
+    <Link href="/pricing" className="inline-flex items-center gap-2 rounded-lg border border-brand-500/15 bg-brand-500/8 px-2.5 py-1.5 transition hover:bg-brand-500/15">
+      <Crown className="h-3.5 w-3.5 text-brand-400" />
+      <span className="text-xs font-semibold text-white">اختر باقتك</span>
     </Link>
-  );
-}
-
-function KpiCard({ icon, label, value, accent, trend, sparkline }: {
-  icon: React.ReactNode; label: string; value: string | number;
-  accent: string; trend?: number | null; sparkline?: number[];
-}) {
-  return (
-    <div className="kpi-card">
-      <div className="mb-3 flex items-start justify-between">
-        <div className={`kpi-icon border ${accent}`}>{icon}</div>
-        {trend !== undefined && <TrendBadge delta={trend} size="sm" />}
-      </div>
-      <div className="kpi-value">{value}</div>
-      <div className="kpi-label">{label}</div>
-      {sparkline && sparkline.length > 1 && (
-        <div className="mt-3 -mx-1">
-          <Sparkline data={sparkline} height={28} tone="primary" />
-        </div>
-      )}
-    </div>
   );
 }

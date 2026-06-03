@@ -9,7 +9,7 @@ import {
   AUTOMATION_TRIGGERS,
   AUTOMATION_ACTIONS,
   SCORE_METRICS,
-} from "@/lib/automations/engine";
+} from "@/lib/automations/constants";
 
 // ── Meta ────────────────────────────────────────────────────────────────────
 
