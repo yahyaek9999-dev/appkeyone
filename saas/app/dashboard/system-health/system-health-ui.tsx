@@ -70,7 +70,11 @@ export default function SystemHealthUi() {
         return;
       }
       const j = await r.json();
-      if (j?.error) {
+      // Only treat a response as failed when it carries an error AND no usable
+      // subsystem data. The endpoint is fail-open: if it returned subsystems we
+      // render them even when some are degraded/down — a single unhealthy
+      // provider must never blank the whole page.
+      if (j?.error && !j?.subsystems) {
         setError({ kind: "server", detail: String(j.error) });
         setData(null);
         return;
