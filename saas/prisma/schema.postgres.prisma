@@ -217,6 +217,12 @@ model Bot {
   abandonedCartDelayHours  Int     @default(4)   // wait this long after cartUpdatedAt before reminding
   abandonedCartWindowHours Int     @default(24)  // ignore carts older than this (avoid reminding ancient interest)
 
+  // ---- Order extraction controls ----
+  orderExtractionEnabled     Boolean @default(true)
+  orderConfidenceThreshold   Int     @default(50)
+  orderRequireProduct        Boolean @default(false)
+  orderRequireConfirmation   Boolean @default(false)
+
   // ---- Team members (Phase 1: role registry, Phase 2: login enforcement) ----
   teamMembersJson String   @default("[]") // JSON: [{email,role,addedAt}]
 

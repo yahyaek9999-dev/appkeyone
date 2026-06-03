@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { can, type Permission, type Role } from "@/lib/rbac";
+import { ChevronDown } from "lucide-react";
 import {
   LayoutDashboard,
   Bot,
@@ -119,6 +121,10 @@ export function SidebarNav({ adminLink, role = "owner" }: { adminLink: React.Rea
   return <NavList adminLink={adminLink} role={role} />;
 }
 
+// Sections collapsed by default (user can expand). Active-route sections
+// auto-expand so the current page is always visible.
+const DEFAULT_COLLAPSED = new Set(["إعداد البوت", "الحساب والنظام"]);
+
 function NavList({ adminLink, role = "owner" }: { adminLink?: React.ReactNode; role?: Role }) {
   const pathname = usePathname();
   const isActive = (href: string) =>
@@ -126,31 +132,56 @@ function NavList({ adminLink, role = "owner" }: { adminLink?: React.ReactNode; r
       ? pathname === "/dashboard"
       : pathname === href || pathname.startsWith(href + "/");
 
+  const sectionHasActive = (items: typeof NAV_SECTIONS[0]["items"]) =>
+    items.some((n) => isActive(n.href));
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => DEFAULT_COLLAPSED);
+
+  const toggle = (title: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(title) ? next.delete(title) : next.add(title);
+      return next;
+    });
+
   return (
-    <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
-      {adminLink && <div className="px-1">{adminLink}</div>}
+    <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
+      {adminLink && <div className="px-1 mb-2">{adminLink}</div>}
       {NAV_SECTIONS.map((section) => {
         const items = section.items.filter((n) => can(role, n.perm));
         if (items.length === 0) return null;
+        const hasActive = sectionHasActive(items);
+        // Force-open any section that contains the active route
+        const isOpen = hasActive || !collapsed.has(section.title);
         return (
-          <div key={section.title} className="space-y-0.5">
-            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+          <div key={section.title}>
+            <button
+              onClick={() => toggle(section.title)}
+              className="flex w-full items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+            >
               {section.title}
-            </div>
-            {items.map((n) => {
-              const Icon = n.icon;
-              const active = isActive(n.href);
-              return (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className={cn("sidebar-link", active && "sidebar-link-active")}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{n.label}</span>
-                </Link>
-              );
-            })}
+              <ChevronDown
+                className={cn("h-3 w-3 transition-transform", isOpen ? "rotate-180" : "")}
+              />
+            </button>
+            {isOpen && (
+              <div className="space-y-0.5 mb-1">
+                {items.map((n) => {
+                  const Icon = n.icon;
+                  const active = isActive(n.href);
+                  return (
+                    <Link
+                      key={n.href}
+                      href={n.href}
+                      className={cn("sidebar-link", active && "sidebar-link-active")}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{n.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}

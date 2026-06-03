@@ -228,11 +228,11 @@ export default function IntegrationsUi() {
   }
 
   async function remove(item: Integration) {
-    if (!(await confirm({ title: "فصل التكامل", body: "سيتم فصل التكامل ولن تستقبل أحداث جديدة. متابعة؟", confirmLabel: "فصل", cancelLabel: "إلغاء", danger: true }))) return;
+    if (!(await confirm({ title: "حذف التكامل نهائياً", body: "سيتم حذف التكامل وجميع أحداثه وأتمتته بشكل نهائي. لا يمكن التراجع عن هذا الإجراء. متابعة؟", confirmLabel: "حذف نهائياً", cancelLabel: "إلغاء", danger: true }))) return;
     setBusyId(item.id);
     try {
       await fetch(`/api/commerce/integrations/${item.id}`, { method: "DELETE" });
-      showSuccess("تم فصل التكامل");
+      showSuccess("تم حذف التكامل نهائياً");
       await load(false);
     } finally { setBusyId(null); }
   }

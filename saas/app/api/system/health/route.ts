@@ -5,10 +5,10 @@ import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redis } from "@/lib/redis";
-import { getOutgoingQueueHealth } from "@/lib/messaging/outgoing-queue";
 import * as os from "os";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 // Per-subsystem status verdict. "down" = hard failure, "degraded" = working
 // but needs attention, "ok" = healthy, "unknown" = no signal (e.g. idle).
@@ -23,6 +23,7 @@ type Subsystem = { status: SubsystemState; detail: string };
 const WORKER_STALE_SEC = 300; // 5 minutes
 
 export async function GET() {
+  try {
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -65,7 +66,15 @@ export async function GET() {
       .aggregate({ where: { day: { gte: yesterdayKey } }, _sum: { calls: true, failures: true } })
       .catch(() => ({ _sum: { calls: null, failures: null } })),
     // Queue/worker drain health — oldest-queued age proxies worker liveness.
-    getOutgoingQueueHealth().catch(() => null),
+    // Dynamic import so a bad import chain can't crash the whole route.
+    (async () => {
+      try {
+        const { getOutgoingQueueHealth } = await import("@/lib/messaging/outgoing-queue");
+        return await getOutgoingQueueHealth();
+      } catch {
+        return null;
+      }
+    })(),
   ]);
 
   // ---- Derive per-subsystem verdicts (honest signals only) ------------------
@@ -176,4 +185,13 @@ export async function GET() {
     errors: { critical24h, warn24h },
     broadcasts: { sending: broadcastsSending, queued: broadcastsQueued },
   });
+  } catch (err: any) {
+    // Last-resort catch — return a degraded response instead of 500
+    return NextResponse.json({
+      error: "health_check_failed",
+      detail: process.env.NODE_ENV !== "production" ? String(err?.message ?? err) : undefined,
+      ts: new Date().toISOString(),
+      overall: "down",
+    }, { status: 200 }); // 200 so the UI renders degraded state, not an error
+  }
 }

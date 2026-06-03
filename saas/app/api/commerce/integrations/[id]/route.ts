@@ -62,9 +62,17 @@ export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
-  const existing = await (prisma as any).commerceIntegration.findFirst({ where: { id: ctx.params.id, userId: user.id }, select: { id: true } });
+  const existing = await (prisma as any).commerceIntegration.findFirst({
+    where: { id: ctx.params.id, userId: user.id },
+    select: { id: true },
+  });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  await (prisma as any).commerceIntegration.update({ where: { id: ctx.params.id }, data: { enabled: false } });
-  return NextResponse.json({ ok: true, disabled: true });
+  // Delete cascades: automations and webhook events are scoped to the integration.
+  // We delete in order to avoid FK violations (events → automations → integration).
+  await (prisma as any).commerceWebhookEvent.deleteMany({ where: { integrationId: ctx.params.id } });
+  await (prisma as any).commerceAutomation.deleteMany({ where: { integrationId: ctx.params.id } });
+  await (prisma as any).commerceIntegration.delete({ where: { id: ctx.params.id } });
+
+  return NextResponse.json({ ok: true, deleted: true });
 }

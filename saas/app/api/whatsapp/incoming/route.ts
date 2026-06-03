@@ -1056,6 +1056,13 @@ export async function POST(req: Request) {
     customerPhone: customer.phone,
     historyTail: orderHistory,
     flagged,
+    orderSettings: {
+      enabled: bot.orderExtractionEnabled !== false,
+      confidenceThreshold: bot.orderConfidenceThreshold ?? 50,
+      requireProduct: !!bot.orderRequireProduct,
+      requireConfirmation: !!bot.orderRequireConfirmation,
+      businessMode: bot.businessMode || "store",
+    },
   }).catch((e) => console.error("[orders] extract failed:", e?.message || e));
 
   // ---- Fire-and-forget intelligence pipeline -------------------------------
@@ -1504,20 +1511,41 @@ async function extractAndStoreOrder(args: {
   customerPhone: string;
   historyTail: { role: string; content: string }[];
   flagged?: boolean;
+  orderSettings?: {
+    enabled: boolean;
+    confidenceThreshold: number;
+    requireProduct: boolean;
+    requireConfirmation: boolean;
+    businessMode: string;
+  };
 }) {
   try {
+    const settings = args.orderSettings ?? {
+      enabled: true, confidenceThreshold: 50, requireProduct: false, requireConfirmation: false, businessMode: "store",
+    };
+
+    // Respect the merchant's extraction toggle
+    if (!settings.enabled) return;
+
     const draft = extractOrderFast({
       messages: args.historyTail,
       fallbackCustomerName: args.customerName,
       fallbackCustomerPhone: args.customerPhone,
     });
 
-    // Confidence floor: a non-flagged extraction needs at least decent
-    // signal (product name + price OR phone, e.g. >= 50). Flagged messages
-    // get the old permissive path so payment-keyword flows still create a
-    // pending order even with weak metadata.
-    if (!args.flagged && draft.confidence < 50) {
-      return;
+    // Configurable confidence threshold (default 50, merchant can raise to 70+ to reduce false positives)
+    const threshold = args.flagged ? Math.min(settings.confidenceThreshold, 30) : settings.confidenceThreshold;
+    if (draft.confidence < threshold) return;
+
+    // If requireProduct is on, reject extractions with no product name
+    if (settings.requireProduct && (!draft.items?.length || !draft.items[0]?.name)) return;
+
+    // If requireConfirmation is on, only extract when the last customer message
+    // contains an affirmative confirmation keyword
+    if (settings.requireConfirmation) {
+      const lastCustomerMsg = args.historyTail.filter(m => m.role === "user").slice(-1)[0]?.content || "";
+      const confirmPattern = /\b(تمام|ايوه|موافق|اوكي|نعم|اكيد|حاضر|ابعت|اعمل|اشتري|خد|اجري|اطلب)\b/i;
+      if (!confirmPattern.test(lastCustomerMsg)) return;
     }
 
     // De-dup hardening — the previous version compared on `total` and a
