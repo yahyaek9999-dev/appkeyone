@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 type Metric = {
-  server: { cpuModel: string; cpuCores: number; totalMemMB: number; freeMemMB: number; usedMemMB: number; heapUsedMB: number; rssMB: number; uptimeSec: number };
+  server: { cpuModel: string; cpuCores: number; totalMemMB: number; freeMemMB: number; usedMemMB: number; heapUsedMB: number; heapTotalMB: number; rssMB: number; uptimeSec: number };
   database: { sizeBytes: number | null; messages: number; customers: number; orders: number };
   queue: { queued: number; failed24h: number; deadLetter: number };
   whatsapp: { activeSessions: number };
@@ -16,6 +16,13 @@ type Metric = {
   errors: { critical24h: number; warn24h: number };
   broadcasts: { sending: number; queued: number };
 };
+
+// Distinct failure modes so the UI can explain *what* went wrong + the fix,
+// instead of one catch-all "failed to load" message.
+type LoadError =
+  | { kind: "auth"; detail?: string }
+  | { kind: "network"; detail?: string }
+  | { kind: "server"; detail?: string };
 
 function fmtBytes(b: number | null) {
   if (!b) return "—";
@@ -38,17 +45,41 @@ function fmtUptime(s: number) {
 export default function SystemHealthUi() {
   const [data, setData] = useState<Metric | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<LoadError | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
       const r = await fetch("/api/system/health", { cache: "no-store" });
+      if (r.status === 401 || r.status === 403) {
+        setError({ kind: "auth" });
+        setData(null);
+        return;
+      }
+      if (!r.ok) {
+        setError({ kind: "server", detail: `HTTP ${r.status}` });
+        setData(null);
+        return;
+      }
       const j = await r.json();
-      setData(j?.error ? null : j);
+      if (j?.error) {
+        setError({ kind: "server", detail: String(j.error) });
+        setData(null);
+        return;
+      }
+      setData(j);
+      setError(null);
       setLastUpdated(new Date());
-    } catch { setData(null); }
-    finally { setLoading(false); }
+    } catch (e) {
+      // fetch() rejects on network failure / offline / DNS — distinct from a
+      // server 500 (which resolves with !r.ok above).
+      setError({ kind: "network", detail: e instanceof Error ? e.message : undefined });
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -58,8 +89,15 @@ export default function SystemHealthUi() {
     return () => clearInterval(id);
   }, [fetchData, autoRefresh]);
 
-  const memPct = data ? data.server.usedMemMB / data.server.totalMemMB : 0;
+  const memPct = data && data.server.totalMemMB > 0 ? data.server.usedMemMB / data.server.totalMemMB : 0;
   const overallOk = data && data.queue.failed24h === 0 && data.errors.critical24h === 0 && data.queue.deadLetter === 0;
+  // Name the specific degradation(s) so the banner is actionable, not generic.
+  const issues: string[] = [];
+  if (data) {
+    if (data.queue.deadLetter > 0) issues.push(`${data.queue.deadLetter} رسالة فشلت نهائياً (dead-letter)`);
+    if (data.queue.failed24h > 0) issues.push(`${data.queue.failed24h} فشل إرسال خلال 24 ساعة`);
+    if (data.errors.critical24h > 0) issues.push(`${data.errors.critical24h} خطأ حرج خلال 24 ساعة`);
+  }
 
   return (
     <div className="space-y-6">
@@ -85,11 +123,9 @@ export default function SystemHealthUi() {
       </div>
 
       {loading && !data ? (
-        <div className="flex items-center justify-center py-24 text-slate-500">
-          <Loader2 className="h-7 w-7 animate-spin" />
-        </div>
+        <HealthSkeleton />
       ) : !data ? (
-        <div className="card p-10 text-center text-sm text-slate-500">تعذّر تحميل بيانات المراقبة.</div>
+        <ErrorState error={error} onRetry={fetchData} retrying={loading} />
       ) : (
         <>
           {/* Overall status banner */}
@@ -99,9 +135,14 @@ export default function SystemHealthUi() {
             ) : (
               <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
             )}
-            <span className={`text-sm font-medium ${overallOk ? "text-brand-300" : "text-rose-300"}`}>
-              {overallOk ? "النظام يعمل بشكل طبيعي" : "يوجد تحذيرات تحتاج مراجعة"}
-            </span>
+            <div className="min-w-0">
+              <span className={`text-sm font-medium ${overallOk ? "text-brand-300" : "text-rose-300"}`}>
+                {overallOk ? "النظام يعمل بشكل طبيعي" : "النظام يعمل مع تحذيرات تحتاج مراجعة"}
+              </span>
+              {!overallOk && issues.length > 0 && (
+                <p className="mt-0.5 truncate text-xs text-rose-300/70">{issues.join(" · ")}</p>
+              )}
+            </div>
           </div>
 
           {/* Server */}
@@ -110,7 +151,7 @@ export default function SystemHealthUi() {
               <Server className="h-4 w-4 text-cyan-400" /> الخادم
             </h3>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <MiniCard icon={<Zap className="h-4 w-4" />} label="المعالج" value={data.server.cpuModel.replace(/\(R\)|\(TM\)|Processor/gi, "").trim().slice(0, 28)} sub={`${data.server.cpuCores} نواة`} />
+              <MiniCard icon={<Zap className="h-4 w-4" />} label="المعالج" value={(data.server.cpuModel || "—").replace(/\(R\)|\(TM\)|Processor/gi, "").trim().slice(0, 28) || "—"} sub={`${data.server.cpuCores || 0} نواة`} />
               <MiniCard icon={<HardDrive className="h-4 w-4" />} label="الذاكرة" value={`${data.server.usedMemMB}/${data.server.totalMemMB} MB`} sub={`${fmtPct(data.server.usedMemMB, data.server.totalMemMB)}% مستخدم`} tone={memPct > 0.85 ? "rose" : memPct > 0.7 ? "amber" : "emerald"} />
               <MiniCard icon={<Activity className="h-4 w-4" />} label="Heap" value={`${data.server.heapUsedMB} MB`} sub={`RSS: ${data.server.rssMB} MB`} />
               <MiniCard icon={<Clock className="h-4 w-4" />} label="وقت التشغيل" value={fmtUptime(data.server.uptimeSec)} />
@@ -179,6 +220,74 @@ export default function SystemHealthUi() {
           <p className="text-center text-[11px] text-slate-600">يُحدَّث كل 30 ثانية تلقائياً · جميع المقاييس للعرض فقط</p>
         </>
       )}
+    </div>
+  );
+}
+
+// Loading skeleton — mirrors the real layout so the page doesn't jump on load.
+function HealthSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse" aria-busy="true" aria-label="جارٍ تحميل بيانات المراقبة">
+      <div className="card h-14 p-4" />
+      {[0, 1].map((i) => (
+        <div key={i} className="card p-5">
+          <div className="mb-4 h-4 w-32 rounded bg-white/[0.06]" />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((j) => (
+              <div key={j} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <div className="mb-2 h-3 w-16 rounded bg-white/[0.06]" />
+                <div className="h-5 w-20 rounded bg-white/[0.06]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Distinct error states — each explains the cause and the fix, with retry.
+function ErrorState({ error, onRetry, retrying }: { error: LoadError | null; onRetry: () => void; retrying: boolean }) {
+  const kind = error?.kind ?? "server";
+  const copy = {
+    auth: {
+      title: "انتهت الجلسة",
+      desc: "يبدو أن جلستك انتهت. سجّل الدخول مرة أخرى لعرض بيانات المراقبة.",
+      cta: "تسجيل الدخول",
+      href: "/login",
+    },
+    network: {
+      title: "تعذّر الاتصال",
+      desc: "لم نتمكن من الوصول للخادم. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة.",
+      cta: null,
+      href: null,
+    },
+    server: {
+      title: "تعذّر تحميل البيانات",
+      desc: "حدث خطأ مؤقت أثناء جمع مؤشرات النظام. عادةً ما يُحل بإعادة المحاولة.",
+      cta: null,
+      href: null,
+    },
+  }[kind];
+
+  return (
+    <div className="card p-10 text-center">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/10">
+        {kind === "network" ? <Wifi className="h-6 w-6 text-rose-400" /> : kind === "auth" ? <Shield className="h-6 w-6 text-amber-400" /> : <AlertTriangle className="h-6 w-6 text-rose-400" />}
+      </div>
+      <h3 className="text-base font-semibold text-white">{copy.title}</h3>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-slate-400">{copy.desc}</p>
+      {error?.detail && <p className="mt-2 font-mono text-[11px] text-slate-600">{error.detail}</p>}
+      <div className="mt-5 flex items-center justify-center gap-2">
+        {copy.cta && copy.href ? (
+          <a href={copy.href} className="btn-primary text-sm">{copy.cta}</a>
+        ) : (
+          <button onClick={onRetry} disabled={retrying} className="btn-primary text-sm">
+            <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
+            إعادة المحاولة
+          </button>
+        )}
+      </div>
     </div>
   );
 }

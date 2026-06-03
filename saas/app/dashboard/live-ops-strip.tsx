@@ -8,9 +8,10 @@ import { useRealtimeSnapshot } from "@/hooks/use-realtime";
 export function LiveOpsStrip() {
   const { state, snapshot } = useRealtimeSnapshot({ fallbackMs: 30000 });
   const wa = snapshot?.whatsapp;
+  const t = snapshot?.totals;
   const connected = wa?.status === "connected";
-  const queuePending = (snapshot?.totals.outgoingQueued || 0) + (snapshot?.totals.outgoingScheduled || 0);
-  const queueHasIssues = (snapshot?.totals.outgoingFailed24h || 0) > 0 || (snapshot?.totals.outgoingStaleQueued || 0) > 0;
+  const queuePending = (t?.outgoingQueued || 0) + (t?.outgoingScheduled || 0);
+  const queueHasIssues = (t?.outgoingFailed24h || 0) > 0 || (t?.outgoingStaleQueued || 0) > 0;
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -29,20 +30,20 @@ export function LiveOpsStrip() {
         tone={connected ? "online" : "warning"}
         hint={wa?.phone || (wa?.mode === "meta_cloud" ? "Meta Cloud" : "ربط QR")} />
       <LiveTile icon={<MessageSquareWarning className="h-4 w-4" />} label="تصعيدات مفتوحة"
-        value={String(snapshot?.totals.escalationActive ?? "—")}
-        tone={(snapshot?.totals.escalationCritical || 0) > 0 ? "warning" : (snapshot?.totals.escalationActive || 0) > 0 ? "ai" : "online"}
-        hint={`${snapshot?.totals.escalationCritical || 0} حرجة`} />
+        value={String(t?.escalationActive ?? "—")}
+        tone={(t?.escalationCritical || 0) > 0 ? "warning" : (t?.escalationActive || 0) > 0 ? "ai" : "online"}
+        hint={`${t?.escalationCritical || 0} حرجة`} />
       <LiveTile icon={<Megaphone className="h-4 w-4" />} label="حملات نشطة"
-        value={String(snapshot?.totals.broadcastsActive ?? "—")}
-        tone={(snapshot?.totals.broadcastsActive || 0) > 0 ? "ai" : "neutral"}
+        value={String(t?.broadcastsActive ?? "—")}
+        tone={(t?.broadcastsActive || 0) > 0 ? "ai" : "neutral"}
         hint="قيد الإرسال / منتظرة" />
       <LiveTile icon={<Send className="h-4 w-4" />} label="طابور الإرسال"
-        value={String(queuePending || snapshot?.totals.outgoingSending || "—")}
+        value={String(queuePending || t?.outgoingSending || "—")}
         tone={queueHasIssues ? "warning" : queuePending > 0 ? "ai" : "online"}
-        hint={`${snapshot?.totals.outgoingSending || 0} إرسال · ${snapshot?.totals.outgoingFailed24h || 0} فشل/24س`} />
+        hint={`${t?.outgoingSending || 0} إرسال · ${t?.outgoingFailed24h || 0} فشل/24س`} />
       <LiveTile icon={<AlertTriangle className="h-4 w-4" />} label="تنبيهات آخر 24 ساعة"
-        value={String(snapshot?.totals.alerts24h ?? "—")}
-        tone={(snapshot?.totals.alerts24h || 0) > 0 ? "warning" : "online"}
+        value={String(t?.alerts24h ?? "—")}
+        tone={(t?.alerts24h || 0) > 0 ? "warning" : "online"}
         hint="أمان وتنبيهات الغضب" />
     </div>
   );

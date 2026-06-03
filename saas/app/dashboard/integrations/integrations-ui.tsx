@@ -101,6 +101,31 @@ const PLATFORM_HELP: Record<string, string[]> = {
   ],
 };
 
+// Per-platform troubleshooting — the most common "it didn't connect" causes,
+// shown inside the setup wizard so a non-technical merchant can self-resolve
+// without contacting support. Additive: complements PLATFORM_HELP (the steps).
+const PLATFORM_TROUBLESHOOT: Record<string, { problem: string; fix: string }[]> = {
+  shopify: [
+    { problem: "اختبار الاتصال يفشل برسالة 401/403", fix: "تأكد أن Admin API access token صحيح ولم تنته صلاحيته، وأن للتطبيق صلاحيات قراءة الطلبات (read_orders)." },
+    { problem: "الطلبات الجديدة لا تصل", fix: "تأكد أن التكامل مُفعّل (نشط) هنا، وأن المتجر ليس في وضع التطوير/الصيانة." },
+  ],
+  woocommerce: [
+    { problem: "رسالة Consumer Key غير صالح", fix: "أعد إنشاء مفتاح API بصلاحية Read/Write، وانسخ Consumer Key و Secret كاملين بدون مسافات." },
+    { problem: "الاتصال يفشل رغم صحة المفاتيح", fix: "تأكد أن متجرك يعمل على HTTPS وأن إضافة WooCommerce محدّثة لأحدث إصدار." },
+  ],
+  salla: [
+    { problem: "لم يتم ربط المتجر بعد الموافقة", fix: "عُد إلى سوق تطبيقات سلة وتأكد من اكتمال خطوة التفويض (OAuth) ثم أعد تحميل هذه الصفحة." },
+  ],
+  zid: [
+    { problem: "لا تظهر حالة الاتصال كمتصل", fix: "تأكد من إتمام ربط OAuth من سوق تطبيقات Zid، وأن الحساب لديه صلاحية إدارة المتجر." },
+  ],
+  custom: [
+    { problem: "الـ Webhook يرجع 401", fix: "تأكد من إرسال ترويسة X-Keyone-API-Key وتوقيع X-Keyone-Signature الصحيح (HMAC-SHA256 لجسم الطلب بسر الـ Webhook)." },
+    { problem: "التوقيع غير صالح (signature mismatch)", fix: "احسب التوقيع على جسم الطلب الخام (raw body) قبل أي تعديل، واستخدم سر الـ Webhook وليس مفتاح API." },
+    { problem: "الحدث يصل لكن يفشل", fix: "تأكد أن صيغة الـ JSON تطابق المثال (event, order.customer.phone مطلوب) وراجع رسالة الخطأ في سجل الأحداث أدناه." },
+  ],
+};
+
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   untested: { label: "غير مُختبر", cls: "bg-slate-500/15 text-slate-300 border-slate-500/30" },
   healthy: { label: "سليم", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
@@ -477,6 +502,7 @@ function WizardView({
   name: string; setName: (v: string) => void;
 }) {
   const steps = PLATFORM_HELP[platform] || PLATFORM_HELP.custom;
+  const troubleshoot = PLATFORM_TROUBLESHOOT[platform] || PLATFORM_TROUBLESHOOT.custom;
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -500,6 +526,24 @@ function WizardView({
           ))}
         </ol>
       </div>
+
+      {troubleshoot.length > 0 && (
+        <details className="group rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-200 marker:content-['']">
+            <HelpCircle className="h-4 w-4 text-amber-400" />
+            حل المشكلات الشائعة
+            <span className="mr-auto text-xs text-slate-500 transition group-open:rotate-180">▾</span>
+          </summary>
+          <ul className="mt-3 space-y-3">
+            {troubleshoot.map((t, i) => (
+              <li key={i} className="text-xs leading-relaxed">
+                <div className="font-medium text-amber-200/90">⚠︎ {t.problem}</div>
+                <div className="mt-0.5 text-slate-400">↳ {t.fix}</div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {platform !== "custom" && (
         <div>
