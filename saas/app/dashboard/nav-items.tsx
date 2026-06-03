@@ -71,6 +71,7 @@ export const NAV_SECTIONS: {
   {
     title: "النمو والذكاء",
     items: [
+      { href: "/dashboard/command-center", label: "مركز القيادة الذكي", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
       { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Lightbulb, perm: "analytics" },
