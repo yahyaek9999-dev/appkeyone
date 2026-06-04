@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 const Body = z.object({
   secret: z.string().min(1),
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(6),
 });
 
 export async function POST(req: Request) {

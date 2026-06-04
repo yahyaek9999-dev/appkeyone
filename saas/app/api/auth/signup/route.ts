@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const Body = z.object({
   name: z.string().trim().min(1).max(80),
   email: z.string().email(),
-  password: z.string().min(8).max(200),
+  password: z.string().min(6).max(200),
 });
 
 /** When SIGNUP_AUTO_APPROVE=1, new accounts activate immediately (no waitlist). */

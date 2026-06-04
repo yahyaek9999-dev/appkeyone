@@ -192,49 +192,66 @@ export default function HeroSection({
         <LightSweep />
         <ParticleField />
 
+        {/* ── Overlay content (brand + CTA) ── */}
+        <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center px-6 text-center" ref={revealRef as any}>
+          <h1
+            data-reveal
+            className="max-w-3xl text-3xl font-bold tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)] sm:text-5xl md:text-6xl lg:text-7xl"
+          >
+            {brandName}
+          </h1>
+          <p
+            data-reveal
+            className="mt-4 max-w-xl text-base text-slate-300 drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)] sm:text-lg"
+          >
+            {ctaPrimary}
+          </p>
+          <div
+            data-reveal
+            className="mt-8 flex w-full max-w-sm flex-col gap-3 sm:max-w-md sm:flex-row sm:justify-center"
+          >
+            {waNum ? (
+              <motion.a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition-colors hover:bg-brand-400 sm:w-auto"
+                whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(104,114,212,0.35)" }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <WhatsAppIcon className="h-4 w-4" />
+                {isRtl ? "اطلب حسابك" : "Get started"}
+              </motion.a>
+            ) : (
+              <motion.a
+                href="/pricing"
+                className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition-colors hover:bg-brand-400 sm:w-auto"
+                whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(104,114,212,0.35)" }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                {ctaPrimary}
+                <Arrow />
+              </motion.a>
+            )}
+
+            <motion.a
+              href="/pricing"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-8 py-3.5 text-sm font-medium text-slate-300 backdrop-blur-sm transition-colors hover:border-white/25 hover:text-white sm:w-auto"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              {ctaSecondary}
+              {!waNum && <Arrow />}
+            </motion.a>
+          </div>
+        </div>
+
         {/* ── Bottom fade ── */}
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-32 bg-gradient-to-t from-black to-transparent" />
       </section>
-
-      {/* ── CTA Buttons below video ── */}
-      <div className="flex flex-col items-center justify-center gap-4 bg-black px-6 pb-16 pt-10 sm:flex-row sm:pb-20">
-        {waNum ? (
-          <motion.a
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition-colors hover:bg-brand-400 sm:w-auto"
-            whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(104,114,212,0.35)" }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            <WhatsAppIcon className="h-4 w-4" />
-            {ctaPrimary}
-          </motion.a>
-        ) : (
-          <motion.a
-            href="/pricing"
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition-colors hover:bg-brand-400 sm:w-auto"
-            whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(104,114,212,0.35)" }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            {ctaPrimary}
-            <Arrow />
-          </motion.a>
-        )}
-
-        <motion.a
-          href="/pricing"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-8 py-3.5 text-sm font-medium text-slate-300 backdrop-blur-sm transition-colors hover:border-white/25 hover:text-white sm:w-auto"
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        >
-          {ctaSecondary}
-          {!waNum && <Arrow />}
-        </motion.a>
-      </div>
     </>
   );
 }
