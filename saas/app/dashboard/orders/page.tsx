@@ -2,16 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import AiCopilotStrip from "@/components/ai-copilot-strip";
+import InsightStrip from "@/components/insight-strip";
 import {
   ShoppingBag,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Truck,
-  Inbox,
+  ArrowUpRight,
 } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
 import {
   OrderStatusPill,
   type OrderStatus,
@@ -20,7 +15,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 
 function toOrderStatus(s: string): OrderStatus {
-  // KEYONE DB uses single-l "canceled"; component expects "cancelled".
   if (s === "canceled") return "cancelled";
   if (
     s === "pending" ||
@@ -78,332 +72,176 @@ export default async function OrdersPage({
   for (const row of counts) countByStatus[row.status] = row._count._all;
 
   const revenue = revenueAgg._sum?.total || 0;
-  const pendingCount = countByStatus.pending || 0;
-  const confirmedCount =
-    (countByStatus.confirmed || 0) +
-    (countByStatus.shipped || 0) +
-    (countByStatus.delivered || 0);
+  const totalOrders = Object.values(countByStatus).reduce((a, b) => a + b, 0);
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      {/* Header — clean summary bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ShoppingBag className="w-6 h-6 text-brand-400" />
-            الطلبات
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            طلبات تم استخراجها تلقائياً من محادثات العملاء.
+          <h1 className="page-title">الطلبات</h1>
+          <p className="page-desc mt-1">
+            {totalOrders.toLocaleString()} طلب · {(revenue / 100).toLocaleString()} ج إيرادات مؤكدة
           </p>
         </div>
       </div>
 
-      {/* Phase 3: AI Copilot — one insight + recommendation + action for orders */}
-      <AiCopilotStrip context="orders" />
-
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi
-          icon={Clock}
-          label="قيد المراجعة"
-          value={pendingCount}
-          tone="amber"
-        />
-        <Kpi
-          icon={CheckCircle2}
-          label="مؤكدة"
-          value={confirmedCount}
-          tone="emerald"
-        />
-        <Kpi
-          icon={Truck}
-          label="تم الشحن"
-          value={countByStatus.shipped || 0}
-          tone="indigo"
-        />
-        <Kpi
-          icon={AlertTriangle}
-          label="إيرادات مؤكدة"
-          value={`${revenue.toLocaleString()} ج`}
-          tone="sky"
-        />
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex flex-wrap gap-2 text-sm">
-        <FilterTab href="/dashboard/orders" current={!status}>
-          الكل
-        </FilterTab>
+      {/* Status summary strip — replaces KPI cards */}
+      <div className="flex flex-wrap gap-1.5">
+        <FilterTab href="/dashboard/orders" current={!status} label="الكل" count={totalOrders} />
         {Object.keys(STATUS_LABELS).map((s) => (
           <FilterTab
             key={s}
             href={`/dashboard/orders?status=${s}`}
             current={status === s}
-          >
-            {STATUS_LABELS[s]} ({countByStatus[s] || 0})
-          </FilterTab>
+            label={STATUS_LABELS[s]}
+            count={countByStatus[s] || 0}
+            palette={s === "canceled" ? "text-rose-400" : s === "delivered" ? "text-emerald-400" : s === "pending" ? "text-amber-400" : undefined}
+          />
         ))}
       </div>
 
-      {/* Mobile cards: avoids horizontal table scrolling on low-width devices. */}
-      <div className="space-y-3 md:hidden">
-        {orders.length === 0 ? (
-          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-2">
-            <EmptyState
-              icon={<Inbox className="w-full h-full" />}
-              title="لا توجد طلبات حتى الآن"
-              description="أول ما البوت يتعرّف على طلب في محادثة، هيظهر هنا."
-              size="md"
-            />
-          </div>
-        ) : (
-          orders.map((o: any) => {
-            const firstItem = o.items?.[0];
-            return (
-              <Link
-                key={o.id}
-                href={`/dashboard/orders/${o.id}`}
-                className="block rounded-2xl border border-white/5 bg-slate-900/40 p-4 transition hover:border-brand-500/30 hover:bg-slate-900/70"
-              >
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Avatar
-                      name={o.customerName || o.customerPhone || "?"}
-                      size="sm"
-                    />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">
-                        {o.customerName || "—"}
-                      </div>
-                      {(() => {
-                        const p = formatCustomerPhone(o.customerPhone || "");
-                        if (!p.raw) return null;
-                        return p.isLid ? (
-                          <div
-                            className="truncate text-xs italic text-slate-500"
-                            title={p.raw}
-                          >
-                            {p.display}
-                          </div>
-                        ) : (
-                          <bdi
-                            dir="ltr"
-                            className="block truncate text-xs font-mono text-slate-500"
-                          >
-                            {p.display}
-                          </bdi>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                  <OrderStatusPill status={toOrderStatus(o.status)} size="sm" />
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-400">المنتج</span>
-                    <span className="min-w-0 truncate text-left">
-                      {firstItem?.name || "—"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-400">الإجمالي</span>
-                    <span className="tabular-nums">
-                      {(o.total || 0).toLocaleString()} {o.currency || "EGP"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-400">الثقة</span>
-                    <ConfidencePill value={o.aiConfidence || 0} />
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
-                    <span>التاريخ</span>
-                    <span className="tabular-nums">
-                      {new Date(o.createdAt).toLocaleString("ar-EG")}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            );
-          })
-        )}
-      </div>
+      <InsightStrip context="orders" />
 
-      {/* Desktop/tablet table */}
-      <div className="hidden rounded-2xl border border-white/5 bg-slate-900/40 md:block md:overflow-hidden">
-        <div className="mobile-scroll-x">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-slate-900/60 text-slate-400">
+      {/* Desktop table */}
+      <div className="card overflow-hidden">
+        <div className="hidden sm:block">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="text-right p-3">العميل</th>
-                <th className="text-right p-3">المنتج</th>
-                <th className="text-right p-3">الإجمالي</th>
-                <th className="text-right p-3">الحالة</th>
-                <th className="text-right p-3">الثقة</th>
-                <th className="text-right p-3">التاريخ</th>
-                <th className="p-3"></th>
+                <th className="w-[35%]">العميل</th>
+                <th className="w-[25%]">المنتج</th>
+                <th className="w-[15%] text-end">الإجمالي</th>
+                <th className="w-[15%] text-center">الحالة</th>
+                <th className="w-[10%]"></th>
               </tr>
             </thead>
             <tbody>
-              {orders.length === 0 && (
+              {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-0">
+                  <td colSpan={5} className="p-0">
                     <EmptyState
-                      icon={<Inbox className="w-full h-full" />}
+                      icon={<ShoppingBag className="h-full w-full" />}
                       title="لا توجد طلبات حتى الآن"
                       description="أول ما البوت يتعرّف على طلب في محادثة، هيظهر هنا."
-                      size="md"
+                      size="sm"
                     />
                   </td>
                 </tr>
-              )}
-              {orders.map((o: any) => {
-                const firstItem = o.items?.[0];
-                return (
-                  <tr
-                    key={o.id}
-                    className="border-t border-white/5 hover:bg-white/[0.02]"
-                  >
-                    <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          name={o.customerName || o.customerPhone || "?"}
-                          size="sm"
-                        />
+              ) : (
+                orders.map((o: any) => {
+                  const firstItem = o.items?.[0];
+                  return (
+                    <tr key={o.id}>
+                      <td>
                         <div className="min-w-0">
-                          <div className="font-medium truncate">
+                          <Link href={`/dashboard/orders/${o.id}`} className="text-sm font-medium text-white transition-colors hover:text-brand-300">
                             {o.customerName || "—"}
-                          </div>
+                          </Link>
                           {(() => {
-                            const p = formatCustomerPhone(
-                              o.customerPhone || "",
-                            );
+                            const p = formatCustomerPhone(o.customerPhone || "");
                             if (!p.raw) return null;
-                            return p.isLid ? (
-                              <div
-                                className="text-xs text-slate-500 italic"
-                                title={p.raw}
-                              >
+                            return (
+                              <div className="text-[11px] text-slate-500 font-mono" dir="ltr">
                                 {p.display}
                               </div>
-                            ) : (
-                              <bdi
-                                dir="ltr"
-                                className="text-xs text-slate-500 font-mono block"
-                              >
-                                {p.display}
-                              </bdi>
                             );
                           })()}
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="truncate max-w-[220px]">
-                        {firstItem?.name || "—"}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {firstItem?.size && `مقاس ${firstItem.size}`}
-                        {firstItem?.color && ` · ${firstItem.color}`}
-                        {firstItem?.quantity > 1 && ` · ×${firstItem.quantity}`}
-                      </div>
-                    </td>
-                    <td className="p-3 tabular-nums">
-                      {(o.total || 0).toLocaleString()} {o.currency || "EGP"}
-                    </td>
-                    <td className="p-3">
-                      <OrderStatusPill
-                        status={toOrderStatus(o.status)}
-                        size="sm"
-                      />
-                    </td>
-                    <td className="p-3">
-                      <ConfidencePill value={o.aiConfidence || 0} />
-                    </td>
-                    <td className="p-3 text-xs text-slate-400 tabular-nums">
-                      {new Date(o.createdAt).toLocaleString("ar-EG")}
-                    </td>
-                    <td className="p-3 text-left">
-                      <Link
-                        href={`/dashboard/orders/${o.id}`}
-                        className="px-3 py-1.5 rounded-lg bg-brand-500/10 border border-brand-500/30 text-brand-300 hover:bg-brand-500/20 text-xs"
-                      >
-                        فتح
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td>
+                        <div className="text-sm text-slate-300 truncate max-w-[200px]">
+                          {firstItem?.name || "—"}
+                        </div>
+                        {firstItem?.quantity > 1 && (
+                          <div className="text-[11px] text-slate-500">×{firstItem.quantity}</div>
+                        )}
+                      </td>
+                      <td className="text-end">
+                        <div className="text-sm font-semibold tabular-nums text-white">
+                          {(o.total || 0).toLocaleString()} {o.currency || "ج"}
+                        </div>
+                        <div className={`text-[10px] tabular-nums ${o.aiConfidence >= 70 ? "text-emerald-500" : o.aiConfidence >= 40 ? "text-amber-500" : "text-slate-500"}`}>
+                          {o.aiConfidence || 0}% ثقة
+                        </div>
+                      </td>
+                      <td className="text-center">
+                        <OrderStatusPill status={toOrderStatus(o.status)} size="sm" />
+                      </td>
+                      <td className="text-start">
+                        <Link
+                          href={`/dashboard/orders/${o.id}`}
+                          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:bg-white/[0.04] hover:text-white"
+                        >
+                          فتح <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="divide-y divide-white/[0.04] sm:hidden">
+          {orders.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={<ShoppingBag className="h-full w-full" />}
+                title="لا توجد طلبات حتى الآن"
+                description="أول ما البوت يتعرّف على طلب في محادثة، هيظهر هنا."
+                size="sm"
+              />
+            </div>
+          ) : (
+            orders.map((o: any) => {
+              const firstItem = o.items?.[0];
+              return (
+                <Link
+                  key={o.id}
+                  href={`/dashboard/orders/${o.id}`}
+                  className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/[0.025]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white">{o.customerName || "—"}</span>
+                      <OrderStatusPill status={toOrderStatus(o.status)} size="sm" />
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                      <span>{firstItem?.name || "—"}</span>
+                      <span>·</span>
+                      <span className="tabular-nums">{(o.total || 0).toLocaleString()} {o.currency || "ج"}</span>
+                    </div>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-600 mt-1" />
+                </Link>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function Kpi({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: any;
-  label: string;
-  value: any;
-  tone: string;
-}) {
-  const toneClass: Record<string, string> = {
-    amber: "text-amber-300",
-    emerald: "text-emerald-300",
-    indigo: "text-indigo-300",
-    sky: "text-sky-300",
-  };
-  return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-500">{label}</span>
-        <Icon className={`h-4 w-4 ${toneClass[tone] || "text-slate-500"}`} />
-      </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums text-white">{value}</div>
-    </div>
-  );
-}
-
 function FilterTab({
-  href,
-  current,
-  children,
+  href, current, label, count, palette,
 }: {
-  href: string;
-  current: boolean;
-  children: React.ReactNode;
+  href: string; current: boolean; label: string; count: number; palette?: string;
 }) {
   return (
     <Link
       href={href}
-      className={`px-3 py-1.5 rounded-full border text-xs ${
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
         current
-          ? "bg-brand-500/15 border-brand-500/40 text-brand-200"
-          : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200"
+          ? "bg-white/[0.07] border-white/[0.12] text-white"
+          : "border-white/[0.06] text-slate-400 hover:border-white/[0.1] hover:text-slate-200"
       }`}
     >
-      {children}
+      {label}
+      <span className={`tabular-nums ${palette || "text-slate-500"}`}>{count}</span>
     </Link>
-  );
-}
-
-function ConfidencePill({ value }: { value: number }) {
-  const tone =
-    value >= 70
-      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-      : value >= 40
-        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-        : "bg-rose-500/15 text-rose-300 border-rose-500/30";
-  return (
-    <span
-      className={`px-2 py-0.5 rounded-full text-xs border tabular-nums ${tone}`}
-    >
-      {value}%
-    </span>
   );
 }

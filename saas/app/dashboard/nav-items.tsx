@@ -16,27 +16,16 @@ import {
   Shield,
   Inbox,
   Zap,
-  Clock,
   Megaphone,
-  Lightbulb,
   BarChart3,
   ShoppingBag,
   Plug,
   Brain,
   Crown,
-  MessageSquareWarning,
-  HeartHandshake,
-  Filter,
-  TrendingUp,
-  Package,
-  Ticket,
-  Activity,
-  Download,
   Sparkles,
-  ScrollText,
-  Home,
   Briefcase,
   Wrench,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 
@@ -69,19 +58,22 @@ export type Workspace = {
   items: NavItem[];
 };
 
+/**
+ * Lean workspace model — 6 workspaces, ~3 items each.
+ * The command palette (⌘K) indexes ALL destinations so users never lose access
+ * to the long tail. The sidebar only shows what matters for the current context.
+ */
 export const WORKSPACES: Workspace[] = [
   {
     id: "home",
     label: "الرئيسية",
     short: "الرئيسية",
-    icon: Home,
+    icon: LayoutDashboard,
     home: "/dashboard",
     items: [
-      { href: "/dashboard", label: "مركز القيادة", icon: LayoutDashboard, perm: "analytics" },
-      { href: "/dashboard/command-center", label: "اللوحة الذكية", icon: Sparkles, perm: "analytics" },
-      { href: "/dashboard/analytics", label: "الإحصائيات", icon: BarChart3, perm: "analytics" },
-      { href: "/dashboard/business", label: "تحليلات الأعمال", icon: TrendingUp, perm: "analytics" },
-      { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال اللحظي", icon: Sparkles, perm: "analytics" },
+      { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
+      { href: "/dashboard/analytics", label: "التحليلات", icon: BarChart3, perm: "analytics" },
+      { href: "/dashboard/command-center", label: "مركز القيادة", icon: Sparkles, perm: "analytics" },
     ],
   },
   {
@@ -93,12 +85,7 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag, perm: "customers" },
       { href: "/dashboard/products", label: "المنتجات", icon: Package, perm: "settings" },
-      { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket, perm: "settings" },
-      { href: "/dashboard/funnel", label: "مسار البيع", icon: Filter, perm: "analytics" },
-      { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: Sparkles, perm: "analytics" },
-      { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/broadcasts", label: "الإرسال الجماعي", icon: Megaphone, perm: "broadcasts" },
-      { href: "/dashboard/recovery", label: "استعادة العملاء", icon: HeartHandshake, perm: "broadcasts" },
     ],
   },
   {
@@ -110,9 +97,7 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard/customers", label: "العملاء", icon: Users, perm: "customers" },
       { href: "/dashboard/inbox", label: "صندوق المحادثات", icon: Inbox, perm: "inbox" },
-      { href: "/dashboard/escalations", label: "التصعيدات", icon: MessageSquareWarning, perm: "escalations" },
       { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap, perm: "customers" },
-      { href: "/dashboard/segments", label: "شرائح العملاء", icon: Filter, perm: "analytics" },
     ],
   },
   {
@@ -122,14 +107,9 @@ export const WORKSPACES: Workspace[] = [
     icon: Brain,
     home: "/dashboard/bot",
     items: [
-      { href: "/dashboard/bot", label: "إعدادات المساعد", icon: Bot, perm: "settings" },
-      { href: "/dashboard/playground", label: "تجربة المساعد", icon: Sparkles, perm: "settings" },
-      { href: "/dashboard/knowledge", label: "مركز التدريب", icon: BookOpen, perm: "settings" },
-      { href: "/dashboard/knowledge-brain", label: "العقل المعرفي", icon: Brain, perm: "settings" },
-      { href: "/dashboard/suggestions", label: "اقتراحات المعرفة", icon: Lightbulb, perm: "settings" },
+      { href: "/dashboard/bot", label: "المساعد الذكي", icon: Bot, perm: "settings" },
+      { href: "/dashboard/knowledge", label: "المعرفة", icon: BookOpen, perm: "settings" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
-      { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
-      { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Lightbulb, perm: "analytics" },
     ],
   },
   {
@@ -142,11 +122,6 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/integrations", label: "التكاملات", icon: Plug, perm: "settings" },
       { href: "/dashboard/automations", label: "الأتمتة", icon: Zap, perm: "settings" },
       { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },
-      { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Clock, perm: "settings" },
-      { href: "/dashboard/system-health", label: "مراقبة النظام", icon: Activity, perm: "analytics" },
-      { href: "/dashboard/safety", label: "الأمان والحماية", icon: Shield, perm: "settings" },
-      { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
-      { href: "/dashboard/export", label: "تصدير البيانات", icon: Download, perm: "customers" },
     ],
   },
   {
@@ -157,7 +132,7 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard/settings",
     items: [
       { href: "/dashboard/settings", label: "الحساب", icon: Settings, perm: "analytics" },
-      { href: "/dashboard/usage", label: "استخدام الباقة", icon: Crown, perm: "analytics" },
+      { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },
     ],
   },
 ];

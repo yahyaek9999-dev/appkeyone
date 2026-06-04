@@ -3,8 +3,8 @@ import { prisma } from "@/lib/db";
 import { evaluateSubscription, getSiteConfig } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import {
-  MessageSquare, Crown, Clock, Inbox, UserPlus, ShoppingCart, DollarSign, ArrowUpRight,
-  TrendingUp, Phone, AlertCircle, CheckCircle2,
+  MessageSquare, Crown, Clock, Inbox, ShoppingCart, DollarSign, ArrowUpRight,
+  TrendingUp, Phone, AlertCircle, CheckCircle2, ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
 import { timeAgo } from "@/lib/utils";
@@ -12,12 +12,11 @@ import { Avatar } from "@/components/ui/avatar";
 import { TrendBadge } from "@/components/ui/trend-badge";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatCustomerPhone } from "@/lib/phone";
 import { LiveOpsStrip } from "./live-ops-strip";
 import { GettingStarted } from "./_getting-started";
 import ActivationChecklist from "./_activation-checklist";
 import { syncUserMilestones } from "@/lib/activation/track";
-import AiCopilotStrip from "@/components/ai-copilot-strip";
+import InsightStrip from "@/components/insight-strip";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +47,7 @@ export default async function DashboardOverview() {
   const start30 = new Date(now.getTime() - 30 * day);
 
   const [
-    customerCount, msgCount, flaggedCount,
+    customerCount, _msgCount, flaggedCount,
     msgs7d, msgsPrior7d, msgs30dToday,
     recentMsgs, topCustomers, dailySeries,
     docCount, integrationCount, broadcastCount,
@@ -231,7 +230,7 @@ export default async function DashboardOverview() {
       {milestones && !Object.values(milestones.reached).every(Boolean) && <ActivationChecklist milestones={milestones} />}
 
       {/* What to do now — one AI-surfaced recommendation + action */}
-      <AiCopilotStrip context="dashboard" />
+      <InsightStrip context="dashboard" />
 
       {/* ── What makes money — revenue-led band, not a row of equal KPIs ──── */}
       <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.018]">
@@ -260,18 +259,18 @@ export default async function DashboardOverview() {
         </div>
       </section>
 
-      {/* ── Workspace: activity (main) + side rail ─────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* ── What happened — activity + drivers ─────────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-5">
         {/* Activity — message volume over 30d */}
-        <div className="card p-5 lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="card p-4 lg:col-span-3">
+          <div className="mb-3 flex items-center justify-between">
             <div>
               <h2 className="section-title">نشاط المحادثات</h2>
-              <p className="mt-0.5 text-[11px] text-slate-500">آخر 30 يوم · {msgs30dToday} اليوم · {msgs7d.toLocaleString("ar-EG")} هذا الأسبوع</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">آخر 30 يوم · {msgs7d.toLocaleString("ar-EG")} هذا الأسبوع</p>
             </div>
-            <span className="text-[11px] tabular-nums text-slate-500">{msgCount.toLocaleString()} إجمالي</span>
+            <span className="text-[11px] tabular-nums text-slate-500">{msgs30dToday} اليوم</span>
           </div>
-          <div className="flex h-32 items-end gap-0.5">
+          <div className="flex h-28 items-end gap-0.5">
             {last30.map((d) => (
               <div key={d.day} className="group relative flex flex-1 items-end justify-center" title={`${d.day}: ${d.total}`}>
                 <div
@@ -281,65 +280,21 @@ export default async function DashboardOverview() {
               </div>
             ))}
           </div>
-          <div className="mt-2 flex justify-between text-[10px] text-slate-600">
-            <span>{last30[0]?.day?.slice(5) || ""}</span>
-            <span>{last30[14]?.day?.slice(5) || ""}</span>
-            <span>{last30[29]?.day?.slice(5) || ""}</span>
-          </div>
-
-          {/* Inline secondary metrics — folded in, not a separate KPI farm. */}
-          <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.05] sm:grid-cols-4">
-            <InlineStat label="العملاء" value={customerCount.toLocaleString("ar-EG")} href="/dashboard/customers" />
-            <InlineStat label="ردود الذكاء" value={(aiCalls > 0 ? aiCalls : msgs7d).toLocaleString("ar-EG")} href="/dashboard/analytics" />
-            <InlineStat label="تنبيهات" value={flaggedCount.toLocaleString("ar-EG")} href="/dashboard/inbox" accent={flaggedCount > 0} />
-            <InlineStat label="مستندات المعرفة" value={docCount.toLocaleString("ar-EG")} href="/dashboard/knowledge" />
-          </div>
         </div>
 
-        {/* Side rail — usage + active customers (context, progressive) */}
-        <div className="space-y-4">
-          {sub.subscription && plan && (
-            <div className="card p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="section-title">{plan.name}</h2>
-                <Link href="/dashboard/usage" className="text-[11px] text-slate-400 transition-colors hover:text-white">التفاصيل</Link>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                <div className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`} style={{ width: `${usagePct}%` }} />
-              </div>
-              <div className="mt-2 flex items-center justify-between text-[11px] tabular-nums text-slate-500">
-                <span>{sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()}</span>
-                <span>يتجدد خلال {daysLeft} يوم</span>
-              </div>
-            </div>
-          )}
-
-          <div className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="section-title">عملاء نشطون</h2>
-              <Link href="/dashboard/customers" className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-white">الكل <ArrowUpRight className="h-3 w-3" /></Link>
-            </div>
-            {topCustomers.length === 0 ? (
-              <EmptyState icon={<UserPlus className="h-full w-full" />} title="لا عملاء بعد" description="أول محادثة ستظهر هنا." size="sm" />
-            ) : (
-              <div className="space-y-0.5">
-                {topCustomers.map((c) => (
-                  <Link key={c.id} href={`/dashboard/customers/${c.id}`} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-white/[0.03]">
-                    <Avatar name={c.name || c.phone} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13px] font-medium leading-tight text-white">{c.name || "—"}</div>
-                      <div className="truncate text-[10px] text-slate-500">{formatCustomerPhone(c.phone).display}</div>
-                    </div>
-                    <div className="shrink-0 text-[10px] text-slate-600">{timeAgo(c.lastSeenAt)}</div>
-                  </Link>
-                ))}
-              </div>
-            )}
+        {/* Drivers — what's driving performance */}
+        <div className="card p-4 lg:col-span-2">
+          <h2 className="section-title mb-3">المحركات</h2>
+          <div className="space-y-3">
+            <DriverRow label="العملاء" value={customerCount.toLocaleString("ar-EG")} sub={`${topCustomers.length} نشط هذا الأسبوع`} href="/dashboard/customers" />
+            <DriverRow label="الطلبات" value={orders7d.toLocaleString("ar-EG")} sub={`${pendingOrderCount} معلّق`} href="/dashboard/orders" delta={ordersDelta} />
+            <DriverRow label="محادثات الذكاء" value={aiCalls.toLocaleString("ar-EG")} sub="استدعاء هذا الأسبوع" href="/dashboard/analytics" />
+            <DriverRow label="المعرفة" value={docCount.toLocaleString("ar-EG")} sub="مستند" href="/dashboard/knowledge" />
           </div>
         </div>
       </div>
 
-      {/* ── Latest work — orders + messages, two equal streams ─────────────── */}
+      {/* ── What should I do next — orders + messages ──────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Recent orders */}
         <div className="card p-4">
@@ -380,7 +335,7 @@ export default async function DashboardOverview() {
           )}
         </div>
 
-        {/* Recent messages */}
+        {/* Recent messages + plan usage */}
         <div className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="section-title">آخر الرسائل</h2>
@@ -392,7 +347,7 @@ export default async function DashboardOverview() {
             <EmptyState icon={<Inbox className="h-full w-full" />} title="لا رسائل بعد" description="اربط واتساب أو جرّب البوت." size="sm" />
           ) : (
             <div className="space-y-0.5">
-              {recentMsgs.map((m) => (
+              {recentMsgs.slice(0, 3).map((m) => (
                 <div key={m.id} className="flex items-start gap-2.5 rounded-md p-2 transition-colors hover:bg-white/[0.03]">
                   <Avatar name={m.role === "user" ? m.conversation.customer.name || m.conversation.customer.phone : bot.name || "AI"} size="sm" />
                   <div className="min-w-0 flex-1">
@@ -408,7 +363,55 @@ export default async function DashboardOverview() {
               ))}
             </div>
           )}
+
+          {/* Plan usage — inline, not a separate card */}
+          {sub.subscription && plan && (
+            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-medium text-slate-500">{plan.name}</span>
+                <Link href="/dashboard/usage" className="text-[10px] text-slate-500 hover:text-white">Details</Link>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`} style={{ width: `${usagePct}%` }} />
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[10px] tabular-nums text-slate-600">
+                <span>{sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()}</span>
+                <span>{daysLeft} يوم متبقي</span>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* ── Why — trend insights ───────────────────────────────────────────── */}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <InsightCard
+          icon={<MessageSquare className="h-3.5 w-3.5" />}
+          label="حركة الرسائل"
+          value={msgs7d.toLocaleString("ar-EG")}
+          delta={msgs7dDelta}
+          period="مقارنة بالأسبوع السابق"
+        />
+        <InsightCard
+          icon={<ShoppingBag className="h-3.5 w-3.5" />}
+          label="الطلبات"
+          value={orders7d.toLocaleString("ar-EG")}
+          delta={ordersDelta}
+          period="مقارنة بالأسبوع السابق"
+        />
+        <InsightCard
+          icon={<DollarSign className="h-3.5 w-3.5" />}
+          label="الإيرادات"
+          value={rev7d > 0 ? `${(rev7d / 100).toLocaleString("ar-EG")} ج` : "—"}
+          delta={revDelta}
+          period="آخر 7 أيام"
+        />
+        <InsightCard
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          label="معدل التحويل"
+          value={conversionPct !== null ? `${conversionPct}%` : "—"}
+          period="العملاء → طلبات"
+        />
       </div>
     </div>
   );
@@ -437,17 +440,48 @@ function MoneyCell({ icon, label, value, delta, sub, href }: {
   return href ? <Link href={href} className={cls}>{inner}</Link> : <div className={cls}>{inner}</div>;
 }
 
-// ── Inline stat — compact figure folded into the activity panel. ──────────────
-function InlineStat({ label, value, href, accent }: {
-  label: string; value: string; href?: string; accent?: boolean;
+// ── Driver row — compact metric in the "what's driving" panel. ────────────────
+function DriverRow({ label, value, sub, href, delta }: {
+  label: string; value: string; sub?: string; href?: string; delta?: number | null;
 }) {
   const inner = (
-    <div className="bg-canvas-deep px-3 py-2.5 transition-colors hover:bg-white/[0.02]">
-      <div className={`text-[15px] font-semibold tabular-nums ${accent ? "text-amber-300" : "text-white"}`}>{value}</div>
-      <div className="truncate text-[10px] text-slate-500">{label}</div>
+    <Link href={href || "#"} className="flex items-center justify-between rounded-md p-2 transition-colors hover:bg-white/[0.03]">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-white">{value}</span>
+          {delta !== undefined && delta !== null && (
+            <span className={`text-[10px] tabular-nums ${delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              {delta >= 0 ? "+" : ""}{Math.round(delta)}%
+            </span>
+          )}
+        </div>
+        <div className="text-[11px] text-slate-500">{label}</div>
+      </div>
+      {sub && <span className="text-[10px] text-slate-600">{sub}</span>}
+    </Link>
+  );
+  return inner;
+}
+
+// ── Insight card — trend insight row. ─────────────────────────────────────────
+function InsightCard({ icon, label, value, delta, period }: {
+  icon: React.ReactNode; label: string; value: string; delta?: number | null; period?: string;
+}) {
+  return (
+    <div className="card p-3.5">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-slate-500">
+        <span className="text-slate-400">{icon}</span>
+        {label}
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-xl font-semibold tabular-nums text-white">{value}</span>
+        {delta !== undefined && delta !== null && (
+          <TrendBadge delta={delta} size="sm" />
+        )}
+      </div>
+      {period && <div className="mt-0.5 text-[10px] text-slate-600">{period}</div>}
     </div>
   );
-  return href ? <Link href={href}>{inner}</Link> : inner;
 }
 
 function SubscriptionBadge({ sub, daysLeft, waNum }: { sub: any; daysLeft: number; waNum: string }) {

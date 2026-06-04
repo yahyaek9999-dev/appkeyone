@@ -1,12 +1,12 @@
 import { requirePagePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { Users, MessageSquare, ChevronLeft } from "lucide-react";
+import { Users, MessageSquare, ArrowUpRight } from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
-import AiCopilotStrip from "@/components/ai-copilot-strip";
+import InsightStrip from "@/components/insight-strip";
 
 export default async function CustomersPage() {
   const { user } = await requirePagePermission("customers");
@@ -23,14 +23,13 @@ export default async function CustomersPage() {
     },
   });
 
-  // Lightweight book-of-business stats — reads as a CRM record list header.
   const active7d = customers.filter(
     (c) => c.lastSeenAt && Date.now() - new Date(c.lastSeenAt).getTime() < 7 * 86400000,
   ).length;
 
   return (
     <div className="space-y-5">
-      {/* Record-list header — title + at-a-glance counts, no card farm. */}
+      {/* Header — title + contextual counts */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="page-title">العملاء</h1>
@@ -44,7 +43,7 @@ export default async function CustomersPage() {
         </Link>
       </div>
 
-      <AiCopilotStrip context="customers" />
+      <InsightStrip context="customers" />
 
       {customers.length === 0 ? (
         <div className="card">
@@ -63,31 +62,41 @@ export default async function CustomersPage() {
         </div>
       ) : (
         <div className="card overflow-hidden">
-          {/* Column header — the table is the spine of a CRM, not a list of cards. */}
-          <div className="hidden grid-cols-[1fr_140px_120px_90px] items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500 sm:grid">
+          {/* Premium CRM table header — dense, uppercase */}
+          <div className="hidden grid-cols-[1fr_140px_100px_100px_80px] items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500 sm:grid">
             <span>العميل</span>
             <span>الهاتف</span>
-            <span>آخر نشاط</span>
-            <span className="text-start">الرسائل</span>
+            <span className="text-center">آخر نشاط</span>
+            <span className="text-center">الرسائل</span>
+            <span className="text-center"></span>
           </div>
           <div className="divide-y divide-white/[0.04]">
             {customers.map((c) => {
               const last = c.conversation?.messages?.[0];
               const count = c.conversation?._count?.messages ?? 0;
               const p = formatCustomerPhone(c.phone);
+              const isActive = c.lastSeenAt && Date.now() - new Date(c.lastSeenAt).getTime() < 24 * 60 * 60 * 1000;
               return (
-                <Link
+                <div
                   key={c.id}
-                  href={`/dashboard/customers/${c.id}`}
-                  className="group grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.025] sm:grid-cols-[1fr_140px_120px_90px]"
+                  className="group grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-2.5 sm:grid-cols-[1fr_140px_100px_100px_80px]"
                 >
-                  {/* Identity + last message preview */}
+                  {/* Identity + last message */}
                   <div className="flex min-w-0 items-center gap-3">
-                    <Avatar name={c.name || c.phone} size="md" className="shrink-0" />
+                    <div className="relative shrink-0">
+                      <Avatar name={c.name || c.phone} size="md" />
+                      {isActive && (
+                        <span className="absolute -bottom-0.5 -end-0.5 h-2.5 w-2.5 rounded-full border-2 border-canvas-deep bg-emerald-400" />
+                      )}
+                    </div>
                     <div className="min-w-0">
-                      <div className="truncate text-[14px] font-medium text-white">{c.name || "بدون اسم"}</div>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/dashboard/customers/${c.id}`} className="truncate text-[14px] font-medium text-white transition-colors hover:text-brand-300">
+                          {c.name || "بدون اسم"}
+                        </Link>
+                      </div>
                       {last && (
-                        <div className="truncate text-[12px] text-slate-500">
+                        <div className="truncate text-[12px] text-slate-500 leading-tight mt-0.5">
                           {last.role === "user" ? "← " : "→ "}
                           {last.content}
                         </div>
@@ -95,21 +104,27 @@ export default async function CustomersPage() {
                     </div>
                   </div>
                   {/* Phone */}
-                  <div className="hidden text-[12px] text-slate-400 sm:block">
-                    {p.isLid ? (
-                      <span className="italic text-slate-500" title={p.raw}>{p.display}</span>
-                    ) : (
-                      <bdi dir="ltr" className="font-mono">{p.display}</bdi>
-                    )}
+                  <div className="hidden text-[12px] text-slate-400 sm:block font-mono" dir="ltr">
+                    {p.display}
                   </div>
                   {/* Last activity */}
-                  <div className="hidden text-[12px] text-slate-500 sm:block">{timeAgo(c.lastSeenAt)}</div>
-                  {/* Message count + chevron */}
-                  <div className="flex items-center justify-end gap-2 sm:justify-start">
-                    <span className="text-[12px] tabular-nums text-slate-400">{count.toLocaleString("ar-EG")}</span>
-                    <ChevronLeft className="h-4 w-4 text-slate-600 transition-colors group-hover:text-slate-400" />
+                  <div className="hidden text-[12px] text-slate-500 sm:text-center sm:block">
+                    {timeAgo(c.lastSeenAt)}
                   </div>
-                </Link>
+                  {/* Messages */}
+                  <div className="hidden text-[12px] tabular-nums text-slate-400 sm:text-center sm:block">
+                    {count.toLocaleString("ar-EG")}
+                  </div>
+                  {/* Action */}
+                  <div className="flex justify-end">
+                    <Link
+                      href={`/dashboard/customers/${c.id}`}
+                      className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 opacity-0 transition-all hover:bg-white/[0.04] hover:text-white group-hover:opacity-100"
+                    >
+                      فتح <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
               );
             })}
           </div>

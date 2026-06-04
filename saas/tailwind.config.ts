@@ -9,9 +9,8 @@ const config: Config = {
     extend: {
       colors: {
         // ── Brand accent ──────────────────────────────────────────────
-        // 2026 rebuild: refined muted iris/indigo (Linear/Attio register),
-        // replacing the rejected neon-green. The `brand-*` name is kept so
-        // the entire app re-skins through the token, no per-file edits.
+        // 2026 rebuild: refined muted iris/indigo (Linear/Stripe/Attio register).
+        // The `brand-*` name is kept so the entire app re-skins through the token.
         brand: {
           50: "#eef0fb",
           100: "#dfe2f8",
@@ -23,19 +22,24 @@ const config: Config = {
           700: "#4650a8",
           800: "#3a4188",
           900: "#31366e",
+          // Premium solid accent for badges, dividers, subtle highlights
+          soft: "rgba(104,114,212,0.15)",
+          border: "rgba(104,114,212,0.25)",
+          glow: "rgba(104,114,212,0.08)",
         },
-        // True-neutral canvas scale — kills the green ambient cast of the
-        // old #020806 base. Cool, near-black, premium.
+        // True-neutral canvas scale — premium near-black, no color cast.
         canvas: {
           DEFAULT: "#0a0a0c",
           deep: "#08080a",
           raised: "#101013",
+          overlay: "rgba(10,10,12,0.92)",
         },
         // Semantic surface tokens for consistent layered panels
         surface: {
           DEFAULT: "rgba(255,255,255,0.030)",
           alt: "rgba(255,255,255,0.014)",
           hover: "rgba(255,255,255,0.055)",
+          elevated: "rgba(255,255,255,0.04)",
         },
       },
       fontFamily: {

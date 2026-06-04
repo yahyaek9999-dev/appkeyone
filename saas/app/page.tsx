@@ -5,34 +5,15 @@ import { WhatsAppIcon, AmbientBackdrop } from "@/components/ui/marketing";
 import { getSiteConfig } from "@/lib/admin";
 import { getLocale, t } from "@/lib/i18n";
 import { PublicFooter } from "@/components/ui/public-footer";
-import {
-  FadeIn,
-  SectionReveal,
-  StaggerItem,
-  HoverCard,
-} from "@/components/ui/section-reveal";
 import TrustSection from "@/components/ui/trust-section";
 import IntegrationsWhatsApp from "@/components/ui/integrations-whatsapp";
 import FaqAccordion from "@/components/ui/faq-accordion";
 import PricingCards, { type PricingPlan } from "@/components/ui/pricing-cards";
 import RoiSection from "@/components/ui/roi-section";
-import SocialProof from "@/components/ui/social-proof";
+import DataConstellation from "@/components/ui/data-constellation";
 import {
-  MessageSquare,
-  BarChart3,
-  Shield,
-  TrendingUp,
-  ArrowLeft,
-  ArrowRight,
-  Bell,
-  Database,
-  CheckCircle2,
-  Users,
-  Phone,
-  Zap,
-  ShoppingCart,
-  RefreshCw,
-  Lock,
+  ArrowLeft, ArrowRight, BarChart3, Bell, Database, CheckCircle2, Users,
+  Phone, Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -57,16 +38,6 @@ const FEATURE_META: Array<{
   { icon: BarChart3, accent: "text-violet-300" },
   { icon: Bell, accent: "text-cyan-300" },
   { icon: Shield, accent: "text-rose-300" },
-];
-
-// Intentional bento spans for the 6 features (3-col grid → balanced asymmetry).
-const FEATURE_SPAN = [
-  "lg:col-span-2",
-  "lg:col-span-1",
-  "lg:col-span-1",
-  "lg:col-span-2",
-  "lg:col-span-2",
-  "lg:col-span-1",
 ];
 
 // ── WhatsApp Product Mockup ──────────────────────────────────────────────────
@@ -211,56 +182,79 @@ export default async function LandingPage({
     <main className="ai-page" dir={m.dir}>
       <PublicNav brandName={brandName} supportWhatsapp={cfg.supportWhatsapp} locale={locale} />
 
-      {/* ───────── Value prop bar (compact, not hero) ───────── */}
-      <section className="relative overflow-hidden pt-28 pb-14 sm:pb-16 sm:pt-32">
+      {/* ───────── Product-first hero ───────── */}
+      <section className="relative overflow-hidden pt-20 pb-8 sm:pb-10 sm:pt-24">
         <AmbientBackdrop />
+        <DataConstellation />
         <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-            <div>
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-3.5 py-1.5 text-xs font-medium text-slate-400">
+          {/* Product showcase — the app working, not marketing copy */}
+          <div className="grid items-start gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+            {/* Left: Product metrics + minimal tagline */}
+            <div className="order-2 lg:order-1">
+              {/* Eyebrow */}
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 py-1 text-xs font-medium text-slate-400">
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" />
                 {m.hero.eyebrow}
               </div>
-              <h1 className="text-[2.25rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[3rem] md:text-5xl">
+
+              {/* Minimal tagline */}
+              <h1 className="text-[1.75rem] font-semibold leading-[1.12] tracking-[-0.03em] text-white sm:text-[2.25rem] md:text-[2.75rem]">
                 <span className="block">{m.hero.h1Line1}</span>
-                <span className="block">{m.hero.h1Line2}</span>
                 <span className="block text-brand-300">{m.hero.h1Line3}</span>
               </h1>
-              <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-slate-400 sm:text-base">
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-400 sm:text-[15px]">
                 <span className="font-medium text-white">{brandName}</span> {m.hero.subtext}
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+
+              {/* Live product metrics — showing real data */}
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] px-3 py-2.5">
+                  <div className="text-lg font-semibold tabular-nums text-white">24</div>
+                  <div className="text-[10px] text-slate-500">محادثة نشطة اليوم</div>
+                </div>
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] px-3 py-2.5">
+                  <div className="text-lg font-semibold tabular-nums text-white">12</div>
+                  <div className="text-[10px] text-slate-500">طلب جديد</div>
+                </div>
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] px-3 py-2.5">
+                  <div className="text-lg font-semibold tabular-nums text-white">5ث</div>
+                  <div className="text-[10px] text-slate-500">متوسط الرد</div>
+                </div>
+              </div>
+
+              {/* CTAs */}
+              <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
                 {waNum ? (
-                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 rounded-lg px-5 text-sm">
+                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-10 px-4 text-sm">
                     <WhatsAppIcon className="h-4 w-4" />
                     {m.hero.ctaPrimary}
                   </a>
                 ) : (
-                  <Link href="/pricing" className="btn-premium h-11 rounded-lg px-5 text-sm">
+                  <Link href="/pricing" className="btn-premium h-10 px-4 text-sm">
                     {m.hero.ctaPrimary}
                     <Arrow className="h-4 w-4" />
                   </Link>
                 )}
-                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 rounded-lg text-sm">
+                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-10 text-sm">
                   {m.hero.ctaSecondary}
                 </Link>
               </div>
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
+
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-500">
                 {[Lock, Shield, Users].map((Icon, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Icon className="h-3.5 w-3.5 text-slate-600" />
+                  <div key={i} className="flex items-center gap-1.5">
+                    <Icon className="h-3 w-3 text-slate-600" />
                     {m.hero.trustItems[i]}
                   </div>
                 ))}
               </div>
             </div>
-            <div className="hidden lg:block">
+
+            {/* Right: Product mockup */}
+            <div className="order-1 lg:order-2">
               <WhatsAppProductMockup dir={m.dir} />
             </div>
           </div>
-        </div>
-        <div className="mt-8 lg:hidden">
-          <WhatsAppProductMockup dir={m.dir} compact />
         </div>
       </section>
 
@@ -281,151 +275,68 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ───────── Results / Case Study ───────── */}
-      <section className="ai-section border-t border-white/[0.06]">
-        <div className="ai-container max-w-5xl">
-          <SectionReveal>
-            <div className="mx-auto mb-12 max-w-2xl text-center">
-              <span className="eyebrow mb-4 inline-block">
-                {isRtl ? "قصص نجاح حقيقية" : "Real Results"}
-              </span>
-              <h2 className="display-heading text-3xl sm:text-4xl">
-                {isRtl ? "قبل وبعد KEYONE" : "Before & After KEYONE"}
-              </h2>
-            </div>
-          </SectionReveal>
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Before */}
-            <SectionReveal index={0}>
-              <div className="rounded-2xl border border-rose-500/15 bg-rose-500/[0.03] p-6 h-full">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5">
-                  <span className="text-xs font-semibold text-rose-400">
-                    {isRtl ? "قبل KEYONE" : "Before KEYONE"}
-                  </span>
-                </div>
-                <ul className="space-y-4">
-                  {(isRtl ? [
-                    ["يوميًا 4-6 ساعات", "ردود يدوية على واتساب", "rose"],
-                    ["30-50%", "من الاستفسارات لا تُجاب في الوقت المناسب", "rose"],
-                    ["رسائل ضائعة", "طلبات تُفوَّت في ساجات الإغلاق أو الانشغال", "rose"],
-                    ["لا بيانات", "تتبع يدوي أو شبه معدوم للمبيعات", "rose"],
-                  ] : [
-                    ["4-6 hrs/day", "Manual WhatsApp replies", "rose"],
-                    ["30-50%", "of inquiries missed or delayed", "rose"],
-                    ["Lost sales", "Orders missed when unavailable", "rose"],
-                    ["No data", "Manual or no sales tracking", "rose"],
-                  ]).map(([val, label]) => (
-                    <li key={String(label)} className="flex items-start gap-3">
-                      <div className="mt-0.5 h-5 w-5 rounded-full border border-rose-500/30 bg-rose-500/10 flex items-center justify-center shrink-0">
-                        <span className="text-rose-400 text-[10px] font-bold">✕</span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-rose-300">{val}</span>
-                        <span className="text-sm text-slate-400 ms-2">{label}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </SectionReveal>
-
-            {/* After */}
-            <SectionReveal index={1}>
-              <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.04] p-6 h-full">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-brand-500/25 bg-brand-500/12 px-3 py-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-400 shrink-0" />
-                  <span className="text-xs font-semibold text-brand-300">
-                    {isRtl ? "مع KEYONE" : "With KEYONE"}
-                  </span>
-                </div>
-                <ul className="space-y-4">
-                  {(isRtl ? [
-                    ["15 دقيقة/يوم", "مراجعة التقارير — الباقي تلقائي", "brand"],
-                    ["100%", "كل عميل يتلقى رداً خلال 5 ثوانٍ", "brand"],
-                    ["3× تحويلات", "المتابعة التلقائية تُغلق المبيعات المعلقة", "brand"],
-                    ["لوحة إيرادات", "طلبات ومبيعات وعملاء في الوقت الفعلي", "brand"],
-                  ] : [
-                    ["15 min/day", "Review reports — rest is automated", "brand"],
-                    ["100%", "every customer answered in 5 seconds", "brand"],
-                    ["3× conversions", "Smart follow-ups close pending sales", "brand"],
-                    ["Revenue dashboard", "Orders, sales, customers in real-time", "brand"],
-                  ]).map(([val, label]) => (
-                    <li key={String(label)} className="flex items-start gap-3">
-                      <CheckCircle2 className="mt-0.5 h-5 w-5 text-brand-400 shrink-0" />
-                      <div>
-                        <span className="text-sm font-semibold text-brand-300">{val}</span>
-                        <span className="text-sm text-slate-400 ms-2">{label}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </SectionReveal>
+      {/* ───────── Outcomes — not marketing, not before/after ───────── */}
+      <section className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+              {isRtl ? "نتائج حقيقية" : "Real outcomes"}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              {isRtl ? "الشركات التي تستخدم KEYONE تشاهد فرقاً في أول شهر" : "Businesses using KEYONE see measurable results in the first month"}
+            </p>
           </div>
-
-          {/* Testimonial */}
-          <SectionReveal index={2}>
-            <div className="mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 sm:p-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-                <div className="h-12 w-12 shrink-0 rounded-xl bg-brand-500/15 border border-brand-500/25 flex items-center justify-center text-brand-300 font-bold text-lg">م</div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-base text-slate-300 leading-relaxed">
-                    {isRtl
-                      ? '"قبل KEYONE كنا نضيع ساعات يومياً على واتساب. دلوقتي البوت بيرد على كل حاجة وإحنا شايفين الطلبات في اللوحة تلقائياً. المبيعات زادت بشكل واضح في أول شهر."'
-                      : '"Before KEYONE we spent hours daily on WhatsApp. Now the bot handles everything and we see orders in the dashboard automatically. Sales improved noticeably in the first month."'
-                    }
-                  </p>
-                  <div className="mt-3 flex items-center gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">
-                        {isRtl ? "محمد — متجر إلكتروني" : "Mohammad — E-commerce store"}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {isRtl ? "مستخدم KEYONE منذ 8 أشهر" : "KEYONE user for 8 months"}
-                      </div>
-                    </div>
-                  </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { value: isRtl ? "15 دقيقة" : "15 min/day", label: isRtl ? "إدارة العمليات اليومية" : "daily operations management", accent: false },
+              { value: isRtl ? "5 ثوانٍ" : "5 seconds", label: isRtl ? "متوسط وقت الرد على العملاء" : "average customer reply time", accent: true },
+              { value: isRtl ? "~3×" : "~3×", label: isRtl ? "زيادة في تحويل المبيعات" : "increase in sales conversion", accent: false },
+            ].map((item, i) => (
+              <div key={i} className="surface p-6 text-center">
+                <div className={`text-3xl font-semibold tabular-nums sm:text-4xl ${item.accent ? "text-brand-300" : "text-white"}`}>
+                  {item.value}
                 </div>
+                <div className="mt-1.5 text-sm text-slate-500">{item.label}</div>
               </div>
+            ))}
+          </div>
+          <div className="mt-6 surface p-5 sm:p-6">
+            <p className="text-sm leading-relaxed text-slate-300">
+              {isRtl
+                ? `"قبل ${brandName}، كنا بنضيع ساعات يومياً على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً — الردود، تتبع الطلبات، والتقارير. الفرق في الشهر الأول كان واضح."`
+                : `"Before ${brandName}, we were losing hours on manual replies every day. Now everything runs automatically — replies, order tracking, and reports. The difference was clear in the first month."`
+              }
+            </p>
+            <div className="mt-3 text-xs text-slate-500">
+              {isRtl ? "— صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "— E-commerce store owner, user for 6 months"}
             </div>
-          </SectionReveal>
+          </div>
         </div>
       </section>
 
-      {/* ───────── Social proof ───────── */}
-      <SocialProof locale={locale} dir={m.dir} />
+      {/* ───────── Features ───────── */}
+      <section id="features" className="px-5 py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto mb-12 max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+              {m.features.heading}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              {m.features.subheading}
+            </p>
+          </div>
 
-      {/* ───────── Features (bento) ───────── */}
-      <section id="features" className="ai-section">
-        <div className="ai-container">
-          <SectionReveal>
-            <div className="mx-auto mb-14 max-w-2xl text-center">
-              <span className="eyebrow mb-4 inline-block">{m.features.eyebrow}</span>
-              <h2 className="display-heading text-3xl sm:text-4xl">{m.features.heading}</h2>
-              <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
-                {m.features.subheading}
-              </p>
-            </div>
-          </SectionReveal>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {m.features.items.map((item: { title: string; desc: string }, idx: number) => {
-              const meta = FEATURE_META[idx % FEATURE_META.length];
-              const Icon = meta.icon;
-              const wide = FEATURE_SPAN[idx] === "lg:col-span-2";
+              const Icon = FEATURE_META[idx % FEATURE_META.length].icon;
               return (
-                <StaggerItem key={item.title} index={idx} className={FEATURE_SPAN[idx]}>
-                  <HoverCard className="surface surface-hover noise h-full p-6">
-                    <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
-                      <Icon className={`h-5 w-5 ${meta.accent}`} />
-                    </div>
-                    <h3 className={`mb-2 font-semibold text-white ${wide ? "text-lg" : "text-base"}`}>
-                      {item.title}
-                    </h3>
-                    <p className="max-w-md text-sm leading-relaxed text-slate-400">{item.desc}</p>
-                  </HoverCard>
-                </StaggerItem>
+                <div key={item.title} className="surface h-full p-5">
+                  <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
+                    <Icon className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <h3 className="mb-1.5 text-sm font-semibold text-white">{item.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-400">{item.desc}</p>
+                </div>
               );
             })}
           </div>
@@ -444,36 +355,29 @@ export default async function LandingPage({
       />
 
       {/* ───────── How it works ───────── */}
-      <section id="how" className="ai-section">
-        <div className="ai-container max-w-3xl">
-          <SectionReveal>
-            <div className="mx-auto mb-14 max-w-2xl text-center">
-              <span className="eyebrow mb-4 inline-block">{locale === "ar" ? "الخطوات" : "Process"}</span>
-              <h2 className="display-heading text-3xl sm:text-4xl">{m.howItWorks.heading}</h2>
-              <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
-                {m.howItWorks.subheading}
-              </p>
-            </div>
-          </SectionReveal>
+      <section id="how" className="px-5 py-16 sm:py-20">
+        <div className="mx-auto max-w-3xl">
+          <div className="mx-auto mb-12 max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+              {m.howItWorks.heading}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              {m.howItWorks.subheading}
+            </p>
+          </div>
 
-          <div className="relative">
-            {/* connector line */}
-            <div className="absolute bottom-6 top-6 hidden w-px bg-gradient-to-b from-brand-500/30 via-white/10 to-transparent sm:block start-5" aria-hidden="true" />
-            <div className="space-y-3">
-              {m.howItWorks.steps.map((step: { num: string; title: string; desc: string }, idx: number) => (
-                <SectionReveal key={step.num} index={idx}>
-                  <div className="surface surface-hover relative flex gap-5 p-5 sm:p-6">
-                    <div className="font-en relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-500/25 bg-brand-500/[0.06] text-sm font-semibold text-brand-300">
-                      {step.num}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="mb-1.5 text-base font-semibold text-white">{step.title}</h3>
-                      <p className="text-sm leading-relaxed text-slate-400">{step.desc}</p>
-                    </div>
-                  </div>
-                </SectionReveal>
-              ))}
-            </div>
+          <div className="space-y-3">
+            {m.howItWorks.steps.map((step: { num: string; title: string; desc: string }) => (
+              <div key={step.num} className="surface flex gap-4 p-5 sm:p-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-500/20 bg-brand-500/[0.05] text-xs font-semibold text-brand-300">
+                  {step.num}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="mb-1 text-sm font-semibold text-white">{step.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-400">{step.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -482,17 +386,12 @@ export default async function LandingPage({
       <TrustSection m={m.trust} dir={m.dir} />
 
       {/* ───────── Pricing preview ───────── */}
-      <section id="pricing" className="ai-section border-t border-white/[0.06]">
-        <div className="ai-container">
-          <SectionReveal>
-            <div className="mx-auto mb-14 max-w-2xl text-center">
-              <span className="eyebrow mb-4 inline-block">{locale === "ar" ? "الباقات" : "Plans"}</span>
-              <h2 className="display-heading text-3xl sm:text-4xl">{m.pricing.heading}</h2>
-              <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
-                {m.pricing.subheading}
-              </p>
-            </div>
-          </SectionReveal>
+      <section id="pricing" className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto mb-12 max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.pricing.heading}</h2>
+            <p className="mt-2 text-sm text-slate-500">{m.pricing.subheading}</p>
+          </div>
 
           <PricingCards
             plans={previewPlans}
@@ -501,71 +400,48 @@ export default async function LandingPage({
             labels={{ perMonth: m.pricing.perMonth }}
           />
 
-          <SectionReveal>
-            <div className="mt-9 text-center">
-              <Link
-                href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
-                className="btn-outline h-11"
-              >
-                {m.pricing.viewAll} <Arrow className="h-4 w-4" />
-              </Link>
-            </div>
-          </SectionReveal>
+          <div className="mt-8 text-center">
+            <Link
+              href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
+              className="btn-outline h-11"
+            >
+              {m.pricing.viewAll} <Arrow className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ───────── FAQ ───────── */}
-      <section id="faq" className="ai-section border-y border-white/[0.06] bg-white/[0.012]">
-        <div className="ai-container max-w-3xl">
-          <SectionReveal>
-            <h2 className="display-heading mb-12 text-center text-3xl sm:text-4xl">{m.faq.heading}</h2>
-          </SectionReveal>
-          <SectionReveal index={1}>
-            <FaqAccordion items={m.faq.items} />
-          </SectionReveal>
+
+      {/* ───────── FAQ ───────── */}
+      <section id="faq" className="border-y border-white/[0.06] bg-white/[0.012] px-5 py-16 sm:py-20">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="mb-10 text-center text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.faq.heading}</h2>
+          <FaqAccordion items={m.faq.items} />
         </div>
       </section>
 
       {/* ───────── CTA ───────── */}
-      <section className="ai-section !py-28">
-        <div className="ai-container max-w-3xl">
-          <SectionReveal>
-            <div className="surface noise relative overflow-hidden rounded-2xl px-6 py-14 text-center sm:px-12">
-              <div className="absolute inset-x-0 -top-1/2 h-full bg-[radial-gradient(ellipse_55%_55%_at_50%_50%,rgba(104,114,212,0.06),transparent_72%)]" aria-hidden="true" />
-              <div className="relative">
-                <h2 className="display-heading text-3xl sm:text-4xl">{m.cta.heading}</h2>
-                <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-slate-400">
-                  {m.cta.subheading}
-                </p>
-                <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  {waNum ? (
-                    <a
-                      href={`https://wa.me/${waNum}?text=${encodeURIComponent(
-                        locale === "ar"
-                          ? "أريد طلب اشتراك في " + brandName
-                          : "I'd like to subscribe to " + brandName,
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-premium h-12 w-full sm:w-auto"
-                    >
-                      <Phone className="h-4 w-4" /> {m.cta.primary}
-                    </a>
-                  ) : (
-                    <Link href="/pricing" className="btn-premium h-12 w-full sm:w-auto">
-                      {m.cta.primary} <Arrow className="h-4 w-4" />
-                    </Link>
-                  )}
-                  <Link
-                    href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
-                    className="btn-outline h-12 w-full sm:w-auto"
-                  >
-                    {m.cta.secondary}
-                  </Link>
-                </div>
-              </div>
+      <section className="px-5 py-20">
+        <div className="mx-auto max-w-3xl">
+          <div className="surface px-8 py-14 text-center sm:px-12">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.cta.heading}</h2>
+            <p className="mx-auto mt-3 max-w-md text-sm text-slate-400">{m.cta.subheading}</p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              {waNum ? (
+                <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 px-5 text-sm">
+                  <Phone className="h-4 w-4" /> {m.cta.primary}
+                </a>
+              ) : (
+                <Link href="/pricing" className="btn-premium h-11 px-5 text-sm">
+                  {m.cta.primary} <Arrow className="h-4 w-4" />
+                </Link>
+              )}
+              <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 text-sm">
+                {m.cta.secondary}
+              </Link>
             </div>
-          </SectionReveal>
+          </div>
         </div>
       </section>
 

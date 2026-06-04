@@ -29,10 +29,10 @@ export default async function DashboardLayout({
 
   const Brand = (
     <Link href="/dashboard" className="flex items-center gap-2.5 px-3.5 py-4">
-      <BrandMark className="h-8 w-8 rounded-lg" iconClassName="h-4 w-4" />
+      <BrandMark className="h-7 w-7 rounded-lg" iconClassName="h-3.5 w-3.5" />
       <div className="min-w-0">
         <div className="truncate text-[13px] font-semibold text-white">{brandName}</div>
-        <div className="text-[10px] text-slate-500">لوحة التحكم</div>
+        <div className="text-[10px] text-slate-500">مساحة العمل</div>
       </div>
     </Link>
   );

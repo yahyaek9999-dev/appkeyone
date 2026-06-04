@@ -151,8 +151,58 @@
         @apply bg-white/[0.06] text-white;
     }
 
-    .mobile-header {
+        .mobile-header {
         @apply sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-white/[0.07] bg-canvas/80 px-4 backdrop-blur-xl;
+    }
+
+    /* ── Premium data table (Stripe register) ─────────────────────────── */
+    .data-table {
+        @apply w-full border-collapse;
+    }
+    .data-table thead th {
+        @apply border-b border-white/[0.06] px-4 py-3 text-start text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500;
+    }
+    .data-table tbody tr {
+        @apply border-b border-white/[0.03] transition-colors hover:bg-white/[0.015];
+    }
+    .data-table tbody tr:last-child {
+        @apply border-b-0;
+    }
+    .data-table tbody td {
+        @apply px-4 py-3 text-sm text-slate-300;
+    }
+
+    /* ── CRM row (Attio register) ─────────────────────────────────────── */
+    .crm-row {
+        @apply grid items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.015];
+    }
+    .crm-row-header {
+        @apply grid items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500;
+    }
+
+    /* ── Toolbar / filter bar ─────────────────────────────────────────── */
+    .toolbar {
+        @apply flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.01] px-3 py-2;
+    }
+    .toolbar-btn {
+        @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-slate-200;
+    }
+    .toolbar-btn-active {
+        @apply bg-white/[0.06] text-white;
+    }
+
+    /* ── Metric group (dense, data-first) ─────────────────────────────── */
+    .metric-group {
+        @apply grid gap-px overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.05];
+    }
+    .metric-cell {
+        @apply bg-canvas-deep p-4 transition-colors hover:bg-white/[0.015];
+    }
+    .metric-label {
+        @apply text-[11px] font-medium text-slate-500;
+    }
+    .metric-value {
+        @apply text-xl font-semibold tracking-[-0.02em] text-white tabular-nums;
     }
 
     .ai-btn-primary {

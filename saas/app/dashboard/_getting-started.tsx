@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Circle, ChevronLeft, X, Rocket } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, X, Play } from "lucide-react";
 
 export interface GettingStartedSteps {
   whatsapp: boolean;
@@ -23,8 +23,8 @@ interface StepDef {
 
 const STEPS: StepDef[] = [
   { key: "whatsapp", title: "اربط واتساب", desc: "امسح كود QR لتفعيل البوت على رقمك.", href: "/dashboard/whatsapp", cta: "ربط" },
-  { key: "aiBot", title: "اضبط شخصية البوت", desc: "اسم المتجر، الأسلوب، ورسالة الترحيب.", href: "/dashboard/bot", cta: "ضبط" },
-  { key: "knowledge", title: "درّب الذكاء الاصطناعي", desc: "أضف منتجاتك وأسعارك وأسئلتك الشائعة.", href: "/dashboard/knowledge", cta: "تدريب" },
+  { key: "aiBot", title: "اضبط الإعدادات", desc: "اسم المتجر والأسلوب ورسالة الترحيب.", href: "/dashboard/bot", cta: "ضبط" },
+  { key: "knowledge", title: "أضف منتجاتك", desc: "المنتجات، الأسعار، والأسئلة الشائعة.", href: "/dashboard/knowledge", cta: "إضافة" },
   { key: "store", title: "اربط متجرك", desc: "Shopify أو WooCommerce أو Salla أو Zid لمزامنة الطلبات.", href: "/dashboard/integrations", cta: "ربط", optional: true },
   { key: "campaign", title: "أرسل أول حملة", desc: "وصّل عروضك لعملائك عبر رسالة جماعية.", href: "/dashboard/broadcasts", cta: "إرسال" },
 ];
@@ -57,11 +57,11 @@ export function GettingStarted({ steps }: { steps: GettingStartedSteps }) {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/15">
-            <Rocket className="h-5 w-5 text-brand-400" />
+            <Play className="h-5 w-5 text-brand-400" />
           </div>
           <div>
             <h2 className="section-title">خطوات البداية</h2>
-            <p className="text-xs text-slate-400">أكمل الخطوات لتفعيل مساعد المبيعات بالكامل</p>
+            <p className="text-xs text-slate-400">أكمل الخطوات لتفعيل المنصة بالكامل</p>
           </div>
         </div>
         <button

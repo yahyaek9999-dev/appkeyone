@@ -13,12 +13,12 @@ export const en = {
   },
 
   hero: {
-    eyebrow: "AI Operations Platform",
-    h1Line1: "AI that handles",
-    h1Line2: "your WhatsApp,",
+    eyebrow: "Operations Platform",
+    h1Line1: "Handle your",
+    h1Line2: "WhatsApp,",
     h1Line3: "orders, and sales.",
     subtext:
-      "turns WhatsApp conversations into an intelligent operations layer — auto-replies, order detection, sales follow-ups, and analytics. All in one platform.",
+      "turns WhatsApp conversations into a revenue operations layer — auto-replies, order detection, sales follow-ups, and analytics. All in one platform.",
     ctaPrimary: "Request your subscription",
     ctaSecondary: "View pricing",
     trustItems: [
@@ -100,7 +100,7 @@ export const en = {
       "KEYONE works right inside WhatsApp — where your customers already are. No new app for them to install, no friction.",
     points: [
       "Connect your WhatsApp number in minutes via QR scan",
-      "Instant AI replies that understand voice, images and text",
+      "Instant replies that understand text, voice and images",
       "Order alerts reach you on WhatsApp the moment they happen",
       "Integrates with your store and automation tools when needed",
     ],
@@ -117,7 +117,7 @@ export const en = {
     subheading: "A complete platform with genuine capabilities — no empty promises.",
     chips: [
       "WhatsApp automation",
-      "AI-powered replies",
+      "Instant replies",
       "Voice & image understanding",
       "Multi-language support",
       "Commerce integrations",
@@ -130,7 +130,7 @@ export const en = {
     badges: [
       { title: "99.9% uptime", desc: "Always-on, uninterrupted service" },
       { title: "Secure by design", desc: "Full encryption, daily backups" },
-      { title: "AI-powered", desc: "Natural, context-aware replies" },
+      { title: "Context-aware replies", desc: "Natural, brand-voice conversations" },
       { title: "Multi-channel", desc: "WhatsApp, commerce & automation" },
     ],
     metrics: [

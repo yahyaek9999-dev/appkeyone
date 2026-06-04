@@ -1,8 +1,5 @@
 /**
- * KEYONE Tier-1 — ProviderTierBadge
- * Source: reference-extracts/tier1/chat/ProviderTierBadge.tsx
- * Surfaces KEYONE AI tier WITHOUT exposing raw provider/model names.
- * Adapted: Arabic labels.
+ * ProviderTierBadge — surfaces model tier without exposing raw provider names.
  */
 import * as React from "react";
 import { Zap, Scale, Sparkles, Lock } from "lucide-react";
@@ -56,7 +53,7 @@ export function ProviderTierBadge({
         meta.classes,
         className
       )}
-      aria-label={`فئة الذكاء الاصطناعي: ${meta.label}`}
+      aria-label={`المستوى: ${meta.label}`}
     >
       {meta.icon}
       {!iconOnly && <span className="leading-none">{meta.label}</span>}

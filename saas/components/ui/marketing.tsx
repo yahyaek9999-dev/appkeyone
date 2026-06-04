@@ -1,7 +1,5 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-
-type IconComponent = ComponentType<{ className?: string }>;
 
 export function BrandMark({
   className,
@@ -13,22 +11,25 @@ export function BrandMark({
   return (
     <span
       className={cn(
-        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 ring-1 ring-white/10",
+        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-500",
         className,
       )}
     >
-      <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.30),transparent_30%)]" />
       <svg
         viewBox="0 0 24 24"
         className={cn("relative h-5 w-5 text-white", iconClassName)}
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="2.8"
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"
       >
-        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+        {/* Premium K mark — clean geometric cross */}
+        <polyline points="4,3 4,21 12,21" />
+        <polyline points="4,12 20,12" />
+        <line x1="14" y1="12" x2="20" y2="21" />
+        <line x1="14" y1="12" x2="20" y2="3" />
       </svg>
     </span>
   );
@@ -89,18 +90,6 @@ export function AmbientBackdrop({ className }: { className?: string }) {
         }}
       />
     </div>
-  );
-}
-
-// Minimal QR-style glyph (decorative) for the WhatsApp connect visual.
-export function QrGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M6 6h14v14H6V6zm3 3v8h8V9H9z" />
-      <path d="M12 12h2v2h-2zM28 6h14v14H28V6zm3 3v8h8V9h-8z" />
-      <path d="M34 12h2v2h-2zM6 28h14v14H6V28zm3 3v8h8v-8H9z" />
-      <path d="M12 34h2v2h-2zM28 28h5v5h-5zM35 28h7v3h-4v4h-3zM28 35h3v7h-3zM34 36h4v3h-4zM39 33h3v9h-3zM34 39h3v3h-3z" />
-    </svg>
   );
 }
 
