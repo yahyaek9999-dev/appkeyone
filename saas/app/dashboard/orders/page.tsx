@@ -353,23 +353,18 @@ function Kpi({
   tone: string;
 }) {
   const toneClass: Record<string, string> = {
-    amber:
-      "from-amber-500/10 to-amber-500/0 border-amber-500/30 text-amber-200",
-    emerald:
-      "from-emerald-500/10 to-emerald-500/0 border-emerald-500/30 text-emerald-200",
-    indigo:
-      "from-indigo-500/10 to-indigo-500/0 border-indigo-500/30 text-indigo-200",
-    sky: "from-sky-500/10 to-sky-500/0 border-sky-500/30 text-sky-200",
+    amber: "text-amber-300",
+    emerald: "text-emerald-300",
+    indigo: "text-indigo-300",
+    sky: "text-sky-300",
   };
   return (
-    <div
-      className={`p-4 rounded-2xl border bg-gradient-to-bl ${toneClass[tone]}`}
-    >
+    <div className="card p-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs opacity-80">{label}</span>
-        <Icon className="w-4 h-4 opacity-70" />
+        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <Icon className={`h-4 w-4 ${toneClass[tone] || "text-slate-500"}`} />
       </div>
-      <div className="mt-2 text-2xl font-bold tabular-nums">{value}</div>
+      <div className="mt-2 text-2xl font-semibold tabular-nums text-white">{value}</div>
     </div>
   );
 }

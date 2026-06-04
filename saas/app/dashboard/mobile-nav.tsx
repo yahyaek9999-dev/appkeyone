@@ -55,7 +55,7 @@ export default function MobileNav({ children, brandName = "KEYONE" }: Props) {
           <Menu className="h-5 w-5" />
         </button>
         <div className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-sm font-bold text-white">{brandName}</span>
+          <span className="shrink-0 text-sm font-semibold text-white">{brandName}</span>
           {pageLabel && (
             <>
               <span className="text-slate-600">/</span>
@@ -85,10 +85,10 @@ export default function MobileNav({ children, brandName = "KEYONE" }: Props) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
-            className="fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col border-l border-white/[0.06] bg-[#020806] shadow-2xl md:hidden"
+            className="fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col border-l border-white/[0.06] bg-canvas-deep shadow-float md:hidden"
           >
             <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-              <span className="text-sm font-bold text-white">القائمة</span>
+              <span className="text-sm font-semibold text-white">القائمة</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}

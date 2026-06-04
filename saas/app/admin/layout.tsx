@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </MobileNav>
 
       <div className="hidden md:flex">
-        <aside className="sticky top-0 flex min-h-screen w-56 shrink-0 flex-col border-l border-white/[0.06] bg-[#020806]">
+        <aside className="sticky top-0 flex min-h-screen w-56 shrink-0 flex-col border-l border-white/[0.06] bg-canvas-deep">
           {Brand}
           <AdminNavLinks />
           {Footer}

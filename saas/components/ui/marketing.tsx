@@ -13,11 +13,11 @@ export function BrandMark({
   return (
     <span
       className={cn(
-        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-300 via-brand-500 to-brand-700 ring-1 ring-white/15",
+        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 ring-1 ring-white/10",
         className,
       )}
     >
-      <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.38),transparent_28%)]" />
+      <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.30),transparent_30%)]" />
       <svg
         viewBox="0 0 24 24"
         className={cn("relative h-5 w-5 text-white", iconClassName)}
@@ -55,9 +55,9 @@ export function WhatsAppIcon({ className = "h-5 w-5" }: { className?: string }) 
 export function AiBackground({ className }: { className?: string }) {
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_20%,rgba(34,197,94,0.10),transparent_50%),radial-gradient(circle_at_20%_80%,rgba(34,197,94,0.05),transparent_50%),linear-gradient(180deg,#020806_0%,#06110d_48%,#020806_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_20%,rgba(104,114,212,0.07),transparent_55%),linear-gradient(180deg,#0a0a0c_0%,#0c0c10_50%,#08080a_100%)]" />
       <div
-        className="absolute inset-0 opacity-[0.07]"
+        className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
@@ -72,12 +72,12 @@ export function AiBackground({ className }: { className?: string }) {
   );
 }
 
-// Calm, premium ambient backdrop for public pages — a single low-opacity
-// brand wash + a masked fine grid. No strong glow, no blobs. Purely decorative.
+// Calm, premium ambient backdrop for public pages — a single very low-opacity
+// iris wash + a masked fine grid. No glow, no blobs. Purely decorative.
 export function AmbientBackdrop({ className }: { className?: string }) {
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_55%_at_50%_-10%,rgba(34,197,94,0.06),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_50%_at_50%_-10%,rgba(104,114,212,0.05),transparent_58%)]" />
       <div
         className="absolute inset-0 opacity-[0.05]"
         style={{
@@ -118,11 +118,11 @@ export function SectionHeader({
   return (
     <div className={cn("mx-auto mb-14 max-w-2xl text-center", className)}>
       {eyebrow && (
-        <span className="mb-4 inline-block text-xs font-semibold uppercase tracking-[0.12em] text-brand-400/70">
+        <span className="mb-4 inline-block text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-300/80">
           {eyebrow}
         </span>
       )}
-      <h2 className="text-3xl font-bold leading-tight tracking-[-0.03em] text-white sm:text-4xl">
+      <h2 className="text-3xl font-semibold leading-tight tracking-[-0.03em] text-white sm:text-4xl">
         {title}
       </h2>
       {description && (

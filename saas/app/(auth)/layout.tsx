@@ -11,7 +11,7 @@ export default async function AuthLayout({
   return (
     <main className="ai-page flex min-h-screen items-center justify-center px-4 py-28 sm:py-32">
       <div className="pointer-events-none fixed inset-0" aria-hidden="true">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-10%,rgba(34,197,94,0.06),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-10%,rgba(104,114,212,0.05),transparent_58%)]" />
       </div>
       <PublicNav
         brandName={cfg.brandName || "KEYONE"}

@@ -3,9 +3,8 @@ import { prisma } from "@/lib/db";
 import { evaluateSubscription, getSiteConfig } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import {
-  MessageSquare, Users, BellRing, TrendingUp, Phone, AlertCircle, CheckCircle2,
-  Crown, Clock, Inbox, UserPlus, ShoppingCart, DollarSign, Zap, ArrowUpRight,
-  Activity, Bot,
+  MessageSquare, Crown, Clock, Inbox, UserPlus, ShoppingCart, DollarSign, ArrowUpRight,
+  TrendingUp, Phone, AlertCircle, CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import { timeAgo } from "@/lib/utils";
@@ -152,25 +151,41 @@ export default async function DashboardOverview() {
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
   const hasOrders = orders7d > 0 || (pendingOrderCount as number) > 0;
 
+  // ── "What needs attention" — derived from the same data, no extra queries.
+  // The executive lead: surface only the items that need a decision today.
+  const attention: { label: string; href: string; tone: "amber" | "rose" | "brand"; count?: number }[] = [];
+  if (bot.whatsappStatus !== "connected")
+    attention.push({ label: "واتساب غير متصل — اربطه لاستقبال الرسائل", href: "/dashboard/whatsapp", tone: "rose" });
+  if (!sub.active)
+    attention.push({ label: "الاشتراك غير نشط — فعّل أو رقّي باقتك", href: "/pricing", tone: "amber" });
+  if ((pendingOrderCount as number) > 0)
+    attention.push({ label: "طلبات بانتظار المراجعة", href: "/dashboard/orders", tone: "amber", count: pendingOrderCount as number });
+  if (flaggedCount > 0)
+    attention.push({ label: "رسائل تحتاج متابعة", href: "/dashboard/inbox", tone: "amber", count: flaggedCount });
+  if (usagePct >= 90)
+    attention.push({ label: "اقتربت من حد رسائل باقتك", href: "/dashboard/usage", tone: "rose" });
+
   return (
-    <div className="space-y-5">
-      {/* Header row */}
+    <div className="space-y-6">
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            أهلاً, {user.name || "صديقي"} 👋
+          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-white">
+            أهلاً، {user.name || "صديقي"}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">آخر تحديث: {new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            آخر تحديث {new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+          </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
           {bot.whatsappStatus === "connected" ? (
-            <div className="inline-flex items-center gap-1.5 rounded-lg border border-brand-500/20 bg-brand-500/8 px-2.5 py-1.5 text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-400 animate-pulse shrink-0" />
-              <span className="text-brand-300 font-medium">واتساب متصل</span>
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-2.5 py-1.5 text-xs">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+              <span className="font-medium text-emerald-300">واتساب متصل</span>
             </div>
           ) : (
-            <Link href="/dashboard/whatsapp" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-xs text-amber-300 hover:bg-amber-500/15 transition">
+            <Link href="/dashboard/whatsapp" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-xs text-amber-300 transition-colors hover:bg-amber-500/15">
               <Phone className="h-3 w-3 shrink-0" />
               اربط واتساب
             </Link>
@@ -178,126 +193,89 @@ export default async function DashboardOverview() {
         </div>
       </div>
 
-      {milestones && <ActivationChecklist milestones={milestones} />}
-      <GettingStarted steps={gettingStartedSteps} />
-      <LiveOpsStrip />
+      {/* ── What needs attention ───────────────────────────────────────── */}
+      {attention.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+            <AlertCircle className="h-3.5 w-3.5" />
+            يحتاج انتباهك
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {attention.map((a) => (
+              <Link
+                key={a.href + a.label}
+                href={a.href}
+                className={`group flex items-center gap-3 rounded-lg border px-3.5 py-3 transition-colors ${
+                  a.tone === "rose"
+                    ? "border-rose-500/20 bg-rose-500/[0.05] hover:bg-rose-500/10"
+                    : a.tone === "amber"
+                      ? "border-amber-500/20 bg-amber-500/[0.05] hover:bg-amber-500/10"
+                      : "border-brand-500/20 bg-brand-500/[0.05] hover:bg-brand-500/10"
+                }`}
+              >
+                {a.count !== undefined && (
+                  <span className={`grid h-7 min-w-7 shrink-0 place-items-center rounded-md px-1.5 text-sm font-semibold tabular-nums ${
+                    a.tone === "rose" ? "bg-rose-500/15 text-rose-200" : "bg-amber-500/15 text-amber-200"
+                  }`}>
+                    {a.count.toLocaleString("ar-EG")}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 text-[13px] text-slate-200">{a.label}</span>
+                <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform group-hover:-translate-y-0.5" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* Phase 3: AI Copilot — one insight + recommendation + action */}
+      {milestones && !Object.values(milestones.reached).every(Boolean) && <ActivationChecklist milestones={milestones} />}
+
+      {/* What to do now — one AI-surfaced recommendation + action */}
       <AiCopilotStrip context="dashboard" />
 
-      {/* Subscription banner */}
-      {!sub.active && (
-        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-          <AlertCircle className="h-5 w-5 shrink-0 text-amber-400" />
-          <div className="min-w-0 flex-1 text-sm">
-            <span className="font-semibold text-white">
-              {sub.subscription?.status === "pending" ? "اشتراكك بانتظار التفعيل" :
-               sub.subscription?.status === "expired" ? "انتهت صلاحية اشتراكك" :
-               sub.reason === "quota_exceeded" ? "وصلت الحد الأقصى من الرسائل" :
-               "ليس لديك اشتراك نشط"}
-            </span>
-            <span className="text-slate-400 mr-2">تواصل معنا عبر واتساب للتفعيل أو الترقية.</span>
-          </div>
-          {waNum && (
-            <a href={`https://wa.me/${waNum}?text=${encodeURIComponent("أريد تفعيل/ترقية اشتراكي")}`}
-               target="_blank" rel="noopener noreferrer"
-               className="btn-primary shrink-0 text-xs h-8">
-              تواصل واتساب
-            </a>
-          )}
+      {/* ── What makes money — revenue-led band, not a row of equal KPIs ──── */}
+      <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.018]">
+        <div className="grid gap-px bg-white/[0.05] sm:grid-cols-2 lg:grid-cols-4">
+          {/* Revenue — the lead, double width on desktop */}
+          <Link
+            href="/dashboard/orders"
+            className="group bg-canvas-deep p-5 transition-colors hover:bg-white/[0.02] sm:col-span-2"
+          >
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+              <DollarSign className="h-4 w-4 text-slate-400" />
+              الإيرادات · آخر 7 أيام
+            </div>
+            <div className="flex items-end gap-3">
+              <span className="text-[34px] font-semibold leading-none tracking-[-0.02em] text-white tabular-nums">
+                {rev7d > 0 ? `${(rev7d / 100).toLocaleString("ar-EG")}` : "—"}
+                {rev7d > 0 && <span className="ms-1 text-base font-normal text-slate-500">ج</span>}
+              </span>
+              {revDelta !== null && <TrendBadge delta={revDelta} size="sm" />}
+            </div>
+            <div className="mt-3"><Sparkline data={last7Series} className="h-8 w-full text-brand-400" /></div>
+          </Link>
+
+          <MoneyCell icon={<ShoppingCart className="h-4 w-4" />} label="الطلبات" value={orders7d.toLocaleString("ar-EG")} delta={ordersDelta} sub={pendingOrderCount > 0 ? `${pendingOrderCount} معلّق` : undefined} href="/dashboard/orders" />
+          <MoneyCell icon={<TrendingUp className="h-4 w-4" />} label="معدل التحويل" value={conversionPct !== null ? `${conversionPct}%` : "—"} href="/dashboard/analytics" />
         </div>
-      )}
+      </section>
 
-      {/* ── Executive KPI row (above the fold) ── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {/* Revenue */}
-        <ExecKpi
-          icon={<DollarSign className="h-4 w-4" />}
-          label="إيرادات 7 أيام"
-          value={rev7d > 0 ? `${(rev7d / 100).toLocaleString("ar-EG")} ج` : "—"}
-          delta={revDelta}
-          tone="emerald"
-          href="/dashboard/orders"
-          prominent
-        />
-        {/* Orders */}
-        <ExecKpi
-          icon={<ShoppingCart className="h-4 w-4" />}
-          label="طلبات 7 أيام"
-          value={orders7d.toLocaleString("ar-EG")}
-          delta={ordersDelta}
-          sub={pendingOrderCount > 0 ? `${pendingOrderCount} معلّق` : undefined}
-          tone="blue"
-          href="/dashboard/orders"
-          prominent
-        />
-        {/* Conversations */}
-        <ExecKpi
-          icon={<MessageSquare className="h-4 w-4" />}
-          label="محادثات 7 أيام"
-          value={msgs7d.toLocaleString("ar-EG")}
-          delta={msgs7dDelta}
-          tone="brand"
-          href="/dashboard/inbox"
-        />
-        {/* Conversion */}
-        <ExecKpi
-          icon={<TrendingUp className="h-4 w-4" />}
-          label="معدل التحويل"
-          value={conversionPct !== null ? `${conversionPct}%` : "—"}
-          tone="violet"
-          href="/dashboard/analytics"
-        />
-        {/* AI impact */}
-        <ExecKpi
-          icon={<Bot className="h-4 w-4" />}
-          label="ردود الذكاء الاصطناعي"
-          value={aiCalls > 0 ? aiCalls.toLocaleString("ar-EG") : msgs7d.toLocaleString("ar-EG")}
-          sub="آخر 7 أيام"
-          tone="purple"
-          href="/dashboard/analytics"
-        />
-      </div>
-
-      {/* Usage bar (compact) */}
-      {sub.subscription && plan && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-          <Crown className="h-4 w-4 text-amber-400 shrink-0" />
-          <span className="text-xs text-slate-400">{plan.name}</span>
-          <div className="flex-1 min-w-[120px] h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-            <div
-              className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`}
-              style={{ width: `${usagePct}%` }}
-            />
-          </div>
-          <span className="text-[11px] text-slate-500">
-            {sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()} رسالة
-          </span>
-          <span className="text-[11px] text-slate-600">·</span>
-          <span className="text-[11px] text-slate-500">يتجدد خلال {daysLeft} يوم</span>
-        </div>
-      )}
-
-      {/* ── Main content grid ── */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* Activity chart — spans 2 cols */}
+      {/* ── Workspace: activity (main) + side rail ─────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Activity — message volume over 30d */}
         <div className="card p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="section-title">نشاط الرسائل</h2>
-              <p className="text-[11px] text-slate-500 mt-0.5">آخر 30 يوم · {msgs30dToday} رسالة اليوم</p>
+              <h2 className="section-title">نشاط المحادثات</h2>
+              <p className="mt-0.5 text-[11px] text-slate-500">آخر 30 يوم · {msgs30dToday} اليوم · {msgs7d.toLocaleString("ar-EG")} هذا الأسبوع</p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5 text-brand-400" />
-              <span className="text-[11px] text-brand-300 font-medium">{msgCount.toLocaleString()} إجمالي</span>
-            </div>
+            <span className="text-[11px] tabular-nums text-slate-500">{msgCount.toLocaleString()} إجمالي</span>
           </div>
-          <div className="flex h-28 items-end gap-0.5">
+          <div className="flex h-32 items-end gap-0.5">
             {last30.map((d) => (
-              <div key={d.day} className="group relative flex flex-1 items-end justify-center"
-                   title={`${d.day}: ${d.total}`}>
+              <div key={d.day} className="group relative flex flex-1 items-end justify-center" title={`${d.day}: ${d.total}`}>
                 <div
-                  className="w-full min-h-[2px] rounded-t bg-brand-500/25 transition-all hover:bg-brand-400/50"
+                  className="min-h-[2px] w-full rounded-t-sm bg-brand-500/30 transition-colors group-hover:bg-brand-400/60"
                   style={{ height: `${Math.max((d.total / maxDaily) * 100, 2)}%` }}
                 />
               </div>
@@ -308,44 +286,66 @@ export default async function DashboardOverview() {
             <span>{last30[14]?.day?.slice(5) || ""}</span>
             <span>{last30[29]?.day?.slice(5) || ""}</span>
           </div>
+
+          {/* Inline secondary metrics — folded in, not a separate KPI farm. */}
+          <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.05] sm:grid-cols-4">
+            <InlineStat label="العملاء" value={customerCount.toLocaleString("ar-EG")} href="/dashboard/customers" />
+            <InlineStat label="ردود الذكاء" value={(aiCalls > 0 ? aiCalls : msgs7d).toLocaleString("ar-EG")} href="/dashboard/analytics" />
+            <InlineStat label="تنبيهات" value={flaggedCount.toLocaleString("ar-EG")} href="/dashboard/inbox" accent={flaggedCount > 0} />
+            <InlineStat label="مستندات المعرفة" value={docCount.toLocaleString("ar-EG")} href="/dashboard/knowledge" />
+          </div>
         </div>
 
-        {/* Active customers */}
-        <div className="card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="section-title">عملاء نشطون</h2>
-            <Link href="/dashboard/customers" className="flex items-center gap-1 text-[11px] text-brand-400 hover:underline">
-              الكل <ArrowUpRight className="h-3 w-3" />
-            </Link>
-          </div>
-          {topCustomers.length === 0 ? (
-            <EmptyState icon={<UserPlus className="h-full w-full" />} title="لا عملاء بعد"
-              description="أول محادثة ستظهر هنا." size="sm" />
-          ) : (
-            <div className="space-y-0.5">
-              {topCustomers.map((c) => (
-                <Link key={c.id} href={`/dashboard/customers/${c.id}`}
-                  className="flex items-center gap-2.5 rounded-lg p-2 transition hover:bg-white/[0.04]">
-                  <Avatar name={c.name || c.phone} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-white leading-tight">{c.name || "—"}</div>
-                    <div className="truncate text-[10px] text-slate-500">{formatCustomerPhone(c.phone).display}</div>
-                  </div>
-                  <div className="shrink-0 text-[10px] text-slate-600">{timeAgo(c.lastSeenAt)}</div>
-                </Link>
-              ))}
+        {/* Side rail — usage + active customers (context, progressive) */}
+        <div className="space-y-4">
+          {sub.subscription && plan && (
+            <div className="card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="section-title">{plan.name}</h2>
+                <Link href="/dashboard/usage" className="text-[11px] text-slate-400 transition-colors hover:text-white">التفاصيل</Link>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`} style={{ width: `${usagePct}%` }} />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[11px] tabular-nums text-slate-500">
+                <span>{sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()}</span>
+                <span>يتجدد خلال {daysLeft} يوم</span>
+              </div>
             </div>
           )}
+
+          <div className="card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="section-title">عملاء نشطون</h2>
+              <Link href="/dashboard/customers" className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-white">الكل <ArrowUpRight className="h-3 w-3" /></Link>
+            </div>
+            {topCustomers.length === 0 ? (
+              <EmptyState icon={<UserPlus className="h-full w-full" />} title="لا عملاء بعد" description="أول محادثة ستظهر هنا." size="sm" />
+            ) : (
+              <div className="space-y-0.5">
+                {topCustomers.map((c) => (
+                  <Link key={c.id} href={`/dashboard/customers/${c.id}`} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-white/[0.03]">
+                    <Avatar name={c.name || c.phone} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-medium leading-tight text-white">{c.name || "—"}</div>
+                      <div className="truncate text-[10px] text-slate-500">{formatCustomerPhone(c.phone).display}</div>
+                    </div>
+                    <div className="shrink-0 text-[10px] text-slate-600">{timeAgo(c.lastSeenAt)}</div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ── Orders + Recent Messages side by side ── */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      {/* ── Latest work — orders + messages, two equal streams ─────────────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Recent orders */}
         <div className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="section-title">آخر الطلبات</h2>
-            <Link href="/dashboard/orders" className="flex items-center gap-1 text-[11px] text-brand-400 hover:underline">
+            <Link href="/dashboard/orders" className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-white">
               الكل <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
@@ -359,19 +359,19 @@ export default async function DashboardOverview() {
           ) : (
             <div className="space-y-0.5">
               {(recentOrders as any[]).map((o) => (
-                <div key={o.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/[0.03]">
-                  <div className={`h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-bold ${
-                    o.status === "delivered" ? "bg-brand-500/15 text-brand-300" :
-                    o.status === "canceled" ? "bg-rose-500/15 text-rose-300" :
-                    "bg-amber-500/15 text-amber-300"
+                <div key={o.id} className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-white/[0.03]">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ${
+                    o.status === "delivered" ? "bg-emerald-500/12 text-emerald-300" :
+                    o.status === "canceled" ? "bg-rose-500/12 text-rose-300" :
+                    "bg-amber-500/12 text-amber-300"
                   }`}>
                     {o.status === "delivered" ? "✓" : o.status === "canceled" ? "✕" : "•"}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-white leading-tight">{o.customerName || o.customerPhone || "—"}</div>
+                    <div className="truncate text-[13px] font-medium leading-tight text-white">{o.customerName || o.customerPhone || "—"}</div>
                     <div className="text-[10px] text-slate-500">{timeAgo(o.createdAt)}</div>
                   </div>
-                  <div className="shrink-0 text-sm font-semibold text-white">
+                  <div className="shrink-0 text-[13px] font-semibold tabular-nums text-white">
                     {o.total > 0 ? `${(o.total / 100).toLocaleString("ar-EG")} ج` : "—"}
                   </div>
                 </div>
@@ -384,26 +384,25 @@ export default async function DashboardOverview() {
         <div className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="section-title">آخر الرسائل</h2>
-            <Link href="/dashboard/inbox" className="flex items-center gap-1 text-[11px] text-brand-400 hover:underline">
+            <Link href="/dashboard/inbox" className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-white">
               الكل <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
           {recentMsgs.length === 0 ? (
-            <EmptyState icon={<Inbox className="h-full w-full" />} title="لا رسائل بعد"
-              description="اربط واتساب أو جرّب البوت." size="sm" />
+            <EmptyState icon={<Inbox className="h-full w-full" />} title="لا رسائل بعد" description="اربط واتساب أو جرّب البوت." size="sm" />
           ) : (
             <div className="space-y-0.5">
               {recentMsgs.map((m) => (
-                <div key={m.id} className="flex items-start gap-2.5 rounded-lg p-2 hover:bg-white/[0.03]">
+                <div key={m.id} className="flex items-start gap-2.5 rounded-md p-2 transition-colors hover:bg-white/[0.03]">
                   <Avatar name={m.role === "user" ? m.conversation.customer.name || m.conversation.customer.phone : bot.name || "AI"} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                      <span className="font-medium text-slate-300 truncate max-w-[100px]">{m.conversation.customer.name || m.conversation.customer.phone}</span>
+                      <span className="max-w-[100px] truncate font-medium text-slate-300">{m.conversation.customer.name || m.conversation.customer.phone}</span>
                       <span>·</span>
                       <span className="shrink-0">{timeAgo(m.createdAt)}</span>
-                      {m.flagged && <span className="rounded bg-amber-500/15 px-1 text-[9px] font-semibold text-amber-300 shrink-0">طلب</span>}
+                      {m.flagged && <span className="shrink-0 rounded bg-amber-500/15 px-1 text-[9px] font-medium text-amber-300">طلب</span>}
                     </div>
-                    <div className="mt-0.5 truncate text-sm text-slate-400">{m.content}</div>
+                    <div className="mt-0.5 truncate text-[13px] text-slate-400">{m.content}</div>
                   </div>
                 </div>
               ))}
@@ -411,111 +410,68 @@ export default async function DashboardOverview() {
           )}
         </div>
       </div>
-
-      {/* Quick stats bar — KPIs not shown above */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SmallStat label="إجمالي العملاء" value={customerCount.toLocaleString("ar-EG")} icon={<Users className="h-3.5 w-3.5" />} href="/dashboard/customers" />
-        <SmallStat label="إجمالي الرسائل" value={msgCount.toLocaleString("ar-EG")} icon={<MessageSquare className="h-3.5 w-3.5" />} href="/dashboard/inbox" />
-        <SmallStat label="تنبيهات طلبات" value={flaggedCount.toLocaleString("ar-EG")} icon={<BellRing className="h-3.5 w-3.5" />} href="/dashboard/inbox" accent={flaggedCount > 0 ? "text-amber-300" : undefined} />
-        <SmallStat label="مستندات المعرفة" value={docCount.toLocaleString("ar-EG")} icon={<Zap className="h-3.5 w-3.5" />} href="/dashboard/knowledge" />
-      </div>
     </div>
   );
 }
 
-// ── Executive KPI card (top row) ────────────────────────────────────────────
-function ExecKpi({
-  icon, label, value, delta, sub, tone = "brand", href, prominent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  delta?: number | null;
-  sub?: string;
-  tone?: "brand" | "emerald" | "blue" | "violet" | "purple";
-  href?: string;
-  prominent?: boolean;
+// ── Money cell — secondary revenue metric inside the money band. ──────────────
+function MoneyCell({ icon, label, value, delta, sub, href }: {
+  icon: React.ReactNode; label: string; value: string; delta?: number | null; sub?: string; href?: string;
 }) {
-  const toneMap: Record<string, string> = {
-    brand:   "border-brand-500/20 bg-brand-500/[0.04]",
-    emerald: "border-emerald-500/20 bg-emerald-500/[0.04]",
-    blue:    "border-blue-500/20 bg-blue-500/[0.04]",
-    violet:  "border-violet-500/20 bg-violet-500/[0.04]",
-    purple:  "border-purple-500/20 bg-purple-500/[0.04]",
-  };
-  const iconMap: Record<string, string> = {
-    brand:   "text-brand-400",
-    emerald: "text-emerald-400",
-    blue:    "text-blue-400",
-    violet:  "text-violet-400",
-    purple:  "text-purple-400",
-  };
-  const valueMap: Record<string, string> = {
-    brand:   "text-brand-100",
-    emerald: "text-emerald-100",
-    blue:    "text-blue-100",
-    violet:  "text-violet-100",
-    purple:  "text-purple-100",
-  };
-  const base = `rounded-xl border p-4 transition ${toneMap[tone]} ${prominent ? "sm:col-span-1" : ""}`;
   const inner = (
     <>
-      <div className={`mb-2 flex items-center gap-1.5 text-[11px] font-medium ${iconMap[tone]}`}>
-        {icon} <span>{label}</span>
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+        <span className="text-slate-400">{icon}</span>
+        <span>{label}</span>
       </div>
-      <div className={`text-2xl font-bold tracking-tight ${valueMap[tone]}`}>{value}</div>
+      <div className="text-[22px] font-semibold leading-none tracking-[-0.02em] text-white tabular-nums">{value}</div>
       {(delta !== undefined || sub) && (
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-2 flex items-center gap-1.5">
           {delta !== undefined && <TrendBadge delta={delta ?? null} size="sm" />}
           {sub && <span className="text-[10px] text-slate-500">{sub}</span>}
         </div>
       )}
     </>
   );
-  if (href)
-    return <Link href={href} className={`${base} hover:border-white/10 hover:bg-white/[0.04] group`}>{inner}</Link>;
-  return <div className={base}>{inner}</div>;
+  const cls = "bg-canvas-deep p-5 transition-colors hover:bg-white/[0.02]";
+  return href ? <Link href={href} className={cls}>{inner}</Link> : <div className={cls}>{inner}</div>;
 }
 
-// ── Small stat bar ────────────────────────────────────────────────────────────
-function SmallStat({ label, value, icon, href, accent }: {
-  label: string; value: string; icon: React.ReactNode; href?: string; accent?: string;
+// ── Inline stat — compact figure folded into the activity panel. ──────────────
+function InlineStat({ label, value, href, accent }: {
+  label: string; value: string; href?: string; accent?: boolean;
 }) {
   const inner = (
-    <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition">
-      <div className={`shrink-0 ${accent || "text-slate-500"}`}>{icon}</div>
-      <div className="min-w-0 flex-1">
-        <div className={`text-sm font-bold ${accent || "text-white"}`}>{value}</div>
-        <div className="text-[11px] text-slate-500 truncate">{label}</div>
-      </div>
+    <div className="bg-canvas-deep px-3 py-2.5 transition-colors hover:bg-white/[0.02]">
+      <div className={`text-[15px] font-semibold tabular-nums ${accent ? "text-amber-300" : "text-white"}`}>{value}</div>
+      <div className="truncate text-[10px] text-slate-500">{label}</div>
     </div>
   );
-  if (href) return <Link href={href}>{inner}</Link>;
-  return inner;
+  return href ? <Link href={href}>{inner}</Link> : inner;
 }
 
 function SubscriptionBadge({ sub, daysLeft, waNum }: { sub: any; daysLeft: number; waNum: string }) {
   if (sub.active)
     return (
-      <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/8 px-2.5 py-1.5">
+      <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.07] px-2.5 py-1.5">
         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
         <div className="text-xs">
-          <span className="font-semibold text-white">{sub.subscription?.plan?.name || "نشط"}</span>
-          <span className="text-emerald-400/70 mr-1.5">· {daysLeft} يوم</span>
+          <span className="font-medium text-white">{sub.subscription?.plan?.name || "نشط"}</span>
+          <span className="mr-1.5 text-emerald-400/70">· {daysLeft} يوم</span>
         </div>
       </div>
     );
   if (sub.subscription?.status === "pending")
     return (
-      <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/8 px-2.5 py-1.5">
+      <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/[0.07] px-2.5 py-1.5">
         <Clock className="h-3.5 w-3.5 text-amber-400" />
-        <span className="text-xs font-semibold text-white">بانتظار التفعيل</span>
+        <span className="text-xs font-medium text-white">بانتظار التفعيل</span>
       </div>
     );
   return (
-    <Link href="/pricing" className="inline-flex items-center gap-2 rounded-lg border border-brand-500/15 bg-brand-500/8 px-2.5 py-1.5 transition hover:bg-brand-500/15">
+    <Link href="/pricing" className="inline-flex items-center gap-2 rounded-lg border border-brand-500/15 bg-brand-500/[0.07] px-2.5 py-1.5 transition-colors hover:bg-brand-500/15">
       <Crown className="h-3.5 w-3.5 text-brand-400" />
-      <span className="text-xs font-semibold text-white">اختر باقتك</span>
+      <span className="text-xs font-medium text-white">اختر باقتك</span>
     </Link>
   );
 }

@@ -67,9 +67,9 @@ export default function IntegrationsWhatsApp({
           <SectionReveal index={1}>
             <Parallax speed={26} className="relative mx-auto w-full max-w-sm">
               {/* soft halo */}
-              <div className="absolute -inset-6 rounded-[2rem] bg-[radial-gradient(circle_at_50%_30%,rgba(34,197,94,0.12),transparent_65%)]" aria-hidden="true" />
+              <div className="absolute -inset-6 rounded-[2rem] bg-[radial-gradient(circle_at_50%_30%,rgba(104,114,212,0.10),transparent_65%)]" aria-hidden="true" />
 
-              <div className="surface relative overflow-hidden rounded-[1.75rem] shadow-float">
+              <div className="surface relative overflow-hidden rounded-2xl shadow-float">
                 {/* header */}
                 <div className="flex items-center gap-3 border-b border-white/[0.06] bg-white/[0.03] px-4 py-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25">
@@ -105,7 +105,7 @@ export default function IntegrationsWhatsApp({
                     transition={{ duration: 0.45, delay: 0.45, ease }}
                     className="flex justify-end"
                   >
-                    <div className="max-w-[82%] rounded-2xl rounded-se-sm bg-brand-500/90 px-3.5 py-2.5 text-[13px] leading-relaxed text-white shadow-[0_8px_24px_-10px_rgba(34,197,94,0.6)]">
+                    <div className="max-w-[82%] rounded-2xl rounded-se-sm bg-brand-500/90 px-3.5 py-2.5 text-[13px] leading-relaxed text-white">
                       {m.chatBubbleOut}
                     </div>
                   </motion.div>

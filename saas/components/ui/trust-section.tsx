@@ -87,7 +87,7 @@ export default function TrustSection({
               {m.metrics.map((metric) => (
                 <div
                   key={metric.label}
-                  className="relative bg-[#040b08] p-5 text-center lg:py-4"
+                  className="relative bg-canvas-raised p-5 text-center lg:py-4"
                 >
                   <div className="text-3xl font-bold tabular-nums text-white">
                     {metric.value}

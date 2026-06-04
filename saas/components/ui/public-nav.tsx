@@ -130,7 +130,7 @@ export default function PublicNav({
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="rounded-lg bg-brand-500 px-4 py-1.5 text-sm font-semibold text-white shadow-[0_6px_18px_-6px_rgba(34,197,94,0.5)] transition-colors hover:bg-brand-400"
+            className="rounded-lg bg-brand-500 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-400"
           >
             <span className="flex items-center gap-1.5">
               <WhatsAppIcon className="h-3.5 w-3.5" />
@@ -170,7 +170,7 @@ export default function PublicNav({
             exit={{ x: locale === "ar" ? "-100%" : "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
             className={cn(
-              "fixed inset-y-0 z-50 flex w-[min(82vw,340px)] flex-col bg-[#040b08] shadow-2xl md:hidden",
+              "fixed inset-y-0 z-50 flex w-[min(82vw,340px)] flex-col bg-canvas-raised shadow-float md:hidden",
               locale === "ar" ? "left-0 border-r border-white/[0.06]" : "right-0 border-l border-white/[0.06]",
             )}
           >

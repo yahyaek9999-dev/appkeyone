@@ -8,23 +8,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ── Brand accent ──────────────────────────────────────────────
+        // 2026 rebuild: refined muted iris/indigo (Linear/Attio register),
+        // replacing the rejected neon-green. The `brand-*` name is kept so
+        // the entire app re-skins through the token, no per-file edits.
         brand: {
-          50: "#f0fdf6",
-          100: "#dcfce9",
-          200: "#bbf7d3",
-          300: "#86efac",
-          400: "#4ade80",
-          500: "#22c55e",
-          600: "#16a34a",
-          700: "#15803d",
-          800: "#166534",
-          900: "#14532d",
+          50: "#eef0fb",
+          100: "#dfe2f8",
+          200: "#c4c8f1",
+          300: "#a2a9e8",
+          400: "#828bdd",
+          500: "#6872d4",
+          600: "#5460c4",
+          700: "#4650a8",
+          800: "#3a4188",
+          900: "#31366e",
         },
-        // Semantic surface tokens for consistent glass surfaces
+        // True-neutral canvas scale — kills the green ambient cast of the
+        // old #020806 base. Cool, near-black, premium.
+        canvas: {
+          DEFAULT: "#0a0a0c",
+          deep: "#08080a",
+          raised: "#101013",
+        },
+        // Semantic surface tokens for consistent layered panels
         surface: {
-          DEFAULT: "rgba(255,255,255,0.038)",
-          alt: "rgba(255,255,255,0.016)",
-          hover: "rgba(255,255,255,0.06)",
+          DEFAULT: "rgba(255,255,255,0.030)",
+          alt: "rgba(255,255,255,0.014)",
+          hover: "rgba(255,255,255,0.055)",
         },
       },
       fontFamily: {
@@ -38,17 +49,26 @@ const config: Config = {
         "18": "4.5rem",
         "22": "5.5rem",
       },
-      // Named shadow tokens — layered (ambient + key) for realistic depth
+      // Named shadow tokens — flat 2026 register: tight, low-spread, no glow.
+      // Depth comes from hairline borders + subtle elevation, not large blur.
       boxShadow: {
-        card: "0 1px 3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.04)",
-        nav: "0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.18)",
-        btn: "0 1px 2px rgba(0,0,0,0.14)",
-        // Premium elevations — soft ambient + tighter key shadow + inner highlight
+        card: "0 1px 2px rgba(0,0,0,0.20)",
+        nav: "0 1px 0 rgba(255,255,255,0.03)",
+        btn: "0 1px 2px rgba(0,0,0,0.18)",
+        // Elevations — for popovers/command palette/menus only.
         elevated:
-          "0 1px 0 rgba(255,255,255,0.05) inset, 0 2px 6px rgba(0,0,0,0.28), 0 16px 40px -12px rgba(0,0,0,0.55)",
+          "0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 12px -2px rgba(0,0,0,0.45)",
         float:
-          "0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px rgba(0,0,0,0.35), 0 32px 64px -24px rgba(0,0,0,0.65)",
-        glow: "0 0 0 1px rgba(34,197,94,0.18), 0 12px 40px -12px rgba(34,197,94,0.22)",
+          "0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 32px -8px rgba(0,0,0,0.60)",
+        // `glow` retained as a name (legacy call sites) but neutralised to a
+        // soft iris ring — no neon bloom.
+        glow: "0 0 0 1px rgba(104,114,212,0.22)",
+      },
+      borderRadius: {
+        // Tighter, more intentional radii than the old blanket rounded-2xl.
+        lg: "0.625rem",
+        xl: "0.75rem",
+        "2xl": "0.875rem",
       },
       // Refined letter-spacing scale — tighter for premium headings
       letterSpacing: {
@@ -69,19 +89,12 @@ const config: Config = {
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.6s ease-out",
-        blob: "blob 8s infinite",
       },
       keyframes: {
         fadeIn: { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
         slideUp: {
           "0%": { opacity: "0", transform: "translateY(20px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        blob: {
-          "0%": { transform: "translate(0,0) scale(1)" },
-          "33%": { transform: "translate(30px,-50px) scale(1.1)" },
-          "66%": { transform: "translate(-20px,20px) scale(0.9)" },
-          "100%": { transform: "translate(0,0) scale(1)" },
         },
       },
     },

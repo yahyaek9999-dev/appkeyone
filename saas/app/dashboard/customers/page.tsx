@@ -1,7 +1,7 @@
 import { requirePagePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { Users, Search, MessageSquare } from "lucide-react";
+import { Users, MessageSquare, ChevronLeft } from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -17,74 +17,102 @@ export default async function CustomersPage() {
       conversation: {
         include: {
           messages: { orderBy: { createdAt: "desc" }, take: 1 },
+          _count: { select: { messages: true } },
         },
       },
     },
   });
 
+  // Lightweight book-of-business stats — reads as a CRM record list header.
+  const active7d = customers.filter(
+    (c) => c.lastSeenAt && Date.now() - new Date(c.lastSeenAt).getTime() < 7 * 86400000,
+  ).length;
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-5">
+      {/* Record-list header — title + at-a-glance counts, no card farm. */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold mb-1">العملاء</h1>
-          <p className="text-slate-400">{customers.length} عميل</p>
+          <h1 className="page-title">العملاء</h1>
+          <p className="page-desc mt-1">
+            {customers.length.toLocaleString("ar-EG")} سجل · {active7d.toLocaleString("ar-EG")} نشط هذا الأسبوع
+          </p>
         </div>
+        <Link href="/dashboard/inbox" className="btn-ghost h-9 text-[13px]">
+          <MessageSquare className="h-4 w-4" />
+          صندوق المحادثات
+        </Link>
       </div>
 
-      {/* Phase 3: AI Copilot — top opportunity + recommendation for customers */}
-      <div className="mb-6">
-        <AiCopilotStrip context="customers" />
-      </div>
+      <AiCopilotStrip context="customers" />
 
       {customers.length === 0 ? (
         <div className="card">
           <EmptyState
-            icon={<Users className="w-full h-full" />}
+            icon={<Users className="h-full w-full" />}
             title="لسه ما فيش عملاء"
             description="هيظهروا هنا تلقائياً لما يبعتوا رسائل لبوتك على واتساب."
             size="lg"
             action={
               <Link href="/dashboard/playground" className="btn-primary inline-flex">
-                <MessageSquare className="w-4 h-4" />
+                <MessageSquare className="h-4 w-4" />
                 جرّب البوت بنفسك
               </Link>
             }
           />
         </div>
       ) : (
-        <div className="card divide-y divide-white/5">
-          {customers.map((c) => {
-            const last = c.conversation?.messages?.[0];
-            return (
-              <Link
-                key={c.id}
-                href={`/dashboard/customers/${c.id}`}
-                className="flex items-center gap-4 p-4 hover:bg-white/[0.03] transition"
-              >
-                <Avatar name={c.name || c.phone} size="lg" className="shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 justify-between">
-                    <div className="font-semibold truncate">{c.name || "بدون اسم"}</div>
-                    <div className="text-xs text-slate-500">{timeAgo(c.lastSeenAt)}</div>
-                  </div>
-                  {(() => {
-                    const p = formatCustomerPhone(c.phone);
-                    return p.isLid ? (
-                      <div className="text-xs text-slate-500 italic" title={p.raw}>{p.display}</div>
-                    ) : (
-                      <bdi dir="ltr" className="text-xs text-slate-500 font-mono block">{p.display}</bdi>
-                    );
-                  })()}
-                  {last && (
-                    <div className="text-sm text-slate-400 truncate mt-1">
-                      {last.role === "user" ? "← " : "→ "}
-                      {last.content}
+        <div className="card overflow-hidden">
+          {/* Column header — the table is the spine of a CRM, not a list of cards. */}
+          <div className="hidden grid-cols-[1fr_140px_120px_90px] items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500 sm:grid">
+            <span>العميل</span>
+            <span>الهاتف</span>
+            <span>آخر نشاط</span>
+            <span className="text-start">الرسائل</span>
+          </div>
+          <div className="divide-y divide-white/[0.04]">
+            {customers.map((c) => {
+              const last = c.conversation?.messages?.[0];
+              const count = c.conversation?._count?.messages ?? 0;
+              const p = formatCustomerPhone(c.phone);
+              return (
+                <Link
+                  key={c.id}
+                  href={`/dashboard/customers/${c.id}`}
+                  className="group grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.025] sm:grid-cols-[1fr_140px_120px_90px]"
+                >
+                  {/* Identity + last message preview */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar name={c.name || c.phone} size="md" className="shrink-0" />
+                    <div className="min-w-0">
+                      <div className="truncate text-[14px] font-medium text-white">{c.name || "بدون اسم"}</div>
+                      {last && (
+                        <div className="truncate text-[12px] text-slate-500">
+                          {last.role === "user" ? "← " : "→ "}
+                          {last.content}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+                  </div>
+                  {/* Phone */}
+                  <div className="hidden text-[12px] text-slate-400 sm:block">
+                    {p.isLid ? (
+                      <span className="italic text-slate-500" title={p.raw}>{p.display}</span>
+                    ) : (
+                      <bdi dir="ltr" className="font-mono">{p.display}</bdi>
+                    )}
+                  </div>
+                  {/* Last activity */}
+                  <div className="hidden text-[12px] text-slate-500 sm:block">{timeAgo(c.lastSeenAt)}</div>
+                  {/* Message count + chevron */}
+                  <div className="flex items-center justify-end gap-2 sm:justify-start">
+                    <span className="text-[12px] tabular-nums text-slate-400">{count.toLocaleString("ar-EG")}</span>
+                    <ChevronLeft className="h-4 w-4 text-slate-600 transition-colors group-hover:text-slate-400" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

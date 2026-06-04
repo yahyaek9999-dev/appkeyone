@@ -91,7 +91,7 @@ function ToastCard({ item, onDone }: { item: ToastItem; onDone: () => void }) {
     <div
       role="status"
       className={cn(
-        "pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-2xl border bg-[#0a1410]/95 px-4 py-3 text-sm shadow-2xl shadow-black/40 backdrop-blur-xl transition-all duration-200",
+        "pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-xl border bg-canvas-raised/95 px-4 py-3 text-sm shadow-elevated backdrop-blur-xl transition-all duration-200",
         cfg.border,
         leaving ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100",
       )}

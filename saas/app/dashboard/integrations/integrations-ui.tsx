@@ -327,10 +327,24 @@ export default function IntegrationsUi() {
         </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <Kpi icon={Webhook} label="تكاملات نشطة" value={activeCount} tone="emerald" />
-        <Kpi icon={AlertTriangle} label="أحداث فاشلة" value={failedCount} tone={failedCount ? "rose" : "slate"} />
-        <Kpi icon={Send} label="آخر حدث" value={snapshot?.latest.commerceEventAt ? new Date(snapshot.latest.commerceEventAt).toLocaleTimeString("ar-EG") : "—"} tone="sky" />
+      {/* Status line — replaces the old KPI card row. Progressive: shows active count + failures in one line. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-slate-500">
+        <span className="flex items-center gap-1.5">
+          <Webhook className="h-3.5 w-3.5 text-slate-400" />
+          <span className="tabular-nums">{activeCount}</span> نشط
+        </span>
+        {failedCount > 0 && (
+          <span className="flex items-center gap-1.5 text-rose-400">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span className="tabular-nums">{failedCount}</span> فاشل
+          </span>
+        )}
+        {snapshot?.latest.commerceEventAt && (
+          <span className="flex items-center gap-1.5">
+            <Send className="h-3.5 w-3.5 text-slate-400" />
+            آخر حدث: {new Date(snapshot.latest.commerceEventAt).toLocaleTimeString("ar-EG")}
+          </span>
+        )}
       </div>
 
       {secret && (
@@ -635,15 +649,3 @@ function labelForEventType(type: string): string {
   return label ? `${label} (${type})` : type;
 }
 
-function Kpi({ icon: Icon, label, value, tone }: { icon: any; label: string; value: any; tone: string }) {
-  const tones: Record<string, string> = { emerald: "from-emerald-500/10 to-emerald-500/0 border-emerald-500/30 text-emerald-200", rose: "from-rose-500/10 to-rose-500/0 border-rose-500/30 text-rose-200", slate: "from-slate-500/10 to-slate-500/0 border-slate-500/30 text-slate-200", sky: "from-sky-500/10 to-sky-500/0 border-sky-500/30 text-sky-200" };
-  return (
-    <div className={`rounded-2xl border bg-gradient-to-bl p-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center justify-between text-xs opacity-80">
-        <span>{label}</span>
-        <Icon className="w-4 h-4" />
-      </div>
-      <div className="mt-2 text-2xl font-bold tabular-nums">{value}</div>
-    </div>
-  );
-}

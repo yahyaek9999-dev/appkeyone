@@ -10,28 +10,36 @@
         -webkit-text-size-adjust: 100%;
     }
     body {
-        @apply bg-[#020806] text-slate-100 antialiased;
+        /* 2026 rebuild — true-neutral near-black canvas, no green cast. */
+        @apply bg-canvas text-slate-200 antialiased;
         min-width: 0;
         overflow-x: hidden;
-        font-feature-settings: "ss01" on, "ss02" on;
+        font-feature-settings: "ss01" on, "cv01" on;
     }
     ::selection {
-        @apply bg-brand-500/30 text-white;
+        @apply bg-brand-500/25 text-white;
     }
 }
 
 @layer components {
+    /* ════════════════════════════════════════════════════════════════
+       KEYONE design system — 2026 rebuild.
+       Flat, hairline-defined, true-neutral. Iris accent (brand-*).
+       Class names are PRESERVED so every existing screen re-skins for free;
+       only the visual register changes (no glow, no glass blur, tighter radii).
+       ════════════════════════════════════════════════════════════════ */
+
     .font-en {
         font-family: -apple-system, "Inter", "Segoe UI", sans-serif;
     }
 
     .ai-page {
-        @apply relative min-h-screen overflow-x-hidden bg-[#020806] text-white;
+        @apply relative min-h-screen overflow-x-hidden bg-canvas text-white;
         min-width: 0;
     }
 
     .ai-section {
-        @apply relative px-5 py-24 md:py-32;
+        @apply relative px-5 py-20 md:py-28;
     }
 
     .ai-container {
@@ -39,12 +47,13 @@
     }
 
     .ai-heading {
-        @apply font-black leading-tight tracking-[-0.035em] text-white;
+        @apply font-semibold leading-tight tracking-[-0.025em] text-white;
     }
 
+    /* ── Panels ──────────────────────────────────────────────────────
+       Flat hairline cards. Depth = 1px border + faint top-edge, never blur. */
     .ai-card {
-        @apply relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.035];
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        @apply relative overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.018];
     }
 
     .ai-card > * {
@@ -52,35 +61,39 @@
     }
 
     .card {
-        @apply rounded-2xl border border-white/[0.06] bg-white/[0.025];
+        @apply rounded-xl border border-white/[0.07] bg-white/[0.018];
     }
 
     .card-hover {
-        @apply card transition hover:border-white/[0.12] hover:bg-white/[0.04];
+        @apply card transition-colors duration-200 hover:border-white/[0.12] hover:bg-white/[0.03];
     }
 
+    /* ── Buttons ─────────────────────────────────────────────────────
+       Solid iris primary, no glow ring. Flat ghost. Calm active scale. */
     .btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-400 active:scale-[0.97] disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-brand-400 active:bg-brand-600 disabled:opacity-50;
     }
 
     .btn-ghost {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] px-5 py-2.5 text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/[0.04] hover:text-white active:scale-[0.97] disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/[0.09] px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.04] hover:text-white disabled:opacity-50;
     }
 
     .btn-danger {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500/10 px-5 py-2.5 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/20 active:scale-[0.97] disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-colors duration-150 hover:bg-rose-500/15 disabled:opacity-50;
     }
 
     .ai-badge {
-        @apply inline-flex items-center gap-2 rounded-full border border-brand-500/25 bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-300;
+        @apply inline-flex items-center gap-1.5 rounded-md border border-brand-500/25 bg-brand-500/10 px-2.5 py-1 text-xs font-medium text-brand-300;
     }
 
     .label {
-        @apply mb-1.5 block text-sm font-semibold text-slate-200;
+        @apply mb-1.5 block text-sm font-medium text-slate-300;
     }
 
+    /* ── Metrics ─────────────────────────────────────────────────────
+       Lighter numeric weight reads as data, not marketing. Tabular figures. */
     .kpi-value {
-        @apply text-2xl font-bold tracking-[-0.02em] text-white sm:text-3xl;
+        @apply text-2xl font-semibold tracking-[-0.02em] text-white tabular-nums sm:text-[28px];
     }
 
     .kpi-label {
@@ -88,7 +101,7 @@
     }
 
     .page-title {
-        @apply text-xl font-bold tracking-[-0.02em] text-white sm:text-2xl;
+        @apply text-xl font-semibold tracking-[-0.02em] text-white sm:text-[22px];
     }
 
     .page-desc {
@@ -96,19 +109,20 @@
     }
 
     .section-title {
-        @apply text-base font-semibold text-white;
+        @apply text-[15px] font-medium text-white;
     }
 
+    /* ── Segmented filter tabs ───────────────────────────────────────  */
     .filter-tab {
-        @apply rounded-lg border border-white/[0.06] px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-white/15 hover:text-white;
+        @apply rounded-md border border-transparent px-2.5 py-1.5 text-xs font-medium text-slate-400 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white;
     }
 
     .filter-tab-active {
-        @apply border-brand-500/30 bg-brand-500/10 text-brand-300;
+        @apply border-white/[0.08] bg-white/[0.06] text-white;
     }
 
     .table-header {
-        @apply border-b border-white/[0.06] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500;
+        @apply border-b border-white/[0.07] px-4 py-2.5 text-start text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500;
     }
 
     .table-cell {
@@ -116,19 +130,21 @@
     }
 
     .pagination-btn {
-        @apply inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.06] text-xs font-medium text-slate-400 transition hover:border-white/15 hover:text-white disabled:opacity-40;
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.07] text-xs font-medium text-slate-400 transition-colors duration-150 hover:border-white/15 hover:bg-white/[0.04] hover:text-white disabled:opacity-40;
     }
 
     .kpi-card {
-        @apply card p-5;
+        @apply card p-4;
     }
 
     .kpi-icon {
-        @apply mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl;
+        @apply mb-3 inline-flex h-8 w-8 items-center justify-center rounded-lg;
     }
 
+    /* ── Navigation ──────────────────────────────────────────────────
+       Tighter rows, RTL-aware active marker is added in the component. */
     .sidebar-link {
-        @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white;
+        @apply flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium text-slate-400 transition-colors duration-150 hover:bg-white/[0.04] hover:text-white;
     }
 
     .sidebar-link-active {
@@ -136,85 +152,69 @@
     }
 
     .mobile-header {
-        @apply sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-white/[0.06] bg-[#020806]/95 px-4 backdrop-blur-xl;
+        @apply sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-white/[0.07] bg-canvas/80 px-4 backdrop-blur-xl;
     }
 
     .ai-btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 font-semibold text-white transition-all hover:bg-brand-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 font-medium text-white transition-colors duration-150 hover:bg-brand-400 active:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50;
     }
 
     .ai-btn-ghost {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-transparent px-5 py-2.5 font-semibold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/[0.11] bg-transparent px-5 py-2.5 font-medium text-slate-200 transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
     }
 
     .input {
-        @apply w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-3 text-white placeholder-slate-500 outline-none transition-colors focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/15;
+        @apply w-full rounded-lg border border-white/[0.09] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-white placeholder-slate-500 outline-none transition-colors duration-150 focus:border-brand-500/50 focus:bg-white/[0.04];
     }
 
     .eyebrow {
-        @apply text-xs font-semibold uppercase tracking-[0.12em] text-brand-400/70;
+        @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-300/80;
     }
 
-    /* ── Premium public-site primitives ───────────────────────── */
+    /* ── Public-site primitives ──────────────────────────────────────  */
 
-    /* Hairline-bordered glass surface with a top light edge + layered depth */
+    /* Flat hairline surface — faint top light edge, no blur, no glow. */
     .surface {
-        @apply relative rounded-2xl border border-white/[0.07] bg-white/[0.025];
-        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 40%);
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 1px 2px rgba(0, 0, 0, 0.2);
+        @apply relative rounded-xl border border-white/[0.07] bg-white/[0.018];
+        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0) 32%);
     }
 
     .surface-hover {
-        @apply transition-[border-color,background-color,box-shadow,transform] duration-300 ease-premium;
+        @apply transition-[border-color,background-color] duration-200 ease-out;
     }
 
     .surface-hover:hover {
-        @apply border-white/[0.12] bg-white/[0.04];
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.07) inset, 0 12px 32px -12px rgba(0, 0, 0, 0.5);
+        @apply border-white/[0.13] bg-white/[0.03];
     }
 
-    /* Refined hairline divider that fades at both ends */
+    /* Hairline divider that fades at both ends */
     .hairline {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.09), transparent);
     }
 
-    /* Premium chip / pill */
+    /* Chip / pill */
     .chip {
-        @apply inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[13px] font-medium text-slate-300;
+        @apply inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 py-1 text-[12px] font-medium text-slate-300;
     }
 
-    /* Display heading — cinematic, balanced wrapping */
+    /* Display heading — confident but not cinematic-bombastic. */
     .display-heading {
-        @apply font-black text-white;
-        letter-spacing: -0.045em;
-        line-height: 1.05;
+        @apply font-semibold text-white;
+        letter-spacing: -0.035em;
+        line-height: 1.06;
         text-wrap: balance;
     }
 
-    /* Soft-motion primary button (paired with Framer hover where needed) */
+    /* Primary CTA — solid iris, flat, no neon shadow. */
     .btn-premium {
-        @apply inline-flex items-center justify-center gap-2.5 rounded-xl bg-brand-500 px-6 text-sm font-semibold text-white;
-        @apply transition-[transform,background-color,box-shadow] duration-200 ease-out;
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset, 0 4px 14px -4px rgba(34, 197, 94, 0.28);
-    }
-    .btn-premium:hover {
-        @apply bg-brand-400;
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 6px 18px -6px rgba(34, 197, 94, 0.36);
-    }
-    .btn-premium:active {
-        transform: scale(0.975);
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 text-sm font-medium text-white;
+        @apply transition-colors duration-150 hover:bg-brand-400 active:bg-brand-600;
     }
 
     .btn-outline {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-transparent px-6 text-sm font-semibold text-slate-300;
-        @apply transition-[transform,border-color,background-color,color] duration-200 ease-out;
-    }
-    .btn-outline:hover {
-        @apply border-white/20 bg-white/[0.04] text-white;
-    }
-    .btn-outline:active {
-        transform: scale(0.975);
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/[0.12] bg-transparent px-5 text-sm font-medium text-slate-300;
+        @apply transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.04] hover:text-white;
     }
 }
 

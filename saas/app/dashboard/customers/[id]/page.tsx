@@ -27,11 +27,11 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       </Link>
 
       <div className="card p-5 mb-4 flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-400 to-emerald-600 flex items-center justify-center font-bold text-xl">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-brand-500/25 bg-brand-500/15 text-xl font-semibold text-brand-200">
           {(customer.name || customer.phone)[0]?.toUpperCase()}
         </div>
         <div className="flex-1">
-          <div className="text-xl font-bold">{customer.name || "بدون اسم"}</div>
+          <div className="text-xl font-semibold">{customer.name || "بدون اسم"}</div>
           <div className="text-sm text-slate-400 flex items-center gap-1.5">
             <Phone className="w-3.5 h-3.5" />
             {(() => {

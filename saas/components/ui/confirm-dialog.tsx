@@ -56,7 +56,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => settle(false)}
           />
-          <div className="relative w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0a1410] p-5 shadow-2xl shadow-black/50">
+          <div className="relative w-full max-w-sm rounded-xl border border-white/[0.09] bg-canvas-raised p-5 shadow-float">
             <div className="flex items-start gap-3">
               {pending.danger && (
                 <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-500/25 bg-rose-500/10">

@@ -363,7 +363,7 @@ export default function Customer360({
         role="dialog"
         aria-modal="true"
         aria-label="ملف العميل 360"
-        className={`fixed inset-y-0 left-0 z-50 flex w-full max-w-[480px] flex-col border-l border-brand-500/15 bg-[#040b09]/95 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-transform duration-300 ease-premium ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-full max-w-[480px] flex-col border-l border-white/[0.08] bg-canvas-raised/95 shadow-float backdrop-blur-2xl transition-transform duration-300 ease-premium ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -448,7 +448,7 @@ export default function Customer360({
             </div>
 
             {/* ── tabs ── */}
-            <div className="sticky top-0 z-10 flex gap-1 border-b border-white/[0.06] bg-[#040b09]/95 px-3 py-2 backdrop-blur">
+            <div className="sticky top-0 z-10 flex gap-1 border-b border-white/[0.06] bg-canvas-raised/95 px-3 py-2 backdrop-blur">
               <TabBtn active={tab === "overview"} onClick={() => setTab("overview")}>
                 نظرة عامة
               </TabBtn>

@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { can, type Permission, type Role } from "@/lib/rbac";
-import { ChevronDown } from "lucide-react";
 import {
   LayoutDashboard,
   Bot,
@@ -35,156 +34,258 @@ import {
   Download,
   Sparkles,
   ScrollText,
+  Home,
+  Briefcase,
+  Wrench,
+  type LucideIcon,
 } from "lucide-react";
 
-export const NAV_SECTIONS: {
-  title: string;
-  items: { href: string; label: string; icon: typeof LayoutDashboard; perm: Permission }[];
-}[] = [
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  perm: Permission;
+};
+
+/**
+ * Workspace architecture (Business-OS model, not an admin panel).
+ *
+ * The product is organised into a handful of WORKSPACES — Home, Sales,
+ * Customers, AI, Operations, Settings. The left chrome is a slim icon RAIL
+ * (one glyph per workspace) plus a CONTEXTUAL PANEL that only shows the routes
+ * belonging to the active workspace. You never see all 35 destinations at once;
+ * you see the ~6 that matter for what you're doing. This is the Attio / Linear
+ * navigation register, and it's what makes KEYONE read as an operating system
+ * rather than a dashboard template.
+ */
+export type Workspace = {
+  id: string;
+  label: string;
+  /** Short label shown under the rail glyph. */
+  short: string;
+  icon: LucideIcon;
+  /** First destination — where clicking the rail glyph lands you. */
+  home: string;
+  items: NavItem[];
+};
+
+export const WORKSPACES: Workspace[] = [
   {
-    title: "الرئيسية",
+    id: "home",
+    label: "الرئيسية",
+    short: "الرئيسية",
+    icon: Home,
+    home: "/dashboard",
     items: [
-      { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
+      { href: "/dashboard", label: "مركز القيادة", icon: LayoutDashboard, perm: "analytics" },
+      { href: "/dashboard/command-center", label: "اللوحة الذكية", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/analytics", label: "الإحصائيات", icon: BarChart3, perm: "analytics" },
       { href: "/dashboard/business", label: "تحليلات الأعمال", icon: TrendingUp, perm: "analytics" },
-      { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
-      { href: "/dashboard/demo", label: "جرّب النظام", icon: Sparkles, perm: "analytics" },
+      { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال اللحظي", icon: Sparkles, perm: "analytics" },
     ],
   },
   {
-    title: "المحادثات",
-    items: [
-      { href: "/dashboard/inbox", label: "الواردات", icon: Inbox, perm: "inbox" },
-      { href: "/dashboard/escalations", label: "التصعيدات", icon: MessageSquareWarning, perm: "escalations" },
-      { href: "/dashboard/customers", label: "العملاء", icon: Users, perm: "customers" },
-      { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap, perm: "customers" },
-    ],
-  },
-  {
-    title: "التجارة",
+    id: "sales",
+    label: "المبيعات",
+    short: "المبيعات",
+    icon: Briefcase,
+    home: "/dashboard/orders",
     items: [
       { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag, perm: "customers" },
       { href: "/dashboard/products", label: "المنتجات", icon: Package, perm: "settings" },
       { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket, perm: "settings" },
-      { href: "/dashboard/integrations", label: "تكاملات التجارة", icon: Plug, perm: "settings" },
-      { href: "/dashboard/automations", label: "أتمتة التجارة", icon: Zap, perm: "settings" },
-    ],
-  },
-  {
-    title: "النمو والذكاء",
-    items: [
-      { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال اللحظي", icon: Sparkles, perm: "analytics" },
-      { href: "/dashboard/command-center", label: "مركز القيادة الذكي", icon: Sparkles, perm: "analytics" },
-      { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: Sparkles, perm: "analytics" },
-      { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
-      { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Lightbulb, perm: "analytics" },
       { href: "/dashboard/funnel", label: "مسار البيع", icon: Filter, perm: "analytics" },
-      { href: "/dashboard/segments", label: "شرائح العملاء", icon: Users, perm: "analytics" },
+      { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: Sparkles, perm: "analytics" },
+      { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/broadcasts", label: "الإرسال الجماعي", icon: Megaphone, perm: "broadcasts" },
       { href: "/dashboard/recovery", label: "استعادة العملاء", icon: HeartHandshake, perm: "broadcasts" },
     ],
   },
   {
-    title: "إعداد البوت",
+    id: "customers",
+    label: "العملاء",
+    short: "العملاء",
+    icon: Users,
+    home: "/dashboard/customers",
     items: [
-      { href: "/dashboard/bot", label: "إعدادات البوت", icon: Bot, perm: "settings" },
-      { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
-      { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Clock, perm: "settings" },
-      { href: "/dashboard/knowledge", label: "مركز التدريب", icon: BookOpen, perm: "settings" },
-      { href: "/dashboard/knowledge-brain", label: "العقل المعرفي", icon: Brain, perm: "settings" },
-      { href: "/dashboard/suggestions", label: "اقتراحات المعرفة", icon: Lightbulb, perm: "settings" },
-      { href: "/dashboard/playground", label: "تجربة البوت", icon: Bot, perm: "settings" },
-      { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },
+      { href: "/dashboard/customers", label: "العملاء", icon: Users, perm: "customers" },
+      { href: "/dashboard/inbox", label: "صندوق المحادثات", icon: Inbox, perm: "inbox" },
+      { href: "/dashboard/escalations", label: "التصعيدات", icon: MessageSquareWarning, perm: "escalations" },
+      { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap, perm: "customers" },
+      { href: "/dashboard/segments", label: "شرائح العملاء", icon: Filter, perm: "analytics" },
     ],
   },
   {
-    title: "الحساب والنظام",
+    id: "ai",
+    label: "الذكاء",
+    short: "الذكاء",
+    icon: Brain,
+    home: "/dashboard/bot",
     items: [
+      { href: "/dashboard/bot", label: "إعدادات المساعد", icon: Bot, perm: "settings" },
+      { href: "/dashboard/playground", label: "تجربة المساعد", icon: Sparkles, perm: "settings" },
+      { href: "/dashboard/knowledge", label: "مركز التدريب", icon: BookOpen, perm: "settings" },
+      { href: "/dashboard/knowledge-brain", label: "العقل المعرفي", icon: Brain, perm: "settings" },
+      { href: "/dashboard/suggestions", label: "اقتراحات المعرفة", icon: Lightbulb, perm: "settings" },
+      { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
+      { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
+      { href: "/dashboard/intel", label: "ذكاء المبيعات", icon: Lightbulb, perm: "analytics" },
+    ],
+  },
+  {
+    id: "ops",
+    label: "العمليات",
+    short: "العمليات",
+    icon: Wrench,
+    home: "/dashboard/integrations",
+    items: [
+      { href: "/dashboard/integrations", label: "التكاملات", icon: Plug, perm: "settings" },
+      { href: "/dashboard/automations", label: "الأتمتة", icon: Zap, perm: "settings" },
+      { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },
+      { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Clock, perm: "settings" },
+      { href: "/dashboard/system-health", label: "مراقبة النظام", icon: Activity, perm: "analytics" },
       { href: "/dashboard/safety", label: "الأمان والحماية", icon: Shield, perm: "settings" },
       { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
-      { href: "/dashboard/usage", label: "استخدام الباقة", icon: Crown, perm: "analytics" },
-      { href: "/dashboard/system-health", label: "مراقبة النظام", icon: Activity, perm: "analytics" },
       { href: "/dashboard/export", label: "تصدير البيانات", icon: Download, perm: "customers" },
-      { href: "/dashboard/settings", label: "حسابي", icon: Settings, perm: "analytics" },
+    ],
+  },
+  {
+    id: "settings",
+    label: "الإعدادات",
+    short: "الإعدادات",
+    icon: Settings,
+    home: "/dashboard/settings",
+    items: [
+      { href: "/dashboard/settings", label: "الحساب", icon: Settings, perm: "analytics" },
+      { href: "/dashboard/usage", label: "استخدام الباقة", icon: Crown, perm: "analytics" },
     ],
   },
 ];
 
-// Flat list kept for callers that need a simple lookup (e.g. mobile header label).
-export const NAV_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
+// ── Back-compat exports ───────────────────────────────────────────────────────
+// Older callers (command palette, mobile header label) consume a flat list and a
+// {title, items} section list. Derive both from WORKSPACES so there is a single
+// source of truth.
+export const NAV_SECTIONS: { title: string; items: NavItem[] }[] = WORKSPACES.map(
+  (w) => ({ title: w.label, items: w.items }),
+);
+export const NAV_ITEMS: NavItem[] = WORKSPACES.flatMap((w) => w.items);
 
-export function NavLinks({ role = "owner" }: { role?: Role }) {
-  return <NavList role={role} />;
+function workspaceForPath(pathname: string): Workspace {
+  // Longest-prefix match across all items wins; fall back to Home.
+  let best: { ws: Workspace; len: number } | null = null;
+  for (const ws of WORKSPACES) {
+    for (const it of ws.items) {
+      const match = it.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(it.href);
+      if (match && (!best || it.href.length > best.len)) best = { ws, len: it.href.length };
+    }
+  }
+  return best?.ws ?? WORKSPACES[0];
 }
 
-export function SidebarNav({ adminLink, role = "owner" }: { adminLink: React.ReactNode; role?: Role }) {
-  return <NavList adminLink={adminLink} role={role} />;
+function isActivePath(pathname: string, href: string) {
+  return href === "/dashboard"
+    ? pathname === "/dashboard"
+    : pathname === href || pathname.startsWith(href + "/");
 }
 
-// Sections collapsed by default (user can expand). Active-route sections
-// auto-expand so the current page is always visible.
-const DEFAULT_COLLAPSED = new Set(["إعداد البوت", "الحساب والنظام"]);
+function accessibleWorkspaces(role: Role): Workspace[] {
+  return WORKSPACES.map((w) => ({ ...w, items: w.items.filter((i) => can(role, i.perm)) })).filter(
+    (w) => w.items.length > 0,
+  );
+}
 
-function NavList({ adminLink, role = "owner" }: { adminLink?: React.ReactNode; role?: Role }) {
+function ContextRow({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link href={item.href} className={cn("sidebar-link relative", active && "sidebar-link-active")}>
+      {active && (
+        <span className="absolute inset-y-1.5 start-0 w-0.5 rounded-full bg-brand-400" aria-hidden="true" />
+      )}
+      <Icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-brand-300" : "text-slate-500")} />
+      <span className="truncate">{item.label}</span>
+    </Link>
+  );
+}
+
+/**
+ * Desktop chrome: workspace icon RAIL + CONTEXTUAL panel. The rail is the
+ * identity of the OS; the panel is the context you're working in.
+ */
+export function SidebarNav({ adminLink, role = "owner" }: { adminLink?: React.ReactNode; role?: Role }) {
   const pathname = usePathname();
-  const isActive = (href: string) =>
-    href === "/dashboard"
-      ? pathname === "/dashboard"
-      : pathname === href || pathname.startsWith(href + "/");
+  const spaces = accessibleWorkspaces(role);
+  const currentWs = workspaceForPath(pathname);
+  // Which workspace's items are shown in the panel. Defaults to the one holding
+  // the current route; the user can preview another by clicking its rail glyph.
+  const [viewId, setViewId] = useState(currentWs.id);
+  useEffect(() => setViewId(currentWs.id), [currentWs.id]);
 
-  const sectionHasActive = (items: typeof NAV_SECTIONS[0]["items"]) =>
-    items.some((n) => isActive(n.href));
-
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => DEFAULT_COLLAPSED);
-
-  const toggle = (title: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      next.has(title) ? next.delete(title) : next.add(title);
-      return next;
-    });
+  const viewed = spaces.find((w) => w.id === viewId) ?? spaces[0];
 
   return (
-    <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
-      {adminLink && <div className="px-1 mb-2">{adminLink}</div>}
-      {NAV_SECTIONS.map((section) => {
-        const items = section.items.filter((n) => can(role, n.perm));
-        if (items.length === 0) return null;
-        const hasActive = sectionHasActive(items);
-        // Force-open any section that contains the active route
-        const isOpen = hasActive || !collapsed.has(section.title);
-        return (
-          <div key={section.title}>
+    <div className="flex min-h-0 flex-1">
+      {/* Rail */}
+      <div className="flex w-[60px] shrink-0 flex-col items-center gap-1 border-l border-white/[0.06] py-3">
+        {spaces.map((w) => {
+          const Icon = w.icon;
+          const isCurrent = w.id === currentWs.id;
+          const isViewed = w.id === viewed.id;
+          return (
             <button
-              onClick={() => toggle(section.title)}
-              className="flex w-full items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+              key={w.id}
+              onClick={() => setViewId(w.id)}
+              title={w.label}
+              aria-label={w.label}
+              aria-current={isCurrent ? "page" : undefined}
+              className={cn(
+                "group flex w-12 flex-col items-center gap-1 rounded-lg py-2 transition-colors",
+                isViewed ? "bg-white/[0.06] text-white" : "text-slate-500 hover:bg-white/[0.03] hover:text-slate-200",
+              )}
             >
-              {section.title}
-              <ChevronDown
-                className={cn("h-3 w-3 transition-transform", isOpen ? "rotate-180" : "")}
-              />
+              <Icon className={cn("h-[18px] w-[18px]", isCurrent && "text-brand-300")} />
+              <span className="text-[9px] font-medium leading-none">{w.short}</span>
             </button>
-            {isOpen && (
-              <div className="space-y-0.5 mb-1">
-                {items.map((n) => {
-                  const Icon = n.icon;
-                  const active = isActive(n.href);
-                  return (
-                    <Link
-                      key={n.href}
-                      href={n.href}
-                      className={cn("sidebar-link", active && "sidebar-link-active")}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{n.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+          );
+        })}
+        {adminLink && <div className="mt-auto w-full px-1.5">{adminLink}</div>}
+      </div>
+
+      {/* Contextual panel */}
+      <nav className="flex min-w-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 py-3">
+        <div className="px-2.5 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+          {viewed.label}
+        </div>
+        {viewed.items.map((it) => (
+          <ContextRow key={it.href} item={it} active={isActivePath(pathname, it.href)} />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+/**
+ * Mobile drawer: full workspace map, each workspace as a labelled group. No rail
+ * (touch targets win over density on small screens).
+ */
+export function NavLinks({ role = "owner" }: { role?: Role }) {
+  const pathname = usePathname();
+  const spaces = accessibleWorkspaces(role);
+  return (
+    <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
+      {spaces.map((w) => (
+        <div key={w.id}>
+          <div className="flex items-center gap-2 px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+            <w.icon className="h-3.5 w-3.5" />
+            {w.label}
           </div>
-        );
-      })}
+          <div className="space-y-0.5">
+            {w.items.map((it) => (
+              <ContextRow key={it.href} item={it} active={isActivePath(pathname, it.href)} />
+            ))}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 }

@@ -211,100 +211,71 @@ export default async function LandingPage({
     <main className="ai-page" dir={m.dir}>
       <PublicNav brandName={brandName} supportWhatsapp={cfg.supportWhatsapp} locale={locale} />
 
-      {/* ───────── Hero ───────── */}
-      <section className="relative overflow-hidden pb-20 pt-32 sm:pb-28 md:min-h-[92vh] md:pt-40">
+      {/* ───────── Value prop bar (compact, not hero) ───────── */}
+      <section className="relative overflow-hidden pt-28 pb-14 sm:pb-16 sm:pt-32">
         <AmbientBackdrop />
-
         <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
-            <div className="max-w-[660px]">
-              <FadeIn delay={0.05}>
-                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-500/20 bg-brand-500/8 px-3.5 py-1.5 text-xs font-medium text-brand-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-400 shrink-0" />
-                  {m.hero.eyebrow}
-                </div>
-              </FadeIn>
-
-              <FadeIn delay={0.12}>
-                <h1 className="display-heading text-[2.5rem] sm:text-[3.5rem] md:text-[4rem]">
-                  <span className="block">{m.hero.h1Line1}</span>
-                  <span className="block">{m.hero.h1Line2}</span>
-                  <span className="relative inline-block text-brand-400">
-                    {m.hero.h1Line3}
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-x-0 -bottom-1 h-[3px] rounded-full bg-brand-500/40"
-                    />
-                  </span>
-                </h1>
-              </FadeIn>
-
-              <FadeIn delay={0.2}>
-                <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
-                  <span className="font-semibold text-white">{brandName}</span> {m.hero.subtext}
-                </p>
-              </FadeIn>
-
-              <FadeIn delay={0.28}>
-                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                  {waNum ? (
-                    <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-12 w-full sm:w-auto">
-                      <WhatsAppIcon className="h-4 w-4" />
-                      {m.hero.ctaPrimary}
-                    </a>
-                  ) : (
-                    <Link href="/pricing" className="btn-premium h-12 w-full sm:w-auto">
-                      {m.hero.ctaPrimary}
-                      <Arrow className="h-4 w-4" />
-                    </Link>
-                  )}
-                  <Link
-                    href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
-                    className="btn-outline h-12 w-full sm:w-auto"
-                  >
-                    {m.hero.ctaSecondary}
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-3.5 py-1.5 text-xs font-medium text-slate-400">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" />
+                {m.hero.eyebrow}
+              </div>
+              <h1 className="text-[2.25rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[3rem] md:text-5xl">
+                <span className="block">{m.hero.h1Line1}</span>
+                <span className="block">{m.hero.h1Line2}</span>
+                <span className="block text-brand-300">{m.hero.h1Line3}</span>
+              </h1>
+              <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-slate-400 sm:text-base">
+                <span className="font-medium text-white">{brandName}</span> {m.hero.subtext}
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                {waNum ? (
+                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 rounded-lg px-5 text-sm">
+                    <WhatsAppIcon className="h-4 w-4" />
+                    {m.hero.ctaPrimary}
+                  </a>
+                ) : (
+                  <Link href="/pricing" className="btn-premium h-11 rounded-lg px-5 text-sm">
+                    {m.hero.ctaPrimary}
+                    <Arrow className="h-4 w-4" />
                   </Link>
-                </div>
-              </FadeIn>
-
-              <FadeIn delay={0.36}>
-                <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-slate-500">
-                  {[Lock, Shield, Users].map((Icon, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Icon className="h-3.5 w-3.5 text-slate-600" />
-                      {m.hero.trustItems[i]}
-                    </div>
-                  ))}
-                </div>
-              </FadeIn>
+                )}
+                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 rounded-lg text-sm">
+                  {m.hero.ctaSecondary}
+                </Link>
+              </div>
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
+                {[Lock, Shield, Users].map((Icon, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5 text-slate-600" />
+                    {m.hero.trustItems[i]}
+                  </div>
+                ))}
+              </div>
             </div>
-
-            <FadeIn delay={0.18} className="hidden lg:block">
+            <div className="hidden lg:block">
               <WhatsAppProductMockup dir={m.dir} />
-            </FadeIn>
+            </div>
           </div>
         </div>
-
-        {/* Mobile product mockup */}
-        <FadeIn delay={0.25}>
-          <div className="mx-5 mt-10 lg:hidden">
-            <WhatsAppProductMockup dir={m.dir} compact />
-          </div>
-        </FadeIn>
+        <div className="mt-8 lg:hidden">
+          <WhatsAppProductMockup dir={m.dir} compact />
+        </div>
       </section>
 
-      {/* ───────── Stats ───────── */}
+      {/* ───────── Stats that lead ───────── */}
       <section className="border-y border-white/[0.06] bg-white/[0.012] px-5 py-10">
         <div className="mx-auto max-w-5xl">
           <div className="grid grid-cols-2 gap-y-8 sm:grid-cols-4 sm:divide-x sm:divide-white/[0.06]">
             {m.stats.map((s: { num: string; unit?: string; label: string }) => (
-              <FadeIn key={s.label} className="px-4 text-center">
-                <div className="text-3xl font-bold tabular-nums text-white sm:text-[2rem]">
+              <div key={s.label} className="px-4 text-center">
+                <div className="text-3xl font-semibold tabular-nums text-white sm:text-[2rem]">
                   {s.num}
                   {s.unit && <span className="ms-1 text-sm font-normal text-slate-500">{s.unit}</span>}
                 </div>
                 <div className="mt-1.5 text-xs text-slate-500">{s.label}</div>
-              </FadeIn>
+              </div>
             ))}
           </div>
         </div>
@@ -350,7 +321,7 @@ export default async function LandingPage({
                         <span className="text-rose-400 text-[10px] font-bold">✕</span>
                       </div>
                       <div>
-                        <span className="text-sm font-bold text-rose-300">{val}</span>
+                        <span className="text-sm font-semibold text-rose-300">{val}</span>
                         <span className="text-sm text-slate-400 ms-2">{label}</span>
                       </div>
                     </li>
@@ -383,7 +354,7 @@ export default async function LandingPage({
                     <li key={String(label)} className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 h-5 w-5 text-brand-400 shrink-0" />
                       <div>
-                        <span className="text-sm font-bold text-brand-300">{val}</span>
+                        <span className="text-sm font-semibold text-brand-300">{val}</span>
                         <span className="text-sm text-slate-400 ms-2">{label}</span>
                       </div>
                     </li>
@@ -492,7 +463,7 @@ export default async function LandingPage({
               {m.howItWorks.steps.map((step: { num: string; title: string; desc: string }, idx: number) => (
                 <SectionReveal key={step.num} index={idx}>
                   <div className="surface surface-hover relative flex gap-5 p-5 sm:p-6">
-                    <div className="font-en relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-500/25 bg-[#040b08] text-sm font-bold text-brand-300">
+                    <div className="font-en relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-500/25 bg-brand-500/[0.06] text-sm font-semibold text-brand-300">
                       {step.num}
                     </div>
                     <div className="min-w-0">
@@ -559,8 +530,8 @@ export default async function LandingPage({
       <section className="ai-section !py-28">
         <div className="ai-container max-w-3xl">
           <SectionReveal>
-            <div className="surface noise relative overflow-hidden rounded-3xl px-6 py-14 text-center shadow-float sm:px-12">
-              <div className="absolute inset-x-0 -top-1/2 h-full bg-[radial-gradient(ellipse_55%_55%_at_50%_50%,rgba(34,197,94,0.07),transparent_72%)]" aria-hidden="true" />
+            <div className="surface noise relative overflow-hidden rounded-2xl px-6 py-14 text-center sm:px-12">
+              <div className="absolute inset-x-0 -top-1/2 h-full bg-[radial-gradient(ellipse_55%_55%_at_50%_50%,rgba(104,114,212,0.06),transparent_72%)]" aria-hidden="true" />
               <div className="relative">
                 <h2 className="display-heading text-3xl sm:text-4xl">{m.cta.heading}</h2>
                 <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-slate-400">

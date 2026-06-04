@@ -322,12 +322,12 @@ export default function InboxUi({
   });
 
   return (
-    <div className="-m-4 flex h-[calc(100dvh_-_4rem_-_env(safe-area-inset-top))] min-w-0 overflow-hidden bg-[#020806]/80 md:-m-6 md:h-[calc(100vh_-_3rem)] lg:-m-10">
+    <div className="-m-4 flex h-[calc(100dvh_-_4rem_-_env(safe-area-inset-top))] min-w-0 overflow-hidden bg-canvas/80 md:-m-6 md:h-[calc(100vh_-_3rem)] lg:-m-10">
       {/* ----- conversation list (full width on mobile when no conv selected, fixed width on md+) ----- */}
       <aside
         className={`${
           activeId ? "hidden md:flex" : "flex"
-        } w-full shrink-0 flex-col border-l border-brand-500/10 bg-[#020806]/80 backdrop-blur-xl md:w-80`}
+        } w-full shrink-0 flex-col border-l border-white/[0.06] bg-canvas/80 backdrop-blur-xl md:w-80`}
       >
         <div className="border-b border-brand-500/10 bg-white/[0.025] p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
@@ -381,7 +381,7 @@ export default function InboxUi({
                   setActiveId(c.customerId);
                   setNotesDraft("");
                 }}
-                className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-start gap-3 rounded-2xl border border-transparent p-3 text-right transition hover:border-brand-500/20 hover:bg-brand-500/10 ${isActive ? "border-brand-500/35 bg-brand-500/10 shadow-[0_0_24px_rgba(34,197,94,0.08)]" : ""}`}
+                className={`mx-2 my-1 flex w-[calc(100%-1rem)] items-start gap-3 rounded-xl border border-transparent p-3 text-right transition-colors hover:border-white/[0.08] hover:bg-white/[0.03] ${isActive ? "border-brand-500/30 bg-brand-500/[0.08]" : ""}`}
               >
                 <div className="relative shrink-0">
                   <Avatar name={displayName} size="md" />
@@ -562,7 +562,7 @@ export default function InboxUi({
 
             <div
               ref={scrollRef}
-              className="ai-grid-bg flex-1 space-y-3 overflow-y-auto bg-[#020806] p-4 [background-size:72px_72px] [mask-image:linear-gradient(black,black)]"
+              className="ai-grid-bg flex-1 space-y-3 overflow-y-auto bg-canvas p-4 [background-size:72px_72px] [mask-image:linear-gradient(black,black)]"
             >
               {loadingActive && !active.conversation && (
                 <>
@@ -597,9 +597,9 @@ export default function InboxUi({
 
               {/* AI suggestions panel */}
               {(suggestions || suggesting || suggestError) && (
-                <div className="mb-3 rounded-2xl border border-brand-500/30 bg-brand-500/10 p-3 shadow-[0_0_28px_rgba(34,197,94,0.08)]">
+                <div className="mb-3 rounded-xl border border-brand-500/25 bg-brand-500/[0.07] p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-brand-300">
                       <Sparkles className="w-3.5 h-3.5" />
                       اقتراحات AI
                     </div>
@@ -693,7 +693,7 @@ export default function InboxUi({
 
       {/* ----- right sidebar: customer info + notes (lg+ only; mobile/tablet save space) ----- */}
       {active && (
-        <aside className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-brand-500/10 bg-[#020806]/70 p-4 backdrop-blur-xl lg:flex">
+        <aside className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-white/[0.06] bg-canvas/70 p-4 backdrop-blur-xl lg:flex">
           <div>
             <div className="text-xs text-slate-400 mb-1">العميل</div>
             <div className="font-semibold">{active.customer.name || "—"}</div>
@@ -843,8 +843,8 @@ function MessageBubble({ m }: { m: Msg }) {
   const bg = isUser
     ? "bg-white/[0.055] text-slate-100 border-white/10"
     : isAdmin
-      ? "bg-emerald-500/15 text-emerald-50 border-emerald-500/35 shadow-[0_0_24px_rgba(16,185,129,0.08)]"
-      : "bg-brand-500/15 text-slate-100 border-brand-500/35 shadow-[0_0_24px_rgba(34,197,94,0.08)]";
+      ? "bg-emerald-500/12 text-emerald-50 border-emerald-500/30"
+      : "bg-brand-500/15 text-slate-100 border-brand-500/30";
   // WhatsApp-style asymmetric corners: incoming has start-side tail, outgoing has end-side tail.
   const cornerClass = isUser ? "rounded-ss-sm" : "rounded-se-sm";
   const Icon = isUser ? User : isAdmin ? User : BotIcon;

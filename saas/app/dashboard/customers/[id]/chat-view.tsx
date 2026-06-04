@@ -43,7 +43,7 @@ export default function ChatView({
 
   return (
     <div className="card flex flex-col h-[70vh]">
-      <div className="flex-1 overflow-y-auto p-5 space-y-3" style={{ background: "#0a0f13" }}>
+      <div className="flex-1 overflow-y-auto p-5 space-y-3" style={{ background: "#0c0c10" }}>
         {msgs.length === 0 && (
           <div className="text-center text-slate-500 text-sm py-12">
             لسه ما فيش رسائل في المحادثة دي
