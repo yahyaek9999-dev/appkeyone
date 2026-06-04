@@ -93,12 +93,18 @@ const config: Config = {
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.6s ease-out",
+        "light-sweep": "lightSweep 7s ease-in-out infinite",
       },
       keyframes: {
         fadeIn: { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
         slideUp: {
           "0%": { opacity: "0", transform: "translateY(20px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        lightSweep: {
+          "0%": { transform: "translateX(-100%) skewX(-18deg)" },
+          "30%": { transform: "translateX(200%) skewX(-18deg)" },
+          "100%": { transform: "translateX(200%) skewX(-18deg)" },
         },
       },
     },

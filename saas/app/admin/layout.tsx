@@ -35,22 +35,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="ai-page min-h-screen text-white md:flex">
+      {/* Mobile header + drawer */}
       <MobileNav>
         {Brand}
         <AdminNavLinks />
         {Footer}
       </MobileNav>
 
-      <div className="hidden md:flex">
-        <aside className="sticky top-0 flex min-h-screen w-56 shrink-0 flex-col border-l border-white/[0.06] bg-canvas-deep">
-          {Brand}
-          <AdminNavLinks />
-          {Footer}
-        </aside>
-        <main className="min-h-screen flex-1 px-4 pb-safe pt-6 md:px-6 md:pt-8 lg:px-8 lg:pt-10">
-          {children}
-        </main>
-      </div>
+      {/* Desktop sidebar */}
+      <aside className="sticky top-0 hidden min-h-screen w-56 shrink-0 flex-col border-l border-white/[0.06] bg-canvas-deep md:flex">
+        {Brand}
+        <AdminNavLinks />
+        {Footer}
+      </aside>
+
+      {/* Page content — always rendered */}
+      <main className="min-h-screen flex-1 px-4 pb-safe pt-20 md:px-6 md:pt-8 lg:px-8 lg:pt-10">
+        {children}
+      </main>
     </div>
   );
 }

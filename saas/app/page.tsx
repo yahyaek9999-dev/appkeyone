@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import PublicNav from "@/components/ui/public-nav";
-import { WhatsAppIcon, AmbientBackdrop } from "@/components/ui/marketing";
+import { WhatsAppIcon } from "@/components/ui/marketing";
 import { getSiteConfig } from "@/lib/admin";
 import { getLocale, t } from "@/lib/i18n";
 import { PublicFooter } from "@/components/ui/public-footer";
@@ -10,7 +10,7 @@ import IntegrationsWhatsApp from "@/components/ui/integrations-whatsapp";
 import FaqAccordion from "@/components/ui/faq-accordion";
 import PricingCards, { type PricingPlan } from "@/components/ui/pricing-cards";
 import RoiSection from "@/components/ui/roi-section";
-import DataConstellation from "@/components/ui/data-constellation";
+import HeroSection from "@/components/hero/hero-section";
 import {
   ArrowLeft, ArrowRight, BarChart3, Bell, Database, CheckCircle2, Users,
   Phone, Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
@@ -155,7 +155,7 @@ export default async function LandingPage({
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
   const [plans, cfg] = await Promise.all([getPlans(), getSiteConfig()]);
-  const brandName = cfg.brandName || "KEYONE";
+  const brandName = cfg.brandName || "WKEYONE";
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
   const waHref = waNum
     ? "https://wa.me/" +
@@ -182,81 +182,15 @@ export default async function LandingPage({
     <main className="ai-page" dir={m.dir}>
       <PublicNav brandName={brandName} supportWhatsapp={cfg.supportWhatsapp} locale={locale} />
 
-      {/* ───────── Product-first hero ───────── */}
-      <section className="relative overflow-hidden pt-20 pb-8 sm:pb-10 sm:pt-24">
-        <AmbientBackdrop />
-        <DataConstellation />
-        <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-8">
-          {/* Product showcase — the app working, not marketing copy */}
-          <div className="grid items-start gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-            {/* Left: Product metrics + minimal tagline */}
-            <div className="order-2 lg:order-1">
-              {/* Eyebrow */}
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 py-1 text-xs font-medium text-slate-400">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" />
-                {m.hero.eyebrow}
-              </div>
-
-              {/* Minimal tagline */}
-              <h1 className="text-[1.75rem] font-semibold leading-[1.12] tracking-[-0.03em] text-white sm:text-[2.25rem] md:text-[2.75rem]">
-                <span className="block">{m.hero.h1Line1}</span>
-                <span className="block text-brand-300">{m.hero.h1Line3}</span>
-              </h1>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-400 sm:text-[15px]">
-                <span className="font-medium text-white">{brandName}</span> {m.hero.subtext}
-              </p>
-
-              {/* Live product metrics — showing real data */}
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] px-3 py-2.5">
-                  <div className="text-lg font-semibold tabular-nums text-white">24</div>
-                  <div className="text-[10px] text-slate-500">محادثة نشطة اليوم</div>
-                </div>
-                <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] px-3 py-2.5">
-                  <div className="text-lg font-semibold tabular-nums text-white">12</div>
-                  <div className="text-[10px] text-slate-500">طلب جديد</div>
-                </div>
-                <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] px-3 py-2.5">
-                  <div className="text-lg font-semibold tabular-nums text-white">5ث</div>
-                  <div className="text-[10px] text-slate-500">متوسط الرد</div>
-                </div>
-              </div>
-
-              {/* CTAs */}
-              <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-                {waNum ? (
-                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-10 px-4 text-sm">
-                    <WhatsAppIcon className="h-4 w-4" />
-                    {m.hero.ctaPrimary}
-                  </a>
-                ) : (
-                  <Link href="/pricing" className="btn-premium h-10 px-4 text-sm">
-                    {m.hero.ctaPrimary}
-                    <Arrow className="h-4 w-4" />
-                  </Link>
-                )}
-                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-10 text-sm">
-                  {m.hero.ctaSecondary}
-                </Link>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-500">
-                {[Lock, Shield, Users].map((Icon, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <Icon className="h-3 w-3 text-slate-600" />
-                    {m.hero.trustItems[i]}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right: Product mockup */}
-            <div className="order-1 lg:order-2">
-              <WhatsAppProductMockup dir={m.dir} />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ───────── Video hero ───────── */}
+      <HeroSection
+        brandName={brandName}
+        supportWhatsapp={cfg.supportWhatsapp}
+        locale={locale}
+        videoSrc="/vedio.mp4"
+        ctaPrimary={m.hero.ctaPrimary}
+        ctaSecondary={m.hero.ctaSecondary}
+      />
 
       {/* ───────── Stats that lead ───────── */}
       <section className="border-y border-white/[0.06] bg-white/[0.012] px-5 py-10">

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SmoothScroll from "@/components/smooth-scroll";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://k1wb.app.keyone1.com";
 
@@ -92,7 +93,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body><SmoothScroll>{children}</SmoothScroll></body>
     </html>
   );
 }
