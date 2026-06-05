@@ -93,7 +93,7 @@ export default function ProductsUi() {
             كتالوج المنتجات
           </h1>
           <p className="page-desc mt-1">
-            أضف منتجاتك ليرسلها الذكاء الاصطناعي للعملاء كبطاقات داخل واتساب — {items.length} منتج
+            أضف منتجاتك ليعرضها المساعد للعملاء كبطاقات داخل واتساب — {items.length} منتج
             {lowStock > 0 && <span className="text-amber-300"> · {lowStock} مخزون منخفض</span>}
           </p>
         </div>
@@ -111,7 +111,7 @@ export default function ProductsUi() {
           <EmptyState
             icon={<Package className="h-full w-full" />}
             title="لا توجد منتجات بعد"
-            description="أضف أول منتج ليبدأ الذكاء الاصطناعي بعرضه للعملاء."
+            description="أضف أول منتج ليبدأ المساعد بعرضه للعملاء."
           />
         </div>
       ) : (

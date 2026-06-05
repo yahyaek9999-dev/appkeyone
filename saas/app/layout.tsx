@@ -82,7 +82,7 @@ export default function RootLayout({
               applicationCategory: "BusinessApplication",
               operatingSystem: "Web",
               description:
-                "منصة بوت واتساب احترافي بالذكاء الاصطناعي للشركات والمتاجر.",
+                "منصة احترافية لأتمتة محادثات واتساب وذكاء الأعمال للشركات والمتاجر.",
               offers: {
                 "@type": "AggregateOffer",
                 priceCurrency: "USD",

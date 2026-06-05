@@ -20,7 +20,7 @@ export default async function KnowledgePage() {
   });
   return (
     <div>
-      <h1 className="page-title mb-1">مركز تدريب الذكاء الاصطناعي</h1>
+      <h1 className="page-title mb-1">مركز تدريب المساعد</h1>
       <p className="page-desc mb-6">
         أضف منتجاتك وأسعارك وسياساتك وأسئلتك الشائعة — البوت يستخدمها كمصدر رئيسي للإجابة.
       </p>

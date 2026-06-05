@@ -124,8 +124,8 @@ export const WORKSPACES: Workspace[] = [
   },
   {
     id: "ai",
-    label: "الذكاء",
-    short: "الذكاء",
+    label: "ذكاء الأعمال",
+    short: "الرؤى",
     icon: Brain,
     home: "/dashboard/bot",
     items: [

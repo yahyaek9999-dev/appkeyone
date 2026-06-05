@@ -73,7 +73,7 @@ export function AiActivityPill({ active, text }: { active: boolean; text?: strin
         {active && <span className="absolute inline-flex size-full animate-ping rounded-full bg-violet-400 opacity-60" />}
         <span className={cn("relative inline-flex size-2 rounded-full", active ? "bg-violet-400" : "bg-slate-500")} />
       </span>
-      {text || (active ? "AI يعمل الآن" : "AI جاهز")}
+      {text || (active ? "المساعد يعمل الآن" : "المساعد جاهز")}
     </span>
   );
 }

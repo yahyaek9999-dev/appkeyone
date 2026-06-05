@@ -202,7 +202,7 @@ function ActionConfigEditor({
           </div>
           <textarea
             className="input text-sm resize-none min-h-[60px]"
-            placeholder="نص الرسالة (اختياري — إذا فارغ يُولّده الذكاء الاصطناعي)"
+            placeholder="نص الرسالة (اختياري — إذا فارغ يُولّد تلقائياً)"
             value={config.message || ""}
             onChange={(e) => onChange({ ...config, message: e.target.value })}
           />

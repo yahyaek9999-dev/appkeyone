@@ -674,7 +674,7 @@ export default function InboxUi({
                   <button
                     onClick={loadSuggestions}
                     disabled={suggesting}
-                    title="اقترح AI ردود جاهزة"
+                    title="اقترح ردوداً جاهزة"
                     className="ai-btn ai-btn-ghost min-h-[44px] flex-1 border-brand-500/30 px-4 py-2 text-xs text-brand-200 disabled:opacity-50 sm:flex-none"
                   >
                     {suggesting ? (

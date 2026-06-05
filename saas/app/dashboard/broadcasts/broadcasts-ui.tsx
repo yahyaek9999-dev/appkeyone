@@ -381,7 +381,7 @@ export default function BroadcastsUi() {
             حملات البث الذكية
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            استهدف شريحة من عملائك، ولّد النص بالذكاء الاصطناعي، أرفق كوبون أو صورة، وجدول الإرسال — كله يُرسل تدريجياً عبر نفس نظام الحماية.
+            استهدف شريحة من عملائك، ولّد النص تلقائياً، أرفق كوبون أو صورة، وجدول الإرسال — كله يُرسل تدريجياً عبر نفس نظام الحماية.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -671,7 +671,7 @@ export default function BroadcastsUi() {
               <div className="rounded-lg border border-purple-500/25 bg-purple-500/[0.06] p-3">
                 <div className="flex items-center gap-2 text-sm font-medium text-purple-200 mb-2">
                   <Wand2 className="w-4 h-4" />
-                  توليد النص بالذكاء الاصطناعي
+                  توليد النص تلقائياً
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {GEN_TYPES.map((g) => (
@@ -821,7 +821,7 @@ export default function BroadcastsUi() {
                 <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border ${personalize ? "bg-purple-500/10 border-purple-500/30" : "bg-white/5 border-white/10"}`}>
                   <input type="radio" name="sendMode" checked={personalize} onChange={() => setPersonalize(true)} className="mt-0.5 w-4 h-4 accent-purple-500" />
                   <div className="flex-1">
-                    <div className="text-sm font-medium flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-purple-400" /> شخصنة بالذكاء الاصطناعي</div>
+                    <div className="text-sm font-medium flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-purple-400" /> شخصنة تلقائية</div>
                     <div className="text-xs text-slate-400 mt-0.5">البوت يعيد صياغة كل رسالة بنبرة طبيعية. الأرقام والأسعار مضمونة، وأي صياغة منحرفة تُرفض ويُرسل النص الأصلي. الكوبون والصورة تُضاف بعد الصياغة دائماً.</div>
                   </div>
                 </label>

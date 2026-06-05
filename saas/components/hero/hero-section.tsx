@@ -14,6 +14,7 @@ type HeroSectionProps = {
   supportWhatsapp?: string | null;
   locale: string;
   videoSrc: string;
+  mobileVideoSrc?: string;
   ctaPrimary: string;
   ctaSecondary: string;
 };
@@ -139,6 +140,7 @@ export default function HeroSection({
   supportWhatsapp,
   locale,
   videoSrc,
+  mobileVideoSrc,
   ctaPrimary,
   ctaSecondary,
 }: HeroSectionProps) {
@@ -186,7 +188,7 @@ export default function HeroSection({
         onMouseMove={handleMouseMove}
       >
         {/* ── Background Layers ── */}
-        <HeroVideo src={videoSrc} />
+        <HeroVideo src={videoSrc} mobileSrc={mobileVideoSrc} />
         <AmbientGlows />
         <CinematicGrid />
         <LightSweep />

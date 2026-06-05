@@ -148,7 +148,7 @@ export default function KnowledgeUI({ docs }: { docs: Doc[] }) {
           )}
         </div>
         {docs.length === 0 ? (
-          <p className="text-sm text-slate-500">لم يُضَف أي محتوى بعد — أضف مستنداً لتدريب الذكاء الاصطناعي.</p>
+          <p className="text-sm text-slate-500">لم يُضَف أي محتوى بعد — أضف مستنداً لتدريب المساعد.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatBox label="مصادر المعرفة"  value={String(docs.length)} icon={<BookOpen className="h-4 w-4" />} />

@@ -89,7 +89,7 @@ export default function CouponsUi() {
             <Ticket className="h-6 w-6 text-violet-400" />
             الكوبونات والخصومات
           </h1>
-          <p className="page-desc mt-1">أنشئ كوبونات يقدّمها الذكاء الاصطناعي تلقائيًا للعملاء المترددين وفي حملات الاستعادة</p>
+          <p className="page-desc mt-1">أنشئ كوبونات يقدّمها النظام تلقائيًا للعملاء المترددين وفي حملات الاستعادة</p>
         </div>
         <button onClick={() => setCreating({ ...EMPTY })} className="ai-btn ai-btn-primary px-4 py-2 text-sm">
           <Plus className="h-4 w-4" /> كوبون جديد
@@ -105,7 +105,7 @@ export default function CouponsUi() {
           <EmptyState
             icon={<Ticket className="h-full w-full" />}
             title="لا توجد كوبونات بعد"
-            description="أنشئ كوبونًا ليقدّمه الذكاء الاصطناعي تلقائيًا للعملاء المترددين."
+            description="أنشئ كوبونًا ليقدّمه النظام تلقائيًا للعملاء المترددين."
           />
         </div>
       ) : (
@@ -153,7 +153,7 @@ export default function CouponsUi() {
                     onClick={() => patch(c, { autoOffer: !c.autoOffer })}
                     className={`flex-1 rounded-xl border px-2 py-1.5 text-xs font-semibold ${c.autoOffer ? "border-brand-500/30 bg-brand-500/10 text-brand-300" : "border-white/10 bg-white/5 text-slate-400"}`}
                   >
-                    {c.autoOffer ? "عرض AI: مفعّل" : "عرض AI: متوقف"}
+                    {c.autoOffer ? "عرض تلقائي: مفعّل" : "عرض تلقائي: متوقف"}
                   </button>
                   <button
                     onClick={() => patch(c, { active: !c.active })}

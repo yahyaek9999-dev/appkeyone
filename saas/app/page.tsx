@@ -188,6 +188,7 @@ export default async function LandingPage({
         supportWhatsapp={cfg.supportWhatsapp}
         locale={locale}
         videoSrc="/vedio.mp4"
+        mobileVideoSrc="/mobile.mp4"
         ctaPrimary={m.hero.ctaPrimary}
         ctaSecondary={m.hero.ctaSecondary}
       />

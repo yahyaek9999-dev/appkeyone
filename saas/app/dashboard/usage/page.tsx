@@ -127,7 +127,7 @@ export default async function UsagePage() {
         />
         <Counter
           icon={<Sparkles className="w-5 h-5" />}
-          label="طلبات الذكاء الاصطناعي"
+          label="طلبات المعالجة"
           used={counters.ai.used}
           cap={counters.ai.cap}
         />
