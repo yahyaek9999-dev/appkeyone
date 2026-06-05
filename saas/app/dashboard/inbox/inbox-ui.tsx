@@ -486,7 +486,7 @@ export default function InboxUi({
                     {(() => {
                       const hs = (active.conversation as any)?.handoffState || "ai_active";
                       const map: Record<string, { l: string; c: string }> = {
-                        ai_active: { l: "AI نشط", c: "text-brand-300 border-brand-500/30 bg-brand-500/10" },
+                        ai_active: { l: "المساعد الذكي نشط", c: "text-brand-300 border-brand-500/30 bg-brand-500/10" },
                         human_active: { l: "تدخل بشري", c: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" },
                         escalation_pending: { l: "بانتظار البشر", c: "text-amber-300 border-amber-500/30 bg-amber-500/10" },
                         human_required: { l: "تصعيد", c: "text-rose-300 border-rose-500/30 bg-rose-500/10" },
@@ -523,8 +523,8 @@ export default function InboxUi({
                     sending
                       ? "إرسال مباشر"
                       : snapshot?.activeConversation?.botPaused
-                        ? "AI متوقف"
-                        : "AI يراقب"
+                        ? "المساعد متوقف"
+                        : "المساعد يراقب"
                   }
                 />
                 {active.customer.leadScore > 0 && (
@@ -549,7 +549,7 @@ export default function InboxUi({
                 >
                   {active.conversation?.botPaused ? (
                     <>
-                      <Play className="w-3 h-3" /> إرجاع للـ AI
+                      <Play className="w-3 h-3" /> إرجاع للمساعد الذكي
                     </>
                   ) : (
                     <>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth";
 import { getSiteConfig } from "@/lib/admin";
-import { BrandMark } from "@/components/ui/marketing";
+import Image from "next/image";
 import { LayoutDashboard, ShieldCheck } from "lucide-react";
 import LogoutButton from "./logout-button";
 import MobileNav from "./mobile-nav";
@@ -29,7 +29,16 @@ export default async function DashboardLayout({
 
   const Brand = (
     <Link href="/dashboard" className="flex items-center gap-2.5 px-3.5 py-4">
-      <BrandMark className="h-7 w-7 rounded-lg" iconClassName="h-3.5 w-3.5" />
+      <span className="relative h-7 w-11 shrink-0 overflow-hidden">
+        <Image
+          src="/logo.png"
+          alt={brandName}
+          fill
+          quality={100}
+          className="object-contain drop-shadow-[0_0_8px_rgba(104,114,212,0.25)]"
+          priority
+        />
+      </span>
       <div className="min-w-0">
         <div className="truncate text-[13px] font-semibold text-white">{brandName}</div>
         <div className="text-[10px] text-slate-500">مساحة العمل</div>
