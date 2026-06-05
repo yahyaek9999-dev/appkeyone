@@ -9,6 +9,7 @@ type FooterLocale = {
   features: string;
   pricing: string;
   faq: string;
+  projects?: string;
   company: string;
   terms: string;
   privacy: string;
@@ -68,6 +69,13 @@ export function PublicFooter({
                 {m.pricing}
               </Link>
             </li>
+            {m.projects && (
+              <li>
+                <Link href="/projects" className="transition hover:text-slate-200">
+                  {m.projects}
+                </Link>
+              </li>
+            )}
             <li>
               <a href="/#faq" className="transition hover:text-slate-200">
                 {m.faq}

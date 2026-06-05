@@ -1319,7 +1319,7 @@ model SafetyAudit {
 model SiteConfig {
   id              String   @id @default("singleton")
   brandName       String   @default("KEYONE")
-  brandTagline    String   @default("منصة الذكاء الاصطناعي للأعمال")
+  brandTagline    String   @default("أتمتة واتساب — ردود فورية، مبيعات أعلى، عملاء أسعد")
   supportWhatsapp String   @default("+201000000000")
   supportEmail    String   @default("support@keyone1.com")
   paymentNote     String   @default("")

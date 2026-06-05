@@ -191,6 +191,7 @@ export const ar = {
     contact: 'تواصل',
     features: 'المميزات',
     pricing: 'الأسعار',
+    projects: 'مشاريعنا',
     faq: 'الأسئلة الشائعة',
     terms: 'الشروط',
     privacy: 'الخصوصية',

@@ -192,6 +192,7 @@ export const en = {
     contact: "Contact",
     features: "Features",
     pricing: "Pricing",
+    projects: "Case studies",
     faq: "FAQ",
     terms: "Terms",
     privacy: "Privacy",

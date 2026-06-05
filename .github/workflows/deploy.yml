@@ -158,7 +158,6 @@ jobs:
             Write-Host '→ Prisma…'
             Set-Location '${APP_DIR}\saas'
             .\node_modules\.bin\prisma generate
-            .\node_modules\.bin\prisma db push --skip-generate --accept-data-loss
 
             Write-Host '→ Starting service…'
             nssm start '${SERVICE_NAME}'

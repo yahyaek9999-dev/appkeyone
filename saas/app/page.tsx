@@ -6,6 +6,7 @@ import { getSiteConfig } from "@/lib/admin";
 import { getLocale, t } from "@/lib/i18n";
 import { PublicFooter } from "@/components/ui/public-footer";
 import TrustSection from "@/components/ui/trust-section";
+import SocialProof from "@/components/ui/social-proof";
 import IntegrationsWhatsApp from "@/components/ui/integrations-whatsapp";
 import FaqAccordion from "@/components/ui/faq-accordion";
 import PricingCards, { type PricingPlan } from "@/components/ui/pricing-cards";
@@ -320,6 +321,9 @@ export default async function LandingPage({
       {/* ───────── Trust ───────── */}
       <TrustSection m={m.trust} dir={m.dir} />
 
+      {/* ───────── Social proof — testimonials + sector strip ───────── */}
+      <SocialProof locale={locale} dir={m.dir} />
+
       {/* ───────── Pricing preview ───────── */}
       <section id="pricing" className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
@@ -387,6 +391,7 @@ export default async function LandingPage({
           product: m.footer.product,
           features: m.footer.features,
           pricing: m.footer.pricing,
+          projects: m.footer.projects,
           faq: m.footer.faq,
           company: m.footer.company,
           terms: m.footer.terms,

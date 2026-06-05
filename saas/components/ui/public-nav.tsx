@@ -18,7 +18,7 @@ import LangSwitch from "@/components/ui/lang-switch";
 type PublicNavProps = {
   brandName: string;
   supportWhatsapp?: string | null;
-  current?: "home" | "pricing" | "auth" | "legal";
+  current?: "home" | "pricing" | "projects" | "auth" | "legal";
   className?: string;
   locale?: Locale;
 };
@@ -26,6 +26,7 @@ type PublicNavProps = {
 const LINKS = (locale: Locale) => [
   { href: "/#features", label: locale === "ar" ? "المميزات" : "Features" },
   { href: "/#how", label: locale === "ar" ? "طريقة العمل" : "How it works" },
+  { href: "/projects", label: locale === "ar" ? "مشاريعنا" : "Case studies" },
   { href: "/pricing", label: locale === "ar" ? "الأسعار" : "Pricing" },
   { href: "/#faq", label: locale === "ar" ? "الأسئلة" : "FAQ" },
 ];
@@ -105,7 +106,9 @@ export default function PublicNav({
         {/* Desktop nav links */}
         <div className="hidden items-center gap-0.5 md:flex">
           {links.map((item) => {
-            const active = current === "pricing" && item.href === "/pricing";
+            const active =
+              (current === "pricing" && item.href === "/pricing") ||
+              (current === "projects" && item.href === "/projects");
             return (
               <Link
                 key={item.href}

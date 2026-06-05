@@ -158,6 +158,7 @@ export default async function PricingPage({
           product: m.footer.product,
           features: m.footer.features,
           pricing: m.footer.pricing,
+          projects: m.footer.projects,
           faq: m.footer.faq,
           company: m.footer.company,
           terms: m.footer.terms,

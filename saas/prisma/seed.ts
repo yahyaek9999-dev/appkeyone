@@ -94,11 +94,11 @@ const plans = [
     priceUsd: 199,
     yearlyUsd: 1990,
     monthlyMsgs: 50000,
-    description: "للمتاجر والعلامات التي تحتاج طاقة أكبر ووصول كامل لمزايا الذكاء الاصطناعي",
+    description: "للمتاجر والعلامات التي تحتاج طاقة أكبر وتحكماً كاملاً",
     features: JSON.stringify([
       "50,000 رسالة شهرياً",
       "ربط 4 أرقام واتساب",
-      "ذكاء اصطناعي متقدم (مزود خارجي مدمج)",
+      "معالجة متقدمة للصور والمستندات والأوامر",
       "أتمتة المتابعات والتقارير اليومية",
       "تحليلات مبيعات متعمقة",
       "أولوية معالجة الرسائل",
@@ -146,7 +146,7 @@ async function main() {
     create: {
       id: "singleton",
       brandName: "KEYONE",
-      brandTagline: "منصة الذكاء الاصطناعي للأعمال - بوت واتساب احترافي",
+      brandTagline: "أتمتة واتساب — ردود فورية، مبيعات أعلى، عملاء أسعد",
       supportWhatsapp: process.env.SUPPORT_WHATSAPP || "+201000000000",
       supportEmail: process.env.SUPPORT_EMAIL || "support@keyone1.com",
     },
