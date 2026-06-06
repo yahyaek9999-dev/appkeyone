@@ -99,6 +99,27 @@ export function detectSignals(text: string): SalesSignals {
   };
 }
 
+// Merge keyword-detected signals with LLM-classified intent.
+// LLM signals only ADD to keyword results — they never remove a positive
+// keyword detection, so the rule-based system remains the safety net.
+export function mergeSignals(
+  keyword: SalesSignals,
+  llm: { buyStrong?: boolean; hesitation?: boolean; objection?: string | null; frustrated?: boolean } | null,
+): SalesSignals {
+  if (!llm) return keyword;
+  return {
+    ...keyword,
+    buyStrong: keyword.buyStrong || Boolean(llm.buyStrong),
+    hesitation: keyword.hesitation || Boolean(llm.hesitation),
+    objections: {
+      price:    keyword.objections.price    || llm.objection === "price",
+      trust:    keyword.objections.trust    || llm.objection === "trust",
+      shipping: keyword.objections.shipping || llm.objection === "shipping",
+      quality:  keyword.objections.quality  || llm.objection === "quality",
+    },
+  };
+}
+
 // Growth Suite — catalog request detector ("send me the products/prices/menu").
 // Used additively to attach product cards to a reply. Kept tight to avoid
 // firing on generic price questions about a single item already in context.

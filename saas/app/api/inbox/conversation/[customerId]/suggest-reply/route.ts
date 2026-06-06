@@ -4,13 +4,14 @@ import { requirePermission } from "@/lib/auth";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { chat as llmChat } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
+import { retrieveRelevantKb } from "@/lib/kb-cache";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Generate 3 distinct, ready-to-send reply options for the admin to choose from.
- * Uses the same KB context the bot uses, but asks the LLM to produce three
- * different angles (e.g. polite, sales-pushy, factual). Costs ~1 LLM call.
+ * Generate 3-4 distinct, ready-to-send reply options for the admin to choose from.
+ * Enriched with customer memory, last 3 orders, and customer risk signals.
+ * Costs ~1 LLM call per request.
  */
 export async function POST(
   req: Request,
@@ -20,7 +21,6 @@ export async function POST(
   try { user = await requirePermission("inbox"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
-  // AI cost guard — ~1 LLM call per request; rate-limit per workspace.
   const limited = enforceRateLimit(req, { name: "inbox-suggest-reply", identifier: user.id, ...RATE_LIMITS.chat });
   if (limited) return limited;
 
@@ -31,6 +31,7 @@ export async function POST(
       conversation: {
         include: { messages: { orderBy: { createdAt: "asc" }, take: 20 } },
       },
+      memory: { select: { summary: true, factsJson: true } },
     },
   });
   if (!customer || !customer.conversation) {
@@ -43,30 +44,58 @@ export async function POST(
     return NextResponse.json({ error: "no inbound message" }, { status: 400 });
   }
 
-  // Pull KB so suggestions are factually grounded.
-  const docs = await prisma.document.findMany({
-    where: { userId: user.id },
-    select: { title: true, content: true },
-    take: 50,
-  });
-  const kb = docs
-    .map((d) => `# ${d.title}\n${d.content}`)
-    .join("\n\n---\n\n")
-    .slice(0, 8000);
+  // Load last 3 orders and bot config in parallel with KB retrieval
+  const [kb, recentOrders, bot] = await Promise.all([
+    retrieveRelevantKb(user.id, lastUser.content, { k: 5, charBudget: 4000, minScore: 0.06 }),
+    (prisma as any).order.findMany({
+      where: { customerId },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: { status: true, totalAmount: true, createdAt: true },
+    }).catch(() => []),
+    prisma.bot.findUnique({ where: { userId: user.id } }),
+  ]);
 
-  const bot = await prisma.bot.findUnique({ where: { userId: user.id } });
+  // Determine if customer is at-risk for a win-back suggestion
+  const churnRisk = (customer as any).churnRiskScore ?? 0;
+  const isAtRisk = churnRisk >= 60;
+
+  // Format memory context
+  const memBlock = customer.memory?.summary
+    ? `\n### ذاكرة العميل\n${customer.memory.summary}`
+    : "";
+
+  // Format recent orders context
+  const ordersBlock = recentOrders.length > 0
+    ? `\n### آخر ${recentOrders.length} طلبات\n` +
+      recentOrders.map((o: any) => {
+        const date = new Date(o.createdAt).toLocaleDateString("ar-EG");
+        return `- ${date}: ${o.status} — ${o.totalAmount ? `${o.totalAmount} ج.م` : "غير محدد"}`;
+      }).join("\n")
+    : "";
+
+  // Build suggestion schema — add win-back slot when customer is at-risk
+  const suggestionSchema = isAtRisk
+    ? `{"suggestions":[{"label":"رد سريع","text":"..."},{"label":"رد بيعي","text":"..."},{"label":"استرداد عميل","text":"..."}]}`
+    : `{"suggestions":[{"label":"رد سريع","text":"..."},{"label":"رد بيعي","text":"..."},{"label":"إغلاق البيع","text":"..."}]}`;
+
+  const thirdSuggestionRule = isAtRisk
+    ? `"استرداد عميل": رسالة دافئة تستعيد ثقة العميل، تُقدّر تعامله السابق وتعرض قيمة جديدة، بدون ضغط.`
+    : `"إغلاق البيع": يدفع العميل لاتخاذ القرار الآن (تأكيد الطلب/المقاس/العنوان).`;
 
   const sys = [
     `أنت مساعد لموظف خدمة عملاء بشري. مهمتك اقتراح ٣ ردود قصيرة مختلفة بالعربية يمكن للموظف اختيار أحدها أو تعديله.`,
     `الشخصية المطلوبة: ${bot?.persona || "ودود ومحترف"}.`,
+    memBlock,
+    ordersBlock,
     ``,
     `أعد JSON فقط بهذا الشكل بدون أي شرح:`,
-    `{"suggestions":[{"label":"رد سريع","text":"..."},{"label":"رد بيعي","text":"..."},{"label":"إغلاق البيع","text":"..."}]}`,
+    suggestionSchema,
     ``,
     `قواعد:`,
     `- كل رد قصير (٢-٣ جمل بحد أقصى).`,
     `- لا تخترع أسعاراً أو معلومات غير موجودة في قاعدة المعرفة.`,
-    `- نوّع الزاوية: "رد سريع" مختصر يطمّن العميل بسرعة، "رد بيعي" يبرز قيمة المنتج ويحفّز الشراء، "إغلاق البيع" يدفع العميل لاتخاذ القرار الآن (تأكيد الطلب/المقاس/العنوان).`,
+    `- نوّع الزاوية: "رد سريع" مختصر يطمّن العميل بسرعة، "رد بيعي" يبرز قيمة المنتج ويحفّز الشراء، ${thirdSuggestionRule}`,
     `- لا تستخدم Markdown.`,
     kb ? `\n--- معلومات الشركة ---\n${kb}\n--- نهاية ---` : "",
   ].join("\n");
@@ -89,7 +118,7 @@ export async function POST(
             `اقترح ٣ ردود.`,
         },
       ],
-      { temperature: 0.85, maxTokens: 600, provider: botProviderOverride(bot) }
+      { temperature: 0.85, maxTokens: 700, provider: botProviderOverride(bot) }
     );
     parsed = extractJson(raw);
   } catch (e: any) {
@@ -100,7 +129,7 @@ export async function POST(
   if (parsed && Array.isArray(parsed.suggestions)) {
     suggestions = parsed.suggestions
       .filter((s: any) => s && typeof s.text === "string" && s.text.trim().length > 0)
-      .slice(0, 3)
+      .slice(0, 4)
       .map((s: any) => ({
         label: String(s.label || "").slice(0, 30) || "اقتراح",
         text: String(s.text).slice(0, 800),

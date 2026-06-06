@@ -7,6 +7,7 @@ import { chat as llmChat, buildMessages, detectOrderIntent } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { notifyMerchant } from "@/lib/notify";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { retrieveRelevantKb } from "@/lib/kb-cache";
 import {
   analyzeCustomerMessage,
   customerEscalationReply,
@@ -116,10 +117,7 @@ export async function POST(req: Request) {
     const bot = await prisma.bot.findUnique({ where: { userId: user.id } });
     if (!bot)
       return NextResponse.json({ error: "البوت غير مهيأ" }, { status: 400 });
-    const docs = await prisma.document.findMany({ where: { userId: user.id } });
-    const knowledgeBase = docs
-      .map((d) => `# ${d.title}\n${d.content}`)
-      .join("\n\n---\n\n");
+    const knowledgeBase = await retrieveRelevantKb(user.id, message, { k: 6, charBudget: 5000, minScore: 0.08 });
 
     // Detect order intent BEFORE LLM (cheap)
     const flagged = detectOrderIntent(message, bot.orderKeywords);

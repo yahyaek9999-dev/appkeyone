@@ -25,10 +25,12 @@ import {
   loadMemory,
   buildMemoryBlock,
   triggerMemoryUpdate,
+  microUpdateTopics,
 } from "@/lib/memory";
 import { fuzzyMatchQuickReplies } from "@/lib/semantic-match";
 import {
   detectSignals,
+  mergeSignals,
   detectCatalogIntent,
   classifyPsychology,
   chooseMode,
@@ -37,6 +39,7 @@ import {
   readNegotiation,
   applySignalsToNegotiation,
 } from "@/lib/sales-engine";
+import { classifyIntentLLM } from "@/lib/intent-classifier";
 import { buildCatalogCards, maybeBuildAutoCoupon } from "@/lib/catalog/cards";
 import { assessOutbound } from "@/lib/anti-ban";
 import {
@@ -802,7 +805,7 @@ export async function POST(req: Request) {
   const [knowledgeBase, memorySnap] = await Promise.all([
     fromCache
       ? Promise.resolve("")
-      : retrieveRelevantKb(userId, messageText, { k: 4, charBudget: 3500 }),
+      : retrieveRelevantKb(userId, messageText, { k: 6, charBudget: 5000, minScore: 0.08 }),
     fromCache
       ? Promise.resolve({ summary: "", facts: {}, hasSummary: false } as any)
       : loadMemory(customer.id),
@@ -825,7 +828,16 @@ export async function POST(req: Request) {
     persuasionEnabled: !!bot.persuasionEnabled,
   });
   if (salesGated) {
-    const signals = detectSignals(messageText);
+    const keywordSignals = detectSignals(messageText);
+    // LLM intent classifier supplements keyword detection for paraphrased/
+    // informal Arabic. Runs with a 3s timeout; falls back silently to
+    // keyword-only signals on any error.
+    const llmIntent = await classifyIntentLLM(
+      messageText,
+      botProviderOverride(bot),
+      { timeoutMs: 3000 },
+    ).catch(() => null);
+    const signals = mergeSignals(keywordSignals, llmIntent);
     const negotiation = readNegotiation(memorySnap.facts);
     const psy = classifyPsychology({
       leadScore: (customer as any).leadScore || 0,
@@ -962,6 +974,14 @@ export async function POST(req: Request) {
     sentiment: emotional.sentiment,
     confidenceScore: emotional.confidenceScore,
     frustrationScore: emotional.frustrationScore,
+  }).catch(() => {});
+
+  // Phase 1 micro-update: refresh lastTopics + tone on every message
+  // without waiting for the full extractor cycle. Fire-and-forget.
+  microUpdateTopics({
+    customerId: customer.id,
+    messageText,
+    provider: botProviderOverride(bot),
   }).catch(() => {});
 
   // Immutable usage ledger: always bill the outbound reply; bill AI only when

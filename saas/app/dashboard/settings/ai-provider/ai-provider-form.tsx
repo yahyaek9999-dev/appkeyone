@@ -2,9 +2,24 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Sparkles, FlaskConical } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Sparkles, FlaskConical, Zap, Brain, Rocket } from "lucide-react";
 
 type ProviderId = "keyone" | "openai" | "gemini" | "openrouter" | "claude" | "groq";
+type QualityTier = "fast" | "balanced" | "smart";
+
+const TIER_MODELS: Record<Exclude<ProviderId, "keyone">, Record<QualityTier, string>> = {
+  openai:     { fast: "gpt-4o-mini",                             balanced: "gpt-4o",                       smart: "gpt-4.1" },
+  claude:     { fast: "claude-3-5-haiku-latest",                 balanced: "claude-3-5-sonnet-20241022",   smart: "claude-opus-4-5" },
+  gemini:     { fast: "gemini-2.0-flash",                        balanced: "gemini-1.5-pro",               smart: "gemini-1.5-pro" },
+  openrouter: { fast: "meta-llama/llama-3.3-70b-instruct:free", balanced: "openai/gpt-4o",               smart: "anthropic/claude-opus-4" },
+  groq:       { fast: "llama-3.1-8b-instant",                    balanced: "llama-3.3-70b-versatile",     smart: "llama-3.3-70b-versatile" },
+};
+
+const TIERS: { id: QualityTier; ar: string; desc: string; Icon: React.ElementType }[] = [
+  { id: "fast",     ar: "سريع",   desc: "ردود فورية، تكلفة منخفضة",     Icon: Zap },
+  { id: "balanced", ar: "متوازن", desc: "دقة أعلى، مناسب للمبيعات",     Icon: Brain },
+  { id: "smart",    ar: "ذكي",   desc: "أعلى دقة، أبطأ قليلاً",        Icon: Rocket },
+];
 
 type Initial = {
   provider: ProviderId;
@@ -38,6 +53,24 @@ export function AIProviderForm({ initial }: { initial: Initial }) {
     provider === "openrouter" ? "meta-llama/llama-3.3-70b-instruct:free" :
     provider === "claude"     ? "claude-3-5-haiku-latest" :
     provider === "groq"       ? "llama-3.1-8b-instant" : "";
+
+  // Detect which tier the current model corresponds to (if any)
+  function activeTier(): QualityTier | null {
+    if (isKeyone) return null;
+    const tiers = TIER_MODELS[provider as Exclude<ProviderId, "keyone">];
+    if (!tiers) return null;
+    const m = model || defaultModel;
+    for (const t of ["fast", "balanced", "smart"] as QualityTier[]) {
+      if (tiers[t] === m) return t;
+    }
+    return null;
+  }
+
+  function selectTier(tier: QualityTier) {
+    if (isKeyone) return;
+    const tiers = TIER_MODELS[provider as Exclude<ProviderId, "keyone">];
+    if (tiers) setModel(tiers[tier]);
+  }
 
   async function onTest() {
     if (isKeyone) return;
@@ -147,10 +180,37 @@ export function AIProviderForm({ initial }: { initial: Initial }) {
             </p>
           </div>
 
+          {/* Quality tier selector */}
+          <div>
+            <label className="text-sm font-semibold mb-2 block">مستوى الذكاء</label>
+            <div className="grid grid-cols-3 gap-2">
+              {TIERS.map(({ id, ar, desc, Icon }) => {
+                const active = activeTier() === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => selectTier(id)}
+                    className={
+                      "flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-center transition-all " +
+                      (active
+                        ? "border-brand-400 bg-brand-400/10 text-brand-300"
+                        : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-500 hover:text-slate-200")
+                    }
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-xs font-semibold">{ar}</span>
+                    <span className="text-[10px] leading-tight opacity-70">{desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Model (optional override) */}
           <div>
             <label className="text-sm font-semibold mb-2 block">
-              الموديل <span className="text-xs text-slate-500 font-normal">(اختياري)</span>
+              الموديل <span className="text-xs text-slate-500 font-normal">(اختياري — اختر مستوى أو اكتب يدوياً)</span>
             </label>
             <input
               type="text"

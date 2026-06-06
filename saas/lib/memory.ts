@@ -19,13 +19,14 @@
 
 import { prisma } from "@/lib/db";
 import { chat as llmChat } from "@/lib/llm";
+import type { ProviderOverride } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 
 // How many *new* user messages must pile up before we run an extraction.
 // Cheap heuristic: 20 ≈ once every ~10 minutes of active chat.
 const EXTRACT_EVERY = Math.max(
   5,
-  Number(process.env.MEMORY_EXTRACT_EVERY || 20),
+  Number(process.env.MEMORY_EXTRACT_EVERY || 8),
 );
 
 // Hard guard so we never block the request path on the LLM extractor.
@@ -499,4 +500,75 @@ export function buildMemoryBlock(snap: CustomerMemorySnapshot): string {
     lines.join("\n") +
     `\n--- نهاية الذاكرة ---`
   );
+}
+
+/**
+ * Lightweight micro-extraction: updates only lastTopics and tone from the
+ * current message. Runs fire-and-forget (caller must not await). Cost: ~55
+ * tokens per call. Never throws — all errors are swallowed silently.
+ */
+export async function microUpdateTopics(args: {
+  customerId: string;
+  messageText: string;
+  provider: ProviderOverride | null;
+}): Promise<void> {
+  const { customerId, messageText, provider } = args;
+  if (!messageText || messageText.trim().length < 5) return;
+  try {
+    const raw = await llmChat(
+      [
+        {
+          role: "system",
+          content:
+            `أنت مصنّف سريع. أعد JSON فقط:\n` +
+            `{"topics":["موضوع1","موضوع2"],"tone":"calm|warm|impatient|skeptical"}\n` +
+            `topics: أبرز موضوعين ذكرهما العميل (سلعة، خدمة، أو طلب محدد). tone: نبرة العميل.`,
+        },
+        { role: "user", content: messageText.slice(0, 250) },
+      ],
+      { provider, maxTokens: 40, temperature: 0, timeoutMs: 3000 },
+    );
+
+    let parsed: { topics?: string[]; tone?: string } = {};
+    try {
+      parsed = JSON.parse(raw.replace(/```[a-z]*\n?/gi, "").trim());
+    } catch {
+      return;
+    }
+
+    const topics = Array.isArray(parsed.topics)
+      ? parsed.topics.filter((t): t is string => typeof t === "string").slice(0, 3)
+      : [];
+    const tone = typeof parsed.tone === "string" ? parsed.tone : null;
+    if (!topics.length && !tone) return;
+
+    const existing = await (prisma as any).customerMemory.findUnique({
+      where: { customerId },
+    });
+    const prevFacts: MemoryFacts = safeFacts(existing?.factsJson);
+    const updatedFacts: MemoryFacts = {
+      ...prevFacts,
+      ...(topics.length ? { lastTopics: topics } : {}),
+      ...(tone ? { tone } : {}),
+    };
+
+    if (existing) {
+      await (prisma as any).customerMemory.update({
+        where: { customerId },
+        data: { factsJson: JSON.stringify(updatedFacts) },
+      });
+    } else {
+      await (prisma as any).customerMemory.create({
+        data: {
+          customerId,
+          summary: "",
+          factsJson: JSON.stringify(updatedFacts),
+          messageCount: 0,
+          pendingCount: 0,
+        },
+      });
+    }
+  } catch {
+    // fire-and-forget: never surface errors to caller
+  }
 }

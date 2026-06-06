@@ -8,6 +8,36 @@ import { routeProviderChat } from "./providers/provider-router";
 import type { ProviderId } from "./providers/types";
 import { bumpProvider } from "./metrics";
 
+// ---------------------------------------------------------------------------
+// Token estimation (Arabic-aware, no tokenizer dependency)
+// ---------------------------------------------------------------------------
+// Arabic Unicode block chars cost ~1.5-2 tokens each; Latin chars ~0.25.
+// Conservative heuristic: arabic/2 + latin/4 → errs on the side of MORE tokens
+// so we never accidentally over-stuff the context window.
+function estimateTokens(s: string): number {
+  const arabicChars = (s.match(/[؀-ۿݐ-ݿࢠ-ࣿ]/g) || []).length;
+  return Math.ceil(arabicChars / 2 + (s.length - arabicChars) / 4);
+}
+
+const MODEL_CONTEXT_LIMITS: Record<string, number> = {
+  "gpt-4o-mini": 127_000,
+  "gpt-4o": 127_000,
+  "gpt-4.1": 127_000,
+  "claude-3-5-haiku-latest": 195_000,
+  "claude-3-5-sonnet-20241022": 195_000,
+  "claude-opus-4-5": 195_000,
+  "gemini-2.0-flash": 999_000,
+  "gemini-1.5-pro": 999_000,
+  "llama-3.3-70b-versatile": 32_000,
+  "llama-3.1-8b-instant": 32_000,
+};
+const DEFAULT_CONTEXT_TOKENS = 30_000;
+
+function modelContextLimit(modelHint?: string | null): number {
+  if (!modelHint) return DEFAULT_CONTEXT_TOKENS;
+  return MODEL_CONTEXT_LIMITS[modelHint] ?? DEFAULT_CONTEXT_TOKENS;
+}
+
 // LLM client that talks to the existing mse_ai_api (OpenAI-compatible).
 //
 // IMPORTANT: This module DOES NOT modify any LLM responses. It only:
@@ -423,6 +453,8 @@ export function buildMessages(opts: {
   policyRules?: string; // verbatim merchant-authored rules, injected as a hard constraint
   // ---- Production intelligence: emotional tone adaptation ----
   emotionalContext?: string; // pre-rendered tone/sentiment block from lib/sentiment
+  // ---- Token budget: helps trim context for smaller models ----
+  modelHint?: string | null; // resolved model name for context-window sizing
 }): Msg[] {
   const sys: string[] = [];
   sys.push(`أنت "${opts.botName}", مساعد ذكي يخدم زبائن شركة عبر واتساب.`);
@@ -501,10 +533,19 @@ export function buildMessages(opts: {
   }
 
   if (opts.knowledgeBase && opts.knowledgeBase.trim()) {
+    // Budget-aware KB slice: estimate tokens used so far and limit KB to
+    // fit comfortably within the model context window. Hard ceiling: 12,000
+    // chars for unknown models; budget-aware ceiling for known models.
+    const contextLimit = modelContextLimit(opts.modelHint);
+    const sysTokensSoFar = estimateTokens(sys.join("\n\n"));
+    // Reserve 30% of context for history + response; allocate rest to KB.
+    const kbTokenBudget = Math.max(500, Math.floor(contextLimit * 0.4) - sysTokensSoFar);
+    // Convert token budget back to a char limit (pessimistic: × 2 for Arabic)
+    const kbCharLimit = Math.min(12000, kbTokenBudget * 2);
     sys.push(
       `--- معلومات الشركة (استخدمها كمصدر رئيسي) ---\n${opts.knowledgeBase.slice(
         0,
-        12000,
+        kbCharLimit,
       )}\n--- نهاية المعلومات ---`,
     );
   }
@@ -675,6 +716,22 @@ export function buildMessages(opts: {
     sys.push(opts.salesBlock.trim());
   }
 
+  // ---- Arabic few-shot examples (compact 2-shot for response style) ----
+  // Gated on non-custom modes so merchants with fully custom prompts aren't
+  // affected. These examples ground the LLM in Egyptian Arabic response style
+  // without consuming significant tokens (~80 total).
+  const _modeForShots = (opts.businessMode || "store").trim();
+  if (_modeForShots !== "custom") {
+    sys.push(
+      `أمثلة على أسلوب الرد (لا ترسل هذه الأمثلة، استخدمها فقط كمرجع للأسلوب):
+عميل: بكام الشنطة دي؟
+أنت: الشنطة متاحة بـ [السعر من قاعدة المعرفة] — وفيها ألوان تانية كمان، عايز تشوف؟
+
+عميل: مش متأكد
+أنت: خلّيك معايا ثانية — ايه اللي بيوقفك؟ ممكن نحلّها مع بعض.`,
+    );
+  }
+
   const messages: Msg[] = [{ role: "system", content: sys.join("\n\n") }];
 
   // Phase 3: adaptive history depth based on question complexity.
@@ -689,6 +746,15 @@ export function buildMessages(opts: {
   );
   let historyLimit = depthForComplexity(complexity);
   if (hasMemory) historyLimit = Math.min(historyLimit, 8);
+
+  // Token-budget guard: if the assembled system prompt already consumes
+  // more than 50% of the model context, halve the history limit so we
+  // leave room for the model's reply without silent truncation.
+  const systemTokens = estimateTokens(sys.join("\n\n"));
+  const ctxLimit = modelContextLimit(opts.modelHint);
+  if (systemTokens > ctxLimit * 0.5) {
+    historyLimit = Math.max(2, Math.floor(historyLimit / 2));
+  }
 
   // Phase 3: drop greetings, acks, and assistant-side duplicates BEFORE we
   // slice. This frees the limited window for high-information turns.

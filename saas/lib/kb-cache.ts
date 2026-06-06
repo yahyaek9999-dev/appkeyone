@@ -189,7 +189,8 @@ export async function retrieveRelevantKb(
   const scored = e.chunks.map((c) => {
     const cs = cosine(qVec, c.tfv);
     const js = jaccard(qTokens, c.tokens);
-    return { chunk: c, score: 0.7 * cs + 0.3 * js };
+    const titleBonus = qTokens.some((t) => normalizeAr(c.docTitle).includes(t)) ? 0.1 : 0;
+    return { chunk: c, score: Math.min(1, 0.7 * cs + 0.3 * js + titleBonus) };
   });
   scored.sort((a, b) => b.score - a.score);
 

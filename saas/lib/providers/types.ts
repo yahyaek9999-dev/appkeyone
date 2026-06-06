@@ -41,6 +41,23 @@ export const DEFAULT_MODELS: Record<Exclude<ProviderId, "keyone">, string> = {
   groq: "llama-3.1-8b-instant",
 };
 
+/** Quality tiers for model selection in the merchant settings UI. */
+export type QualityTier = "fast" | "balanced" | "smart";
+
+export const TIER_MODELS: Record<Exclude<ProviderId, "keyone">, Record<QualityTier, string>> = {
+  openai:     { fast: "gpt-4o-mini",                             balanced: "gpt-4o",                       smart: "gpt-4.1" },
+  claude:     { fast: "claude-3-5-haiku-latest",                 balanced: "claude-3-5-sonnet-20241022",   smart: "claude-opus-4-5" },
+  gemini:     { fast: "gemini-2.0-flash",                        balanced: "gemini-1.5-pro",               smart: "gemini-1.5-pro" },
+  openrouter: { fast: "meta-llama/llama-3.3-70b-instruct:free", balanced: "openai/gpt-4o",               smart: "anthropic/claude-opus-4" },
+  groq:       { fast: "llama-3.1-8b-instant",                    balanced: "llama-3.3-70b-versatile",     smart: "llama-3.3-70b-versatile" },
+};
+
+export const TIER_LABELS: Record<QualityTier, { ar: string; description: string }> = {
+  fast:     { ar: "سريع",   description: "ردود فورية، تكلفة منخفضة" },
+  balanced: { ar: "متوازن", description: "دقة أعلى، مناسب للمبيعات" },
+  smart:    { ar: "ذكي",   description: "أعلى دقة، أبطأ قليلاً" },
+};
+
 export const PROVIDER_LABELS: Record<ProviderId, string> = {
   keyone: "KEYONE AI (افتراضي)",
   openai: "OpenAI",
