@@ -44,10 +44,18 @@ export interface EffectivePlan {
 }
 
 const TIER_BY_SLUG: Record<string, EffectivePlan["tier"]> = {
+  // Legacy slugs (existing subscribers — do not remove).
   starter: "basic", basic: "basic",
   pro: "pro",
   business: "max", max: "max",
   enterprise: "companies", companies: "companies",
+  // New public catalog slugs (k_*) → internal gating tier.
+  k_start: "basic",
+  k_growth: "pro",
+  k_pro: "pro",
+  k_business: "max",
+  k_scale: "max",
+  k_enterprise: "companies",
 };
 
 const META_BY_TIER: Record<EffectivePlan["tier"], EffectivePlan["metaAccess"]> = {

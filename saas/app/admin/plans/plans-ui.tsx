@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CAPABILITIES } from "@/lib/pricing/catalog";
 
 interface PlanRow {
   slug: string;
@@ -20,7 +21,18 @@ interface PlanRow {
   featureFlags: Record<string, any>;
 }
 
-const KNOWN_FLAGS = ["broadcasts", "knowledge_base", "follow_ups", "templates", "daily_report", "api_access", "custom_persona"];
+// Boolean capability flags from the pricing catalog + legacy flags that
+// predate it. Numeric soft-limits (team/automations/kbDocs) are intentionally
+// excluded — they're not booleans and are managed via the seed/catalog.
+const KNOWN_FLAGS = Array.from(
+  new Set([
+    ...CAPABILITIES.map((c) => c.key),
+    "follow_ups",
+    "templates",
+    "daily_report",
+    "custom_persona",
+  ]),
+);
 
 export default function PlansUi({ initial }: { initial: PlanRow[] }) {
   const [editing, setEditing] = useState<string | null>(null);

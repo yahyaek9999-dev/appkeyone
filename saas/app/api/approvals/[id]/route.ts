@@ -1,0 +1,62 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { apiGate } from "@/lib/membership/gate";
+import { getAuthContext } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
+const db = prisma as any;
+
+/** Approve / reject. Only owner or admin may decide (team permission). */
+export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+  const g = await apiGate("approval_workflows");
+  if (g.response) return g.response;
+  const uid = g.uid!;
+
+  let body: any = {};
+  try { body = await req.json(); } catch {}
+  const action = body.action; // "approve" | "reject"
+  if (!["approve", "reject"].includes(action)) {
+    return NextResponse.json({ error: "invalid_action" }, { status: 400 });
+  }
+
+  // Only owner/admin can decide.
+  let decidedBy = "";
+  try {
+    const c = await getAuthContext();
+    const role = c?.role || "owner";
+    if (!["owner", "admin"].includes(role)) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+    decidedBy = c?.principalEmail || c?.user?.email || "";
+  } catch {}
+
+  try {
+    const existing = await db.approvalRequest.findFirst({ where: { id: ctx.params.id, userId: uid } });
+    if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    await db.approvalRequest.update({
+      where: { id: ctx.params.id },
+      data: {
+        status: action === "approve" ? "approved" : "rejected",
+        decidedBy,
+        decidedAt: new Date(),
+        decisionNote: body.note ? String(body.note).trim() : null,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "not_ready", pending: true }, { status: 503 });
+  }
+}
+
+export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+  const g = await apiGate("approval_workflows");
+  if (g.response) return g.response;
+  const uid = g.uid!;
+  try {
+    await db.approvalRequest.deleteMany({ where: { id: ctx.params.id, userId: uid } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "not_ready", pending: true }, { status: 503 });
+  }
+}

@@ -45,6 +45,9 @@ import {
   Database,
   ShieldCheck,
   Beaker,
+  Workflow,
+  CheckSquare,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 
@@ -164,6 +167,9 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard/integrations", label: "التكاملات", icon: Plug, perm: "settings" },
       { href: "/dashboard/automations", label: "الأتمتة", icon: Zap, perm: "settings" },
+      { href: "/dashboard/flow-builder", label: "منشئ المسارات", icon: Workflow, perm: "settings" },
+      { href: "/dashboard/branches", label: "الفروع", icon: Building2, perm: "settings" },
+      { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
       { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/safety", label: "الأمان", icon: ShieldAlert, perm: "settings" },
@@ -193,6 +199,7 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard/settings", label: "الحساب", icon: Settings, perm: "analytics" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
+      { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },
     ],
   },

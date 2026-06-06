@@ -53,6 +53,13 @@ model User {
   commerceNotifications CommerceNotificationLog[]
   commerceEmailProviders CommerceEmailProvider[]
   commerceEmailTemplates CommerceEmailTemplate[]
+
+  // ---- Phase 3: premium modules (additive, new tables only) ----
+  flowDefinitions  FlowDefinition[]
+  branches         Branch[]
+  approvalRequests ApprovalRequest[]
+  whiteLabel       WhiteLabelConfig?
+  upgradeRequests  UpgradeRequest[]
 }
 
 /// Team members who can log into a workspace under the OWNER's account with a
@@ -1509,4 +1516,111 @@ model AuditLog {
 
   @@index([userId, at])
   @@index([userId, action, at])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 — Premium modules (ALL additive; new tables only; no existing model
+// altered). Every column has a safe default so the migration is non-breaking.
+// Until the production migration runs, app code accesses these via
+// (prisma as any).<model> and guards failures, so production stays safe.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Visual automation flow (Flow Builder). The graph (nodes + edges) is stored
+/// as JSON in `graphJson` so the schema never changes as the builder evolves.
+model FlowDefinition {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @default("")
+  enabled     Boolean  @default(false)
+  trigger     String   @default("message_received") // message_received | keyword | order_created | manual
+  graphJson   String   @default("{\"nodes\":[],\"edges\":[]}")
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, enabled])
+}
+
+/// Physical/logical business branch (Multi-Branch Management). Lets a merchant
+/// route conversations, orders, and reporting per location.
+model Branch {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  code        String   @default("")
+  phone       String?
+  address     String?
+  city        String?
+  managerName String?
+  isDefault   Boolean  @default(false)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, enabled])
+}
+
+/// A request that needs approval before an action executes (Approval Workflows).
+/// e.g. a broadcast or a discount must be approved by an owner/admin first.
+model ApprovalRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType   String    // broadcast | order | coupon | refund | custom
+  targetId     String?
+  title        String
+  details      String    @default("")
+  amount       Float?
+  status       String    @default("pending") // pending | approved | rejected
+  requestedBy  String    @default("")        // member/owner email
+  decidedBy    String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId, status])
+  @@index([userId, targetType, status])
+}
+
+/// Per-tenant branding (White Label). One row per user; toggled on for
+/// Enterprise. Drives the public/app brand surface for that tenant.
+model WhiteLabelConfig {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabled      Boolean  @default(false)
+  brandName    String   @default("")
+  logoUrl      String?
+  faviconUrl   String?
+  primaryColor String   @default("#6872d4")
+  accentColor  String   @default("#6872d4")
+  supportEmail String?
+  supportPhone String?
+  customDomain String?
+  hideKeyone   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// Self-serve upgrade requests (Phase 4). A merchant asks to move to a plan;
+/// an admin activates it (no external payment processor wired yet).
+model UpgradeRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromSlug     String    @default("")
+  toSlug       String
+  billingCycle String    @default("monthly") // monthly | yearly
+  status       String    @default("pending") // pending | activated | rejected | canceled
+  note         String?
+  contactPhone String?
+  handledBy    String?
+  handledAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId, status])
+  @@index([status, createdAt])
 }

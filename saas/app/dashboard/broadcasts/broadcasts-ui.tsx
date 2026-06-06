@@ -27,6 +27,7 @@ import {
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
 import { useToast } from "@/components/ui/toast";
+import UpgradeModal, { type UpgradeVariant } from "@/components/billing/UpgradeModal";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -122,6 +123,7 @@ export default function BroadcastsUi() {
   const [submitting, setSubmitting] = useState(false);
 
   const { success, error, info } = useToast();
+  const [upgrade, setUpgrade] = useState<{ variant: UpgradeVariant; tier: string | null } | null>(null);
   const confirm = useConfirm();
 
   // ---- Smart Campaign builder state ----
@@ -326,6 +328,15 @@ export default function BroadcastsUi() {
           info(`تم إنشاء الحملة. تم استثناء ${j.skipped} عميل لا نملك رقم هاتف لهم (معرّف واتساب فقط).`);
         }
         load();
+      } else if (
+        r.status === 403 &&
+        (j.reason === "exhausted" || j.reason === "feature_disabled" || j.reason === "expired")
+      ) {
+        // Plan gate — surface the upgrade modal instead of a bare error toast.
+        setUpgrade({
+          variant: "broadcast_limit",
+          tier: j.reason === "feature_disabled" ? "k_growth" : "k_pro",
+        });
       } else {
         error(j.error || "فشل إنشاء الحملة");
       }
@@ -852,6 +863,14 @@ export default function BroadcastsUi() {
           </div>
         </div>
       )}
+
+      <UpgradeModal
+        open={Boolean(upgrade)}
+        onClose={() => setUpgrade(null)}
+        variant={upgrade?.variant ?? "broadcast_limit"}
+        recommendedTier={upgrade?.tier ?? null}
+        locale="ar"
+      />
     </div>
   );
 }

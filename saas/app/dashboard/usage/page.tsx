@@ -19,6 +19,7 @@ import { tierBadge } from "@/lib/membership/plan";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { AlertTriangle, MessageSquare, Sparkles, Megaphone, Crown, ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import UpgradeRequestPanel from "@/components/billing/UpgradeRequestPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,9 @@ export default async function UsagePage() {
           <Pill label="أولوية الإرسال" value={priorityLabel(plan.queuePriority)} />
         </div>
       </div>
+
+      {/* Self-serve upgrade request */}
+      <UpgradeRequestPanel locale="ar" />
 
       {/* Connection state */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
