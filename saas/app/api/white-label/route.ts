@@ -20,7 +20,7 @@ const DEFAULTS = {
 };
 
 export async function GET() {
-  const g = await apiGate("white_label");
+  const g = await apiGate("white_label", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
   try {
@@ -32,7 +32,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const g = await apiGate("white_label");
+  const g = await apiGate("white_label", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
 

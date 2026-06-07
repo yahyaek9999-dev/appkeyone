@@ -5,7 +5,7 @@
  * Static, read-only check: walks every `app/api/**\/route.ts` and asserts that
  * each MUTATING handler (POST/PUT/PATCH/DELETE) either:
  *   (a) calls an RBAC gate — requirePermission / getUserIdForPermission /
- *       getUserForPermission / requireAdmin, OR
+ *       getUserForPermission / requireAdmin / apiGate, OR
  *   (b) is explicitly waived (public/internal/webhook) in route-permissions.ts.
  *
  * Exits non-zero and prints offenders if any mutating route is ungated and not
@@ -48,7 +48,7 @@ const WAIVED = new Set([
 ]);
 
 const GATE_RE =
-  /\b(requirePermission|getUserIdForPermission|getUserForPermission|requireAdmin)\b/;
+  /\b(requirePermission|getUserIdForPermission|getUserForPermission|requireAdmin|apiGate)\b/;
 const MUTATING_RE = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/g;
 const INTERNAL_SECRET_RE = /x-internal-secret|X-Internal-Secret|SAAS_INTERNAL_SECRET/;
 const WEBHOOK_SIG_RE = /verifySignature|X-Hub-Signature|resolveIntegrationFromRequest/;

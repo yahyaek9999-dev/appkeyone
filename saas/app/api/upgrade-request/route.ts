@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requirePermission, requireUser } from "@/lib/auth";
 import { getEffectivePlan } from "@/lib/membership/plan";
 import { getTier, TIER_ORDER } from "@/lib/pricing/catalog";
 
@@ -28,7 +28,7 @@ export async function GET() {
 /** Merchant requests an upgrade to a target plan (admin activates later). */
 export async function POST(req: Request) {
   let user;
-  try { user = await requireUser(); }
+  try { user = await requirePermission("billing"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   let body: any = {};

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const db = prisma as any;
 
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
-  const g = await apiGate("multi_branch");
+  const g = await apiGate("multi_branch", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
 
@@ -38,7 +38,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
-  const g = await apiGate("multi_branch");
+  const g = await apiGate("multi_branch", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
   try {

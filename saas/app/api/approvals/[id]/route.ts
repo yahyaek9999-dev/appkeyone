@@ -9,7 +9,7 @@ const db = prisma as any;
 
 /** Approve / reject. Only owner or admin may decide (team permission). */
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
-  const g = await apiGate("approval_workflows");
+  const g = await apiGate("approval_workflows", "team");
   if (g.response) return g.response;
   const uid = g.uid!;
 
@@ -50,7 +50,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
-  const g = await apiGate("approval_workflows");
+  const g = await apiGate("approval_workflows", "team");
   if (g.response) return g.response;
   const uid = g.uid!;
   try {

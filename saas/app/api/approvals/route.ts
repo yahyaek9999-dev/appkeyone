@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const db = prisma as any;
 
 export async function GET(req: Request) {
-  const g = await apiGate("approval_workflows");
+  const g = await apiGate("approval_workflows", "team");
   if (g.response) return g.response;
   const uid = g.uid!;
   const url = new URL(req.url);
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const g = await apiGate("approval_workflows");
+  const g = await apiGate("approval_workflows", "team");
   if (g.response) return g.response;
   const uid = g.uid!;
 

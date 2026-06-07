@@ -38,10 +38,10 @@ echo "Uploading..."
 scp -i "$SSH_KEY" -P "$SSH_PORT" "$ARCHIVE_PATH" "${SSH_HOST}:${RELEASES_DIR}/"
 
 # Build PowerShell script locally to avoid quoting issues
-PS_SCRIPT=$(cat <<-ENDSCRIPT
+PS_SCRIPT=$(cat <<-'ENDSCRIPT'
 Write-Host 'Extracting...'
-$archive = Join-Path '$RELEASES_DIR' '$ARCHIVE'
-$tmp = Join-Path '$RELEASES_DIR' 'extract'
+$archive = Join-Path '__RELEASES_DIR__' '__ARCHIVE__'
+$tmp = Join-Path '__RELEASES_DIR__' 'extract'
 if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 tar -xzf $archive -C $tmp
@@ -50,42 +50,51 @@ $relName = (Get-ChildItem $tmp | Select-Object -First 1).Name
 $relPath = Join-Path $tmp $relName
 
 # Keep 3 latest releases
-$existing = Get-ChildItem '$RELEASES_DIR' -Directory | Where-Object { $_.Name -ne 'extract' } | Sort-Object LastWriteTime
-while ($existing.Count -gt 3) { Remove-Item -Recurse -Force $existing[0].FullName; $existing = Get-ChildItem '$RELEASES_DIR' -Directory | Where-Object { $_.Name -ne 'extract' } | Sort-Object LastWriteTime }
+$existing = Get-ChildItem '__RELEASES_DIR__' -Directory | Where-Object { $_.Name -ne 'extract' } | Sort-Object LastWriteTime
+while ($existing.Count -gt 3) { Remove-Item -Recurse -Force $existing[0].FullName; $existing = Get-ChildItem '__RELEASES_DIR__' -Directory | Where-Object { $_.Name -ne 'extract' } | Sort-Object LastWriteTime }
 
 Write-Host 'Stopping service...'
-nssm stop '$SERVICE_NAME'
+nssm stop '__SERVICE_NAME__'
 Start-Sleep 2
 Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep 1
 
 # Backup current for rollback
-$backup = Join-Path '$RELEASES_DIR' 'previous'
+$backup = Join-Path '__RELEASES_DIR__' 'previous'
 if (Test-Path $backup) { Remove-Item -Recurse -Force $backup }
-if (Test-Path '$APP_DIR\\saas\\.next') {
+if (Test-Path '__APP_DIR__\\saas\\.next') {
   New-Item -ItemType Directory -Path $backup -Force | Out-Null
-  Copy-Item '$APP_DIR\\saas\\.next' $backup -Recurse
-  Copy-Item '$APP_DIR\\saas\\node_modules' $backup -Recurse -ErrorAction SilentlyContinue
+  Copy-Item '__APP_DIR__\\saas\\.next' $backup -Recurse
+  Copy-Item '__APP_DIR__\\saas\\node_modules' $backup -Recurse -ErrorAction SilentlyContinue
 }
 
 # Swap release
-if (Test-Path '$APP_DIR\\saas\\.next') { Remove-Item -Recurse -Force '$APP_DIR\\saas\\.next' }
-if (Test-Path '$APP_DIR\\saas\\node_modules') { Remove-Item -Recurse -Force '$APP_DIR\\saas\\node_modules' }
-Copy-Item "$relPath\\*" '$APP_DIR\\saas' -Recurse -Force
+if (Test-Path '__APP_DIR__\\saas\\.next') { Remove-Item -Recurse -Force '__APP_DIR__\\saas\\.next' }
+if (Test-Path '__APP_DIR__\\saas\\node_modules') { Remove-Item -Recurse -Force '__APP_DIR__\\saas\\node_modules' }
+Copy-Item "$relPath\\*" '__APP_DIR__\\saas' -Recurse -Force
 
 Write-Host 'Prisma...'
-Set-Location '$APP_DIR\\saas'
-.\node_modules\\.bin\\prisma generate
-.\node_modules\\.bin\\prisma db push --skip-generate --accept-data-loss
+Set-Location '__APP_DIR__\\saas'
+if (!(Test-Path '.\node_modules\.bin\prisma.cmd') -and !(Test-Path '.\node_modules\.bin\prisma')) {
+  npm install prisma@5.22.0 --no-save --no-audit --no-fund
+}
+$prisma = if (Test-Path '.\node_modules\.bin\prisma.cmd') { '.\node_modules\.bin\prisma.cmd' } else { '.\node_modules\.bin\prisma' }
+& $prisma generate
+& $prisma db push --skip-generate --accept-data-loss
 
 Write-Host 'Starting service...'
-nssm start '$SERVICE_NAME'
+nssm start '__SERVICE_NAME__'
 Start-Sleep 5
-$s = nssm status '$SERVICE_NAME'
+$s = nssm status '__SERVICE_NAME__'
 if ($s -ne 'SERVICE_RUNNING') { throw "Service status: $s" }
 Write-Host 'Deployed'
 ENDSCRIPT
 )
+
+PS_SCRIPT=${PS_SCRIPT//__RELEASES_DIR__/$RELEASES_DIR}
+PS_SCRIPT=${PS_SCRIPT//__ARCHIVE__/$ARCHIVE}
+PS_SCRIPT=${PS_SCRIPT//__SERVICE_NAME__/$SERVICE_NAME}
+PS_SCRIPT=${PS_SCRIPT//__APP_DIR__/$APP_DIR}
 
 # Write script to temp file and execute via SSH
 SCRIPT_PATH=$(mktemp)

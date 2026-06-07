@@ -4,7 +4,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { getUserId } from "@/lib/auth";
+import { getAuthContext, getUserId } from "@/lib/auth";
+import { can, type Permission } from "@/lib/rbac";
 import {
   getEntitlements,
   hasCapability,
@@ -44,11 +45,16 @@ export async function pageGate(capKey: string): Promise<PageGate> {
  */
 export async function apiGate(
   capKey: string,
+  permission?: Permission,
 ): Promise<{ uid: string | null; response: NextResponse | null }> {
-  const uid = await getUserId();
-  if (!uid) {
+  const ctx = await getAuthContext();
+  if (!ctx) {
     return { uid: null, response: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
   }
+  if (permission && !can(ctx.role, permission)) {
+    return { uid: null, response: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
+  }
+  const uid = ctx.user.id;
   try {
     const ok = await hasCapability(uid, capKey);
     if (!ok) {

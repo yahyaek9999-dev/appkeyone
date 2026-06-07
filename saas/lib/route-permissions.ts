@@ -90,6 +90,11 @@ export const ROUTE_PERMISSIONS: RoutePermissionEntry[] = [
   { route: "api/coupons/[id]/route.ts", permission: "settings" },
   { route: "api/coupons/[id]/redeem/route.ts", permission: "settings" },
   { route: "api/working-hours/route.ts", permission: "settings" },
+  { route: "api/flows/route.ts", permission: "settings", note: "premium Flow Builder writes; apiGate also checks entitlement" },
+  { route: "api/flows/[id]/route.ts", permission: "settings", note: "premium Flow Builder writes; apiGate also checks entitlement" },
+  { route: "api/branches/route.ts", permission: "settings", note: "premium branch management writes; apiGate also checks entitlement" },
+  { route: "api/branches/[id]/route.ts", permission: "settings", note: "premium branch management writes; apiGate also checks entitlement" },
+  { route: "api/white-label/route.ts", permission: "settings", note: "premium branding writes; apiGate also checks entitlement" },
   { route: "api/settings/ai-provider/route.ts", permission: "settings" },
   { route: "api/settings/ai-provider/test/route.ts", permission: "settings" },
   { route: "api/settings/meta-cloud/route.ts", permission: "settings" },
@@ -110,6 +115,11 @@ export const ROUTE_PERMISSIONS: RoutePermissionEntry[] = [
 
   // ---- Team management ----
   { route: "api/settings/team/route.ts", permission: "team" },
+  { route: "api/approvals/route.ts", permission: "team", note: "approval workflow creation/review for owner/admin roles" },
+  { route: "api/approvals/[id]/route.ts", permission: "team", note: "approval decisions/deletes for owner/admin roles" },
+
+  // ---- Billing / upgrades ----
+  { route: "api/upgrade-request/route.ts", permission: "billing", note: "owner-only self-serve upgrade request mutation" },
 
   // ---- Data export ----
   { route: "api/export/route.ts", permission: "analytics", note: "per-export-type gate inside handler" },
