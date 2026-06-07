@@ -104,7 +104,7 @@ export default async function OrdersPage({
       <InsightStrip context="orders" />
 
       {/* Desktop table */}
-      <div className="card overflow-hidden">
+      <div className="card mobile-scroll-x overflow-hidden">
         <div className="hidden sm:block">
           <table className="data-table">
             <thead>
@@ -185,7 +185,7 @@ export default async function OrdersPage({
         </div>
 
         {/* Mobile cards */}
-        <div className="divide-y divide-white/[0.04] sm:hidden">
+        <div className="divide-y divide-white/[0.04] md:hidden">
           {orders.length === 0 ? (
             <div className="p-4">
               <EmptyState
