@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   confirmed: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  preparing: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  preparing: "bg-teal-500/15 text-teal-300 border-teal-500/30",
   shipped: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   delivered: "bg-emerald-600/15 text-emerald-400 border-emerald-600/30",
   canceled: "bg-rose-500/15 text-rose-300 border-rose-500/30",

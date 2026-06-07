@@ -24,7 +24,7 @@ const TIER_META: Record<
   quality: {
     label: "جودة عالية",
     icon: <Sparkles className="size-3" />,
-    classes: "bg-violet-500/10 text-violet-300 ring-violet-500/20",
+    classes: "bg-gold-500/10 text-gold-300 ring-gold-500/20",
   },
   private: {
     label: "خاص",

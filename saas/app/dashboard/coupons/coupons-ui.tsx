@@ -86,7 +86,7 @@ export default function CouponsUi() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="page-title flex items-center gap-2">
-            <Ticket className="h-6 w-6 text-violet-400" />
+            <Ticket className="h-6 w-6 text-gold-400" />
             الكوبونات والخصومات
           </h1>
           <p className="page-desc mt-1">أنشئ كوبونات يقدّمها النظام تلقائيًا للعملاء المترددين وفي حملات الاستعادة</p>
@@ -117,7 +117,7 @@ export default function CouponsUi() {
               <div key={c.id} className={`card-hover p-4 ${!c.active || expired || exhausted ? "opacity-60" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 font-mono text-sm font-bold text-violet-200">{c.code}</span>
+                    <span className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2.5 py-1 font-mono text-sm font-bold text-gold-200">{c.code}</span>
                     <span className="text-lg font-black text-white">
                       {c.type === "percent" ? `${c.value}%` : fmtMoney(c.value)}
                     </span>
@@ -173,7 +173,7 @@ export default function CouponsUi() {
           <div className="card w-full max-w-md p-5" onClick={(e) => e.stopPropagation()} dir="rtl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="section-title flex items-center gap-2">
-                <Ticket className="h-4 w-4 text-violet-400" /> كوبون جديد
+                <Ticket className="h-4 w-4 text-gold-400" /> كوبون جديد
               </h3>
               <button onClick={() => setCreating(null)} className="rounded-lg border border-white/10 p-1 text-slate-400 hover:text-white">
                 <X className="h-4 w-4" />
@@ -188,10 +188,10 @@ export default function CouponsUi() {
                 <div>
                   <label className="mb-1 block text-xs text-slate-400">النوع</label>
                   <div className="flex gap-1.5">
-                    <button onClick={() => setCreating({ ...creating, type: "percent" })} className={`flex-1 rounded-xl border px-2 py-2 text-xs ${creating.type === "percent" ? "border-violet-500/40 bg-violet-500/15 text-violet-200" : "border-white/10 bg-white/5 text-slate-400"}`}>
+                    <button onClick={() => setCreating({ ...creating, type: "percent" })} className={`flex-1 rounded-xl border px-2 py-2 text-xs ${creating.type === "percent" ? "border-gold-500/40 bg-gold-500/15 text-gold-200" : "border-white/10 bg-white/5 text-slate-400"}`}>
                       <Percent className="mx-auto h-3.5 w-3.5" /> نسبة
                     </button>
-                    <button onClick={() => setCreating({ ...creating, type: "fixed" })} className={`flex-1 rounded-xl border px-2 py-2 text-xs ${creating.type === "fixed" ? "border-violet-500/40 bg-violet-500/15 text-violet-200" : "border-white/10 bg-white/5 text-slate-400"}`}>
+                    <button onClick={() => setCreating({ ...creating, type: "fixed" })} className={`flex-1 rounded-xl border px-2 py-2 text-xs ${creating.type === "fixed" ? "border-gold-500/40 bg-gold-500/15 text-gold-200" : "border-white/10 bg-white/5 text-slate-400"}`}>
                       <BadgeDollarSign className="mx-auto h-3.5 w-3.5" /> مبلغ
                     </button>
                   </div>

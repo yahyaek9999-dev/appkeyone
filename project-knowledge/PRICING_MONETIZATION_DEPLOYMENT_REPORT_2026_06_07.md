@@ -36,5 +36,22 @@ immediately before deploy.
 
 ## Deploy status
 
-Pending fresh artifact build, fresh production backup, deployment, and
-post-deploy verification.
+Deployed via fast Git SSH + VPS deploy path.
+
+- Final deployed commit: `75e3212`
+- Production DB sync: PASS (`prisma db push --skip-generate`; database already
+  in sync on the final run)
+- VPS `npm run verify:all`: PASS (`41` pass, `6` skip, `0` fail)
+- Service restart: PASS (`mse-saas` running)
+- WhatsApp service restart: SKIPPED intentionally to preserve live sessions
+- Post-deploy health check: PASS
+- Rollback snapshot: `C:\app\backups\pre-deploy-2026-06-07_002505`
+
+## Follow-up risks
+
+- VPS `npm ci` reports `next@14.2.18` has a security vulnerability and
+  `npm audit` reports `2` vulnerabilities (`1` moderate, `1` critical). Do not
+  fix these with `npm audit fix --force` inside a deploy window; schedule a
+  controlled dependency upgrade.
+- WhatsApp session backup completed with robocopy exit `9` warnings but
+  preserved live session files in place. The deploy did not restart `mse-wa`.

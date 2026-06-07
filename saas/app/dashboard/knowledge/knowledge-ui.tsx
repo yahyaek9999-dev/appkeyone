@@ -31,7 +31,7 @@ const SOURCE_META: Record<string, { label: string; icon: string; color: string }
   docx:     { label: "Word",     icon: "📝", color: "bg-brand-500/15 text-brand-300" },
   txt:      { label: "TXT",      icon: "📃", color: "bg-slate-500/15 text-slate-300" },
   faq:      { label: "FAQ",      icon: "❓", color: "bg-amber-500/15 text-amber-300" },
-  products: { label: "منتجات",   icon: "🛍️", color: "bg-purple-500/15 text-purple-300" },
+  products: { label: "منتجات",   icon: "🛍️", color: "bg-gold-500/15 text-gold-300" },
   suggestion:{ label: "مقترح",   icon: "💡", color: "bg-emerald-500/15 text-emerald-300" },
 };
 
@@ -221,7 +221,7 @@ export default function KnowledgeUI({ docs }: { docs: Doc[] }) {
             أضف أسئلة وأجوبة (FAQ)
           </button>
           <button onClick={() => setShowProducts(true)} className="btn-ghost justify-center gap-2 w-full">
-            <Package className="h-4 w-4 text-purple-400" />
+            <Package className="h-4 w-4 text-gold-400" />
             استيراد قائمة منتجات
           </button>
         </div>
@@ -436,7 +436,7 @@ function ProductImportModal({ onClose, onSaved }: { onClose: () => void; onSaved
       <div className="card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-xl font-bold">
-            <Package className="h-5 w-5 text-purple-400" />
+            <Package className="h-5 w-5 text-gold-400" />
             استيراد قائمة منتجات
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>

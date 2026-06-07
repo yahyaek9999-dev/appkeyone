@@ -43,7 +43,7 @@ export default async function AdminHome() {
         <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="بانتظار التفعيل"
           value={s.pendingSubs.toLocaleString()} accent="from-amber-500/20 to-orange-500/5 text-amber-400" />
         <StatCard icon={<MessageCircle className="h-4 w-4" />} label="إجمالي الرسائل"
-          value={s.totalMessages.toLocaleString()} accent="from-purple-500/20 to-pink-500/5 text-purple-400" />
+          value={s.totalMessages.toLocaleString()} accent="from-gold-500/20 to-pink-500/5 text-gold-400" />
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">

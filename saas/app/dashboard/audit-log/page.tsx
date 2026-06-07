@@ -45,7 +45,7 @@ const FILTER_TABS: { key?: string; label: string }[] = [
 ];
 
 function badgeColor(action: string): string {
-  if (action.startsWith("team.")) return "bg-violet-500/15 text-violet-300";
+  if (action.startsWith("team.")) return "bg-gold-500/15 text-gold-300";
   if (action.startsWith("whatsapp.")) return "bg-emerald-500/15 text-emerald-300";
   if (action.startsWith("broadcast.")) return "bg-amber-500/15 text-amber-300";
   if (action.startsWith("integration.")) return "bg-sky-500/15 text-sky-300";
@@ -82,7 +82,7 @@ export default async function AuditLogPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 shadow-lg shadow-violet-500/20">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gold-500 to-teal-500 shadow-lg shadow-gold-500/20">
           <ScrollText className="h-5 w-5 text-white" />
         </span>
         <div>
@@ -105,7 +105,7 @@ export default async function AuditLogPage({
               className={
                 "rounded-full px-3 py-1 transition " +
                 (active
-                  ? "bg-violet-500/20 text-violet-200"
+                  ? "bg-gold-500/20 text-gold-200"
                   : "bg-white/5 text-slate-400 hover:bg-white/10")
               }
             >

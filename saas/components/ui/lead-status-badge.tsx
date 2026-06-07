@@ -22,11 +22,11 @@ const STATUS_MAP: Record<LeadStatus, { label: string; classes: string }> = {
   },
   contacted: {
     label: "تم التواصل",
-    classes: "bg-indigo-500/10 text-indigo-300 ring-indigo-500/20",
+    classes: "bg-teal-500/10 text-teal-300 ring-teal-500/20",
   },
   qualified: {
     label: "مؤهَّل",
-    classes: "bg-violet-500/10 text-violet-300 ring-violet-500/20",
+    classes: "bg-gold-500/10 text-gold-300 ring-gold-500/20",
   },
   hot: {
     label: "ساخن",

@@ -11,10 +11,10 @@ const PALETTE = [
   "bg-amber-500/15 text-amber-300",
   "bg-emerald-500/15 text-emerald-300",
   "bg-sky-500/15 text-sky-300",
-  "bg-violet-500/15 text-violet-300",
+  "bg-gold-500/15 text-gold-300",
   "bg-pink-500/15 text-pink-300",
   "bg-teal-500/15 text-teal-300",
-  "bg-indigo-500/15 text-indigo-300",
+  "bg-teal-500/15 text-teal-300",
 ];
 
 const SIZES = {

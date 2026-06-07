@@ -85,7 +85,7 @@ export default function ForecastUi() {
             <Kpi icon={<CalendarDays className="h-4 w-4" />} label="مبيعات 7 أيام (متوقع)" value={fmtMoney(data.next7Revenue)} accent="border-emerald-500/30 bg-emerald-500/10 text-emerald-300" trend={data.growthPct} />
             <Kpi icon={<TrendingUp className="h-4 w-4" />} label="إيراد 30 يوم (متوقع)" value={fmtMoney(data.next30Revenue)} accent="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
             <Kpi icon={<ShoppingBag className="h-4 w-4" />} label="طلبات متوقعة (30ي)" value={(data.expectedOrders30 || 0).toLocaleString("ar-EG")} accent="border-sky-500/30 bg-sky-500/10 text-sky-300" />
-            <Kpi icon={<Repeat className="h-4 w-4" />} label="نسبة العائدين" value={`${data.returningCustomersPct}%`} accent="border-violet-500/30 bg-violet-500/10 text-violet-300" />
+            <Kpi icon={<Repeat className="h-4 w-4" />} label="نسبة العائدين" value={`${data.returningCustomersPct}%`} accent="border-gold-500/30 bg-gold-500/10 text-gold-300" />
           </div>
 
           {/* Forecast chart */}

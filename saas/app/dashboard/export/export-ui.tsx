@@ -28,9 +28,9 @@ const EXPORTS = [
     label: "الحملات الجماعية",
     desc: "عنوان الحملة، الجمهور، الحالة، عدد المُرسَل",
     icon: Megaphone,
-    color: "text-purple-400",
-    border: "border-purple-500/20",
-    bg: "bg-purple-500/[0.06]",
+    color: "text-gold-400",
+    border: "border-gold-500/20",
+    bg: "bg-gold-500/[0.06]",
   },
   {
     type: "conversations",

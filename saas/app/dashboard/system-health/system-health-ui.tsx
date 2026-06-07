@@ -221,7 +221,7 @@ export default function SystemHealthUi() {
             </div>
             <div className="card p-5">
               <h3 className="section-title mb-4 flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-purple-400" /> البث الجماعي
+                <Megaphone className="h-4 w-4 text-gold-400" /> البث الجماعي
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <MiniCard icon={<Activity className="h-4 w-4" />} label="قيد الإرسال" value={String((data as any).broadcasts?.sending ?? 0)} tone={(data as any).broadcasts?.sending > 0 ? "amber" : "emerald"} />
@@ -242,7 +242,7 @@ export default function SystemHealthUi() {
           {/* AI */}
           <div className="card p-5">
             <h3 className="section-title mb-4 flex items-center gap-2">
-              <Brain className="h-4 w-4 text-violet-400" /> الذكاء الاصطناعي (آخر 7 أيام)
+              <Brain className="h-4 w-4 text-gold-400" /> الذكاء الاصطناعي (آخر 7 أيام)
             </h3>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MiniCard icon={<Brain className="h-4 w-4" />} label="استدعاءات" value={(data.ai.calls7d || 0).toLocaleString("ar-EG")} />

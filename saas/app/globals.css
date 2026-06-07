@@ -17,16 +17,17 @@
         font-feature-settings: "ss01" on, "cv01" on;
     }
     ::selection {
-        @apply bg-brand-500/25 text-white;
+        @apply bg-gold-500/30 text-white;
     }
 }
 
 @layer components {
     /* ════════════════════════════════════════════════════════════════
-       KEYONE design system — 2026 rebuild.
-       Flat, hairline-defined, true-neutral. Iris accent (brand-*).
-       Class names are PRESERVED so every existing screen re-skins for free;
-       only the visual register changes (no glow, no glass blur, tighter radii).
+       KEYONE / HOR design system — luxury rebuild.
+       Deep emerald primary (#01433E, brand-*) + champagne gold (gold-*) on a
+       near-black canvas. Soft-glass panels, gold hairlines, gradient CTAs,
+       restrained emerald/gold glow. NO purple anywhere.
+       Class names are PRESERVED so every existing screen re-skins for free.
        ════════════════════════════════════════════════════════════════ */
 
     .font-en {
@@ -51,9 +52,11 @@
     }
 
     /* ── Panels ──────────────────────────────────────────────────────
-       Flat hairline cards. Depth = 1px border + faint top-edge, never blur. */
+       Soft-glass cards: faint fill + hairline border + top light edge +
+       gold-tinted hover glow. Premium depth without heavy blur cost. */
     .ai-card {
-        @apply relative overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.018];
+        @apply relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-card;
+        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 42%);
     }
 
     .ai-card > * {
@@ -61,29 +64,31 @@
     }
 
     .card {
-        @apply rounded-xl border border-white/[0.07] bg-white/[0.018];
+        @apply relative rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-card;
+        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 42%);
     }
 
     .card-hover {
-        @apply card transition-colors duration-200 hover:border-white/[0.12] hover:bg-white/[0.03];
+        @apply card transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-gold-500/30 hover:bg-white/[0.05] hover:shadow-glow-emerald;
     }
 
     /* ── Buttons ─────────────────────────────────────────────────────
-       Solid iris primary, no glow ring. Flat ghost. Calm active scale. */
+       Gradient emerald primary with inset highlight + gold ring & emerald
+       glow on hover. Gold-tinted ghost. Calm spring-y active scale. */
     .btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-brand-400 active:bg-brand-600 disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10 transition-all duration-200 ease-out hover:from-brand-400 hover:to-brand-600 hover:shadow-glow-emerald hover:ring-gold-500/40 active:scale-[0.97] disabled:opacity-50;
     }
 
     .btn-ghost {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/[0.09] px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.04] hover:text-white disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.02] px-4 py-2.5 text-sm font-medium text-slate-200 transition-all duration-200 ease-out hover:border-gold-500/40 hover:bg-white/[0.05] hover:text-white active:scale-[0.97] disabled:opacity-50;
     }
 
     .btn-danger {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-colors duration-150 hover:bg-rose-500/15 disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-all duration-200 ease-out hover:bg-rose-500/20 active:scale-[0.97] disabled:opacity-50;
     }
 
     .ai-badge {
-        @apply inline-flex items-center gap-1.5 rounded-md border border-brand-500/25 bg-brand-500/10 px-2.5 py-1 text-xs font-medium text-brand-300;
+        @apply inline-flex items-center gap-1.5 rounded-full border border-gold-500/30 bg-gold-500/10 px-2.5 py-1 text-xs font-medium text-gold-300;
     }
 
     .label {
@@ -148,7 +153,7 @@
     }
 
     .sidebar-link-active {
-        @apply bg-white/[0.06] text-white;
+        @apply bg-gradient-to-r from-brand-500/20 to-transparent text-white ring-1 ring-inset ring-gold-500/15;
     }
 
         .mobile-header {
@@ -206,46 +211,46 @@
     }
 
     .ai-btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 font-medium text-white transition-colors duration-150 hover:bg-brand-400 active:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-5 py-2.5 font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10 transition-all duration-200 ease-out hover:from-brand-400 hover:to-brand-600 hover:shadow-glow-emerald hover:ring-gold-500/40 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
     }
 
     .ai-btn-ghost {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/[0.11] bg-transparent px-5 py-2.5 font-medium text-slate-200 transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.02] px-5 py-2.5 font-medium text-slate-200 transition-all duration-200 ease-out hover:border-gold-500/40 hover:bg-white/[0.05] hover:text-white active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
     }
 
     .input {
-        @apply w-full rounded-lg border border-white/[0.09] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-white placeholder-slate-500 outline-none transition-colors duration-150 focus:border-brand-500/50 focus:bg-white/[0.04];
+        @apply w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-brand-400/60 focus:bg-white/[0.05] focus:ring-2 focus:ring-brand-500/20;
     }
 
     .eyebrow {
-        @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-300/80;
+        @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400/90;
     }
 
     /* ── Public-site primitives ──────────────────────────────────────  */
 
-    /* Flat hairline surface — faint top light edge, no blur, no glow. */
+    /* Soft-glass surface — top light edge + gold hover ring. */
     .surface {
-        @apply relative rounded-xl border border-white/[0.07] bg-white/[0.018];
-        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0) 32%);
+        @apply relative rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-card;
+        background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 38%);
     }
 
     .surface-hover {
-        @apply transition-[border-color,background-color] duration-200 ease-out;
+        @apply transition-all duration-300 ease-out;
     }
 
     .surface-hover:hover {
-        @apply border-white/[0.13] bg-white/[0.03];
+        @apply border-gold-500/30 bg-white/[0.05] shadow-glow-emerald;
     }
 
-    /* Hairline divider that fades at both ends */
+    /* Gold hairline divider that fades at both ends */
     .hairline {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.09), transparent);
+        background: linear-gradient(90deg, transparent, rgba(201, 162, 75, 0.35), transparent);
     }
 
-    /* Chip / pill */
+    /* Chip / pill — gold-tinted */
     .chip {
-        @apply inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 py-1 text-[12px] font-medium text-slate-300;
+        @apply inline-flex items-center gap-1.5 rounded-full border border-gold-500/20 bg-gold-500/[0.06] px-2.5 py-1 text-[12px] font-medium text-slate-200;
     }
 
     /* Display heading — confident but not cinematic-bombastic. */
@@ -256,19 +261,62 @@
         text-wrap: balance;
     }
 
-    /* Primary CTA — solid iris, flat, no neon shadow. */
+    /* Primary CTA — gradient emerald with gold ring + emerald glow on hover. */
     .btn-premium {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-5 text-sm font-medium text-white;
-        @apply transition-colors duration-150 hover:bg-brand-400 active:bg-brand-600;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-5 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10;
+        @apply transition-all duration-200 ease-out hover:from-brand-400 hover:to-brand-600 hover:shadow-glow-emerald hover:ring-gold-500/40 active:scale-[0.97];
     }
 
     .btn-outline {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/[0.12] bg-transparent px-5 text-sm font-medium text-slate-300;
-        @apply transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.04] hover:text-white;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-gold-500/30 bg-transparent px-5 text-sm font-semibold text-gold-200;
+        @apply transition-all duration-200 ease-out hover:border-gold-500/60 hover:bg-gold-500/[0.08] hover:text-gold-100 active:scale-[0.97];
     }
 }
 
 @layer utilities {
+    /* ── Luxury utilities (HOR) ─────────────────────────────────────── */
+    /* True glassmorphism — reserve for hero, modals, floating panels. */
+    .glass {
+        @apply relative rounded-2xl border border-white/[0.08] bg-white/[0.04] shadow-lux;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+    }
+    .glass-strong {
+        @apply relative rounded-2xl border border-white/[0.10] bg-white/[0.06] shadow-float;
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+    }
+    /* Champagne-gold gradient text (headings, counters, eyebrows). */
+    .gold-text {
+        background: linear-gradient(180deg, #f4e9cd 0%, #c9a24b 55%, #a98238 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    /* Emerald→white gradient text for hero headlines. */
+    .text-gradient-emerald {
+        background: linear-gradient(180deg, #ffffff 0%, #9bd0c4 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    /* Stronger gold divider for section breaks. */
+    .lux-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(201, 162, 75, 0.45), transparent);
+    }
+    /* Radial spotlight wash for hero/section backgrounds (emerald + gold). */
+    .spotlight-emerald::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+            radial-gradient(60% 50% at 50% 0%, rgba(12, 122, 108, 0.18), transparent 70%),
+            radial-gradient(40% 40% at 85% 10%, rgba(201, 162, 75, 0.10), transparent 70%);
+    }
+
     .pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
     .mobile-scroll-x {
         overflow-x: auto;

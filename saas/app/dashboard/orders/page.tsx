@@ -14,6 +14,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 import { FadeInView } from "@/components/ui/stagger-reveal";
+import { LimelightTabs } from "@/components/ui/limelight-tabs";
 
 function toOrderStatus(s: string): OrderStatus {
   if (s === "canceled") return "cancelled";
@@ -87,20 +88,20 @@ export default async function OrdersPage({
         </div>
       </div>
 
-      {/* Status summary strip — replaces KPI cards */}
-      <div className="flex flex-wrap gap-1.5">
-        <FilterTab href="/dashboard/orders" current={!status} label="الكل" count={totalOrders} />
-        {Object.keys(STATUS_LABELS).map((s) => (
-          <FilterTab
-            key={s}
-            href={`/dashboard/orders?status=${s}`}
-            current={status === s}
-            label={STATUS_LABELS[s]}
-            count={countByStatus[s] || 0}
-            palette={s === "canceled" ? "text-rose-400" : s === "delivered" ? "text-emerald-400" : s === "pending" ? "text-amber-400" : undefined}
-          />
-        ))}
-      </div>
+      {/* Status filter — limelight sliding indicator */}
+      <LimelightTabs
+        activeKey={status || "all"}
+        tabs={[
+          { key: "all", label: "الكل", href: "/dashboard/orders", count: totalOrders },
+          ...Object.keys(STATUS_LABELS).map((s) => ({
+            key: s,
+            label: STATUS_LABELS[s],
+            href: `/dashboard/orders?status=${s}`,
+            count: countByStatus[s] || 0,
+            countClass: s === "canceled" ? "text-rose-400" : s === "delivered" ? "text-emerald-400" : s === "pending" ? "text-amber-400" : undefined,
+          })),
+        ]}
+      />
 
       <InsightStrip context="orders" />
 
@@ -229,22 +230,3 @@ export default async function OrdersPage({
   );
 }
 
-function FilterTab({
-  href, current, label, count, palette,
-}: {
-  href: string; current: boolean; label: string; count: number; palette?: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-        current
-          ? "bg-white/[0.07] border-white/[0.12] text-white"
-          : "border-white/[0.06] text-slate-400 hover:border-white/[0.1] hover:text-slate-200"
-      }`}
-    >
-      {label}
-      <span className={`tabular-nums ${palette || "text-slate-500"}`}>{count}</span>
-    </Link>
-  );
-}

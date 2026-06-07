@@ -95,7 +95,7 @@ const ACTION_CLS: Record<string, string> = {
   close_now: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
   answer_fast: "border-sky-500/40 bg-sky-500/10 text-sky-200",
   escalate: "border-rose-500/40 bg-rose-500/10 text-rose-200",
-  win_back: "border-violet-500/40 bg-violet-500/10 text-violet-200",
+  win_back: "border-gold-500/40 bg-gold-500/10 text-gold-200",
   upsell: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
   build_trust: "border-amber-500/40 bg-amber-500/10 text-amber-200",
   offer_value: "border-amber-500/40 bg-amber-500/10 text-amber-200",
@@ -198,7 +198,7 @@ export default function RevenueCopilotUi() {
           {learn && learn.totalSent > 0 && (
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
               <div className="flex items-center gap-2 mb-3">
-                <GraduationCap className="w-4 h-4 text-violet-300" />
+                <GraduationCap className="w-4 h-4 text-gold-300" />
                 <h2 className="text-sm font-bold text-slate-200">التعلّم من النتائج</h2>
                 <span className="text-[11px] text-slate-500">
                   آخر {learn.windowDays} يوم · {learn.totalSent} متابعة · دقة العيّنة:{" "}
@@ -221,7 +221,7 @@ export default function RevenueCopilotUi() {
                         <span className="w-28 shrink-0 text-slate-300">{KIND_AR[k.kind] || k.kind}</span>
                         <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-violet-400/70"
+                            className="h-full rounded-full bg-gold-400/70"
                             style={{ width: `${Math.round(k.conversionRate * 100)}%` }}
                           />
                         </div>

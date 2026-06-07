@@ -17,7 +17,7 @@ import {
   Phone, Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
 } from "lucide-react";
 import type { ComponentType } from "react";
-import { AnimatedFeaturesGrid } from "@/components/ui/animated-features-grid";
+import { BentoFeatures } from "@/components/ui/bento-features";
 import { FadeInView, StaggerReveal, StaggerItem } from "@/components/ui/stagger-reveal";
 import { BorderBeam } from "@/components/ui/border-beam";
 import AnimatedStatsSection from "@/components/ui/animated-stats-section";
@@ -39,7 +39,7 @@ const FEATURE_META: Array<{
   { icon: Zap, accent: "text-amber-300" },
   { icon: ShoppingCart, accent: "text-brand-300" },
   { icon: RefreshCw, accent: "text-sky-300" },
-  { icon: BarChart3, accent: "text-violet-300" },
+  { icon: BarChart3, accent: "text-gold-300" },
   { icon: Bell, accent: "text-cyan-300" },
   { icon: Shield, accent: "text-rose-300" },
 ];
@@ -179,7 +179,7 @@ export default async function LandingPage({
         // Pre-render the icon element here (Server Component) so only a
         // serializable React node crosses into the client grid — never the
         // component function itself.
-        icon: <Icon className={`h-4 w-4 ${meta.accent}`} />,
+        icon: <Icon className={`h-5 w-5 ${meta.accent}`} />,
       };
     }
   );
@@ -245,10 +245,11 @@ export default async function LandingPage({
         </div>
       </section>
 
-      {/* ───────── Features — spotlight cards ───────── */}
+      {/* ───────── Features — bento grid (21st.dev features-8) ───────── */}
       <section id="features" className="px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
+            <div className="eyebrow mb-3">{m.features.eyebrow}</div>
             <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
               {m.features.heading}
             </h2>
@@ -257,7 +258,7 @@ export default async function LandingPage({
             </p>
           </FadeInView>
 
-          <AnimatedFeaturesGrid items={featureItems} cols={3} />
+          <BentoFeatures items={featureItems} />
         </div>
       </section>
 

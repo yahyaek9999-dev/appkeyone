@@ -132,7 +132,7 @@ export default function SalesBrainUi() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="w-6 h-6 text-indigo-400" />
+            <Brain className="w-6 h-6 text-teal-400" />
             عقل المبيعات
           </h1>
           <p className="text-sm text-slate-400 mt-1">
@@ -171,8 +171,8 @@ export default function SalesBrainUi() {
         <>
           {/* Recommendation of the day */}
           {data.recommendation && (
-            <div className="bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/10 border border-indigo-400/20 rounded-2xl p-4 sm:p-5">
-              <div className="flex items-center gap-2 text-indigo-300 text-xs font-medium mb-1.5">
+            <div className="bg-gradient-to-br from-teal-500/15 to-gold-500/10 border border-teal-400/20 rounded-2xl p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-teal-300 text-xs font-medium mb-1.5">
                 <Lightbulb className="w-4 h-4" />
                 توصية اليوم
               </div>
@@ -222,7 +222,7 @@ export default function SalesBrainUi() {
             className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl p-4 transition group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-400/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-400/20 flex items-center justify-center">
                 <Flame className="w-5 h-5 text-orange-400" />
               </div>
               <div>
@@ -260,7 +260,7 @@ export default function SalesBrainUi() {
             />
             <Stat
               icon={Percent}
-              tone="text-fuchsia-400"
+              tone="text-gold-400"
               label="معدل التحويل"
               value={`${rev.conversionRatePct}%`}
             />
@@ -323,7 +323,7 @@ export default function SalesBrainUi() {
           {data.insights.length > 0 && (
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5">
               <div className="flex items-center gap-2 text-sm font-medium text-white mb-3">
-                <Brain className="w-4 h-4 text-indigo-400" />
+                <Brain className="w-4 h-4 text-teal-400" />
                 أهم الإشارات اليوم
               </div>
               <ul className="space-y-2">
@@ -343,7 +343,7 @@ export default function SalesBrainUi() {
           {(data.memoryGraphInsights?.length ?? 0) > 0 && (
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5">
               <div className="flex items-center gap-2 text-sm font-medium text-white mb-3">
-                <Share2 className="w-4 h-4 text-fuchsia-400" />
+                <Share2 className="w-4 h-4 text-gold-400" />
                 روابط من محادثاتك
               </div>
               <ul className="space-y-2">
@@ -381,7 +381,7 @@ function SelfLearningCard({ learn }: { learn: NonNullable<Learning> }) {
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-3">
-        <GraduationCap className="w-4 h-4 text-violet-300" />
+        <GraduationCap className="w-4 h-4 text-gold-300" />
         <h2 className="text-sm font-bold text-slate-200">التعلّم من النتائج</h2>
         <span className="text-[11px] text-slate-500">
           آخر {learn.windowDays} يوم · {learn.totalSent} متابعة · دقة العيّنة:{" "}
@@ -430,7 +430,7 @@ function SelfLearningCard({ learn }: { learn: NonNullable<Learning> }) {
                 </span>
                 <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-violet-400/70"
+                    className="h-full rounded-full bg-gold-400/70"
                     style={{ width: `${Math.round(k.conversionRate * 100)}%` }}
                   />
                 </div>

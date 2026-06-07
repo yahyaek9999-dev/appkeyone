@@ -476,7 +476,7 @@ export default function Customer360({
                     <ScoreCard icon={<Repeat className="h-4 w-4" />} label="احتمال التكرار" value={intel!.repeatBuyerProb} tone="sky" />
                     <ScoreCard icon={<AlertTriangle className="h-4 w-4" />} label="خطر الفقدان" value={intel!.churnRisk} tone="rose" invert />
                     <ScoreCard icon={<Handshake className="h-4 w-4" />} label="ميل التفاوض" value={intel!.negotiationTendency} tone="amber" />
-                    <ScoreCard icon={<Heart className="h-4 w-4" />} label="الولاء/الاحتفاظ" value={intel!.retentionScore} tone="violet" />
+                    <ScoreCard icon={<Heart className="h-4 w-4" />} label="الولاء/الاحتفاظ" value={intel!.retentionScore} tone="gold" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <FactPill
@@ -845,7 +845,7 @@ const TONE_BAR: Record<string, string> = {
   sky: "bg-sky-400",
   rose: "bg-rose-400",
   amber: "bg-amber-400",
-  violet: "bg-violet-400",
+  gold: "bg-gold-400",
 };
 const TONE_TEXT: Record<string, string> = {
   brand: "text-brand-300",
@@ -853,7 +853,7 @@ const TONE_TEXT: Record<string, string> = {
   sky: "text-sky-300",
   rose: "text-rose-300",
   amber: "text-amber-300",
-  violet: "text-violet-300",
+  gold: "text-gold-300",
 };
 
 function ScoreCard({
@@ -926,12 +926,12 @@ const VALUE_TIER_META: Record<string, { label: string; cls: string }> = {
 
 function CustomerTwinCard({ twin }: { twin: Twin }) {
   return (
-    <div className="rounded-2xl border border-fuchsia-500/30 bg-gradient-to-b from-fuchsia-500/[0.06] to-transparent p-4">
+    <div className="rounded-2xl border border-gold-500/30 bg-gradient-to-b from-gold-500/[0.06] to-transparent p-4">
       <div className="mb-2 flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-fuchsia-300">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gold-300">
           <Users className="h-3.5 w-3.5" /> عملاء مشابهون
         </span>
-        <span className="text-[11px] text-fuchsia-200/70">
+        <span className="text-[11px] text-gold-200/70">
           {twin.neighborsMatched} من أصل {twin.neighborsConsidered}
         </span>
       </div>
@@ -975,7 +975,7 @@ const NBA_ACTION_META: Record<string, { cls: string }> = {
   close_now: { cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" },
   answer_fast: { cls: "border-sky-500/40 bg-sky-500/10 text-sky-200" },
   escalate: { cls: "border-rose-500/40 bg-rose-500/10 text-rose-200" },
-  win_back: { cls: "border-violet-500/40 bg-violet-500/10 text-violet-200" },
+  win_back: { cls: "border-gold-500/40 bg-gold-500/10 text-gold-200" },
   upsell: { cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" },
   build_trust: { cls: "border-amber-500/40 bg-amber-500/10 text-amber-200" },
   offer_value: { cls: "border-amber-500/40 bg-amber-500/10 text-amber-200" },

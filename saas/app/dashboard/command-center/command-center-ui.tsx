@@ -187,7 +187,7 @@ export default function CommandCenterUi() {
               label="نسبة العملاء العائدين"
               value={`${data.revenue.repeatPct}%`}
               sub={data.pipeline ? `${data.pipeline.opportunityCount} فرصة نشطة` : "—"}
-              tone="violet"
+              tone="gold"
             />
           </div>
 
@@ -378,7 +378,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
 function Kpi({ icon, label, value, sub, tone = "default" }: {
   icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string;
 }) {
-  const text = tone === "emerald" ? "text-emerald-300" : tone === "rose" ? "text-rose-300" : tone === "violet" ? "text-violet-300" : "text-white";
+  const text = tone === "emerald" ? "text-emerald-300" : tone === "rose" ? "text-rose-300" : tone === "gold" ? "text-gold-300" : "text-white";
   return (
     <div className="card p-4">
       <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-slate-500">{icon}{label}</div>

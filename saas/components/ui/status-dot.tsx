@@ -19,7 +19,7 @@ const TONE: Record<StatusTone, string> = {
   offline: "bg-slate-500",
   busy: "bg-rose-500",
   warning: "bg-amber-500",
-  ai: "bg-violet-500",
+  ai: "bg-gold-500",
   neutral: "bg-slate-400/60",
 };
 

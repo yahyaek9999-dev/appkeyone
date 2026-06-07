@@ -24,7 +24,7 @@ const EVENT_META: Record<string, { label: string; icon: typeof ShoppingBag; desc
 const CHANNEL_META: Record<string, { label: string; icon: typeof MessageSquare; color: string }> = {
   whatsapp:    { label: "واتساب",      icon: MessageSquare, color: "text-brand-400" },
   email:       { label: "بريد إلكتروني", icon: Mail,        color: "text-blue-400" },
-  ai_followup: { label: "متابعة ذكية", icon: Bot,          color: "text-purple-400" },
+  ai_followup: { label: "متابعة ذكية", icon: Bot,          color: "text-gold-400" },
   analytics:   { label: "تحليلات",     icon: BarChart3,    color: "text-amber-400" },
 };
 

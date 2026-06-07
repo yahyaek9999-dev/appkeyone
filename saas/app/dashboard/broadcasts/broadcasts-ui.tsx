@@ -457,7 +457,7 @@ export default function BroadcastsUi() {
                         </span>
                       )}
                       {bc.personalize && (
-                        <span className="text-xs text-purple-300 inline-flex items-center gap-1">
+                        <span className="text-xs text-gold-300 inline-flex items-center gap-1">
                           <Sparkles className="w-3 h-3" />
                           شخصي
                         </span>
@@ -679,8 +679,8 @@ export default function BroadcastsUi() {
               </div>
 
               {/* AI generator */}
-              <div className="rounded-lg border border-purple-500/25 bg-purple-500/[0.06] p-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-purple-200 mb-2">
+              <div className="rounded-lg border border-gold-500/25 bg-gold-500/[0.06] p-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-gold-200 mb-2">
                   <Wand2 className="w-4 h-4" />
                   توليد النص تلقائياً
                 </div>
@@ -689,7 +689,7 @@ export default function BroadcastsUi() {
                     <button
                       key={g.key}
                       onClick={() => setGenType(g.key)}
-                      className={`px-2.5 py-1 rounded-full text-xs border ${genType === g.key ? "bg-purple-500/20 border-purple-500/40 text-purple-100" : "bg-white/5 border-white/10 text-slate-300"}`}
+                      className={`px-2.5 py-1 rounded-full text-xs border ${genType === g.key ? "bg-gold-500/20 border-gold-500/40 text-gold-100" : "bg-white/5 border-white/10 text-slate-300"}`}
                     >
                       {g.label}
                     </button>
@@ -702,7 +702,7 @@ export default function BroadcastsUi() {
                 <button
                   onClick={generate}
                   disabled={generating}
-                  className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-100 text-xs inline-flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg bg-gold-500/20 border border-gold-500/40 text-gold-100 text-xs inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
                   توليد النص
@@ -712,7 +712,7 @@ export default function BroadcastsUi() {
               <div>
                 <label className="text-xs text-slate-400 mb-1 block">
                   نص الرسالة (يدعم{" "}
-                  <code dir="ltr" className="text-purple-300">{"{name}"}</code> لاسم العميل)
+                  <code dir="ltr" className="text-gold-300">{"{name}"}</code> لاسم العميل)
                 </label>
                 <textarea
                   value={template}
@@ -764,7 +764,7 @@ export default function BroadcastsUi() {
                 ) : (
                   <div className="space-y-2 text-xs">
                     <OptRow icon={<Clock className="w-3.5 h-3.5 text-sky-300" />} label="أفضل توقيت" value={optimization.bestSendTime.label} />
-                    <OptRow icon={<Target className="w-3.5 h-3.5 text-violet-300" />} label="الطول الأمثل" value={optimization.messageLength.verdict} />
+                    <OptRow icon={<Target className="w-3.5 h-3.5 text-gold-300" />} label="الطول الأمثل" value={optimization.messageLength.verdict} />
                     <OptRow
                       icon={<Users className="w-3.5 h-3.5 text-emerald-300" />}
                       label="أفضل شريحة"
@@ -829,10 +829,10 @@ export default function BroadcastsUi() {
                     <div className="text-xs text-slate-400 mt-0.5">كل العملاء يحصلون على نفس الرسالة بالضبط (مع استبدال {"{name}"} و {"{phone}"} فقط).</div>
                   </div>
                 </label>
-                <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border ${personalize ? "bg-purple-500/10 border-purple-500/30" : "bg-white/5 border-white/10"}`}>
-                  <input type="radio" name="sendMode" checked={personalize} onChange={() => setPersonalize(true)} className="mt-0.5 w-4 h-4 accent-purple-500" />
+                <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border ${personalize ? "bg-gold-500/10 border-gold-500/30" : "bg-white/5 border-white/10"}`}>
+                  <input type="radio" name="sendMode" checked={personalize} onChange={() => setPersonalize(true)} className="mt-0.5 w-4 h-4 accent-gold-500" />
                   <div className="flex-1">
-                    <div className="text-sm font-medium flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-purple-400" /> شخصنة تلقائية</div>
+                    <div className="text-sm font-medium flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-gold-400" /> شخصنة تلقائية</div>
                     <div className="text-xs text-slate-400 mt-0.5">البوت يعيد صياغة كل رسالة بنبرة طبيعية. الأرقام والأسعار مضمونة، وأي صياغة منحرفة تُرفض ويُرسل النص الأصلي. الكوبون والصورة تُضاف بعد الصياغة دائماً.</div>
                   </div>
                 </label>

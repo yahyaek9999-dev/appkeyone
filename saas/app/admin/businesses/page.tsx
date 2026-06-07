@@ -187,7 +187,7 @@ export default async function AdminBusinessesPage({ searchParams }: { searchPara
 
 function tierColor(tier?: string): string {
   switch (tier) {
-    case "companies": return "bg-purple-500/20 text-purple-300";
+    case "companies": return "bg-gold-500/20 text-gold-300";
     case "max":       return "bg-brand-500/20 text-brand-300";
     case "pro":       return "bg-emerald-500/20 text-emerald-300";
     default:          return "bg-slate-500/20 text-slate-300";

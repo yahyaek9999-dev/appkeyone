@@ -1,0 +1,50 @@
+# ── Build outputs ────────────────────────────────────────────────────────────
+.next
+out
+
+# ── Dependencies (reinstalled inside Docker) ─────────────────────────────────
+node_modules
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Development / editor files ────────────────────────────────────────────────
+.DS_Store
+*.log
+npm-debug.log*
+.eslintcache
+.vscode
+.idea
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── Test / CI ─────────────────────────────────────────────────────────────────
+**/*.test.ts
+**/*.spec.ts
+coverage
+.github
+
+# ── Storybook / docs ──────────────────────────────────────────────────────────
+.storybook
+docs
+
+# ── Database files (mounted as volume, never baked into image) ────────────────
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ── Large media / archives ────────────────────────────────────────────────────
+*.tar.gz
+*.mp4
+*.MP4
+*.png
+!public/**/*.png
+
+# ── Prisma migrations runtime (schema is copied explicitly) ──────────────────
+prisma/migrations

@@ -55,7 +55,7 @@ const TONE: Record<string, string> = {
   high_intent: "border-orange-500/30 bg-orange-500/10 text-orange-300",
   likely_again: "border-teal-500/30 bg-teal-500/10 text-teal-300",
   abandoned_cart: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-  discount_hunters: "border-violet-500/30 bg-violet-500/10 text-violet-300",
+  discount_hunters: "border-gold-500/30 bg-gold-500/10 text-gold-300",
   at_risk: "border-rose-500/30 bg-rose-500/10 text-rose-300",
   cold_leads: "border-slate-500/30 bg-slate-500/10 text-slate-300",
   ghost_customers: "border-slate-500/30 bg-slate-500/10 text-slate-400",
@@ -98,7 +98,7 @@ export default function SegmentsUi() {
     <div className="space-y-6">
       <div>
         <h1 className="page-title flex items-center gap-2">
-          <Users className="h-6 w-6 text-violet-400" />
+          <Users className="h-6 w-6 text-gold-400" />
           شرائح العملاء الذكية
         </h1>
         <p className="page-desc mt-1">

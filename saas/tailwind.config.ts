@@ -9,23 +9,42 @@ const config: Config = {
     extend: {
       colors: {
         // ── Brand accent ──────────────────────────────────────────────
-        // 2026 rebuild: refined muted iris/indigo (Linear/Stripe/Attio register).
+        // HOR brand: deep emerald green anchored at #01433E (brand-700).
         // The `brand-*` name is kept so the entire app re-skins through the token.
+        // Iris/indigo purple fully removed.
         brand: {
-          50: "#eef0fb",
-          100: "#dfe2f8",
-          200: "#c4c8f1",
-          300: "#a2a9e8",
-          400: "#828bdd",
-          500: "#6872d4",
-          600: "#5460c4",
-          700: "#4650a8",
-          800: "#3a4188",
-          900: "#31366e",
+          50: "#e9f4f1",
+          100: "#c9e6df",
+          200: "#9bd0c4",
+          300: "#66b3a4",
+          400: "#2f9384",
+          500: "#0c7a6c",
+          600: "#046055",
+          700: "#01433E", // HOR primary
+          800: "#013833",
+          900: "#012a26",
           // Premium solid accent for badges, dividers, subtle highlights
-          soft: "rgba(104,114,212,0.15)",
-          border: "rgba(104,114,212,0.25)",
-          glow: "rgba(104,114,212,0.08)",
+          soft: "rgba(12,122,108,0.15)",
+          border: "rgba(12,122,108,0.28)",
+          glow: "rgba(12,122,108,0.12)",
+        },
+        // ── Luxury gold secondary ─────────────────────────────────────
+        // Champagne gold #C9A24B (gold-500): premium edges, dividers,
+        // counters, eyebrows, badges, CTA highlights on the dark canvas.
+        gold: {
+          50: "#faf6ec",
+          100: "#f4e9cd",
+          200: "#ead4a0",
+          300: "#ddbf75",
+          400: "#d0ad57",
+          500: "#C9A24B",
+          600: "#a98238",
+          700: "#84642c",
+          800: "#614a22",
+          900: "#423318",
+          soft: "rgba(201,162,75,0.14)",
+          border: "rgba(201,162,75,0.30)",
+          glow: "rgba(201,162,75,0.16)",
         },
         // True-neutral canvas scale — premium near-black, no color cast.
         canvas: {
@@ -64,9 +83,13 @@ const config: Config = {
           "0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 12px -2px rgba(0,0,0,0.45)",
         float:
           "0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 32px -8px rgba(0,0,0,0.60)",
-        // `glow` retained as a name (legacy call sites) but neutralised to a
-        // soft iris ring — no neon bloom.
-        glow: "0 0 0 1px rgba(104,114,212,0.22)",
+        // `glow` retained as a name (legacy call sites) — now a soft emerald ring.
+        glow: "0 0 0 1px rgba(12,122,108,0.30)",
+        // Luxury elevation + accent glows for premium cards, CTAs, counters.
+        lux: "0 1px 0 rgba(255,255,255,0.05) inset, 0 18px 40px -14px rgba(0,0,0,0.7)",
+        "glow-emerald": "0 0 32px -8px rgba(12,122,108,0.45)",
+        "glow-gold": "0 0 28px -8px rgba(201,162,75,0.40)",
+        "gold-ring": "0 0 0 1px rgba(201,162,75,0.35)",
       },
       borderRadius: {
         // Tighter, more intentional radii than the old blanket rounded-2xl.

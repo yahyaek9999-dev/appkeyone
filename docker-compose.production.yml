@@ -1,0 +1,105 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# KEYONE — Production Docker Compose
+#
+# Services:
+#   keyone-saas   — Next.js SaaS app (port 3000, internal only)
+#   watchtower    — Auto-pull + restart on new GHCR image push
+#
+# Reverse proxy (Caddy on host) forwards HTTPS → localhost:3000
+#
+# Volume layout on host:
+#   /keyone/data/saas.db          ← SQLite database (NEVER touched by deploy)
+#   /keyone/data/uploads          ← User-uploaded files
+#   /keyone/logs/saas             ← App logs
+#   /keyone/.env.saas             ← Production environment file
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml up -d
+#   docker compose -f docker-compose.production.yml pull && docker compose -f docker-compose.production.yml up -d
+#
+# Rollback:
+#   IMAGE_TAG=<previous-sha> docker compose -f docker-compose.production.yml up -d
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Next.js SaaS Application ──────────────────────────────────────────────
+  keyone-saas:
+    image: ghcr.io/${GHCR_OWNER:-your-github-username}/keyone-saas:${IMAGE_TAG:-main}
+    container_name: keyone-saas
+    restart: unless-stopped
+
+    ports:
+      # Bind only to localhost — Caddy on host proxies HTTPS → here
+      - "127.0.0.1:3000:3000"
+
+    # Load production secrets from host file — never commit this file
+    env_file:
+      - /keyone/.env.saas
+
+    environment:
+      # Override DATABASE_URL to point at the mounted volume path inside container
+      - DATABASE_URL=file:/data/saas.db
+      - NODE_ENV=production
+      - PORT=3000
+
+    volumes:
+      # SQLite database — NEVER replaced by deploy; mounts the live file
+      - /keyone/data:/data
+      # Application logs
+      - /keyone/logs/saas:/logs
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+    labels:
+      # Watchtower: only auto-update containers with this label
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # ── Watchtower — Automatic image update + restart ─────────────────────────
+  # Polls GHCR every 60s, pulls new :main image, recreates container.
+  # Requires /root/.docker/config.json with GHCR auth (see vps-docker-setup.sh)
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: keyone-watchtower
+    restart: unless-stopped
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # GHCR credentials for pulling private images
+      - /root/.docker/config.json:/config.json:ro
+
+    command: >
+      --interval 60
+      --cleanup
+      --label-enable
+      --rolling-restart
+      --stop-timeout 30s
+
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=60
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_ROLLING_RESTART=true
+      # Prevent Watchtower from auto-updating itself
+      - WATCHTOWER_MONITOR_ONLY=false
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ── No named volumes — data lives on the host under /keyone/data ─────────────
+# This ensures the SQLite file is owned by the host OS and survives container
+# recreation, image updates, and even a full Docker reinstall.

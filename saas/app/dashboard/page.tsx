@@ -18,6 +18,7 @@ import ActivationChecklist from "./_activation-checklist";
 import { syncUserMilestones } from "@/lib/activation/track";
 import InsightStrip from "@/components/insight-strip";
 import { FadeInView } from "@/components/ui/stagger-reveal";
+import { GlowCard } from "@/components/ui/glow-card";
 
 export const dynamic = "force-dynamic";
 
@@ -477,7 +478,7 @@ function InsightCard({ icon, label, value, delta, period }: {
   icon: React.ReactNode; label: string; value: string; delta?: number | null; period?: string;
 }) {
   return (
-    <div className="card p-3.5">
+    <GlowCard glow="brand" className="p-3.5">
       <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-slate-500">
         <span className="text-slate-400">{icon}</span>
         {label}
@@ -489,7 +490,7 @@ function InsightCard({ icon, label, value, delta, period }: {
         )}
       </div>
       {period && <div className="mt-0.5 text-[10px] text-slate-600">{period}</div>}
-    </div>
+    </GlowCard>
   );
 }
 

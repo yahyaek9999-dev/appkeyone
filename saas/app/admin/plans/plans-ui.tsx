@@ -102,7 +102,7 @@ export default function PlansUi({ initial }: { initial: PlanRow[] }) {
                 <div className="text-xs text-slate-500">{p.slug} · {p.nameEn} · ${p.priceUsd}/mo</div>
               </div>
               <span className={`px-2 py-0.5 rounded text-[11px] ${
-                p.tier === "companies" ? "bg-purple-500/20 text-purple-300" :
+                p.tier === "companies" ? "bg-gold-500/20 text-gold-300" :
                 p.tier === "max" ? "bg-brand-500/20 text-brand-300" :
                 p.tier === "pro" ? "bg-emerald-500/20 text-emerald-300" :
                 "bg-slate-500/20 text-slate-300"

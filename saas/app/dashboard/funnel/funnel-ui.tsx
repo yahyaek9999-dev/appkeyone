@@ -133,7 +133,7 @@ export default function FunnelUi() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Kpi icon={<Percent className="h-4 w-4" />} label="التحويل الكلي" value={`${data.metrics.overallConversionPct}%`} accent="border-emerald-500/30 bg-emerald-500/10 text-emerald-300" />
             <Kpi icon={<Target className="h-4 w-4" />} label="معدل الإغلاق" value={`${data.metrics.closeRatePct}%`} accent="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
-            <Kpi icon={<Repeat className="h-4 w-4" />} label="معدل الشراء المتكرر" value={`${data.metrics.repeatPurchasePct}%`} accent="border-violet-500/30 bg-violet-500/10 text-violet-300" />
+            <Kpi icon={<Repeat className="h-4 w-4" />} label="معدل الشراء المتكرر" value={`${data.metrics.repeatPurchasePct}%`} accent="border-gold-500/30 bg-gold-500/10 text-gold-300" />
             <Kpi icon={<Clock className="h-4 w-4" />} label="متوسط زمن الرد" value={fmtDuration(data.metrics.avgResponseMins)} accent="border-sky-500/30 bg-sky-500/10 text-sky-300" />
           </div>
 

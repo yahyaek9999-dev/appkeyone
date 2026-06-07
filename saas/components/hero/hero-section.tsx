@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useCallback, useLayoutEffect } from "react";
-import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import HeroVideo from "./hero-video";
 import ParticleField from "./particle-field";
 import { WhatsAppIcon } from "@/components/ui/marketing";
+import { FrameButton } from "@/components/ui/frame-button";
 import { cn } from "@/lib/utils";
 
 // ── Props ────────────────────────────────────────────────────────────────────
@@ -201,41 +201,21 @@ export default function HeroSection({
       {/* ── CTA Buttons below video ── */}
       <div className="flex flex-col items-center justify-center gap-4 bg-black px-6 pb-16 pt-10 sm:flex-row sm:pb-20">
         {waNum ? (
-          <motion.a
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition-colors hover:bg-brand-400 sm:w-auto"
-            whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(104,114,212,0.35)" }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
+          <FrameButton href={waHref} variant="solid" external>
             <WhatsAppIcon className="h-4 w-4" />
             {ctaPrimary}
-          </motion.a>
+          </FrameButton>
         ) : (
-          <motion.a
-            href="/pricing"
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition-colors hover:bg-brand-400 sm:w-auto"
-            whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(104,114,212,0.35)" }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
+          <FrameButton href="/pricing" variant="solid">
             {ctaPrimary}
             <Arrow />
-          </motion.a>
+          </FrameButton>
         )}
 
-        <motion.a
-          href="/pricing"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-8 py-3.5 text-sm font-medium text-slate-300 backdrop-blur-sm transition-colors hover:border-white/25 hover:text-white sm:w-auto"
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        >
+        <FrameButton href="/pricing" variant="outline">
           {ctaSecondary}
           {!waNum && <Arrow />}
-        </motion.a>
+        </FrameButton>
       </div>
     </>
   );

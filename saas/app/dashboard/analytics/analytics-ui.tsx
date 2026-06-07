@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FadeInView } from "@/components/ui/stagger-reveal";
+import { LimelightTabs } from "@/components/ui/limelight-tabs";
 
 type Analytics = {
   days: number;
@@ -61,21 +62,11 @@ export default function AnalyticsUi() {
           <h1 className="page-title">التحليلات</h1>
           <p className="page-desc mt-1">نظرة شاملة على أداء عملك</p>
         </div>
-        <div className="flex gap-1 rounded-lg border border-white/[0.06] bg-white/[0.01] p-0.5">
-          {[7, 30, 90].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                days === d
-                  ? "bg-white/[0.07] text-white"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              آخر {d} يوم
-            </button>
-          ))}
-        </div>
+        <LimelightTabs
+          activeKey={String(days)}
+          onChange={(k) => setDays(Number(k))}
+          tabs={[7, 30, 90].map((d) => ({ key: String(d), label: `آخر ${d} يوم` }))}
+        />
       </div>
 
       {/* Key metrics — flat, dense, data-first */}
@@ -113,7 +104,7 @@ export default function AnalyticsUi() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">
           <h2 className="section-title mb-3">نوايا العملاء</h2>
-          <DistRows data={data.intent} labels={INTENT_LABEL} colors={{ buy: "bg-brand-500", inquiry: "bg-sky-500", complaint: "bg-rose-500", support: "bg-amber-500", greeting: "bg-slate-500", other: "bg-violet-500" }} />
+          <DistRows data={data.intent} labels={INTENT_LABEL} colors={{ buy: "bg-brand-500", inquiry: "bg-sky-500", complaint: "bg-rose-500", support: "bg-amber-500", greeting: "bg-slate-500", other: "bg-gold-500" }} />
         </div>
         <div className="card p-4">
           <h2 className="section-title mb-3">المشاعر</h2>

@@ -110,7 +110,7 @@ export default function IntelUi() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="w-6 h-6 text-indigo-400" />
+            <Brain className="w-6 h-6 text-teal-400" />
             ذكاء المبيعات
           </h1>
           <p className="text-sm text-slate-400 mt-1">
