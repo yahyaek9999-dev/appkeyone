@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 import InsightStrip from "@/components/insight-strip";
+import { FadeInView } from "@/components/ui/stagger-reveal";
 
 export default async function CustomersPage() {
   const { user } = await requirePagePermission("customers");
@@ -45,6 +46,7 @@ export default async function CustomersPage() {
 
       <InsightStrip context="customers" />
 
+      <FadeInView delay={0.05}>
       {customers.length === 0 ? (
         <div className="card">
           <EmptyState
@@ -130,6 +132,7 @@ export default async function CustomersPage() {
           </div>
         </div>
       )}
+      </FadeInView>
     </div>
   );
 }

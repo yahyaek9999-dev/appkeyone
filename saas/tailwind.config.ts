@@ -94,6 +94,10 @@ const config: Config = {
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.6s ease-out",
         "light-sweep": "lightSweep 7s ease-in-out infinite",
+        "pulse-glow": "pulseGlow 3s ease-in-out infinite",
+        "shimmer": "shimmer 2.5s linear infinite",
+        "float-up": "floatUp 6s ease-in-out infinite",
+        "gradient-x": "gradientX 5s ease infinite",
       },
       keyframes: {
         fadeIn: { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
@@ -105,6 +109,22 @@ const config: Config = {
           "0%": { transform: "translateX(-100%) skewX(-18deg)" },
           "30%": { transform: "translateX(200%) skewX(-18deg)" },
           "100%": { transform: "translateX(200%) skewX(-18deg)" },
+        },
+        pulseGlow: {
+          "0%, 100%": { opacity: "0.3", transform: "scale(0.95)" },
+          "50%": { opacity: "0.6", transform: "scale(1.05)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        floatUp: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        gradientX: {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
         },
       },
     },

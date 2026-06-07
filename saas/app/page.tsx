@@ -17,6 +17,10 @@ import {
   Phone, Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { AnimatedFeaturesGrid } from "@/components/ui/animated-features-grid";
+import { FadeInView, StaggerReveal, StaggerItem } from "@/components/ui/stagger-reveal";
+import { BorderBeam } from "@/components/ui/border-beam";
+import AnimatedStatsSection from "@/components/ui/animated-stats-section";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +32,6 @@ async function getPlans() {
   }
 }
 
-// Feature icon + accent per index (kept stable, not random — looks intentional).
 const FEATURE_META: Array<{
   icon: ComponentType<{ className?: string }>;
   accent: string;
@@ -41,16 +44,11 @@ const FEATURE_META: Array<{
   { icon: Shield, accent: "text-rose-300" },
 ];
 
-// ── WhatsApp Product Mockup ──────────────────────────────────────────────────
-// Shows a live-feeling WhatsApp conversation to communicate core value instantly.
-// No external images — pure HTML/CSS so it's always sharp and loads instantly.
 function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boolean }) {
   const isRtl = dir === "rtl";
   return (
     <div className={`relative ${compact ? "mx-auto max-w-sm" : ""}`}>
-      {/* Outer phone-style card */}
       <div className="relative rounded-2xl border border-white/[0.09] bg-[#0d1117] shadow-2xl overflow-hidden">
-        {/* WhatsApp header */}
         <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#111a14] px-4 py-3">
           <div className="h-9 w-9 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
             <span className="text-brand-300 text-xs font-bold">ع</span>
@@ -69,9 +67,7 @@ function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boole
           </div>
         </div>
 
-        {/* Chat bubbles */}
         <div className="space-y-3 px-4 py-4 text-sm" dir={isRtl ? "rtl" : "ltr"}>
-          {/* Customer message */}
           <div className="flex justify-start">
             <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white/[0.07] px-3.5 py-2.5 text-slate-200 leading-relaxed">
               <p>عايز أعرف الأسعار واللي عندكم من منتجات</p>
@@ -79,7 +75,6 @@ function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boole
             </div>
           </div>
 
-          {/* AI response */}
           <div className="flex justify-end">
             <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-brand-600/25 border border-brand-500/20 px-3.5 py-2.5 text-slate-100 leading-relaxed">
               <p>أهلاً بيك! 👋 عندنا 3 باقات:</p>
@@ -91,7 +86,6 @@ function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boole
             </div>
           </div>
 
-          {/* Customer reply */}
           <div className="flex justify-start">
             <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white/[0.07] px-3.5 py-2.5 text-slate-200 leading-relaxed">
               <p>عايز الاحترافية ✅</p>
@@ -99,14 +93,12 @@ function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boole
             </div>
           </div>
 
-          {/* Order detected badge */}
           <div className="flex items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/8 px-3 py-2">
             <ShoppingCart className="h-3.5 w-3.5 text-amber-400 shrink-0" />
             <span className="text-xs font-medium text-amber-300">طلب جديد مكتشف — باقة احترافية</span>
           </div>
         </div>
 
-        {/* Bottom action */}
         <div className="border-t border-white/[0.06] bg-[#111a14] px-4 py-3">
           <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2 text-slate-500 text-xs">
             <span className="flex-1">KEYONE يكمل المتابعة تلقائياً…</span>
@@ -115,7 +107,6 @@ function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boole
         </div>
       </div>
 
-      {/* Floating metrics card */}
       <div className="absolute -bottom-4 -start-4 rounded-xl border border-white/[0.09] bg-[#0d1117]/95 p-3 shadow-xl backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-1.5">
           <TrendingUp className="h-3.5 w-3.5 text-brand-400 shrink-0" />
@@ -133,7 +124,6 @@ function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boole
         </div>
       </div>
 
-      {/* Floating response time badge */}
       <div className="absolute -top-3 -end-3 rounded-lg border border-white/[0.09] bg-[#0d1117]/95 px-2.5 py-1.5 shadow-xl backdrop-blur-sm">
         <div className="flex items-center gap-1.5">
           <Zap className="h-3 w-3 text-amber-400" />
@@ -179,6 +169,21 @@ export default async function LandingPage({
     features: JSON.parse(p.features || "[]"),
   }));
 
+  const featureItems = m.features.items.map(
+    (item: { title: string; desc: string }, idx: number) => {
+      const meta = FEATURE_META[idx % FEATURE_META.length];
+      const Icon = meta.icon;
+      return {
+        title: item.title,
+        desc: item.desc,
+        // Pre-render the icon element here (Server Component) so only a
+        // serializable React node crosses into the client grid — never the
+        // component function itself.
+        icon: <Icon className={`h-4 w-4 ${meta.accent}`} />,
+      };
+    }
+  );
+
   return (
     <main className="ai-page" dir={m.dir}>
       <PublicNav brandName={brandName} supportWhatsapp={cfg.supportWhatsapp} locale={locale} />
@@ -194,49 +199,39 @@ export default async function LandingPage({
         ctaSecondary={m.hero.ctaSecondary}
       />
 
-      {/* ───────── Stats that lead ───────── */}
-      <section className="border-y border-white/[0.06] bg-white/[0.012] px-5 py-10">
-        <div className="mx-auto max-w-5xl">
-          <div className="grid grid-cols-2 gap-y-8 sm:grid-cols-4 sm:divide-x sm:divide-white/[0.06]">
-            {m.stats.map((s: { num: string; unit?: string; label: string }) => (
-              <div key={s.label} className="px-4 text-center">
-                <div className="text-3xl font-semibold tabular-nums text-white sm:text-[2rem]">
-                  {s.num}
-                  {s.unit && <span className="ms-1 text-sm font-normal text-slate-500">{s.unit}</span>}
-                </div>
-                <div className="mt-1.5 text-xs text-slate-500">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ───────── Stats strip ───────── */}
+      <AnimatedStatsSection stats={m.stats} />
 
-      {/* ───────── Outcomes — not marketing, not before/after ───────── */}
+      {/* ───────── Outcomes ───────── */}
       <section className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-5xl">
-          <div className="text-center mb-10">
+          <FadeInView className="text-center mb-10">
             <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
               {isRtl ? "نتائج حقيقية" : "Real outcomes"}
             </h2>
             <p className="mt-2 text-sm text-slate-500">
               {isRtl ? "الشركات التي تستخدم KEYONE تشاهد فرقاً في أول شهر" : "Businesses using KEYONE see measurable results in the first month"}
             </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          </FadeInView>
+
+          <StaggerReveal className="grid gap-4 sm:grid-cols-3" stagger={0.1}>
             {[
               { value: isRtl ? "15 دقيقة" : "15 min/day", label: isRtl ? "إدارة العمليات اليومية" : "daily operations management", accent: false },
               { value: isRtl ? "5 ثوانٍ" : "5 seconds", label: isRtl ? "متوسط وقت الرد على العملاء" : "average customer reply time", accent: true },
               { value: isRtl ? "~3×" : "~3×", label: isRtl ? "زيادة في تحويل المبيعات" : "increase in sales conversion", accent: false },
             ].map((item, i) => (
-              <div key={i} className="surface p-6 text-center">
-                <div className={`text-3xl font-semibold tabular-nums sm:text-4xl ${item.accent ? "text-brand-300" : "text-white"}`}>
-                  {item.value}
+              <StaggerItem key={i}>
+                <div className="surface p-6 text-center">
+                  <div className={`text-3xl font-semibold tabular-nums sm:text-4xl ${item.accent ? "text-brand-300" : "text-white"}`}>
+                    {item.value}
+                  </div>
+                  <div className="mt-1.5 text-sm text-slate-500">{item.label}</div>
                 </div>
-                <div className="mt-1.5 text-sm text-slate-500">{item.label}</div>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
-          <div className="mt-6 surface p-5 sm:p-6">
+          </StaggerReveal>
+
+          <FadeInView delay={0.3} className="mt-6 surface p-5 sm:p-6">
             <p className="text-sm leading-relaxed text-slate-300">
               {isRtl
                 ? `"قبل ${brandName}، كنا بنضيع ساعات يومياً على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً — الردود، تتبع الطلبات، والتقارير. الفرق في الشهر الأول كان واضح."`
@@ -246,36 +241,23 @@ export default async function LandingPage({
             <div className="mt-3 text-xs text-slate-500">
               {isRtl ? "— صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "— E-commerce store owner, user for 6 months"}
             </div>
-          </div>
+          </FadeInView>
         </div>
       </section>
 
-      {/* ───────── Features ───────── */}
+      {/* ───────── Features — spotlight cards ───────── */}
       <section id="features" className="px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto mb-12 max-w-2xl text-center">
+          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
             <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
               {m.features.heading}
             </h2>
             <p className="mt-2 text-sm text-slate-500">
               {m.features.subheading}
             </p>
-          </div>
+          </FadeInView>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {m.features.items.map((item: { title: string; desc: string }, idx: number) => {
-              const Icon = FEATURE_META[idx % FEATURE_META.length].icon;
-              return (
-                <div key={item.title} className="surface h-full p-5">
-                  <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
-                    <Icon className="h-4 w-4 text-slate-400" />
-                  </div>
-                  <h3 className="mb-1.5 text-sm font-semibold text-white">{item.title}</h3>
-                  <p className="text-sm leading-relaxed text-slate-400">{item.desc}</p>
-                </div>
-              );
-            })}
-          </div>
+          <AnimatedFeaturesGrid items={featureItems} cols={3} />
         </div>
       </section>
 
@@ -293,44 +275,46 @@ export default async function LandingPage({
       {/* ───────── How it works ───────── */}
       <section id="how" className="px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl">
-          <div className="mx-auto mb-12 max-w-2xl text-center">
+          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
             <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
               {m.howItWorks.heading}
             </h2>
             <p className="mt-2 text-sm text-slate-500">
               {m.howItWorks.subheading}
             </p>
-          </div>
+          </FadeInView>
 
-          <div className="space-y-3">
+          <StaggerReveal className="space-y-3" stagger={0.12}>
             {m.howItWorks.steps.map((step: { num: string; title: string; desc: string }) => (
-              <div key={step.num} className="surface flex gap-4 p-5 sm:p-6">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-500/20 bg-brand-500/[0.05] text-xs font-semibold text-brand-300">
-                  {step.num}
+              <StaggerItem key={step.num}>
+                <div className="surface flex gap-4 p-5 sm:p-6">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-500/20 bg-brand-500/[0.05] text-xs font-semibold text-brand-300">
+                    {step.num}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="mb-1 text-sm font-semibold text-white">{step.title}</h3>
+                    <p className="text-sm leading-relaxed text-slate-400">{step.desc}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="mb-1 text-sm font-semibold text-white">{step.title}</h3>
-                  <p className="text-sm leading-relaxed text-slate-400">{step.desc}</p>
-                </div>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerReveal>
         </div>
       </section>
 
       {/* ───────── Trust ───────── */}
       <TrustSection m={m.trust} dir={m.dir} />
 
-      {/* ───────── Social proof — testimonials + sector strip ───────── */}
+      {/* ───────── Social proof ───────── */}
       <SocialProof locale={locale} dir={m.dir} />
 
       {/* ───────── Pricing preview ───────── */}
       <section id="pricing" className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto mb-12 max-w-2xl text-center">
+          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
             <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.pricing.heading}</h2>
             <p className="mt-2 text-sm text-slate-500">{m.pricing.subheading}</p>
-          </div>
+          </FadeInView>
 
           <PricingCards
             plans={previewPlans}
@@ -339,23 +323,23 @@ export default async function LandingPage({
             labels={{ perMonth: m.pricing.perMonth }}
           />
 
-          <div className="mt-8 text-center">
+          <FadeInView delay={0.2} className="mt-8 text-center">
             <Link
               href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
               className="btn-outline h-11"
             >
               {m.pricing.viewAll} <Arrow className="h-4 w-4" />
             </Link>
-          </div>
+          </FadeInView>
         </div>
       </section>
 
       {/* ───────── FAQ ───────── */}
-
-      {/* ───────── FAQ ───────── */}
       <section id="faq" className="border-y border-white/[0.06] bg-white/[0.012] px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl">
-          <h2 className="mb-10 text-center text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.faq.heading}</h2>
+          <FadeInView>
+            <h2 className="mb-10 text-center text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.faq.heading}</h2>
+          </FadeInView>
           <FaqAccordion items={m.faq.items} />
         </div>
       </section>
@@ -363,24 +347,27 @@ export default async function LandingPage({
       {/* ───────── CTA ───────── */}
       <section className="px-5 py-20">
         <div className="mx-auto max-w-3xl">
-          <div className="surface px-8 py-14 text-center sm:px-12">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.cta.heading}</h2>
-            <p className="mx-auto mt-3 max-w-md text-sm text-slate-400">{m.cta.subheading}</p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              {waNum ? (
-                <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 px-5 text-sm">
-                  <Phone className="h-4 w-4" /> {m.cta.primary}
-                </a>
-              ) : (
-                <Link href="/pricing" className="btn-premium h-11 px-5 text-sm">
-                  {m.cta.primary} <Arrow className="h-4 w-4" />
+          <FadeInView>
+            <div className="surface relative overflow-hidden px-8 py-14 text-center sm:px-12">
+              <BorderBeam colorFrom="rgba(104,114,212,0.9)" colorTo="rgba(162,169,232,0.3)" size={180} duration={6} />
+              <h2 className="relative text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.cta.heading}</h2>
+              <p className="relative mx-auto mt-3 max-w-md text-sm text-slate-400">{m.cta.subheading}</p>
+              <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                {waNum ? (
+                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 px-5 text-sm">
+                    <Phone className="h-4 w-4" /> {m.cta.primary}
+                  </a>
+                ) : (
+                  <Link href="/pricing" className="btn-premium h-11 px-5 text-sm">
+                    {m.cta.primary} <Arrow className="h-4 w-4" />
+                  </Link>
+                )}
+                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 text-sm">
+                  {m.cta.secondary}
                 </Link>
-              )}
-              <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 text-sm">
-                {m.cta.secondary}
-              </Link>
+              </div>
             </div>
-          </div>
+          </FadeInView>
         </div>
       </section>
 

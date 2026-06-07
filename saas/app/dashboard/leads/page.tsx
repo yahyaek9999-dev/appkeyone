@@ -8,6 +8,7 @@ import { LeadStatusBadge, type LeadStatus } from "@/components/ui/lead-status-ba
 import { StatGrid } from "@/components/ui/stat-grid";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/ui/status-dot";
+import { FadeInView } from "@/components/ui/stagger-reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,7 @@ export default async function LeadsPage() {
         <Stat label="إجمالي" value={leads.length} cls="text-sky-300" />
       </StatGrid>
 
+      <FadeInView delay={0.05}>
       {leads.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-2xl">
           <EmptyState
@@ -231,6 +233,7 @@ export default async function LeadsPage() {
           </div>
         </>
       )}
+      </FadeInView>
     </div>
   );
 }

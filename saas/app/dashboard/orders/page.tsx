@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/order-status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
+import { FadeInView } from "@/components/ui/stagger-reveal";
 
 function toOrderStatus(s: string): OrderStatus {
   if (s === "canceled") return "cancelled";
@@ -104,6 +105,7 @@ export default async function OrdersPage({
       <InsightStrip context="orders" />
 
       {/* Desktop table */}
+      <FadeInView delay={0.05}>
       <div className="card mobile-scroll-x overflow-hidden">
         <div className="hidden sm:block">
           <table className="data-table">
@@ -222,6 +224,7 @@ export default async function OrdersPage({
           )}
         </div>
       </div>
+      </FadeInView>
     </div>
   );
 }

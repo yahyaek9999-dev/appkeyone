@@ -17,6 +17,7 @@ import { GettingStarted } from "./_getting-started";
 import ActivationChecklist from "./_activation-checklist";
 import { syncUserMilestones } from "@/lib/activation/track";
 import InsightStrip from "@/components/insight-strip";
+import { FadeInView } from "@/components/ui/stagger-reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -233,6 +234,7 @@ export default async function DashboardOverview() {
       <InsightStrip context="dashboard" />
 
       {/* ── What makes money — revenue-led band, not a row of equal KPIs ──── */}
+      <FadeInView>
       <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.018]">
         <div className="grid gap-px bg-white/[0.05] sm:grid-cols-2 lg:grid-cols-4">
           {/* Revenue — the lead, double width on desktop */}
@@ -258,8 +260,10 @@ export default async function DashboardOverview() {
           <MoneyCell icon={<TrendingUp className="h-4 w-4" />} label="معدل التحويل" value={conversionPct !== null ? `${conversionPct}%` : "—"} href="/dashboard/analytics" />
         </div>
       </section>
+      </FadeInView>
 
       {/* ── What happened — activity + drivers ─────────────────────────────── */}
+      <FadeInView delay={0.05}>
       <div className="grid gap-4 lg:grid-cols-5">
         {/* Activity — message volume over 30d */}
         <div className="card p-4 lg:col-span-3">
@@ -293,8 +297,10 @@ export default async function DashboardOverview() {
           </div>
         </div>
       </div>
+      </FadeInView>
 
       {/* ── What should I do next — orders + messages ──────────────────────── */}
+      <FadeInView delay={0.1}>
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Recent orders */}
         <div className="card p-4">
@@ -382,8 +388,10 @@ export default async function DashboardOverview() {
           )}
         </div>
       </div>
+      </FadeInView>
 
       {/* ── Why — trend insights ───────────────────────────────────────────── */}
+      <FadeInView delay={0.15}>
       <div className="grid gap-4 sm:grid-cols-4">
         <InsightCard
           icon={<MessageSquare className="h-3.5 w-3.5" />}
@@ -413,6 +421,7 @@ export default async function DashboardOverview() {
           period="العملاء → طلبات"
         />
       </div>
+      </FadeInView>
     </div>
   );
 }

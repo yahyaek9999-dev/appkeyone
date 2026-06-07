@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FadeInView } from "@/components/ui/stagger-reveal";
 
 type Analytics = {
   days: number;
@@ -78,14 +79,17 @@ export default function AnalyticsUi() {
       </div>
 
       {/* Key metrics — flat, dense, data-first */}
+      <FadeInView delay={0.05}>
       <div className="metric-group grid-cols-2 sm:grid-cols-4">
         <MetricCell label="إجمالي العملاء" value={data.totals.customers.toLocaleString()} sub={`+${data.today.newCustomers} اليوم`} />
-        <MetricCell label="الرسائل ({data.days} يوم)" value={data.totals.messages.toLocaleString()} sub={`${data.today.messages} اليوم`} />
+        <MetricCell label={`الرسائل (${data.days} يوم)`} value={data.totals.messages.toLocaleString()} sub={`${data.today.messages} اليوم`} />
         <MetricCell label="عملاء ساخنون" value={data.totals.leadsHot.toLocaleString()} sub={`${data.totals.leadsWarm} دافئين`} />
         <MetricCell label="توفير LLM" value={`~${data.savings.estUsdSaved}$`} sub={`${data.savings.estLlmCallsSaved} استدعاء`} />
       </div>
+      </FadeInView>
 
       {/* Daily message chart */}
+      <FadeInView delay={0.1}>
       <div className="card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title">حركة الرسائل اليومية</h2>
@@ -102,8 +106,10 @@ export default function AnalyticsUi() {
         </div>
         <DailyChart data={data.messagesDaily} />
       </div>
+      </FadeInView>
 
       {/* Two-column: intent + sentiment */}
+      <FadeInView delay={0.15}>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">
           <h2 className="section-title mb-3">نوايا العملاء</h2>
@@ -114,6 +120,7 @@ export default function AnalyticsUi() {
           <DistRows data={data.sentiment} labels={SENTIMENT_LABEL} colors={{ positive: "bg-emerald-500", neutral: "bg-slate-500", negative: "bg-amber-500", angry: "bg-rose-500" }} />
         </div>
       </div>
+      </FadeInView>
 
       {/* Two-column: lead distribution + top tags */}
       <div className="grid gap-4 lg:grid-cols-2">

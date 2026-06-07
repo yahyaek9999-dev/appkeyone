@@ -10,6 +10,7 @@ import { NavLinks, SidebarNav } from "./nav-items";
 import CommandPalette from "./command-palette";
 import CommandTrigger from "./command-trigger";
 import HelpDrawer from "./help-drawer";
+import PageTransition from "./page-transition";
 import { ToastProvider } from "@/components/ui/toast";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
@@ -107,7 +108,7 @@ export default async function DashboardLayout({
 
           <main className="min-h-screen min-w-0 flex-1">
             <div className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-safe pt-6 md:px-8 md:pt-8 lg:pt-10">
-              {children}
+              <PageTransition>{children}</PageTransition>
             </div>
             <HelpDrawer />
           </main>
