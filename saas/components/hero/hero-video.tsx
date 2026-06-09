@@ -73,7 +73,8 @@ export default function HeroVideo({ src, mobileSrc }: HeroVideoProps) {
         playsInline
         loop={false}
         controls={false}
-        preload="auto"
+        preload="metadata"
+        poster="/vedio-poster.jpg"
         className={mobileSrc ? "h-full w-full object-cover max-md:hidden" : "h-full w-full object-cover"}
         style={{ willChange: "transform" }}
         onEnded={handleEnded}
@@ -90,6 +91,7 @@ export default function HeroVideo({ src, mobileSrc }: HeroVideoProps) {
           playsInline
           controls={false}
           preload="metadata"
+          poster="/mobile-poster.jpg"
           className="absolute inset-0 h-full w-full object-cover md:hidden"
           style={{ willChange: "transform" }}
         />

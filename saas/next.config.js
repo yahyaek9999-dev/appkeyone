@@ -66,6 +66,16 @@ const nextConfig = {
           { key: "Content-Security-Policy-Report-Only", value: csp },
         ],
       },
+      {
+        // Long-lived immutable caching for the hero media + poster stills so
+        // repeat visits and video range requests don't re-hit the Node origin
+        // (the single biggest repeat-load reduction). Exact paths keep the
+        // route-source valid (Next forbids capture groups); rename to bust.
+        source: "/:file(vedio.mp4|mobile.mp4|vedio-poster.jpg|mobile-poster.jpg)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
     ];
   },
   experimental: {
