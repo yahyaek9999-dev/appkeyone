@@ -20,6 +20,12 @@ import * as Sentry from "@sentry/nextjs";
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Validate required env vars at startup. In production this throws on a
+    // missing/weak AUTH_SECRET or SAAS_INTERNAL_SECRET so the app fails fast
+    // instead of silently running with public dev-fallback secrets.
+    const { validateEnv } = await import("./lib/env");
+    validateEnv();
+
     // Full server-side SDK (Prisma tracing, beforeSend filters, etc.)
     await import("./sentry.server.config");
   }

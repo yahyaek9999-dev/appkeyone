@@ -25,6 +25,29 @@ const nextConfig = {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
   async headers() {
+    // Content-Security-Policy. Next.js App Router injects inline bootstrap
+    // scripts/styles, so script/style-src must allow 'unsafe-inline' (and
+    // 'unsafe-eval' for the dev/runtime). This is a pragmatic baseline that adds
+    // clickjacking (frame-ancestors), base-uri and object-src lockdown without
+    // breaking the bundled UI; tightening script-src to nonce-based is a future
+    // step (requires wiring a nonce through the app). connect-src allows https
+    // for the Sentry SDK + outbound APIs; media/img allow blob+data for the
+    // hero video and generated images.
+    const csp = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' blob: data:",
+      "font-src 'self' data:",
+      "connect-src 'self' https:",
+      "worker-src 'self' blob:",
+      "upgrade-insecure-requests",
+    ].join("; ");
     return [
       {
         source: "/(.*)",
@@ -36,6 +59,11 @@ const nextConfig = {
           // HSTS: enforce HTTPS for 2 years incl. subdomains (enterprise control).
           // Safe additive header — production is HTTPS-only behind the proxy.
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          // Report-Only for the initial production rollout: violations are
+          // logged (and visible in the browser console) but nothing is blocked,
+          // so a missing origin can't break the live UI. Flip the key to
+          // "Content-Security-Policy" to enforce once prod HTML is confirmed clean.
+          { key: "Content-Security-Policy-Report-Only", value: csp },
         ],
       },
     ];

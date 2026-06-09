@@ -41,7 +41,20 @@ export type RateLimitResult = {
 export function getClientIp(req: NextRequest | Request): string {
   const h = (req as NextRequest).headers;
   const xff = h.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
+  if (xff) {
+    // SECURITY: X-Forwarded-For is client-appendable. The LEFTMOST entry is
+    // attacker-controlled, so keying on it lets an attacker mint a fresh
+    // rate-limit bucket per forged IP and bypass brute-force protection.
+    // Trust only the entry inserted by our own proxies: with TRUSTED_PROXY_COUNT
+    // reverse proxies in front (default 1 = Caddy), the real client is the
+    // entry `count` positions from the right.
+    const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length) {
+      const hops = Math.max(1, parseInt(process.env.TRUSTED_PROXY_COUNT || "1", 10));
+      const idx = parts.length - hops;
+      return parts[idx >= 0 ? idx : parts.length - 1]!;
+    }
+  }
   const real = h.get("x-real-ip");
   if (real) return real.trim();
   // @ts-expect-error - Next provides ip on the underlying Request in node runtime

@@ -21,6 +21,7 @@
 // the local Product table. It never touches orders, wa.send, or any pipeline.
 
 import { prisma } from "@/lib/db";
+import { assertPublicHttpUrl } from "@/lib/ssrf";
 
 const PAGES_PER_RUN = 5;
 const PAGE_SIZE     = 100;
@@ -53,6 +54,10 @@ interface RawProduct {
 // ── Platform adapters ────────────────────────────────────────────────────────
 
 async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  // SSRF guard: storeUrl is merchant-supplied. Reject internal/loopback/metadata
+  // targets before connecting so a malicious integration can't probe the VPS's
+  // internal network (WA service, LLM, Redis, x-internal-secret endpoints).
+  await assertPublicHttpUrl(url);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {

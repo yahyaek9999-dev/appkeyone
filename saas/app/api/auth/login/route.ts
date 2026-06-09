@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { verifyPassword, createSession, createMemberSession } from "@/lib/auth";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -8,6 +9,10 @@ const Body = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+// Precomputed hash used to burn ~equal bcrypt time on unknown-email logins so
+// response latency can't be used to enumerate which emails are registered.
+const DUMMY_HASH = bcrypt.hashSync("timing-equalization-placeholder", 10);
 
 export async function POST(req: Request) {
   const blocked = enforceRateLimit(req, { name: "login", ...RATE_LIMITS.auth });
@@ -53,6 +58,12 @@ export async function POST(req: Request) {
       data: { lastLoginAt: new Date() },
     }).catch(() => {});
     return NextResponse.json({ ok: true, role: member.role, redirectTo: "/dashboard" });
+  }
+
+  // No bcrypt ran above only when the email matched no owner and no member with
+  // a password — equalize timing to avoid leaking account existence.
+  if (!user && (!member || !member.passwordHash)) {
+    await verifyPassword(parsed.data.password, DUMMY_HASH);
   }
 
   return NextResponse.json({ error: "بريد أو كلمة مرور خاطئة" }, { status: 401 });

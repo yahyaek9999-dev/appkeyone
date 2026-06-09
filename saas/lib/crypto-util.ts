@@ -19,6 +19,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypt
 const ALGO = "aes-256-gcm";
 const KEY_LEN = 32;
 const IV_LEN = 12; // 96-bit nonce for GCM
+const TAG_LEN = 16; // 128-bit GCM auth tag — enforced on both ends
 const SCRYPT_SALT = Buffer.from("keyone:provider-key:v1"); // fixed salt — key derivation is deterministic per AUTH_SECRET
 
 let cachedKey: Buffer | null = null;
@@ -39,7 +40,7 @@ export function encryptSecret(plaintext: string): string {
   if (!plaintext) return "";
   const key = deriveKey();
   const iv = randomBytes(IV_LEN);
-  const cipher = createCipheriv(ALGO, key, iv);
+  const cipher = createCipheriv(ALGO, key, iv, { authTagLength: TAG_LEN });
   const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return `gcm:${iv.toString("base64")}:${tag.toString("base64")}:${ct.toString("base64")}`;
@@ -55,8 +56,13 @@ export function decryptSecret(blob: string): string {
   const iv = Buffer.from(parts[1], "base64");
   const tag = Buffer.from(parts[2], "base64");
   const ct = Buffer.from(parts[3], "base64");
+  // Enforce a full-length GCM tag — reject truncated tags, which weaken the
+  // authentication guarantee and enable forgery against short-tag GCM.
+  if (iv.length !== IV_LEN || tag.length !== TAG_LEN) {
+    throw new Error("invalid ciphertext format");
+  }
   const key = deriveKey();
-  const decipher = createDecipheriv(ALGO, key, iv);
+  const decipher = createDecipheriv(ALGO, key, iv, { authTagLength: TAG_LEN });
   decipher.setAuthTag(tag);
   const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
   return pt.toString("utf8");

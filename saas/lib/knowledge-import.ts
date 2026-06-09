@@ -8,6 +8,7 @@
 // caller. Caller is responsible for storing the resulting Document row.
 
 import * as cheerio from "cheerio";
+import { safeFetch } from "./ssrf";
 
 const MAX_BYTES = 4 * 1024 * 1024;        // 4 MB cap on remote fetch
 const MAX_TEXT_LEN = 60_000;              // cap final text length
@@ -22,14 +23,23 @@ export async function crawlUrl(url: string): Promise<{
     if (!/^https?:\/\//i.test(url)) {
       return { ok: false, error: "URL يجب أن يبدأ بـ http أو https" };
     }
-    const res = await fetch(url, {
-      redirect: "follow",
-      headers: {
-        "User-Agent": "Mozilla/5.0 KEYONE-Importer/1.0",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-      signal: AbortSignal.timeout(20_000),
-    });
+    // SSRF guard: validate the host (and any redirect hop) is a public address
+    // before connecting. Blocks internal/loopback/metadata targets.
+    let res: Response;
+    try {
+      res = await safeFetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 KEYONE-Importer/1.0",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch (e: any) {
+      if (e?.message === "blocked_url") {
+        return { ok: false, error: "هذا العنوان غير مسموح به" };
+      }
+      throw e;
+    }
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
     const ct = res.headers.get("content-type") || "";
     if (!/text\/html|application\/xhtml/i.test(ct)) {

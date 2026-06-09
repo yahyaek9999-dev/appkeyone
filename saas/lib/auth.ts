@@ -5,11 +5,29 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import { type Role, type Permission, can, normalizeRole } from "./rbac";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-please-change-min-32-chars-long"
-);
+/**
+ * Resolve the JWT signing secret. In production a missing/weak AUTH_SECRET is a
+ * fatal misconfiguration: falling back to a public dev string would let anyone
+ * forge `mse_session` cookies and take over any account. Fail closed instead.
+ * In non-production we keep the documented dev fallback for DX.
+ */
+function resolveAuthSecret(): Uint8Array {
+  const s = process.env.AUTH_SECRET;
+  if (!s || s.length < 32) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "AUTH_SECRET must be set to a strong value (>= 32 chars) in production"
+      );
+    }
+    return new TextEncoder().encode("dev-secret-please-change-min-32-chars-long");
+  }
+  return new TextEncoder().encode(s);
+}
+
+const SECRET = resolveAuthSecret();
 const COOKIE = "mse_session";
 const ALG = "HS256";
+const SECURE_COOKIE = process.env.NODE_ENV === "production";
 
 export async function hashPassword(pw: string) {
   return bcrypt.hash(pw, 10);
@@ -28,6 +46,7 @@ export async function createSession(userId: string) {
   cookies().set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
+    secure: SECURE_COOKIE,
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
@@ -43,6 +62,7 @@ export async function createMemberSession(memberId: string) {
   cookies().set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
+    secure: SECURE_COOKIE,
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
