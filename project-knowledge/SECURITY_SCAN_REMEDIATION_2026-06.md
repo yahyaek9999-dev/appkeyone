@@ -6,13 +6,24 @@ mail / prod Caddy) that must be applied outside the codebase.
 
 ---
 
-## A. Code fixes applied (saas/next.config.js)
+## A. Code fixes applied (saas/next.config.js) — DEPLOYED & VERIFIED LIVE
+
+Commit `c15f9ca`, deployed to prod 2026-06-10. Verified on https://app.keyone1.com:
+`Content-Security-Policy` enforced header present, `X-Powered-By` absent,
+`/api/health` = `db:ok version:c15f9ca`, `/api/ready` = `verdict:ready`, all
+key pages return 200.
 
 | Finding | Severity | Fix | Status |
 |---|---|---|---|
-| Server leaks `X-Powered-By` | Low (Med) | `poweredByHeader: false` | ✅ done |
-| CSP header not set | Med (High) | Flipped `Content-Security-Policy-Report-Only` → enforced `Content-Security-Policy` | ✅ done |
-| CSP Report-Only header found | Info (High) | Removed Report-Only header (now enforced) | ✅ done |
+| Server leaks `X-Powered-By` | Low (Med) | `poweredByHeader: false` | ✅ live |
+| CSP header not set | Med (High) | Flipped `Content-Security-Policy-Report-Only` → enforced `Content-Security-Policy` | ✅ live |
+| CSP Report-Only header found | Info (High) | Removed Report-Only header (now enforced) | ✅ live |
+
+> Deploy note: the first 3 build attempts shipped the OLD config because
+> `git reset --hard` ran while `mse-saas` was running and couldn't overwrite the
+> Windows-locked `next.config.js` (HEAD moved, file didn't). Correct order is
+> stop service → reset → verify file changed → rebuild → clean restart. Captured
+> in memory `ssh-fast-deploy-windows-gotchas` (GOTCHA A2/A3).
 
 CSP enforcement was previously held back because the app loads **Google Fonts
 (Cairo)** from `fonts.googleapis.com` / `fonts.gstatic.com` in
