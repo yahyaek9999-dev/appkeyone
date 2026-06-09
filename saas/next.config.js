@@ -21,6 +21,9 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Suppress the framework "X-Powered-By: Next.js" response header so the stack
+  // version isn't leaked to clients/scanners.
+  poweredByHeader: false,
   env: {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
@@ -40,10 +43,11 @@ const nextConfig = {
       "frame-ancestors 'none'",
       "form-action 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
+      // style-src/font-src allow Google Fonts (Cairo) loaded in app/layout.tsx.
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: data:",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https:",
       "worker-src 'self' blob:",
       "upgrade-insecure-requests",
@@ -59,11 +63,11 @@ const nextConfig = {
           // HSTS: enforce HTTPS for 2 years incl. subdomains (enterprise control).
           // Safe additive header — production is HTTPS-only behind the proxy.
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-          // Report-Only for the initial production rollout: violations are
-          // logged (and visible in the browser console) but nothing is blocked,
-          // so a missing origin can't break the live UI. Flip the key to
-          // "Content-Security-Policy" to enforce once prod HTML is confirmed clean.
-          { key: "Content-Security-Policy-Report-Only", value: csp },
+          // Enforced CSP. External origins used by the app (Google Fonts) are
+          // whitelisted above; inline bootstrap/JSON-LD is covered by
+          // 'unsafe-inline'. Flipped from Report-Only now that prod HTML origins
+          // are accounted for.
+          { key: "Content-Security-Policy", value: csp },
         ],
       },
       {
