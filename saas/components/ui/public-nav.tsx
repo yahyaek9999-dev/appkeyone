@@ -115,6 +115,7 @@ export default function PublicNav({
                 href={item.href}
                 className={cn(
                   "relative rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
                   active
                     ? "text-white"
                     : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-100",
@@ -145,7 +146,7 @@ export default function PublicNav({
             whileHover={{ y: -1, boxShadow: "0 4px 20px rgba(12,122,108,0.35)" }}
             whileTap={{ scale: 0.97 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition-colors hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10 transition-all hover:from-brand-400 hover:to-brand-600 hover:ring-gold-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
           >
             <WhatsAppIcon className="h-3.5 w-3.5" />
             {locale === "ar" ? "اطلب حسابك" : "Get started"}
@@ -229,7 +230,7 @@ export default function PublicNav({
                   <Link
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className="flex items-center rounded-xl px-4 py-3 text-[15px] font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
+                    className="flex items-center rounded-xl px-4 py-3 text-[15px] font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50"
                   >
                     {item.label}
                   </Link>
@@ -245,7 +246,7 @@ export default function PublicNav({
               <a
                 {...requestProps}
                 onClick={() => setOpen(false)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white transition hover:bg-brand-400"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 py-3 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10 transition-all hover:from-brand-400 hover:to-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60"
               >
                 <WhatsAppIcon className="h-4 w-4" />
                 {locale === "ar" ? "اطلب حسابك" : "Get started"}
@@ -253,7 +254,7 @@ export default function PublicNav({
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="flex w-full items-center justify-center rounded-xl border border-white/[0.08] py-3 text-sm font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white"
+                className="flex w-full items-center justify-center rounded-xl border border-white/[0.08] py-3 text-sm font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50"
               >
                 {locale === "ar" ? "تسجيل دخول" : "Log in"}
               </Link>

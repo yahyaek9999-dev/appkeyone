@@ -55,8 +55,8 @@ export default async function PricingPage({
       : locale === "ar" ? "شهري" : "monthly";
     const text = encodeURIComponent(
       locale === "ar"
-        ? `مرحباً ${cfg.brandName} 👋\nأريد الاشتراك في باقة *${planName}* (${cycleText}) — ${price}\nأرجو إرشادي بطريقة الدفع وتفعيل الاشتراك.`
-        : `Hello ${cfg.brandName} 👋\nI'd like to subscribe to the *${planName}* plan (${cycleText}) — ${price}\nPlease guide me on payment and activation.`,
+        ? `مرحباً ${cfg.brandName} 👋\nأريد الاشتراك في باقة *${planName}* (${cycleText}) بسعر ${price}\nأرجو إرشادي بطريقة الدفع وتفعيل الاشتراك.`
+        : `Hello ${cfg.brandName} 👋\nI'd like to subscribe to the *${planName}* plan (${cycleText}) at ${price}\nPlease guide me on payment and activation.`,
     );
     return waNum ? `https://wa.me/${waNum}?text=${text}` : "#";
   }
@@ -64,8 +64,8 @@ export default async function PricingPage({
   function contactLink(planName: string) {
     const text = encodeURIComponent(
       locale === "ar"
-        ? `مرحباً ${cfg.brandName} 👋\nمهتم بباقة *${planName}* للمؤسسات — أرجو التواصل لمناقشة احتياجي وعرض سعر مخصّص.`
-        : `Hello ${cfg.brandName} 👋\nI'm interested in the *${planName}* enterprise plan — please reach out to discuss a custom quote.`,
+        ? `مرحباً ${cfg.brandName} 👋\nمهتم بباقة *${planName}* للمؤسسات، أرجو التواصل لمناقشة احتياجي وعرض سعر مخصّص.`
+        : `Hello ${cfg.brandName} 👋\nI'm interested in the *${planName}* enterprise plan. Please reach out to discuss a custom quote.`,
     );
     return waNum ? `https://wa.me/${waNum}?text=${text}` : "#";
   }
@@ -182,8 +182,8 @@ export default async function PricingPage({
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
               {locale === "ar"
-                ? "6 باقات مرنة — ابدأ صغيراً وارتقِ وقت ما تكبر. فوترة شهرية أو سنوية، إلغاء في أي وقت."
-                : "6 flexible plans — start small and scale as you grow. Monthly or yearly, cancel anytime."}
+                ? "6 باقات مرنة، ابدأ صغيراً وارتقِ وقت ما تكبر. فوترة شهرية أو سنوية، إلغاء في أي وقت."
+                : "6 flexible plans. Start small and scale as you grow. Monthly or yearly, cancel anytime."}
             </p>
           </SectionReveal>
         </div>
@@ -206,7 +206,7 @@ export default async function PricingPage({
               subtitle={
                 locale === "ar"
                   ? "اختر مجالك ومرحلتك، ونرشّح لك الباقة الأنسب."
-                  : "Pick your industry and stage — we'll recommend the right plan."
+                  : "Pick your industry and stage, and we'll recommend the right plan."
               }
               resultPrefix={locale === "ar" ? "نرشّح لك" : "We recommend"}
               levelLabels={
@@ -228,8 +228,8 @@ export default async function PricingPage({
               title={locale === "ar" ? "قارن كل المزايا" : "Compare every feature"}
               subtitle={
                 locale === "ar"
-                  ? "كل ما تحصل عليه في كل باقة — بوضوح تام."
-                  : "Exactly what you get in each plan — crystal clear."
+                  ? "كل ما تحصل عليه في كل باقة، بوضوح تام."
+                  : "Exactly what you get in each plan. Crystal clear."
               }
               comingSoonLabel={locale === "ar" ? "قريباً" : "soon"}
             />

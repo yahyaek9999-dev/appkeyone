@@ -18,7 +18,7 @@ export const en = {
     h1Line2: "WhatsApp,",
     h1Line3: "orders, and sales.",
     subtext:
-      "turns WhatsApp conversations into a revenue operations layer — auto-replies, order detection, sales follow-ups, and analytics. All in one platform.",
+      "turns WhatsApp conversations into a revenue operations layer: auto-replies, order detection, sales follow-ups, and analytics. All in one platform.",
     ctaPrimary: "Request your subscription",
     ctaSecondary: "View pricing",
     trustItems: [
@@ -41,7 +41,7 @@ export const en = {
     eyebrow: "Features",
     heading: "Everything your business needs",
     subheading:
-      "Built for businesses that take WhatsApp seriously — from first reply to closed deal.",
+      "Built for businesses that take WhatsApp seriously, from first reply to closed deal.",
     items: [
       {
         title: "Natural Arabic replies",
@@ -97,7 +97,7 @@ export const en = {
     eyebrow: "The core channel",
     heading: "It all starts on WhatsApp",
     subheading:
-      "KEYONE works right inside WhatsApp — where your customers already are. No new app for them to install, no friction.",
+      "KEYONE works right inside WhatsApp, where your customers already are. No new app for them to install, no friction.",
     points: [
       "Connect your WhatsApp number in minutes via QR scan",
       "Instant replies that understand text, voice and images",
@@ -114,7 +114,7 @@ export const en = {
   trust: {
     eyebrow: "Why KEYONE",
     heading: "Built on real credibility",
-    subheading: "A complete platform with genuine capabilities — no empty promises.",
+    subheading: "A complete platform with genuine capabilities. No empty promises.",
     chips: [
       "WhatsApp automation",
       "Instant replies",
@@ -169,7 +169,7 @@ export const en = {
       },
       {
         q: "How many WhatsApp numbers can I connect?",
-        a: "Depends on your plan — from one number on Starter to multiple numbers on higher tiers.",
+        a: "Depends on your plan: from one number on Starter to multiple numbers on higher tiers.",
       },
       {
         q: "How does payment work?",
@@ -204,7 +204,7 @@ export const en = {
   login: {
     eyebrow: "Secure platform access",
     heading: "Sign in",
-    subtext: "Welcome back — sign in to your KEYONE dashboard.",
+    subtext: "Welcome back. Sign in to your KEYONE dashboard.",
     email: "Email address",
     password: "Password",
     submit: "Sign in",
@@ -218,7 +218,7 @@ export const en = {
     subheading: "Subscribe in minutes via WhatsApp. Upgrade or cancel anytime.",
     perMonth: "/mo",
     subscribeCta: "Request this plan",
-    yearlyNote: "Or $%s/year — save $%s",
+    yearlyNote: "Or $%s/year, save $%s",
     howHeading: "How to subscribe",
     steps: [
       {

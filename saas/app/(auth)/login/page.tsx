@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const r = useRouter();
@@ -30,42 +30,48 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7 sm:p-8">
+    <div className="surface p-7 sm:p-8">
       <div className="mb-7 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-brand-400">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-gold-500/20 bg-gradient-to-b from-white/[0.06] to-white/[0.01] text-brand-300 shadow-card">
           <Lock className="h-5 w-5" />
         </div>
-        <h1 className="text-2xl font-bold text-white">تسجيل الدخول</h1>
+        <h1 className="text-2xl font-bold tracking-[-0.02em] text-white">تسجيل الدخول</h1>
         <p className="mt-1.5 text-sm text-slate-400">
-          أهلاً برجوعك — ادخل إلى لوحة تشغيل KEYONE.
+          أهلاً برجوعك، ادخل إلى لوحة تشغيل KEYONE.
         </p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">البريد الإلكتروني</label>
+          <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-slate-300">البريد الإلكتروني</label>
           <input
+            id="login-email"
             name="email"
             type="email"
+            autoComplete="email"
             required
             className="input"
             dir="ltr"
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">كلمة المرور</label>
-          <input name="password" type="password" required className="input" />
+          <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-slate-300">كلمة المرور</label>
+          <input id="login-password" name="password" type="password" autoComplete="current-password" required className="input" />
         </div>
         {err && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+          <div role="alert" className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-300">
             {err}
           </div>
         )}
-        <button
-          disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white transition hover:bg-brand-400 disabled:opacity-50"
-        >
-          {loading ? "..." : "دخول"}
+        <button disabled={loading} className="btn-primary w-full py-3">
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جارٍ الدخول…
+            </>
+          ) : (
+            "دخول"
+          )}
         </button>
       </form>
 

@@ -107,12 +107,12 @@ export default function WhatsappUI({ initial }: { initial: any }) {
   return (
     <div className="card p-8 max-w-2xl mx-auto text-center">
       {serviceDown && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 text-right">
-          <div className="flex items-start gap-2 text-red-300">
+        <div className="bg-rose-500/10 border border-rose-500/25 rounded-xl p-4 mb-6 text-right">
+          <div className="flex items-start gap-2 text-rose-300">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
               <div className="font-bold mb-1">خدمة الواتساب غير متاحة مؤقتاً</div>
-              <p className="text-sm text-red-200/80 leading-relaxed">
+              <p className="text-sm text-rose-200/80 leading-relaxed">
                 الخادم لا يستجيب حالياً. يرجى الانتظار لحظة ثم إعادة المحاولة. إذا استمرت المشكلة، تواصل مع الدعم الفني.
               </p>
             </div>
@@ -164,7 +164,7 @@ export default function WhatsappUI({ initial }: { initial: any }) {
             افتح واتساب → ⋮ → الأجهزة المرتبطة → ربط جهاز
           </p>
           <div className="inline-block bg-white p-4 rounded-2xl mb-4">
-            <img src={state.qr!} alt="QR" className="w-64 h-64" />
+            <img src={state.qr!} alt="QR" className="h-52 w-52 sm:h-64 sm:w-64" />
           </div>
           <div className="flex items-center justify-center gap-2 text-sm text-slate-400 mb-4">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -212,7 +212,7 @@ export default function WhatsappUI({ initial }: { initial: any }) {
             className="input text-center text-lg font-mono mb-4"
           />
           {err && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm p-3 rounded-xl mb-4">
+            <div className="bg-rose-500/10 border border-rose-500/25 text-rose-300 text-sm p-3 rounded-xl mb-4">
               {err}
             </div>
           )}
@@ -234,14 +234,14 @@ export default function WhatsappUI({ initial }: { initial: any }) {
         </div>
       ) : (
         <div>
-          <div className="w-64 h-64 mx-auto rounded-2xl bg-white/5 border-2 border-dashed border-white/10 flex items-center justify-center mb-6">
+          <div className="h-52 w-52 sm:h-64 sm:w-64 mx-auto rounded-2xl bg-white/5 border-2 border-dashed border-white/10 flex items-center justify-center mb-6">
             <div className="text-center text-slate-500">
               <QrCode className="w-16 h-16 mx-auto mb-3 opacity-50" />
               <p className="text-sm">اضغط الزر للبدء</p>
             </div>
           </div>
           {err && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm p-3 rounded-xl mb-4">
+            <div className="bg-rose-500/10 border border-rose-500/25 text-rose-300 text-sm p-3 rounded-xl mb-4">
               {err}
             </div>
           )}

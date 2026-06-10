@@ -12,10 +12,10 @@ import Link from "next/link";
 
 export const metadata = {
   title: "مشاريعنا ونتائج العملاء",
-  description: "قصص نجاح حقيقية من أعمال تستخدم KEYONE يومياً — نتائج مقيسة، أرقام واضحة، لا وعود تسويقية.",
+  description: "قصص نجاح حقيقية من أعمال تستخدم KEYONE يومياً: نتائج مقيسة، أرقام واضحة، لا وعود تسويقية.",
   openGraph: {
     title: "مشاريعنا ونتائج العملاء | KEYONE",
-    description: "3× تحويلات، 5 ثوانٍ رد، صفر رسائل مفقودة — قصص نجاح حقيقية من أعمال تستخدم KEYONE.",
+    description: "3× تحويلات، 5 ثوانٍ رد، صفر رسائل مفقودة. قصص نجاح حقيقية من أعمال تستخدم KEYONE.",
     type: "website" as const,
   },
   twitter: {
@@ -46,7 +46,7 @@ type CaseStudy = {
 const CASE_STUDIES_AR: CaseStudy[] = [
   {
     id: "ecommerce-fashion",
-    sector: "متجر إلكتروني — أزياء",
+    sector: "متجر إلكتروني · أزياء",
     name: "زيادة المبيعات 3× في أول شهر",
     summary:
       "متجر أزياء نسائي كان يخسر طلبات يومياً بسبب الردود البطيئة على واتساب. بعد KEYONE، تحوّل كل استفسار لطلب مؤكد خلال دقائق.",
@@ -127,7 +127,7 @@ const CASE_STUDIES_AR: CaseStudy[] = [
 const CASE_STUDIES_EN: CaseStudy[] = [
   {
     id: "ecommerce-fashion",
-    sector: "E-commerce — Fashion",
+    sector: "E-commerce · Fashion",
     name: "3× sales increase in the first month",
     summary:
       "A women's fashion store was losing orders every day due to slow WhatsApp replies. After KEYONE, every inquiry turned into a confirmed order within minutes.",
@@ -371,8 +371,8 @@ export default async function ProjectsPage({
     eyebrow: isRtl ? "قصص نجاح حقيقية" : "Real success stories",
     h1: isRtl ? "نتائج قابلة للقياس لكل أعمال جربت KEYONE" : "Measurable results for every business that tried KEYONE",
     sub: isRtl
-      ? "أرقام حقيقية من عملاء يستخدمون KEYONE يومياً — لا وعود تسويقية."
-      : "Real numbers from customers who use KEYONE every day — no marketing promises.",
+      ? "أرقام حقيقية من عملاء يستخدمون KEYONE يومياً، لا وعود تسويقية."
+      : "Real numbers from customers who use KEYONE every day. No marketing promises.",
   };
 
   const overallMetrics = isRtl

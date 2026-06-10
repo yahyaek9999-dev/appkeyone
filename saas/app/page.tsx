@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import PublicNav from "@/components/ui/public-nav";
-import { WhatsAppIcon } from "@/components/ui/marketing";
 import { getSiteConfig } from "@/lib/admin";
 import { getLocale, t } from "@/lib/i18n";
 import { PublicFooter } from "@/components/ui/public-footer";
@@ -13,8 +12,8 @@ import PricingCards, { type PricingPlan } from "@/components/ui/pricing-cards";
 import RoiSection from "@/components/ui/roi-section";
 import HeroSection from "@/components/hero/hero-section";
 import {
-  ArrowLeft, ArrowRight, BarChart3, Bell, Database, CheckCircle2, Users,
-  Phone, Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
+  ArrowLeft, ArrowRight, BarChart3, Bell,
+  Phone, Zap, ShoppingCart, RefreshCw, Shield,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { BentoFeatures } from "@/components/ui/bento-features";
@@ -43,97 +42,6 @@ const FEATURE_META: Array<{
   { icon: Bell, accent: "text-brand-300" },
   { icon: Shield, accent: "text-gold-300" },
 ];
-
-function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boolean }) {
-  const isRtl = dir === "rtl";
-  return (
-    <div className={`relative ${compact ? "mx-auto max-w-sm" : ""}`}>
-      <div className="relative rounded-2xl border border-white/[0.09] bg-[#0d1117] shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#111a14] px-4 py-3">
-          <div className="h-9 w-9 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
-            <span className="text-brand-300 text-xs font-bold">ع</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-white">عميل جديد</div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-400 shrink-0" />
-              <span className="text-[11px] text-brand-300">يرد خلال 5 ثوانٍ</span>
-            </div>
-          </div>
-          <div className="flex gap-1">
-            <div className="h-2 w-2 rounded-full bg-white/10" />
-            <div className="h-2 w-2 rounded-full bg-white/10" />
-            <div className="h-2 w-2 rounded-full bg-white/10" />
-          </div>
-        </div>
-
-        <div className="space-y-3 px-4 py-4 text-sm" dir={isRtl ? "rtl" : "ltr"}>
-          <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white/[0.07] px-3.5 py-2.5 text-slate-200 leading-relaxed">
-              <p>عايز أعرف الأسعار واللي عندكم من منتجات</p>
-              <p className="text-[10px] text-slate-500 mt-1">09:14</p>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-brand-600/25 border border-brand-500/20 px-3.5 py-2.5 text-slate-100 leading-relaxed">
-              <p>أهلاً بيك! 👋 عندنا 3 باقات:</p>
-              <p className="mt-1">• الأساسية: 199 ج/شهر</p>
-              <p>• الاحترافية: 399 ج/شهر ⭐</p>
-              <p>• المؤسسية: تواصل للسعر</p>
-              <p className="mt-1 text-brand-300 text-xs">أي باقة تناسبك؟</p>
-              <p className="text-[10px] text-slate-500 mt-1">09:14 ✓✓</p>
-            </div>
-          </div>
-
-          <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white/[0.07] px-3.5 py-2.5 text-slate-200 leading-relaxed">
-              <p>عايز الاحترافية ✅</p>
-              <p className="text-[10px] text-slate-500 mt-1">09:15</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/8 px-3 py-2">
-            <ShoppingCart className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-            <span className="text-xs font-medium text-amber-300">طلب جديد مكتشف — باقة احترافية</span>
-          </div>
-        </div>
-
-        <div className="border-t border-white/[0.06] bg-[#111a14] px-4 py-3">
-          <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2 text-slate-500 text-xs">
-            <span className="flex-1">KEYONE يكمل المتابعة تلقائياً…</span>
-            <Zap className="h-3.5 w-3.5 text-brand-400" />
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -bottom-4 -start-4 rounded-xl border border-white/[0.09] bg-[#0d1117]/95 p-3 shadow-xl backdrop-blur-sm">
-        <div className="flex items-center gap-2 mb-1.5">
-          <TrendingUp className="h-3.5 w-3.5 text-brand-400 shrink-0" />
-          <span className="text-[11px] font-semibold text-white">اليوم</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <div className="text-base font-bold text-brand-300">24</div>
-            <div className="text-[9px] text-slate-500">محادثة نشطة</div>
-          </div>
-          <div>
-            <div className="text-base font-bold text-white">12</div>
-            <div className="text-[9px] text-slate-500">طلب جديد</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -top-3 -end-3 rounded-lg border border-white/[0.09] bg-[#0d1117]/95 px-2.5 py-1.5 shadow-xl backdrop-blur-sm">
-        <div className="flex items-center gap-1.5">
-          <Zap className="h-3 w-3 text-amber-400" />
-          <span className="text-[11px] font-bold text-white">5 ثوانٍ</span>
-        </div>
-        <div className="text-[9px] text-slate-500">متوسط الرد</div>
-      </div>
-    </div>
-  );
-}
 
 export default async function LandingPage({
   searchParams,
@@ -234,12 +142,12 @@ export default async function LandingPage({
           <FadeInView delay={0.3} className="mt-6 surface p-5 sm:p-6">
             <p className="text-sm leading-relaxed text-slate-300">
               {isRtl
-                ? `"قبل ${brandName}، كنا بنضيع ساعات يومياً على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً — الردود، تتبع الطلبات، والتقارير. الفرق في الشهر الأول كان واضح."`
-                : `"Before ${brandName}, we were losing hours on manual replies every day. Now everything runs automatically — replies, order tracking, and reports. The difference was clear in the first month."`
+                ? `"قبل ${brandName}، كنا بنضيع ساعات يومياً على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً: الردود، تتبع الطلبات، والتقارير. الفرق في الشهر الأول كان واضح."`
+                : `"Before ${brandName}, we were losing hours on manual replies every day. Now everything runs automatically: replies, order tracking, and reports. The difference was clear in the first month."`
               }
             </p>
             <div className="mt-3 text-xs text-slate-500">
-              {isRtl ? "— صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "— E-commerce store owner, user for 6 months"}
+              {isRtl ? "صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "E-commerce store owner, user for 6 months"}
             </div>
           </FadeInView>
         </div>
