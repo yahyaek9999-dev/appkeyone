@@ -4,20 +4,25 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────────────────────
 # release-git.sh — Server-side build deploy (minimal transfer).
 #
-# Instead of SCP-ing a ~1.8GB artifact (most of which is .next/cache + full
-# node_modules), this transfers ONLY the git diff and builds on the VPS:
+# Instead of SCP-ing a ~1.8GB artifact (mostly .next/cache + node_modules), this
+# transfers ONLY the git diff and builds on the VPS:
 #
-#   push ref → VPS: git fetch + reset → prisma generate → next build
-#            → prisma db push → restart service → health check
+#   push ref → VPS: git fetch+reset → npm ci → next build → prisma db push
+#            → restart service → health check
 #
-# The build runs BEFORE the service is stopped, so a failed build leaves
-# production untouched (the old release keeps serving).
+# IMPORTANT details learned in production:
+#   • The VPS is Windows. node_modules MUST be installed on the VPS (npm ci) so
+#     the platform-native Prisma query engine + @next/swc binaries are correct.
+#     A Mac/Linux node_modules will start but crash at runtime
+#     ("could not locate the Query Engine for runtime windows"). So npm ci is
+#     REQUIRED even when package.json is unchanged.
+#   • The build (npm ci + next build) runs BEFORE the service is stopped, so a
+#     failed build leaves the running release untouched.
+#   • The remote script is executed via a FILE (-File <path>), not stdin, so
+#     $ErrorActionPreference='Stop' / throw actually abort on failure.
 #
 # Usage:  DEPLOY_REF=<sha|branch> ./deploy/release-git.sh
 #         ./deploy/release-git.sh                 # deploys current HEAD
-#
-# Env (with defaults):
-#   SSH_KEY, SSH_HOST, SSH_PORT, APP_DIR, SERVICE_NAME, HEALTH_URL, DEPLOY_REF
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -31,59 +36,68 @@ SAAS_DIR="${SAAS_DIR:-C:\\app\\saas}"
 SERVICE_NAME="${SERVICE_NAME:-mse-saas}"
 HEALTH_URL="${HEALTH_URL:-https://app.keyone1.com/api/ready}"
 DEPLOY_REF="${DEPLOY_REF:-$(git -C "$ROOT_DIR" rev-parse HEAD)}"
+SSH=(ssh -i "$SSH_KEY" -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new)
+SCP=(scp -i "$SSH_KEY" -P "$SSH_PORT" -o StrictHostKeyChecking=accept-new)
 
 echo "→ Deploy ref: $DEPLOY_REF"
-
-# 1. Make sure the ref is on the remote so the VPS can fetch it.
 echo "→ Pushing ref to origin…"
-git -C "$ROOT_DIR" push origin "HEAD" 2>&1 | tail -3 || true
+git -C "$ROOT_DIR" push origin HEAD 2>&1 | tail -2 || true
 
-# 2. Build the remote PowerShell deploy script.
-PS_SCRIPT=$(cat <<-'ENDSCRIPT'
+# Build the remote PowerShell deploy script (executed via -File for real error
+# handling). __TOKENS__ are substituted below.
+cat > /tmp/keyone-deploy.ps1 <<'ENDSCRIPT'
 $ErrorActionPreference = 'Stop'
-Write-Host '→ Fetching latest…'
-Set-Location '__SAAS_DIR__\..'
+function Fail($m){ Write-Host ("DEPLOY_FAILED: " + $m); exit 1 }
+
+Write-Host '-> git fetch + reset…'
+Set-Location '__APP_DIR__'
 git fetch origin --prune --quiet
 git reset --hard __REF__ --quiet
 Write-Host ('   HEAD now: ' + (git rev-parse --short HEAD))
 
 Set-Location '__SAAS_DIR__'
-Write-Host '→ prisma generate…'
-.\node_modules\.bin\prisma generate | Out-Null
 
-# Build BEFORE stopping the service — a failed build leaves prod untouched.
-Write-Host '→ next build (this is the long step)…'
+# Clean platform-native install (Prisma engine + swc must match Windows).
+Write-Host '-> npm ci (platform-native deps)…'
+npm ci --no-audit --no-fund
+if ($LASTEXITCODE -ne 0) { Fail 'npm ci failed (production left untouched)' }
+
+# postinstall already ran `prisma generate`; build (also regenerates client).
+Write-Host '-> next build (long step; service still serving old release)…'
 $env:NODE_OPTIONS = '--max-old-space-size=4096'
 npm run build
-if ($LASTEXITCODE -ne 0) { throw 'BUILD FAILED — production left untouched.' }
+if ($LASTEXITCODE -ne 0) { Fail 'next build failed (production left untouched)' }
 
-Write-Host '→ prisma db push (additive schema)…'
-.\node_modules\.bin\prisma db push --skip-generate --accept-data-loss
+Write-Host '-> prisma db push (additive schema)…'
+& '.\node_modules\.bin\prisma.cmd' db push --skip-generate --accept-data-loss
+if ($LASTEXITCODE -ne 0) { Fail 'prisma db push failed' }
 
-Write-Host '→ Restarting service…'
-nssm stop '__SERVICE_NAME__'
+Write-Host '-> restart service…'
+& nssm stop '__SERVICE_NAME__' | Out-Null
 Start-Sleep 2
 Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep 1
-nssm start '__SERVICE_NAME__'
-Start-Sleep 6
-$s = nssm status '__SERVICE_NAME__'
-if ($s -ne 'SERVICE_RUNNING') { throw ("Service not running: " + $s) }
+& nssm start '__SERVICE_NAME__' | Out-Null
+Start-Sleep 8
+$s = & nssm status '__SERVICE_NAME__'
+if ($s -ne 'SERVICE_RUNNING') { Fail ("service not running: " + $s) }
 Write-Host 'DEPLOY_OK'
 ENDSCRIPT
-)
-PS_SCRIPT=${PS_SCRIPT//__SAAS_DIR__/$SAAS_DIR}
-PS_SCRIPT=${PS_SCRIPT//__SERVICE_NAME__/$SERVICE_NAME}
-PS_SCRIPT=${PS_SCRIPT//__REF__/$DEPLOY_REF}
 
-SCRIPT_PATH=$(mktemp)
-echo "$PS_SCRIPT" > "$SCRIPT_PATH"
+sed -i.bak \
+  -e "s#__APP_DIR__#${APP_DIR//\\/\\\\}#g" \
+  -e "s#__SAAS_DIR__#${SAAS_DIR//\\/\\\\}#g" \
+  -e "s#__SERVICE_NAME__#${SERVICE_NAME}#g" \
+  -e "s#__REF__#${DEPLOY_REF}#g" \
+  /tmp/keyone-deploy.ps1
+rm -f /tmp/keyone-deploy.ps1.bak
 
-echo "→ Building on VPS & deploying…"
-ssh -i "$SSH_KEY" -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new "$SSH_HOST" powershell.exe -NoProfile -File - < "$SCRIPT_PATH"
-rm -f "$SCRIPT_PATH"
+echo "→ Uploading deploy script…"
+"${SCP[@]}" /tmp/keyone-deploy.ps1 "${SSH_HOST}:C:/app/_deploy.ps1"
 
-# 3. Health check.
+echo "→ Building on VPS & deploying (this includes npm ci + next build)…"
+"${SSH[@]}" "$SSH_HOST" "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\app\\_deploy.ps1; Remove-Item C:\\app\\_deploy.ps1 -Force -ErrorAction SilentlyContinue"
+
 echo "→ Health check…"
 sleep 4
 code=$(curl -s -m 15 -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
