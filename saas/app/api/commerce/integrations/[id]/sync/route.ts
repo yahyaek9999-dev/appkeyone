@@ -5,7 +5,8 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request, ctx: { params: { id: string } }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
@@ -14,7 +15,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   if (limited) return limited;
 
   const integration = await (prisma as any).commerceIntegration.findFirst({
-    where: { id: ctx.params.id, userId: user.id },
+    where: { id: params.id, userId: user.id },
     select: { id: true, userId: true, platform: true, storeUrl: true, connectionStatus: true },
   });
   if (!integration) return NextResponse.json({ error: "not_found" }, { status: 404 });

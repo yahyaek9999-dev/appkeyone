@@ -5,7 +5,8 @@ import { DisconnectWaButton } from "./disconnect-wa";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminWhatsappPage({ searchParams }: { searchParams?: { q?: string; page?: string } }) {
+export default async function AdminWhatsappPage(props: { searchParams?: Promise<{ q?: string; page?: string }> }) {
+  const searchParams = await props.searchParams;
   const q = (searchParams?.q || "").trim();
   const page = Math.max(1, Number(searchParams?.page || 1));
   const take = 50;

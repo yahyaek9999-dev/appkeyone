@@ -43,7 +43,9 @@ export async function createSession(userId: string) {
     .setIssuedAt()
     .setExpirationTime("30d")
     .sign(SECRET);
-  cookies().set(COOKIE, token, {
+  // Next 15: cookies() is async — await the store before mutating it.
+  const store = await cookies();
+  store.set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: SECURE_COOKIE,
@@ -59,7 +61,9 @@ export async function createMemberSession(memberId: string) {
     .setIssuedAt()
     .setExpirationTime("30d")
     .sign(SECRET);
-  cookies().set(COOKIE, token, {
+  // Next 15: cookies() is async — await the store before mutating it.
+  const store = await cookies();
+  store.set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: SECURE_COOKIE,
@@ -68,13 +72,17 @@ export async function createMemberSession(memberId: string) {
   });
 }
 
-export function clearSession() {
-  cookies().delete(COOKIE);
+// Next 15: cookies() is async, so clearing a cookie must await the store.
+// Now async — callers must `await clearSession()`.
+export async function clearSession() {
+  const store = await cookies();
+  store.delete(COOKIE);
 }
 
 /** Decode the session cookie. Returns the raw payload or null. */
 async function readToken(): Promise<{ uid?: string; mid?: string } | null> {
-  const tok = cookies().get(COOKIE)?.value;
+  const store = await cookies();
+  const tok = store.get(COOKIE)?.value;
   if (!tok) return null;
   try {
     const { payload } = await jwtVerify(tok, SECRET);

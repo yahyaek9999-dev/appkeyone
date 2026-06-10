@@ -15,7 +15,8 @@ import { requireAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(_req: Request, { params }: { params: { userId: string } }) {
+export async function POST(_req: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   let admin;
   try { admin = await requireAdmin(); }
   catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
@@ -30,7 +31,8 @@ export async function POST(_req: Request, { params }: { params: { userId: string
   return NextResponse.json({ ok: true, approvalStatus: "approved" });
 }
 
-export async function DELETE(req: Request, { params }: { params: { userId: string } }) {
+export async function DELETE(req: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   let admin;
   try { admin = await requireAdmin(); }
   catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }

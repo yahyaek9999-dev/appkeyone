@@ -22,7 +22,8 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
 
-export default async function AdminBusinessesPage({ searchParams }: { searchParams: { page?: string; q?: string } }) {
+export default async function AdminBusinessesPage(props: { searchParams: Promise<{ page?: string; q?: string }> }) {
+  const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams.page || 1));
   const q = (searchParams.q || "").trim();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);

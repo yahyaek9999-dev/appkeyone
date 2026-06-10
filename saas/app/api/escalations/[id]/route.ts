@@ -12,18 +12,20 @@ const Body = z.object({
   resumeAi: z.boolean().optional(),
 });
 
-export async function GET(_req: Request, ctx: { params: { id: string } }) {
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   let user;
   try { user = await requirePermission("escalations"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
-  const ticket = await (prisma as any).escalationTicket.findFirst({ where: { id: ctx.params.id, userId: user.id } }).catch(() => null);
+  const ticket = await (prisma as any).escalationTicket.findFirst({ where: { id: params.id, userId: user.id } }).catch(() => null);
   if (!ticket) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const timeline = await (prisma as any).escalationTimeline.findMany({ where: { ticketId: ticket.id, userId: user.id }, orderBy: { createdAt: "asc" } }).catch(() => []);
   return NextResponse.json({ ok: true, ticket, timeline });
 }
 
-export async function POST(req: Request, ctx: { params: { id: string } }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   let user;
   try { user = await requirePermission("escalations"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
@@ -32,21 +34,21 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });
 
   if (parsed.data.action === "acknowledge") {
-    const ticket = await acknowledgeEscalation({ userId: user.id, ticketId: ctx.params.id, adminId: user.id, note: parsed.data.note });
+    const ticket = await acknowledgeEscalation({ userId: user.id, ticketId: params.id, adminId: user.id, note: parsed.data.note });
     if (!ticket) return NextResponse.json({ error: "not_found" }, { status: 404 });
     return NextResponse.json({ ok: true, ticket });
   }
 
   if (parsed.data.action === "resolve" || parsed.data.action === "dismiss") {
-    const ticket = await resolveEscalation({ userId: user.id, ticketId: ctx.params.id, adminId: user.id, note: parsed.data.note, resumeAi: parsed.data.resumeAi });
+    const ticket = await resolveEscalation({ userId: user.id, ticketId: params.id, adminId: user.id, note: parsed.data.note, resumeAi: parsed.data.resumeAi });
     if (!ticket) return NextResponse.json({ error: "not_found" }, { status: 404 });
     return NextResponse.json({ ok: true, ticket });
   }
 
-  const existing = await (prisma as any).escalationTicket.findFirst({ where: { id: ctx.params.id, userId: user.id }, select: { id: true } }).catch(() => null);
+  const existing = await (prisma as any).escalationTicket.findFirst({ where: { id: params.id, userId: user.id }, select: { id: true } }).catch(() => null);
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
   await (prisma as any).escalationTimeline.create({
-    data: { ticketId: ctx.params.id, userId: user.id, kind: "note", actor: "admin", message: parsed.data.note || "ملاحظة" },
+    data: { ticketId: params.id, userId: user.id, kind: "note", actor: "admin", message: parsed.data.note || "ملاحظة" },
   }).catch(() => {});
   return NextResponse.json({ ok: true });
 }

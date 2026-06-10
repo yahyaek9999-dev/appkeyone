@@ -5,7 +5,8 @@ import { rotateCommerceIntegrationSecrets, publicIntegration } from "@/lib/comme
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request, ctx: { params: { id: string } }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
@@ -13,7 +14,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const limited = enforceRateLimit(req, { name: "commerce-integration-rotate", identifier: user.id, ...RATE_LIMITS.api });
   if (limited) return limited;
 
-  const result = await rotateCommerceIntegrationSecrets({ userId: user.id, integrationId: ctx.params.id });
+  const result = await rotateCommerceIntegrationSecrets({ userId: user.id, integrationId: params.id });
   if (!result) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   return NextResponse.json({

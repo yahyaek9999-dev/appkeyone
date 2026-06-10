@@ -10,7 +10,8 @@ function clampInt(v: any, min = 0, max = 100_000_000): number {
   return Math.max(min, Math.min(max, n));
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -37,7 +38,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json({ ok: true, product });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   const existing = await prisma.product.findFirst({ where: { id: params.id, userId: uid }, select: { id: true } });

@@ -7,7 +7,8 @@ import ChatView from "./chat-view";
 import { formatCustomerPhone } from "@/lib/phone";
 import DeleteCustomerButton from "./delete-button";
 
-export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
+export default async function CustomerDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await requireUser();
   const customer = await prisma.customer.findUnique({
     where: { id: params.id },

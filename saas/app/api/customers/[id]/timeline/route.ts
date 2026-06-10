@@ -53,7 +53,8 @@ const ORDER_STATUS_AR: Record<string, string> = {
   canceled: "أُلغي",
 };
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const uid = await getUserIdForPermission("customers");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

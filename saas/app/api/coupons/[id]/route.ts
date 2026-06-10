@@ -6,7 +6,8 @@ import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const gate = await apiGate("smart_campaign_builder");
   if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
@@ -42,7 +43,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json({ ok: true, coupon });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const gate = await apiGate("smart_campaign_builder");
   if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");

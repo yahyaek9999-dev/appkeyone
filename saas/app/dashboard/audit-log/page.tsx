@@ -53,13 +53,12 @@ function badgeColor(action: string): string {
   return "bg-slate-500/15 text-slate-300";
 }
 
-export default async function AuditLogPage({
-  searchParams,
-}: {
-  searchParams?: { action?: string; page?: string };
+export default async function AuditLogPage(props: {
+  searchParams?: Promise<{ action?: string; page?: string }>;
 }) {
   const { user } = await requirePagePermission("team");
 
+  const searchParams = await props.searchParams;
   const action = searchParams?.action;
   const page = Math.max(1, Number(searchParams?.page || 1));
   const take = 100;

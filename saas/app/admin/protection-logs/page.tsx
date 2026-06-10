@@ -3,7 +3,8 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProtectionLogsPage({ searchParams }: { searchParams?: { kind?: string; page?: string } }) {
+export default async function AdminProtectionLogsPage(props: { searchParams?: Promise<{ kind?: string; page?: string }> }) {
+  const searchParams = await props.searchParams;
   const kind = searchParams?.kind;
   const page = Math.max(1, Number(searchParams?.page || 1));
   const take = 100;

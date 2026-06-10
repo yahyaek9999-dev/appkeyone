@@ -28,7 +28,8 @@ async function resolveConversation(uid: string, customerId: string) {
   return { customerId: customer.id, convId };
 }
 
-export async function GET(_req: Request, { params }: { params: { customerId: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ customerId: string }> }) {
+  const params = await props.params;
   const user = await getUserForPermission("inbox");
   if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -62,7 +63,8 @@ export async function GET(_req: Request, { params }: { params: { customerId: str
   });
 }
 
-export async function POST(req: Request, { params }: { params: { customerId: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ customerId: string }> }) {
+  const params = await props.params;
   const user = await getUserForPermission("inbox");
   if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
