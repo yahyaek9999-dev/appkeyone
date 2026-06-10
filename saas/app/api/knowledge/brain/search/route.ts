@@ -16,6 +16,7 @@ import { getUserId } from "@/lib/auth";
 import { knowledgeBrainEnabled } from "@/lib/knowledge-brain/flags";
 import { retrieveRelevantKb } from "@/lib/kb-cache";
 import { tokenize, tfVector, cosine, jaccard } from "@/lib/semantic-match";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,8 @@ function parseRetrieval(joined: string): { docTitle: string; text: string }[] {
 }
 
 export async function GET(req: Request) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

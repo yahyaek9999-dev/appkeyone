@@ -5,11 +5,14 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { detectAnomalies } from "@/lib/intelligence/anomalies";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("advanced_insights");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

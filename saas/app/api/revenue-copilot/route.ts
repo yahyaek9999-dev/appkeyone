@@ -7,12 +7,15 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { buildRevenueCopilot } from "@/lib/intelligence/revenue-opportunity";
 import { buildSelfLearningReport } from "@/lib/intelligence/self-learning";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("revenue_attribution");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

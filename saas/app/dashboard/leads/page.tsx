@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 import { Flame, MessageSquare, ChevronLeft, Users, TrendingUp, Activity } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { LeadStatusBadge, type LeadStatus } from "@/components/ui/lead-status-badge";
@@ -41,6 +43,20 @@ function scoreToStatus(score: number): LeadStatus {
 export default async function LeadsPage() {
   const uid = await getUserId();
   if (!uid) redirect("/login");
+
+  const g = await pageGate("lead_scoring");
+  if (!g.allowed) {
+    return (
+      <div className="p-6">
+        <LockedFeature
+          locale="ar"
+          recommendedTier={g.recommendedTier}
+          title="العملاء المحتملون (تقييم الـ Leads)"
+          description="رتّب عملاءك المحتملين حسب احتمالية الشراء وركّز جهدك على الأقرب للشراء. متاح في باقة Pro فأعلى."
+        />
+      </div>
+    );
+  }
 
   const leads = await prisma.customer.findMany({
     where: { userId: uid } as any,

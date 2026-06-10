@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { computeForecast } from "@/lib/analytics/forecast";
 import { buildRevenueCopilot } from "@/lib/intelligence/revenue-opportunity";
 import { getOrderRollup } from "@/lib/analytics/order-rollup";
@@ -210,6 +211,8 @@ async function buildDerived(uid: string, context: CopilotContext): Promise<Copil
 }
 
 export async function GET(req: Request) {
+  const gate = await apiGate("advanced_insights");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

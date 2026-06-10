@@ -68,6 +68,27 @@ function numFlag(
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
 
+/**
+ * Free-tier enforcement master switch.
+ *
+ * When ON, users with NO active subscription (the "Free" tier) and users whose
+ * subscription has expired are limited to CORE capabilities only — premium
+ * features render an upgrade prompt instead of being silently free. This is
+ * what closes the "accidentally free" revenue leak for new sign-ups.
+ *
+ * Default OFF (non-regressive): until the owner flips FREE_TIER_ENFORCEMENT=1,
+ * fallback/no-subscription users keep full access exactly as before — so a
+ * deploy never locks anyone out. Flip it ON at go-live AFTER confirming no
+ * active paying customer is left without a Subscription row.
+ *
+ * IMPORTANT: legacy-slug ACTIVE subscribers (starter/pro/business/…) are NEVER
+ * fallback users, so this switch can never touch a current paying customer.
+ * k_* subscribers are always enforced regardless of this flag.
+ */
+export function freeTierEnforcementEnabled(): boolean {
+  return process.env.FREE_TIER_ENFORCEMENT === "1";
+}
+
 export async function getEntitlements(userId: string): Promise<Entitlements> {
   const plan = await getEffectivePlan(userId);
   const flags = plan.featureFlags || {};
@@ -84,15 +105,20 @@ export async function getEntitlements(userId: string): Promise<Entitlements> {
         : fallbackIndex >= cap.minTierIndex;
   }
 
+  // Enforcement applies to: (1) the new public catalog plans (k_* slugs) — always;
+  // and (2) the FREE tier (no/expired subscription → isFallback) when the owner
+  // has turned on FREE_TIER_ENFORCEMENT. Active legacy-slug subscribers are never
+  // fallback users, so they always keep full access — non-regressive by design.
+  const isKPlan = typeof plan.slug === "string" && plan.slug.startsWith("k_");
+  const enforceFreeTier = plan.isFallback && freeTierEnforcementEnabled();
+
   return {
     tier: plan.tier,
     slug: plan.slug,
     planName: plan.planName,
     isFallback: plan.isFallback,
     blocked: plan.blocked,
-    // Enforce only for the new public catalog plans. Everyone else (legacy
-    // slugs, no subscription) keeps full access — non-regressive by design.
-    enforce: typeof plan.slug === "string" && plan.slug.startsWith("k_"),
+    enforce: isKPlan || enforceFreeTier,
     capabilities,
     limits: {
       team: numFlag(flags, "team", plan.tier === "basic" ? 1 : 0),

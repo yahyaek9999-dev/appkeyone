@@ -9,6 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { getEffectivePlan } from "@/lib/membership/plan";
 import { buildCustomerTwin } from "@/lib/intelligence/customer-twin";
 import { intelTenantEnabled } from "@/lib/intelligence/flags";
@@ -16,6 +17,8 @@ import { intelTenantEnabled } from "@/lib/intelligence/flags";
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("smart_assistant");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("customers");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

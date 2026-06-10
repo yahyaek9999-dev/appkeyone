@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { revenueIntelligence } from "@/lib/sales-brain/revenue";
 import { aggregateForUser } from "@/lib/daily-report/aggregate";
 import { deriveInsights, topN, recommend } from "@/lib/daily-report/insights";
@@ -20,6 +21,8 @@ import { getObjectionOutcomeInsights } from "@/lib/intelligence/memory-graph";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("sales_pipeline");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

@@ -7,6 +7,7 @@ import {
   AUTOMATION_TRIGGERS,
   AUTOMATION_ACTIONS,
 } from "@/lib/automations/engine";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,8 @@ function clampJson(obj: unknown): string {
 }
 
 export async function GET() {
+  const gate = await apiGate("advanced_automations");
+  if (gate.response) return gate.response;
   let user;
   try {
     user = await requirePermission("settings");
@@ -65,6 +68,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const gate = await apiGate("advanced_automations");
+  if (gate.response) return gate.response;
   let user;
   try {
     user = await requirePermission("settings");
@@ -102,6 +107,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const gate = await apiGate("advanced_automations");
+  if (gate.response) return gate.response;
   let user;
   try {
     user = await requirePermission("settings");
@@ -139,6 +146,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const gate = await apiGate("advanced_automations");
+  if (gate.response) return gate.response;
   let user;
   try {
     user = await requirePermission("settings");

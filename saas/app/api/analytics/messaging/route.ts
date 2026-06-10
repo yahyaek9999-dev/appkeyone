@@ -11,11 +11,14 @@
 
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const gate = await apiGate("advanced_analytics");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requireUser(); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }

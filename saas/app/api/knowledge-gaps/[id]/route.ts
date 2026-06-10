@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -59,6 +62,8 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   await prisma.knowledgeGap.deleteMany({

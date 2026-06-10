@@ -3,12 +3,15 @@ import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { parsePdf, parseDocx } from "@/lib/knowledge-import";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
+import { apiGate } from "@/lib/membership/gate";
 
 export const runtime = "nodejs";
 // Allow up to 10 MB upload
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   try {
     const user = await requirePermission("settings");
     const form = await req.formData();

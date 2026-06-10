@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
+import { apiGate } from "@/lib/membership/gate";
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   const user = await requirePermission("settings");
   const { title, content } = await req.json();
   const doc = await prisma.document.findUnique({ where: { id: params.id } });
@@ -14,6 +17,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   const user = await requirePermission("settings");
   const doc = await prisma.document.findUnique({ where: { id: params.id } });
   if (!doc || doc.userId !== user.id) return NextResponse.json({ error: "Not found" }, { status: 404 });

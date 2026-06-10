@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { importKnowledge } from "@/lib/knowledge-importer";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
+import { apiGate } from "@/lib/membership/gate";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,8 @@ export const runtime = "nodejs";
 // onboarding wizard uses, then (a) creates Product rows for the catalog and
 // (b) stores a knowledge Document so the AI can answer price questions.
 export async function POST(req: Request) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   try {
     const user = await requirePermission("settings");
     const body = await req.json().catch(() => null);

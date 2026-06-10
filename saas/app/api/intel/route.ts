@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { detectLostCustomers } from "@/lib/intel/lost-customers";
 import { detectUpsell } from "@/lib/intel/upsell";
 import { detectHotLeads } from "@/lib/intel/hot-leads";
@@ -16,6 +17,8 @@ import type { IntelResponse } from "@/lib/intel/types";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("advanced_insights");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

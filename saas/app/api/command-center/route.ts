@@ -16,6 +16,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 import { computeForecast } from "@/lib/analytics/forecast";
 import { getOrderRollup } from "@/lib/analytics/order-rollup";
@@ -41,6 +42,8 @@ export interface CommandRecommendation {
 }
 
 export async function GET() {
+  const gate = await apiGate("advanced_analytics");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

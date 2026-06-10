@@ -9,10 +9,13 @@ import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { detectLostCustomers } from "@/lib/intel/lost-customers";
 import { detectFollowUpOps } from "@/lib/intel/follow-up-ops";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("smart_campaign_builder");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

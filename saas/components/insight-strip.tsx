@@ -27,12 +27,21 @@ export default function InsightStrip({ context }: { context: string }) {
   const [data, setData] = useState<CopilotPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
+  // When the plan doesn't include this premium insight (402), hide silently
+  // instead of showing an error — the strip is a teaser on core pages.
+  const [locked, setLocked] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setErrored(false);
+    setLocked(false);
     try {
       const r = await fetch(`/api/copilot?context=${encodeURIComponent(context)}`, { cache: "no-store" });
+      if (r.status === 402) {
+        setLocked(true);
+        setData(null);
+        return;
+      }
       if (!r.ok) {
         setErrored(true);
         setData(null);
@@ -56,6 +65,9 @@ export default function InsightStrip({ context }: { context: string }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Premium insight not in plan → render nothing (graceful, no error noise).
+  if (locked) return null;
 
   if (loading && !data) {
     return (

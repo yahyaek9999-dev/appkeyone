@@ -1,11 +1,14 @@
 // AI Sales OS — Revenue Forecast data.
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { computeForecast } from "@/lib/analytics/forecast";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("revenue_attribution");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

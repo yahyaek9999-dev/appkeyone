@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requirePermission, authErrorStatus } from "@/lib/auth";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
+import { apiGate } from "@/lib/membership/gate";
 
 const Body = z.object({
   title: z.string().min(1).max(200),
@@ -11,6 +12,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   try {
     const user = await requirePermission("settings");
     const parsed = Body.safeParse(await req.json());

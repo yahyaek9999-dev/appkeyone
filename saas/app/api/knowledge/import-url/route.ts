@@ -4,10 +4,13 @@ import { requirePermission } from "@/lib/auth";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { crawlUrl } from "@/lib/knowledge-import";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
+import { apiGate } from "@/lib/membership/gate";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
   try {
     const user = await requirePermission("settings");
 

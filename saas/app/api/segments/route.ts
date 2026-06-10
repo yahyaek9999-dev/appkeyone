@@ -3,11 +3,14 @@
 //   GET /api/segments?key=vip    → reachable members of one segment (open/filter)
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { computeSegments, resolveSegmentCustomers } from "@/lib/analytics/segments";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const gate = await apiGate("customer_segmentation");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

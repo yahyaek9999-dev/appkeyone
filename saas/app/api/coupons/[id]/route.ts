@@ -2,10 +2,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("smart_campaign_builder");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   const existing = await prisma.coupon.findFirst({ where: { id: params.id, userId: uid }, select: { id: true } });
@@ -40,6 +43,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("smart_campaign_builder");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   const existing = await prisma.coupon.findFirst({ where: { id: params.id, userId: uid }, select: { id: true } });

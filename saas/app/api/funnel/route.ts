@@ -1,11 +1,14 @@
 // AI Sales OS — Funnel Conversion Dashboard data.
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { computeFunnel } from "@/lib/analytics/funnel";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const gate = await apiGate("advanced_analytics");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

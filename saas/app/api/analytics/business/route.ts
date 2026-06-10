@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { getOrderRollup } from "@/lib/analytics/order-rollup";
 import { computeSegments } from "@/lib/analytics/segments";
 import { prisma } from "@/lib/db";
@@ -106,6 +107,8 @@ function buildCohortRetention(rollup: Awaited<ReturnType<typeof getOrderRollup>>
 }
 
 export async function GET() {
+  const gate = await apiGate("advanced_analytics");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

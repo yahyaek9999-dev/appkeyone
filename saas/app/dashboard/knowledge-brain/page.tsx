@@ -8,6 +8,8 @@
 import { redirect } from "next/navigation";
 import { getUserId } from "@/lib/auth";
 import { knowledgeBrainEnabled } from "@/lib/knowledge-brain/flags";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 import KnowledgeBrainUi from "./knowledge-brain-ui";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,20 @@ export const dynamic = "force-dynamic";
 export default async function KnowledgeBrainPage() {
   const uid = await getUserId();
   if (!uid) redirect("/login");
+
+  const g = await pageGate("smart_assistant");
+  if (!g.allowed) {
+    return (
+      <div className="p-6">
+        <LockedFeature
+          locale="ar"
+          recommendedTier={g.recommendedTier}
+          title="المساعد الذكي (Knowledge Brain)"
+          description="بحث دلالي ذكي داخل معرفتك يمنح عملاءك إجابات فورية دقيقة. متاح في باقة Pro فأعلى."
+        />
+      </div>
+    );
+  }
 
   const enabled = await knowledgeBrainEnabled(uid);
   return <KnowledgeBrainUi enabled={enabled} />;
