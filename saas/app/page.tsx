@@ -110,58 +110,74 @@ export default async function LandingPage({
       {/* ───────── Stats strip ───────── */}
       <AnimatedStatsSection stats={m.stats} />
 
-      {/* ───────── Outcomes ───────── */}
-      <section className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
-        <div className="mx-auto max-w-5xl">
-          <FadeInView className="text-center mb-10">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
-              {isRtl ? "نتائج حقيقية" : "Real outcomes"}
+      {/* ───────── Outcomes — asymmetric: featured metric + supporting pair ── */}
+      <section className="border-t border-white/[0.06] px-5 py-20 sm:py-28">
+        <div className="mx-auto max-w-6xl">
+          <FadeInView className="mb-12 max-w-2xl">
+            <h2 className="section-heading">
+              {isRtl ? (
+                <>نتائج <span className="gold-text">حقيقية</span> من أول شهر</>
+              ) : (
+                <>Real <span className="gold-text">outcomes</span>, from month one</>
+              )}
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              {isRtl ? "الشركات التي تستخدم KEYONE تشاهد فرقاً في أول شهر" : "Businesses using KEYONE see measurable results in the first month"}
+            <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
+              {isRtl ? "الشركات التي تستخدم KEYONE تشاهد فرقاً قابلاً للقياس في أول 30 يوماً." : "Businesses on KEYONE see a measurable difference in the first 30 days."}
             </p>
           </FadeInView>
 
-          <StaggerReveal className="grid gap-4 sm:grid-cols-3" stagger={0.1}>
-            {[
-              { value: isRtl ? "15 دقيقة" : "15 min/day", label: isRtl ? "إدارة العمليات اليومية" : "daily operations management", accent: false },
-              { value: isRtl ? "5 ثوانٍ" : "5 seconds", label: isRtl ? "متوسط وقت الرد على العملاء" : "average customer reply time", accent: true },
-              { value: isRtl ? "~3×" : "~3×", label: isRtl ? "زيادة في تحويل المبيعات" : "increase in sales conversion", accent: false },
-            ].map((item, i) => (
-              <StaggerItem key={i}>
-                <div className="surface p-6 text-center">
-                  <div className={`text-3xl font-semibold tabular-nums sm:text-4xl ${item.accent ? "text-brand-300" : "text-white"}`}>
-                    {item.value}
-                  </div>
-                  <div className="mt-1.5 text-sm text-slate-500">{item.label}</div>
+          <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+            {/* Featured outcome — the hero number + integrated testimonial */}
+            <FadeInView className="card-elevated rail-gold flex flex-col justify-between p-7 sm:p-9">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400/90">
+                  {isRtl ? "متوسط وقت الرد" : "Average reply time"}
                 </div>
-              </StaggerItem>
-            ))}
-          </StaggerReveal>
+                <div className="mt-4 flex items-baseline gap-3">
+                  <span className="metric-xl gold-text text-6xl sm:text-7xl">5</span>
+                  <span className="text-2xl font-medium text-slate-300 sm:text-3xl">
+                    {isRtl ? "ثوانٍ" : "seconds"}
+                  </span>
+                </div>
+                <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-400">
+                  {isRtl ? "ردٌّ فوري يحافظ على اهتمام العميل ويضاعف احتمالية الشراء، حتى خارج ساعات العمل." : "An instant reply keeps the customer engaged and multiplies the odds of a sale, even after hours."}
+                </p>
+              </div>
+              <blockquote className="mt-8 border-t border-white/[0.07] pt-6 text-[15px] leading-relaxed text-slate-300">
+                {isRtl
+                  ? `"قبل ${brandName} كنا بنضيع ساعات على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً والفرق في الشهر الأول كان واضح."`
+                  : `"Before ${brandName} we lost hours on manual replies. Now everything runs automatically, and the difference was clear in the first month."`}
+                <footer className="mt-3 text-xs not-italic text-slate-500">
+                  {isRtl ? "صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "E-commerce store owner, 6 months on KEYONE"}
+                </footer>
+              </blockquote>
+            </FadeInView>
 
-          <FadeInView delay={0.3} className="mt-6 surface p-5 sm:p-6">
-            <p className="text-sm leading-relaxed text-slate-300">
-              {isRtl
-                ? `"قبل ${brandName}، كنا بنضيع ساعات يومياً على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً: الردود، تتبع الطلبات، والتقارير. الفرق في الشهر الأول كان واضح."`
-                : `"Before ${brandName}, we were losing hours on manual replies every day. Now everything runs automatically: replies, order tracking, and reports. The difference was clear in the first month."`
-              }
-            </p>
-            <div className="mt-3 text-xs text-slate-500">
-              {isRtl ? "صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "E-commerce store owner, user for 6 months"}
+            {/* Supporting pair — stacked, divided premium surface */}
+            <div className="grid grid-rows-2 gap-4">
+              {[
+                { value: isRtl ? "~3×" : "~3×", label: isRtl ? "زيادة في تحويل المبيعات" : "increase in sales conversion" },
+                { value: isRtl ? "15 دقيقة" : "15 min", label: isRtl ? "لإدارة عملياتك اليومية" : "to run your daily operations" },
+              ].map((item, i) => (
+                <FadeInView key={i} delay={0.1 + i * 0.08} className="surface surface-hover flex flex-col justify-center p-7">
+                  <span className="metric-xl text-5xl text-white sm:text-6xl">{item.value}</span>
+                  <span className="mt-2 text-sm text-slate-400">{item.label}</span>
+                </FadeInView>
+              ))}
             </div>
-          </FadeInView>
+          </div>
         </div>
       </section>
 
       {/* ───────── Features — bento grid (21st.dev features-8) ───────── */}
       <section id="features" className="px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
-            <div className="eyebrow mb-3">{m.features.eyebrow}</div>
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+          <FadeInView className="mx-auto mb-14 max-w-2xl text-center">
+            <div className="eyebrow mb-4">{m.features.eyebrow}</div>
+            <h2 className="section-heading">
               {m.features.heading}
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
               {m.features.subheading}
             </p>
           </FadeInView>
@@ -181,33 +197,38 @@ export default async function LandingPage({
         ctaLabel={locale === "ar" ? "ابدأ وحوّل رسائلك لمبيعات" : "Turn messages into sales"}
       />
 
-      {/* ───────── How it works ───────── */}
-      <section id="how" className="px-5 py-16 sm:py-20">
+      {/* ───────── How it works — connected vertical journey ───────── */}
+      <section id="how" className="border-t border-white/[0.06] px-5 py-20 sm:py-28">
         <div className="mx-auto max-w-3xl">
-          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
-              {m.howItWorks.heading}
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
+          <FadeInView className="mb-14 max-w-2xl">
+            <h2 className="section-heading">{m.howItWorks.heading}</h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
               {m.howItWorks.subheading}
             </p>
           </FadeInView>
 
-          <StaggerReveal className="space-y-3" stagger={0.12}>
-            {m.howItWorks.steps.map((step: { num: string; title: string; desc: string }) => (
-              <StaggerItem key={step.num}>
-                <div className="surface flex gap-4 p-5 sm:p-6">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-500/20 bg-brand-500/[0.05] text-xs font-semibold text-brand-300">
-                    {step.num}
+          <div className="relative">
+            {/* Gradient spine — emerald → gold, runs through the node centers */}
+            <div
+              aria-hidden
+              className="absolute bottom-6 top-6 w-px bg-gradient-to-b from-brand-400/50 via-gold-500/40 to-transparent ltr:left-[1.4375rem] rtl:right-[1.4375rem]"
+            />
+            <StaggerReveal className="space-y-5" stagger={0.14}>
+              {m.howItWorks.steps.map((step: { num: string; title: string; desc: string }) => (
+                <StaggerItem key={step.num}>
+                  <div className="relative flex gap-5">
+                    <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gold-500/30 bg-canvas text-sm font-semibold text-gold-300 shadow-[0_0_0_4px_rgba(10,10,12,1)]">
+                      {step.num}
+                    </div>
+                    <div className="card-hover flex-1 p-5 sm:p-6">
+                      <h3 className="mb-1.5 text-base font-semibold text-white">{step.title}</h3>
+                      <p className="text-sm leading-relaxed text-slate-400">{step.desc}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="mb-1 text-sm font-semibold text-white">{step.title}</h3>
-                    <p className="text-sm leading-relaxed text-slate-400">{step.desc}</p>
-                  </div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerReveal>
+                </StaggerItem>
+              ))}
+            </StaggerReveal>
+          </div>
         </div>
       </section>
 
@@ -220,9 +241,9 @@ export default async function LandingPage({
       {/* ───────── Pricing preview ───────── */}
       <section id="pricing" className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.pricing.heading}</h2>
-            <p className="mt-2 text-sm text-slate-500">{m.pricing.subheading}</p>
+          <FadeInView className="mx-auto mb-14 max-w-2xl text-center">
+            <h2 className="section-heading">{m.pricing.heading}</h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-slate-400">{m.pricing.subheading}</p>
           </FadeInView>
 
           <PricingCards
@@ -247,31 +268,31 @@ export default async function LandingPage({
       <section id="faq" className="border-y border-white/[0.06] bg-white/[0.012] px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl">
           <FadeInView>
-            <h2 className="mb-10 text-center text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.faq.heading}</h2>
+            <h2 className="mb-12 text-center section-heading">{m.faq.heading}</h2>
           </FadeInView>
           <FaqAccordion items={m.faq.items} />
         </div>
       </section>
 
-      {/* ───────── CTA ───────── */}
-      <section className="px-5 py-20">
-        <div className="mx-auto max-w-3xl">
+      {/* ───────── CTA — cinematic closer panel ───────── */}
+      <section className="px-5 py-24 sm:py-28">
+        <div className="mx-auto max-w-4xl">
           <FadeInView>
-            <div className="surface relative overflow-hidden px-8 py-14 text-center sm:px-12">
-              <BorderBeam colorFrom="rgba(12,122,108,0.9)" colorTo="rgba(201,162,75,0.35)" size={180} duration={6} />
-              <h2 className="display-heading relative text-3xl sm:text-4xl">{m.cta.heading}</h2>
-              <p className="relative mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-slate-400">{m.cta.subheading}</p>
-              <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="panel-cta noise relative overflow-hidden px-8 py-16 text-center sm:px-12 sm:py-20">
+              <BorderBeam colorFrom="rgba(12,122,108,0.9)" colorTo="rgba(201,162,75,0.5)" size={220} duration={7} />
+              <h2 className="display-heading relative mx-auto max-w-2xl text-4xl sm:text-5xl">{m.cta.heading}</h2>
+              <p className="relative mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-slate-400">{m.cta.subheading}</p>
+              <div className="relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 {waNum ? (
-                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 px-5 text-sm">
+                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-12 px-7 text-sm">
                     <Phone className="h-4 w-4" /> {m.cta.primary}
                   </a>
                 ) : (
-                  <Link href="/pricing" className="btn-premium h-11 px-5 text-sm">
+                  <Link href="/pricing" className="btn-premium h-12 px-7 text-sm">
                     {m.cta.primary} <Arrow className="h-4 w-4" />
                   </Link>
                 )}
-                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 text-sm">
+                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-12 px-6 text-sm">
                   {m.cta.secondary}
                 </Link>
               </div>

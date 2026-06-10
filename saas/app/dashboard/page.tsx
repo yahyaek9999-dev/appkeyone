@@ -248,7 +248,7 @@ export default async function DashboardOverview() {
               الإيرادات · آخر 7 أيام
             </div>
             <div className="flex items-end gap-3">
-              <span className="text-[34px] font-semibold leading-none tracking-[-0.02em] text-white tabular-nums">
+              <span className={`metric-xl text-[40px] sm:text-5xl ${rev7d > 0 ? "gold-text" : "text-slate-600"}`}>
                 {rev7d > 0 ? `${(rev7d / 100).toLocaleString("ar-EG")}` : "—"}
                 {rev7d > 0 && <span className="ms-1 text-base font-normal text-slate-500">ج</span>}
               </span>

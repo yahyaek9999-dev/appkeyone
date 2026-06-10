@@ -210,11 +210,11 @@ const CASE_STUDIES_EN: CaseStudy[] = [
 function MetricPill({ value, unit, label }: { value: string; unit: string; label: string }) {
   return (
     <div className="text-center">
-      <div className="text-3xl font-bold tabular-nums text-white sm:text-4xl">
+      <div className="metric-xl gold-text text-4xl sm:text-5xl">
         {value}
         {unit && <span className="ms-1 text-sm font-normal text-slate-500">{unit}</span>}
       </div>
-      <div className="mt-1 text-xs text-slate-500">{label}</div>
+      <div className="mt-2 text-xs text-slate-500">{label}</div>
     </div>
   );
 }
@@ -247,15 +247,15 @@ function BeforeAfterRow({
 
 function CaseCard({ cs, isRtl }: { cs: CaseStudy; isRtl: boolean }) {
   return (
-    <article className="surface overflow-hidden rounded-2xl border border-white/[0.06]">
+    <article className="card-elevated overflow-hidden">
       {/* Header */}
-      <div className="border-b border-white/[0.06] bg-white/[0.02] px-6 py-5 sm:px-8">
+      <div className="rail-gold relative border-b border-white/[0.06] bg-white/[0.02] px-6 py-6 sm:px-9">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-brand-400">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400/90">
               {cs.sector}
             </p>
-            <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
+            <h2 className="text-xl font-semibold tracking-[-0.025em] text-white sm:text-2xl">
               {cs.name}
             </h2>
           </div>
@@ -466,18 +466,18 @@ export default async function ProjectsPage({
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="border-t border-white/[0.06] px-5 py-20">
-        <div className="mx-auto max-w-3xl">
+      {/* ── CTA — cinematic closer ── */}
+      <section className="border-t border-white/[0.06] px-5 py-24">
+        <div className="mx-auto max-w-4xl">
           <SectionReveal>
-            <div className="surface px-8 py-14 text-center sm:px-12">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-500/20 bg-brand-500/[0.06] px-4 py-1.5 text-xs font-medium text-brand-300">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-400" />
+            <div className="panel-cta noise px-8 py-16 text-center sm:px-12 sm:py-20">
+              <div className="relative mb-5 inline-flex items-center gap-2 rounded-full border border-gold-500/25 bg-gold-500/[0.08] px-4 py-1.5 text-xs font-medium text-gold-300">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold-400" />
                 {isRtl ? "جاهزين لمساعدتك" : "Ready to help you"}
               </div>
-              <h2 className="display-heading text-2xl sm:text-3xl">{ctaHeading}</h2>
-              <p className="mx-auto mt-3 max-w-md text-sm text-slate-400">{ctaSub}</p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <h2 className="display-heading relative mx-auto max-w-2xl text-3xl sm:text-4xl">{ctaHeading}</h2>
+              <p className="relative mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-slate-400">{ctaSub}</p>
+              <div className="relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 {waHref ? (
                   <a
                     href={waHref}

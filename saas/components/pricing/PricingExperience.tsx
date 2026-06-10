@@ -123,15 +123,19 @@ export default function PricingExperience({
               <HoverCard
                 className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur-xl transition-all duration-300 ${
                   featured
-                    ? "border-brand-500/40 bg-gradient-to-b from-brand-500/[0.12] to-white/[0.02] shadow-[0_8px_40px_-12px_rgba(12,122,108,0.5)] xl:-mt-3 xl:mb-3"
+                    ? "border-gold-500/40 bg-gradient-to-b from-brand-500/[0.14] to-white/[0.02] shadow-[0_8px_44px_-10px_rgba(12,122,108,0.6)] xl:-mt-4 xl:mb-4"
                     : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
                 }`}
               >
                 {featured && (
                   <>
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold-500/80 to-transparent"
+                    />
                     <div
                       aria-hidden
-                      className="pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-b from-brand-400/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      className="pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-b from-gold-400/15 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                     />
                     <div className="absolute inset-x-0 -top-0 flex justify-center">
                       <span className="flex items-center gap-1 rounded-b-lg bg-gradient-to-b from-gold-400 to-gold-600 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-canvas-deep shadow-gold-ring">
@@ -163,7 +167,7 @@ export default function PricingExperience({
                   ) : (
                     <div className="flex flex-col">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold tabular-nums text-white">
+                        <span className={`metric-xl text-4xl sm:text-5xl ${featured ? "gold-text" : "text-white"}`}>
                           ${price}
                         </span>
                         <span className="text-sm text-slate-500">

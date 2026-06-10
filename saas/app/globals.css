@@ -270,6 +270,58 @@
         text-wrap: balance;
     }
 
+    /* ── Section heading — the confident display scale used on every public
+       section (Linear/Stripe register). Pairs with `.gold-text` on an
+       emphasis word. Replaces the timid text-2xl/3xl headings site-wide. */
+    .section-heading {
+        @apply text-3xl font-semibold text-white sm:text-4xl lg:text-[2.75rem];
+        letter-spacing: -0.035em;
+        line-height: 1.05;
+        text-wrap: balance;
+    }
+
+    /* ── Big metric numeral — celebrate the number. Pair with `.gold-text`
+       for the champagne-gradient hero figures. */
+    .metric-xl {
+        @apply font-semibold tabular-nums leading-none;
+        letter-spacing: -0.045em;
+    }
+
+    /* ── Elevated card — gradient hairline + inner top light + real depth.
+       For featured tiles that must out-rank the plain `.surface`. */
+    .card-elevated {
+        @apply relative overflow-hidden rounded-2xl border border-white/[0.08] shadow-float;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 45%),
+            rgba(255, 255, 255, 0.022);
+    }
+
+    /* ── Gold accent rail on the start edge of a card. */
+    .rail-gold::before {
+        content: "";
+        position: absolute;
+        inset-inline-start: 0;
+        top: 1.25rem;
+        bottom: 1.25rem;
+        width: 2px;
+        border-radius: 9999px;
+        background: linear-gradient(180deg, rgba(201, 162, 75, 0.75), rgba(12, 122, 108, 0.35));
+    }
+
+    /* ── Cinematic CTA / showcase panel — layered emerald+gold spotlight on a
+       near-black base. The premium closer surface (CTA, featured trust). */
+    .panel-cta {
+        @apply relative overflow-hidden rounded-3xl border border-white/[0.08];
+        background:
+            radial-gradient(120% 110% at 50% 0%, rgba(12, 122, 108, 0.20), transparent 55%),
+            radial-gradient(80% 80% at 82% 16%, rgba(201, 162, 75, 0.12), transparent 60%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 38%),
+            #0b0b0e;
+        box-shadow:
+            0 1px 0 rgba(255, 255, 255, 0.05) inset,
+            0 30px 80px -24px rgba(0, 0, 0, 0.8);
+    }
+
     /* Primary CTA — gradient emerald with gold ring + emerald glow on hover. */
     .btn-premium {
         @apply inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-5 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10;
