@@ -54,11 +54,19 @@ DIR="$TMP/$RELEASE"
 mkdir -p "$DIR/.next" "$DIR/public" "$DIR/prisma" "$DIR/workers"
 
 # ── 4. Copy runtime files ───────────────────────────────────────────────────
-echo "→ Packaging…"
-cp -r .next/* "$DIR/.next/"
+# Ship ONLY production runtime files. Build-only caches (.next/cache — typically
+# ~1GB of webpack/swc cache), dev databases, logs and temp files are NEVER
+# needed at runtime and are excluded to minimize transfer size.
+echo "→ Packaging (excluding .next/cache, dev db, logs, temp)…"
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a --exclude='cache/' --exclude='*.log' --exclude='*.tmp' --exclude='*.temp' --exclude='.DS_Store' .next/ "$DIR/.next/"
+  rsync -a --exclude='*.db' --exclude='*.db-journal' --exclude='*.db-wal' --exclude='*.db-shm' prisma/ "$DIR/prisma/"
+else
+  ( cd .next && find . -mindepth 1 -maxdepth 1 ! -name cache -exec cp -r {} "$DIR/.next/" \; )
+  ( cd prisma && find . -mindepth 1 -maxdepth 1 ! -name '*.db' ! -name '*.db-journal' -exec cp -r {} "$DIR/prisma/" \; )
+fi
 cp -r public/* "$DIR/public/"
 cp -r node_modules "$DIR/"
-cp -r prisma/* "$DIR/prisma/"
 cp package.json next.config.js "$DIR/" 2>/dev/null || true
 
 # Workers
