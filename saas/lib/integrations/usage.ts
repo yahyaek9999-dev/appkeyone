@@ -9,8 +9,17 @@
 //      recent-activity panels. Errors are redacted (never secrets).
 
 import { prisma } from "@/lib/db";
-import { bumpProvider } from "@/lib/metrics";
+import { bumpProvider, bump } from "@/lib/metrics";
 import type { ProviderDomain, ProviderOperation } from "./types";
+
+/** Classify a failed provider call by upstream status for transition metrics. */
+function errorClassKind(status?: number): string {
+  const s = Number(status || 0);
+  if (s === 429) return "provider_quota";
+  if (s === 401 || s === 403) return "provider_auth_err";
+  if (s === 408 || s === 0) return "provider_timeout"; // 408 / abort / network
+  return "provider_failure";
+}
 
 export type RecordCallInput = {
   userId: string;
@@ -56,6 +65,16 @@ export function recordProviderCall(input: RecordCallInput): void {
     });
   } catch {
     /* swallow — analytics are best-effort */
+  }
+
+  // 1b) Fallback-transition observability: count failures by class (timeout /
+  //     quota / auth / failure). Fire-and-forget; visible in /admin/metrics.
+  if (!input.ok && input.operation !== "health") {
+    try {
+      bump(errorClassKind(input.status), userId);
+    } catch {
+      /* swallow */
+    }
   }
 
   // 2) Append-only call log (skip successful health pings to keep the table lean).
