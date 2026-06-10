@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { apiGate } from "@/lib/membership/gate";
 import { detectLostCustomers } from "@/lib/intel/lost-customers";
 import { detectUpsell } from "@/lib/intel/upsell";
@@ -16,11 +17,13 @@ import type { IntelResponse } from "@/lib/intel/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const gate = await apiGate("advanced_insights");
   if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "intel", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   const now = new Date();
   const [lost, upsell, hot, fup] = await Promise.all([

@@ -21,6 +21,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { recordInbound, looksLikeRevoke, revokeConsent } from "@/lib/messaging/compliance";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 25;
 
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

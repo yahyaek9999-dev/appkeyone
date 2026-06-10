@@ -13,13 +13,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { decryptSecret } from "@/lib/crypto-util";
 import { listTemplates } from "@/lib/messaging/meta-api";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
 
-const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
-
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

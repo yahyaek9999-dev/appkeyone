@@ -20,20 +20,22 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: "invalid_action" }, { status: 400 });
   }
 
-  // Only owner/admin can decide.
-  let decidedBy = "";
-  try {
-    const c = await getAuthContext();
-    const role = c?.role || "owner";
-    if (!["owner", "admin"].includes(role)) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
-    }
-    decidedBy = c?.principalEmail || c?.user?.email || "";
-  } catch {}
+  // Only owner/admin can decide. Fail CLOSED if the context can't be resolved
+  // (never default to the most-privileged "owner" role).
+  const c = await getAuthContext();
+  if (!c) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!["owner", "admin"].includes(c.role)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  const decidedBy = c.principalEmail || c.user?.email || "";
 
   try {
     const existing = await db.approvalRequest.findFirst({ where: { id: ctx.params.id, userId: uid } });
     if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    // 4-eyes control: the requester may not approve/reject their own request.
+    if (existing.requestedBy && decidedBy && existing.requestedBy === decidedBy) {
+      return NextResponse.json({ error: "self_approval_not_allowed" }, { status: 403 });
+    }
     await db.approvalRequest.update({
       where: { id: ctx.params.id },
       data: {

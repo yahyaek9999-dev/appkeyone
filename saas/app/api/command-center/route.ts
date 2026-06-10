@@ -16,6 +16,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 import { computeForecast } from "@/lib/analytics/forecast";
@@ -41,11 +42,13 @@ export interface CommandRecommendation {
   estimatedValue: number; // EGP, 0 when not monetizable
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const gate = await apiGate("advanced_analytics");
   if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "command-center", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   const now = new Date();
 

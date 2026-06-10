@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,11 @@ export async function GET(req: Request) {
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
+  // This endpoint fans out several full-table scans per call — rate limit it so
+  // a tight polling loop can't saturate the DB for the whole instance.
+  const limited = enforceRateLimit(req, { name: "analytics", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
+
   const url = new URL(req.url);
   const days = Math.max(1, Math.min(90, parseInt(url.searchParams.get("days") || "30", 10) || 30));
 
@@ -42,6 +48,7 @@ export async function GET(req: Request) {
       leadScore: true, lastIntent: true, lastSentiment: true,
       tags: true, createdAt: true,
     },
+    take: 20000, // hard ceiling — large tenants can't blow up heap/DB per call
   });
 
   const customerIds = customers.map((c) => c.id);
@@ -50,6 +57,7 @@ export async function GET(req: Request) {
   const conversations = await prisma.conversation.findMany({
     where: { customerId: { in: customerIds } },
     select: { id: true, customerId: true, updatedAt: true },
+    take: 20000,
   });
   const convIds = conversations.map((c) => c.id);
 
@@ -58,6 +66,7 @@ export async function GET(req: Request) {
     where: { conversationId: { in: convIds }, createdAt: { gte: since } },
     select: { id: true, role: true, intent: true, sentiment: true, createdAt: true, conversationId: true },
     orderBy: { createdAt: "asc" },
+    take: 50000,
   });
 
   // -------- Quick replies --------

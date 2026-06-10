@@ -49,8 +49,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "انتهت صلاحية رابط الدعوة. اطلب دعوة جديدة." }, { status: 410 });
   }
 
-  await prisma.teamMember.update({
-    where: { id: member.id },
+  // Atomic accept: condition the write on the row still being "invited" so two
+  // concurrent accepts of the same token can't both succeed (and silently
+  // overwrite each other's password). The loser gets the already-accepted 409.
+  const result = await prisma.teamMember.updateMany({
+    where: { id: member.id, status: "invited" },
     data: {
       passwordHash: await hashPassword(parsed.data.password),
       name: parsed.data.name?.trim() || member.name,
@@ -60,6 +63,9 @@ export async function POST(req: Request) {
       inviteExpiresAt: null,
     },
   });
+  if (result.count === 0) {
+    return NextResponse.json({ error: "تم تفعيل هذه الدعوة من قبل. سجّل الدخول مباشرة." }, { status: 409 });
+  }
 
   return NextResponse.json({ ok: true, email: member.email, redirectTo: "/login" });
 }

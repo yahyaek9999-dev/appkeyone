@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserForPermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { buildPersonaPack, type BusinessType, type ToneKey } from "@/lib/persona-packs";
 import { importKnowledge } from "@/lib/knowledge-importer";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
@@ -12,6 +13,8 @@ const VALID_TONE: ToneKey[] = ["warm","professional","playful","premium"];
 export async function POST(req: Request) {
   const user = await getUserForPermission("settings");
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "onboarding-setup", identifier: user.id, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "bad_body" }, { status: 400 });

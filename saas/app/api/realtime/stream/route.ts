@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getUserForPermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { prisma } from "@/lib/db";
 import { getCachedSnapshot } from "@/lib/snapshot-cache";
 import { getOutgoingQueueHealth } from "@/lib/messaging/outgoing-queue";
@@ -264,9 +265,15 @@ async function buildSnapshot(userId: string, customerId?: string | null) {
 }
 
 export async function GET(req: Request) {
-  const user = await getCurrentUser();
+  // Bring this SSE stream into the RBAC pattern: it exposes cross-domain
+  // operational counters (escalations, orders, queue health). All roles incl.
+  // "viewer" hold "analytics", so legitimate callers are unaffected; this just
+  // makes the gate explicit/auditable instead of "any authenticated principal".
+  const user = await getUserForPermission("analytics");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "realtime-stream", identifier: user.id, ...RATE_LIMITS.api });
+  if (limited) return limited;
   const userId = user.id;
 
   const url = new URL(req.url);

@@ -14,6 +14,7 @@
 import { callOpenAI } from "./openai";
 import { callOpenRouter } from "./openrouter";
 import { callGroq } from "./groq";
+import { callGrok } from "./grok";
 import { callGemini } from "./gemini";
 import { callClaude } from "./claude";
 import {
@@ -70,6 +71,7 @@ function dispatch(
     case "openai":     return callOpenAI(messages, opts);
     case "openrouter": return callOpenRouter(messages, opts);
     case "groq":       return callGroq(messages, opts);
+    case "grok":       return callGrok(messages, opts);
     case "gemini":     return callGemini(messages, opts);
     case "claude":     return callClaude(messages, opts);
   }

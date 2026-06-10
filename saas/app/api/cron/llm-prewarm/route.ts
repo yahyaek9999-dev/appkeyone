@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +18,7 @@ export const dynamic = "force-dynamic";
  *       "ping" request and discards the result. Quality is unaffected.
  */
 export async function POST(req: Request) {
-  const expected = process.env.SAAS_INTERNAL_SECRET;
-  const got = req.headers.get("x-internal-secret");
-  if (!expected || got !== expected) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

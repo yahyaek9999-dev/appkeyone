@@ -19,6 +19,7 @@ const TRIGGER_META: Record<string, { label: string; desc: string }> = {
   idle_hours:            { label: "لم يرد منذ وقت",    desc: "عندما يصمت العميل فترة محددة" },
   order_status_changed:  { label: "تغيّر الطلب",       desc: "عند تغيير حالة طلب عبر التجارة" },
   cart_abandoned:        { label: "كارت مهجور",        desc: "اهتمّ بمنتج ثم اختفى" },
+  order_value_gt:        { label: "قيمة الطلب تتعدّى",  desc: "عند إنشاء طلب بقيمة تتجاوز حدّاً معيناً" },
 };
 
 const ACTION_META: Record<string, { label: string; desc: string }> = {
@@ -26,6 +27,8 @@ const ACTION_META: Record<string, { label: string; desc: string }> = {
   tag_customer:             { label: "إضافة تاجة",           desc: "يضيف تاجة على العميل" },
   notify_admin:             { label: "تنبيه الإدارة",        desc: "يُرسل تنبيه لرقم الإدارة" },
   add_to_segment_broadcast: { label: "إضافة لشريحة",         desc: "يضيف العميل لشريحة بث" },
+  send_email:               { label: "إرسال بريد",           desc: "يرسل بريداً عبر مزوّدك (مع تبديل احتياطي)" },
+  send_sms:                 { label: "إرسال SMS",            desc: "يرسل رسالة SMS عبر مزوّدك (مع تبديل احتياطي)" },
 };
 
 const METRIC_META: Record<string, string> = {
@@ -172,6 +175,25 @@ function ConditionsEditor({
       );
     case "cart_abandoned":
       return <p className="text-xs text-slate-400">يتحقق عند تشغيل دورة الكارت المهجور.</p>;
+    case "order_value_gt":
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-400">قيمة الطلب</span>
+          <select
+            className="input w-20"
+            value={conditions.op || ">"}
+            onChange={(e) => onChange({ ...conditions, op: e.target.value })}
+          >
+            {OPS.map((o) => (<option key={o} value={o}>{o}</option>))}
+          </select>
+          <input
+            type="number" min={0}
+            className="input w-32"
+            value={conditions.value ?? 0}
+            onChange={(e) => onChange({ ...conditions, value: Number(e.target.value) })}
+          />
+        </div>
+      );
     default:
       return null;
   }
@@ -242,6 +264,48 @@ function ActionConfigEditor({
           value={config.segment || ""}
           onChange={(e) => onChange({ ...config, segment: e.target.value })}
         />
+      );
+    case "send_email":
+      return (
+        <div className="space-y-2">
+          <input
+            className="input"
+            placeholder="البريد المستلِم (مثال: orders@yourbrand.com)"
+            value={config.to || ""}
+            onChange={(e) => onChange({ ...config, to: e.target.value })}
+          />
+          <input
+            className="input"
+            placeholder="عنوان الرسالة"
+            value={config.subject || ""}
+            onChange={(e) => onChange({ ...config, subject: e.target.value })}
+          />
+          <textarea
+            className="input text-sm resize-none min-h-[60px]"
+            placeholder="نص الرسالة (HTML مدعوم)"
+            value={config.body || ""}
+            onChange={(e) => onChange({ ...config, body: e.target.value })}
+          />
+          <p className="text-[11px] text-slate-500">يُرسل عبر مزوّدي البريد في الإعدادات ← المزوّدون ← البريد. لو مفيش مزوّد، تُتخطّى القاعدة بدون خطأ.</p>
+        </div>
+      );
+    case "send_sms":
+      return (
+        <div className="space-y-2">
+          <input
+            className="input"
+            placeholder="رقم المستلِم E.164 (اتركه فارغاً لإرساله للعميل)"
+            value={config.to || ""}
+            onChange={(e) => onChange({ ...config, to: e.target.value })}
+          />
+          <textarea
+            className="input text-sm resize-none min-h-[60px]"
+            placeholder="نص الرسالة"
+            value={config.message || ""}
+            onChange={(e) => onChange({ ...config, message: e.target.value })}
+          />
+          <p className="text-[11px] text-slate-500">يُرسل عبر مزوّدي SMS في الإعدادات ← المزوّدون ← SMS. لو مفيش مزوّد، تُتخطّى القاعدة بدون خطأ.</p>
+        </div>
       );
     default:
       return null;

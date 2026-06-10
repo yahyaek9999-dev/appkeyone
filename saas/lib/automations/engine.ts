@@ -58,6 +58,7 @@ export type AutomationEvent =
   | { type: "stage_changed"; customerId: string; conversationId?: string | null; fromStage?: string | null; toStage: string }
   | { type: "order_status_changed"; customerId: string; conversationId?: string | null; status: string }
   | { type: "cart_abandoned"; customerId: string; conversationId?: string | null }
+  | { type: "order_placed"; customerId: string; conversationId?: string | null; value: number }
   | { type: "idle"; customerId: string; conversationId?: string | null; idleHours: number };
 
 const EVENT_TO_TRIGGER: Record<AutomationEvent["type"], AutomationTrigger> = {
@@ -65,6 +66,7 @@ const EVENT_TO_TRIGGER: Record<AutomationEvent["type"], AutomationTrigger> = {
   stage_changed: "stage_changed",
   order_status_changed: "order_status_changed",
   cart_abandoned: "cart_abandoned",
+  order_placed: "order_value_gt",
   idle: "idle_hours",
 };
 
@@ -120,6 +122,12 @@ function conditionsMatch(rule: any, event: AutomationEvent, customer: any): bool
     }
     case "cart_abandoned": {
       return event.type === "cart_abandoned";
+    }
+    case "order_value_gt": {
+      if (event.type !== "order_placed") return false;
+      const threshold = Number(cond.value ?? cond.amount ?? 0);
+      const op = String(cond.op || ">");
+      return cmp(Number(event.value || 0), op, threshold);
     }
     case "idle_hours": {
       if (event.type !== "idle") return false;
@@ -245,6 +253,40 @@ async function executeAction(
         .update({ where: { id: customer.id }, data: { tags: JSON.stringify(merged) } })
         .catch(() => {});
       return { status: "fired", detail: `segment:${segment}` };
+    }
+    case "send_email": {
+      // Recipient: explicit cfg.to (e.g. merchant/admin address). Customers have
+      // no stored email, so a missing `to` is a graceful skip.
+      const to = String(cfg.to || "").trim();
+      if (!to) return { status: "skipped", detail: "no_recipient" };
+      const subject = String(cfg.subject || "").trim() || `إشعار: ${rule.name}`;
+      const html = String(cfg.html || cfg.body || cfg.message || "").trim();
+      if (!html) return { status: "skipped", detail: "no_body" };
+      try {
+        const { sendEmailWithFailover } = await import("@/lib/integrations/email");
+        const r = await sendEmailWithFailover(rule.userId, { to, subject, html });
+        if (r.ok) return { status: "fired", detail: `email:${r.provider}` };
+        // No provider configured for this tenant → gracefully disable (skip).
+        if (r.reason === "no_provider_configured") return { status: "skipped", detail: "no_email_provider" };
+        return { status: "failed", detail: `email_failed:${(r.detail || "").slice(0, 120)}` };
+      } catch {
+        return { status: "failed", detail: "email_error" };
+      }
+    }
+    case "send_sms": {
+      const to = String(cfg.to || "").trim() || String(customer.phone || "").trim();
+      if (!to) return { status: "skipped", detail: "no_recipient" };
+      const body = String(cfg.message || cfg.body || cfg.text || "").trim();
+      if (!body) return { status: "skipped", detail: "no_body" };
+      try {
+        const { sendSmsWithFailover } = await import("@/lib/integrations/sms");
+        const r = await sendSmsWithFailover(rule.userId, { to, body: body.slice(0, 480) });
+        if (r.ok) return { status: "fired", detail: `sms:${r.provider}` };
+        if (r.reason === "no_provider_configured") return { status: "skipped", detail: "no_sms_provider" };
+        return { status: "failed", detail: "sms_failed" };
+      } catch {
+        return { status: "failed", detail: "sms_error" };
+      }
     }
     default:
       return { status: "skipped", detail: "unknown_action" };
@@ -417,4 +459,22 @@ export async function runIdleAutomations(opts: {
   }
 
   return { merchants, customers, fired };
+}
+
+/**
+ * Fire `order_value_gt` automations for a newly-placed order. Call fire-and-forget
+ * from order-creation sites. No-ops on invalid input; never throws. The engine's
+ * throttle, global daily cap, and graceful provider-disable all apply.
+ */
+export async function fireOrderValueAutomation(args: {
+  userId: string;
+  customerId: string | null | undefined;
+  value: number;
+  conversationId?: string | null;
+}): Promise<void> {
+  if (!args.userId || !args.customerId || !(Number(args.value) > 0)) return;
+  await evaluateAutomations({
+    userId: args.userId,
+    event: { type: "order_placed", customerId: args.customerId, conversationId: args.conversationId ?? null, value: Number(args.value) },
+  }).catch(() => {});
 }

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { getUserIdForPermission } from "@/lib/auth";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { checkLimit } from "@/lib/membership/limits";
 import { optimizeCampaign } from "@/lib/broadcasts/ai-optimize";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,16 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+
+  // Plan gate: block only the explicit premium-lock case (broadcasts disabled),
+  // so free/legacy users are unaffected (see broadcasts/generate).
+  const limit = await checkLimit(uid, "broadcast");
+  if (!limit.allowed && limit.reason === "feature_disabled") {
+    return NextResponse.json(
+      { error: "البث غير متاح في باقتك الحالية", reason: limit.reason },
+      { status: 402 },
+    );
+  }
 
   // AI cost guard — rate-limit optimization (LLM-backed) per workspace.
   const limited = enforceRateLimit(req, { name: "broadcast-optimize", identifier: uid, ...RATE_LIMITS.chat });

@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { runIdleAutomations } from "@/lib/automations/engine";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
-
-const SECRET =
-  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 /**
  * Automation engine — time-based runner (Agent 3, Task #8).
@@ -22,7 +20,7 @@ const SECRET =
  *   ?maxMerchants=N    cap merchants per run (default 200)
  */
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

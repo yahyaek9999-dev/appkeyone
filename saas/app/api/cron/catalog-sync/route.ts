@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { runCatalogSync } from "@/lib/commerce/catalog-sync";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
-
-const SECRET =
-  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 /**
  * Catalog sync cron (Agent 3, Task #10).
@@ -20,7 +18,7 @@ const SECRET =
  *   ?maxIntegrations=N    cap integrations per run (default 100)
  */
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

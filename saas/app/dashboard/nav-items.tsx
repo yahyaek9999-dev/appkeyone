@@ -198,6 +198,7 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard/settings",
     items: [
       { href: "/dashboard/settings", label: "الحساب", icon: Settings, perm: "analytics" },
+      { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
       { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },

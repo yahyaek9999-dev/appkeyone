@@ -49,6 +49,18 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "bad_body" }, { status: 400 });
 
+  // Money fields drive revenue analytics — restrict them to owner/admin. A
+  // "sales" member (who holds the "customers" permission to manage orders) can
+  // still edit status/shipping/tracking but must not rewrite order totals.
+  const MONEY_FIELDS = ["shipping", "discount", "subtotal", "total"] as const;
+  const touchesMoney = MONEY_FIELDS.some((f) => typeof body[f] === "number");
+  if (touchesMoney) {
+    const actor = await getAuthContext();
+    if (actor && actor.role !== "owner" && actor.role !== "admin") {
+      return NextResponse.json({ error: "forbidden_money_fields" }, { status: 403 });
+    }
+  }
+
   // Validate
   const data: any = {};
   if (body.status !== undefined) {

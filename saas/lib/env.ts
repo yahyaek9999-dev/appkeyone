@@ -28,6 +28,9 @@ const PLACEHOLDER_PATTERNS = [
   /^\[PASSWORD\]$/i,
   /^xxx+$/i,
   /^todo$/i,
+  // Public default secrets shipped in source — never allow them in production.
+  /^dev-internal-secret/i,
+  /^dev-shared-secret/i,
 ];
 
 function isPlaceholder(value: string): boolean {

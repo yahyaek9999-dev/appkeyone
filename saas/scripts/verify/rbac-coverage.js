@@ -50,7 +50,9 @@ const WAIVED = new Set([
 const GATE_RE =
   /\b(requirePermission|getUserIdForPermission|getUserForPermission|requireAdmin|apiGate)\b/;
 const MUTATING_RE = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/g;
-const INTERNAL_SECRET_RE = /x-internal-secret|X-Internal-Secret|SAAS_INTERNAL_SECRET/;
+// Routes guard the internal secret either inline (the literal header/env name)
+// or via the shared lib/internal-auth.ts helper (checkInternalSecret).
+const INTERNAL_SECRET_RE = /x-internal-secret|X-Internal-Secret|SAAS_INTERNAL_SECRET|checkInternalSecret/;
 const WEBHOOK_SIG_RE = /verifySignature|X-Hub-Signature|resolveIntegrationFromRequest/;
 
 function walk(dir, out = []) {

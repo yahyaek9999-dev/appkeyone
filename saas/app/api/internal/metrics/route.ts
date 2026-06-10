@@ -17,11 +17,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/db";
-
-// ---------------------------------------------------------------------------
-// Auth guard
-// ---------------------------------------------------------------------------
-const SECRET = process.env.SAAS_INTERNAL_SECRET ?? "";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 function unauthorized() {
   return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -101,7 +97,7 @@ async function checkRedis(): Promise<RedisHealth> {
 // ---------------------------------------------------------------------------
 export async function GET(req: Request) {
   // Auth check — must come first before any DB queries
-  if (!SECRET || req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return unauthorized();
   }
 
