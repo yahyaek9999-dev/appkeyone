@@ -126,8 +126,8 @@ export default function RoiSection({ locale, dir, ctaHref, ctaLabel }: Props) {
             </div>
 
             <div className="surface flex items-center gap-4 p-5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
-                <Clock className="h-5 w-5 text-sky-300" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gold-500/20 bg-gold-500/10">
+                <Clock className="h-5 w-5 text-gold-300" />
               </div>
               <div className="min-w-0">
                 <div className="text-2xl font-bold tabular-nums text-white sm:text-3xl">
@@ -139,8 +139,8 @@ export default function RoiSection({ locale, dir, ctaHref, ctaLabel }: Props) {
             </div>
 
             <div className="surface flex items-center gap-4 p-5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
-                <TrendingUp className="h-5 w-5 text-amber-300" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-500/20 bg-brand-500/10">
+                <TrendingUp className="h-5 w-5 text-brand-300" />
               </div>
               <div className="min-w-0">
                 <div className="text-2xl font-bold tabular-nums text-white sm:text-3xl">

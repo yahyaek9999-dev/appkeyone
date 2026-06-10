@@ -67,7 +67,7 @@ export default function IntegrationsWhatsApp({
           <SectionReveal index={1}>
             <Parallax speed={26} className="relative mx-auto w-full max-w-sm">
               {/* soft halo */}
-              <div className="absolute -inset-6 rounded-[2rem] bg-[radial-gradient(circle_at_50%_30%,rgba(104,114,212,0.10),transparent_65%)]" aria-hidden="true" />
+              <div className="absolute -inset-6 rounded-[2rem] bg-[radial-gradient(circle_at_50%_30%,rgba(12,122,108,0.12),transparent_65%)]" aria-hidden="true" />
 
               <div className="surface relative overflow-hidden rounded-2xl shadow-float">
                 {/* header */}

@@ -53,7 +53,7 @@ export default function DataConstellation() {
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
     const material = new THREE.PointsMaterial({
-      color: 0x6872d4,
+      color: 0x0c7a6c,
       size: 0.12,
       transparent: true,
       opacity: 0.25,
@@ -64,7 +64,7 @@ export default function DataConstellation() {
 
     // Lines
     const lineMaterial = new THREE.LineBasicMaterial({
-      color: 0x6872d4,
+      color: 0x0c7a6c,
       transparent: true,
       opacity: 0.04,
     });

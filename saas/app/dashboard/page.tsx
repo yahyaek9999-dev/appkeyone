@@ -376,12 +376,12 @@ export default async function DashboardOverview() {
             <div className="mt-3 pt-3 border-t border-white/[0.06]">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-medium text-slate-500">{plan.name}</span>
-                <Link href="/dashboard/usage" className="text-[10px] text-slate-500 hover:text-white">Details</Link>
+                <Link href="/dashboard/usage" className="text-[10px] text-slate-400 transition-colors hover:text-white">التفاصيل</Link>
               </div>
               <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
                 <div className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`} style={{ width: `${usagePct}%` }} />
               </div>
-              <div className="mt-1 flex items-center justify-between text-[10px] tabular-nums text-slate-600">
+              <div className="mt-1 flex items-center justify-between text-[10px] tabular-nums text-slate-500">
                 <span>{sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()}</span>
                 <span>{daysLeft} يوم متبقي</span>
               </div>

@@ -36,12 +36,12 @@ const FEATURE_META: Array<{
   icon: ComponentType<{ className?: string }>;
   accent: string;
 }> = [
-  { icon: Zap, accent: "text-amber-300" },
-  { icon: ShoppingCart, accent: "text-brand-300" },
-  { icon: RefreshCw, accent: "text-sky-300" },
+  { icon: Zap, accent: "text-brand-300" },
+  { icon: ShoppingCart, accent: "text-gold-300" },
+  { icon: RefreshCw, accent: "text-brand-300" },
   { icon: BarChart3, accent: "text-gold-300" },
-  { icon: Bell, accent: "text-cyan-300" },
-  { icon: Shield, accent: "text-rose-300" },
+  { icon: Bell, accent: "text-brand-300" },
+  { icon: Shield, accent: "text-gold-300" },
 ];
 
 function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boolean }) {
@@ -350,9 +350,9 @@ export default async function LandingPage({
         <div className="mx-auto max-w-3xl">
           <FadeInView>
             <div className="surface relative overflow-hidden px-8 py-14 text-center sm:px-12">
-              <BorderBeam colorFrom="rgba(104,114,212,0.9)" colorTo="rgba(162,169,232,0.3)" size={180} duration={6} />
-              <h2 className="relative text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.cta.heading}</h2>
-              <p className="relative mx-auto mt-3 max-w-md text-sm text-slate-400">{m.cta.subheading}</p>
+              <BorderBeam colorFrom="rgba(12,122,108,0.9)" colorTo="rgba(201,162,75,0.35)" size={180} duration={6} />
+              <h2 className="display-heading relative text-3xl sm:text-4xl">{m.cta.heading}</h2>
+              <p className="relative mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-slate-400">{m.cta.subheading}</p>
               <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 {waNum ? (
                   <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 px-5 text-sm">

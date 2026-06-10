@@ -321,7 +321,7 @@ function CaseCard({ cs, isRtl }: { cs: CaseStudy; isRtl: boolean }) {
         <Quote className="mb-2 h-4 w-4 text-brand-400/50" aria-hidden="true" />
         <div className="flex gap-0.5 mb-3" aria-hidden="true">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+            <Star key={i} className="h-3 w-3 fill-gold-400 text-gold-400" />
           ))}
         </div>
         <blockquote className="text-sm leading-relaxed text-slate-300 italic">

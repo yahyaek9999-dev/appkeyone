@@ -69,7 +69,7 @@ export default function PricingExperience({
           {/* sliding pill */}
           <span
             aria-hidden
-            className={`absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-full bg-brand-500 shadow-[0_4px_20px_-4px_rgba(104,114,212,0.7)] transition-transform duration-300 ease-out ${
+            className={`absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-full bg-brand-500 shadow-[0_4px_20px_-4px_rgba(12,122,108,0.7)] transition-transform duration-300 ease-out ${
               yearly
                 ? isRtl
                   ? "-translate-x-[calc(100%+0.25rem)]"
@@ -99,7 +99,7 @@ export default function PricingExperience({
           </button>
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 transition-opacity duration-300 ${
+          className={`inline-flex items-center gap-1.5 rounded-full border border-gold-500/30 bg-gold-500/10 px-3 py-1 text-xs font-medium text-gold-300 transition-opacity duration-300 ${
             yearly ? "opacity-100" : "opacity-60"
           }`}
         >
@@ -123,7 +123,7 @@ export default function PricingExperience({
               <HoverCard
                 className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur-xl transition-all duration-300 ${
                   featured
-                    ? "border-brand-500/40 bg-gradient-to-b from-brand-500/[0.12] to-white/[0.02] shadow-[0_8px_40px_-12px_rgba(104,114,212,0.45)] xl:-mt-3 xl:mb-3"
+                    ? "border-brand-500/40 bg-gradient-to-b from-brand-500/[0.12] to-white/[0.02] shadow-[0_8px_40px_-12px_rgba(12,122,108,0.5)] xl:-mt-3 xl:mb-3"
                     : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
                 }`}
               >
@@ -134,7 +134,7 @@ export default function PricingExperience({
                       className="pointer-events-none absolute -inset-px rounded-2xl bg-gradient-to-b from-brand-400/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                     />
                     <div className="absolute inset-x-0 -top-0 flex justify-center">
-                      <span className="flex items-center gap-1 rounded-b-lg bg-brand-500 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+                      <span className="flex items-center gap-1 rounded-b-lg bg-gradient-to-b from-gold-400 to-gold-600 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-canvas-deep shadow-gold-ring">
                         <Sparkles className="h-3 w-3" />
                         {labels.popularBadge}
                       </span>
@@ -171,7 +171,7 @@ export default function PricingExperience({
                         </span>
                       </div>
                       {yearly && t.savings ? (
-                        <span className="mt-1 text-xs text-emerald-400">
+                        <span className="mt-1 text-xs text-gold-400">
                           {labels.save.replace("%s", String(t.savings))}
                         </span>
                       ) : (
@@ -190,9 +190,9 @@ export default function PricingExperience({
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`mb-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                  className={`mb-5 inline-flex min-h-[2.75rem] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
                     featured
-                      ? "bg-brand-500 text-white hover:bg-brand-400 hover:shadow-[0_6px_24px_-6px_rgba(104,114,212,0.8)]"
+                      ? "bg-brand-500 text-white hover:bg-brand-400 hover:shadow-[0_6px_24px_-6px_rgba(12,122,108,0.8)]"
                       : "border border-white/15 text-slate-200 hover:border-brand-400/50 hover:bg-white/[0.04] hover:text-white"
                   }`}
                 >

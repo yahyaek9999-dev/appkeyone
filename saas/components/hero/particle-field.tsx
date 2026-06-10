@@ -24,6 +24,14 @@ export default function ParticleField() {
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
+    // Reduced-motion: skip the 60-particle rAF loop entirely (perf + a11y).
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 

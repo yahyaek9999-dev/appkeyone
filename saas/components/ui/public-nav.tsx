@@ -97,14 +97,14 @@ export default function PublicNav({
               alt={brandName}
               fill
               quality={100}
-              className="object-contain object-left drop-shadow-[0_0_8px_rgba(104,114,212,0.25)] transition-opacity duration-300 group-hover:opacity-90"
+              className="object-contain object-left drop-shadow-[0_0_8px_rgba(201,162,75,0.22)] transition-opacity duration-300 group-hover:opacity-90"
               priority
             />
           </div>
         </Link>
 
         {/* Desktop nav links */}
-        <div className="hidden items-center gap-0.5 md:flex">
+        <div className="hidden items-center gap-0.5 lg:flex">
           {links.map((item) => {
             const active =
               (current === "pricing" && item.href === "/pricing") ||
@@ -135,17 +135,17 @@ export default function PublicNav({
 
           <Link
             href="/login"
-            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-400 transition-colors duration-200 hover:text-slate-100"
+            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-400 transition-colors duration-200 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
           >
             {locale === "ar" ? "تسجيل دخول" : "Log in"}
           </Link>
 
           <motion.a
             {...requestProps}
-            whileHover={{ y: -1, boxShadow: "0 4px 20px rgba(104,114,212,0.3)" }}
+            whileHover={{ y: -1, boxShadow: "0 4px 20px rgba(12,122,108,0.35)" }}
             whileTap={{ scale: 0.97 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition-colors hover:bg-brand-400"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition-colors hover:bg-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
           >
             <WhatsAppIcon className="h-3.5 w-3.5" />
             {locale === "ar" ? "اطلب حسابك" : "Get started"}
@@ -156,7 +156,7 @@ export default function PublicNav({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white lg:hidden"
+          className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas lg:hidden"
           aria-label={locale === "ar" ? "فتح القائمة" : "Open menu"}
         >
           <Menu className="h-5 w-5" />
@@ -171,7 +171,7 @@ export default function PublicNav({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
             onClick={() => setOpen(false)}
           />
         )}
@@ -186,7 +186,7 @@ export default function PublicNav({
             exit={{ x: locale === "ar" ? "-100%" : "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 32 }}
             className={cn(
-              "fixed inset-y-0 z-50 flex w-[min(80vw,320px)] flex-col bg-black md:hidden",
+              "fixed inset-y-0 z-50 flex w-[min(80vw,320px)] flex-col bg-black lg:hidden",
               locale === "ar"
                 ? "left-0 border-r border-white/[0.07]"
                 : "right-0 border-l border-white/[0.07]",
@@ -210,7 +210,7 @@ export default function PublicNav({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-1.5 text-slate-500 transition hover:text-white"
+                className="touch-target inline-flex items-center justify-center rounded-lg p-1.5 text-slate-500 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50"
                 aria-label={locale === "ar" ? "إغلاق" : "Close"}
               >
                 <X className="h-5 w-5" />

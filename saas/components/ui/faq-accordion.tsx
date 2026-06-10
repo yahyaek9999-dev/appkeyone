@@ -22,7 +22,9 @@ export default function FaqAccordion({ items }: { items: readonly FaqItem[] }) {
               type="button"
               onClick={() => setOpen(isOpen ? null : i)}
               aria-expanded={isOpen}
-              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-white/[0.02] sm:px-6 sm:py-5"
+              aria-controls={`faq-panel-${i}`}
+              id={`faq-trigger-${i}`}
+              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-500/50 sm:px-6 sm:py-5"
             >
               <span className="text-[15px] font-medium text-white">{item.q}</span>
               <motion.span
@@ -41,6 +43,9 @@ export default function FaqAccordion({ items }: { items: readonly FaqItem[] }) {
             <AnimatePresence initial={false}>
               {isOpen && (
                 <motion.div
+                  id={`faq-panel-${i}`}
+                  role="region"
+                  aria-labelledby={`faq-trigger-${i}`}
                   initial={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
                   animate={reduce ? { opacity: 1 } : { height: "auto", opacity: 1 }}
                   exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}

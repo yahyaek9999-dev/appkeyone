@@ -346,7 +346,7 @@ export default function InboxUi({
               type="search"
               inputMode="search"
               autoComplete="off"
-              className="w-full rounded-2xl border border-white/10 bg-black/25 py-2.5 pl-3 pr-10 text-sm text-white placeholder-slate-500 outline-none transition focus:border-brand-500/70 focus:ring-2 focus:ring-brand-500/20 md:py-2"
+              className="input pr-10"
             />
           </div>
         </div>

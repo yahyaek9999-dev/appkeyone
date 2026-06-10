@@ -41,7 +41,7 @@ export function PublicFooter({
 
   return (
     <footer className={cn("relative border-t border-white/[0.06] px-5 py-16", className)}>
-      <div className="mx-auto mb-12 h-px max-w-6xl" />
+      <div className="hairline mx-auto mb-12 max-w-6xl" />
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 md:grid-cols-4">
         <div className="col-span-2 md:col-span-1">
           <div className="mb-3 flex items-center gap-2.5 font-bold text-white">

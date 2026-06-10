@@ -36,7 +36,7 @@ export default async function DashboardLayout({
           alt={brandName}
           fill
           quality={100}
-          className="object-contain drop-shadow-[0_0_8px_rgba(104,114,212,0.25)]"
+          className="object-contain drop-shadow-[0_0_8px_rgba(201,162,75,0.22)]"
           priority
         />
       </span>

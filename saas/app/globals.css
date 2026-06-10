@@ -77,14 +77,17 @@
        glow on hover. Gold-tinted ghost. Calm spring-y active scale. */
     .btn-primary {
         @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10 transition-all duration-200 ease-out hover:from-brand-400 hover:to-brand-600 hover:shadow-glow-emerald hover:ring-gold-500/40 active:scale-[0.97] disabled:opacity-50;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .btn-ghost {
         @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.02] px-4 py-2.5 text-sm font-medium text-slate-200 transition-all duration-200 ease-out hover:border-gold-500/40 hover:bg-white/[0.05] hover:text-white active:scale-[0.97] disabled:opacity-50;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .btn-danger {
         @apply inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-all duration-200 ease-out hover:bg-rose-500/20 active:scale-[0.97] disabled:opacity-50;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .ai-badge {
@@ -120,6 +123,7 @@
     /* ── Segmented filter tabs ───────────────────────────────────────  */
     .filter-tab {
         @apply rounded-md border border-transparent px-2.5 py-1.5 text-xs font-medium text-slate-400 transition-colors duration-150 hover:bg-white/[0.05] hover:text-white;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .filter-tab-active {
@@ -136,6 +140,7 @@
 
     .pagination-btn {
         @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.07] text-xs font-medium text-slate-400 transition-colors duration-150 hover:border-white/15 hover:bg-white/[0.04] hover:text-white disabled:opacity-40;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .kpi-card {
@@ -150,6 +155,7 @@
        Tighter rows, RTL-aware active marker is added in the component. */
     .sidebar-link {
         @apply flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium text-slate-400 transition-colors duration-150 hover:bg-white/[0.04] hover:text-white;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas-deep;
     }
 
     .sidebar-link-active {
@@ -191,6 +197,7 @@
     }
     .toolbar-btn {
         @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-slate-200;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
     .toolbar-btn-active {
         @apply bg-white/[0.06] text-white;
@@ -212,10 +219,12 @@
 
     .ai-btn-primary {
         @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-5 py-2.5 font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10 transition-all duration-200 ease-out hover:from-brand-400 hover:to-brand-600 hover:shadow-glow-emerald hover:ring-gold-500/40 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .ai-btn-ghost {
         @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.02] px-5 py-2.5 font-medium text-slate-200 transition-all duration-200 ease-out hover:border-gold-500/40 hover:bg-white/[0.05] hover:text-white active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .input {
@@ -263,13 +272,25 @@
 
     /* Primary CTA — gradient emerald with gold ring + emerald glow on hover. */
     .btn-premium {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-5 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10;
+        @apply inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 px-5 text-sm font-semibold text-white shadow-btn ring-1 ring-inset ring-white/10;
         @apply transition-all duration-200 ease-out hover:from-brand-400 hover:to-brand-600 hover:shadow-glow-emerald hover:ring-gold-500/40 active:scale-[0.97];
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     }
 
     .btn-outline {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-gold-500/30 bg-transparent px-5 text-sm font-semibold text-gold-200;
+        @apply inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-xl border border-gold-500/30 bg-transparent px-5 text-sm font-semibold text-gold-200;
         @apply transition-all duration-200 ease-out hover:border-gold-500/60 hover:bg-gold-500/[0.08] hover:text-gold-100 active:scale-[0.97];
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
+    }
+
+    /* The gradient primary buttons carry `ring-inset` in their base ring (for the
+       white top highlight). Tailwind has no class to undo it, so the focus-visible
+       gold ring would otherwise render INSET and hide behind the gradient. Reset
+       the ring-inset var on focus so the accessibility halo draws OUTSET. */
+    .btn-primary:focus-visible,
+    .ai-btn-primary:focus-visible,
+    .btn-premium:focus-visible {
+        --tw-ring-inset: ;
     }
 }
 
@@ -322,6 +343,42 @@
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
+
+    /* WCAG 2.5.5 — guarantee a ≥44px hit area on compact icon controls while the
+       visual glyph stays small (the inline-flex centering keeps the icon size). */
+    .touch-target {
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+    }
+
+    /* Premium range-slider thumb (ROI estimator). Native default thumb is tiny
+       and OS-styled; this draws an emerald disc with a gold ring + focus halo. */
+    .roi-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 1.375rem;
+        width: 1.375rem;
+        border-radius: 9999px;
+        background: linear-gradient(180deg, #2f9384, #046055);
+        border: 2px solid rgba(201, 162, 75, 0.7);
+        box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(12, 122, 108, 0.18);
+        cursor: pointer;
+        transition: box-shadow 0.2s ease, transform 0.1s ease;
+    }
+    .roi-range::-webkit-slider-thumb:active { transform: scale(0.94); }
+    .roi-range:focus-visible::-webkit-slider-thumb {
+        box-shadow: 0 0 0 4px rgba(201, 162, 75, 0.45);
+    }
+    .roi-range::-moz-range-thumb {
+        height: 1.375rem;
+        width: 1.375rem;
+        border-radius: 9999px;
+        background: linear-gradient(180deg, #2f9384, #046055);
+        border: 2px solid rgba(201, 162, 75, 0.7);
+        box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.6);
+        cursor: pointer;
+    }
+    .roi-range:focus-visible { outline: none; }
 
     /* Subtle film-grain / noise overlay — CSS-only (inline SVG data URI), no asset.
        Apply on dark sections for tactile, expensive depth. Keep opacity low. */

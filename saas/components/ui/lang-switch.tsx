@@ -21,7 +21,7 @@ export default function LangSwitch({ current }: { current: Locale }) {
     <button
       type="button"
       onClick={toggle}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] bg-transparent px-2.5 py-1.5 text-xs font-semibold text-slate-400 transition-colors hover:border-white/20 hover:text-white"
+      className="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-lg border border-white/[0.1] bg-transparent px-3 py-1.5 text-xs font-semibold text-slate-400 transition-colors hover:border-white/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
       aria-label={current === "ar" ? "Switch to English" : "التبديل للعربية"}
     >
       <span className="text-[10px] leading-none opacity-70">

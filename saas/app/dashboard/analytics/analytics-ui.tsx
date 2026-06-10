@@ -118,7 +118,7 @@ export default function AnalyticsUi() {
         <div className="card p-4">
           <h2 className="section-title mb-3">توزيع نقاط العملاء</h2>
           {data.leadDistribution.length === 0 ? (
-            <div className="text-sm text-slate-500 text-center py-6">لا توجد بيانات.</div>
+            <EmptyState icon={<BarChart3 className="h-full w-full" />} title="لا توجد بيانات بعد" description="سيظهر توزيع نقاط العملاء هنا تلقائيًا." size="sm" />
           ) : (
             <div className="space-y-2">
               {data.leadDistribution.map((b, i) => {
@@ -188,9 +188,7 @@ export default function AnalyticsUi() {
             كل استخدام = استدعاء LLM موفّر
           </p>
           {data.quickReplies.topTriggers.length === 0 ? (
-            <div className="text-sm text-slate-500 text-center py-6">
-              لم تنشئ ردود سريعة بعد.
-            </div>
+            <EmptyState icon={<Zap className="h-full w-full" />} title="لا توجد ردود سريعة بعد" description="أنشئ ردوداً سريعة لتوفير استدعاءات الذكاء." size="sm" />
           ) : (
             <div className="space-y-2">
               {data.quickReplies.topTriggers.map((t) => {
@@ -246,7 +244,7 @@ function DistRows({
   const entries = Object.entries(data);
   const total = entries.reduce((s, [, v]) => s + v, 0);
   if (total === 0) {
-    return <div className="text-sm text-slate-500 text-center py-6">لا توجد بيانات في هذه الفترة.</div>;
+    return <EmptyState icon={<Activity className="h-full w-full" />} title="لا توجد بيانات في هذه الفترة" size="sm" />;
   }
   return (
     <div className="space-y-2">
@@ -268,7 +266,7 @@ function DistRows({
 }
 
 function DailyChart({ data }: { data: { date: string; in: number; out: number }[] }) {
-  if (data.length === 0) return <div className="text-sm text-slate-500 text-center py-10">لا توجد بيانات.</div>;
+  if (data.length === 0) return <EmptyState icon={<BarChart3 className="h-full w-full" />} title="لا توجد بيانات بعد" size="sm" />;
   const max = Math.max(1, ...data.map((d) => Math.max(d.in, d.out)));
   const W = 800, H = 200, P = 30;
   const stepX = (W - P * 2) / Math.max(1, data.length - 1);
@@ -298,8 +296,8 @@ function DailyChart({ data }: { data: { date: string; in: number; out: number }[
             <stop offset="100%" stopColor="rgba(56,189,248,0)" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="gradOut" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(104,114,212,0.25)" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="rgba(104,114,212,0)" stopOpacity="0" />
+            <stop offset="0%" stopColor="rgba(12,122,108,0.28)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="rgba(12,122,108,0)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((p) => (
@@ -308,7 +306,7 @@ function DailyChart({ data }: { data: { date: string; in: number; out: number }[
         <path d={buildArea("in")} fill="url(#gradIn)" />
         <path d={buildArea("out")} fill="url(#gradOut)" />
         <path d={buildPath("in")} fill="none" stroke="rgba(56,189,248,0.6)" strokeWidth="1.5" />
-        <path d={buildPath("out")} fill="none" stroke="rgba(104,114,212,0.6)" strokeWidth="1.5" />
+        <path d={buildPath("out")} fill="none" stroke="rgba(12,122,108,0.75)" strokeWidth="1.5" />
         {data.map((d, i) =>
           i % labelEvery === 0 ? (
             <text key={d.date} x={P + i * stepX} y={H - 8} fontSize="10" fill="rgba(255,255,255,0.3)" textAnchor="middle">

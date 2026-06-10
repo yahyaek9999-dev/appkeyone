@@ -50,7 +50,7 @@ export default function LockedFeature({
       <div className="mt-6">
         <Link
           href={`/pricing?lang=${locale}#plans`}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-400 hover:shadow-[0_6px_24px_-6px_rgba(104,114,212,0.8)]"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-400 hover:shadow-[0_6px_24px_-6px_rgba(12,122,108,0.8)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         >
           {locale === "ar" ? "ترقية الباقة" : "Upgrade plan"}
           <Arrow className="h-4 w-4" />

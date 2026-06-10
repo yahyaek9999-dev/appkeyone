@@ -29,7 +29,7 @@ const SPANS = [
   "lg:col-span-3",
   "lg:col-span-3",
 ];
-const GLOWS: Array<"brand" | "gold" | "sky" | "rose"> = ["brand", "gold", "sky", "brand", "gold", "brand"];
+const GLOWS: Array<"brand" | "gold" | "sky" | "rose"> = ["brand", "gold", "brand", "gold", "brand", "gold"];
 
 export function BentoFeatures({ items, className }: { items: BentoItem[]; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);

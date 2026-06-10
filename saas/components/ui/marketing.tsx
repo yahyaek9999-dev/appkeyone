@@ -56,7 +56,7 @@ export function WhatsAppIcon({ className = "h-5 w-5" }: { className?: string }) 
 export function AiBackground({ className }: { className?: string }) {
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_20%,rgba(104,114,212,0.07),transparent_55%),linear-gradient(180deg,#0a0a0c_0%,#0c0c10_50%,#08080a_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_20%,rgba(12,122,108,0.08),transparent_55%),linear-gradient(180deg,#0a0a0c_0%,#0c0c10_50%,#08080a_100%)]" />
       <div
         className="absolute inset-0 opacity-[0.05]"
         style={{
@@ -74,11 +74,11 @@ export function AiBackground({ className }: { className?: string }) {
 }
 
 // Calm, premium ambient backdrop for public pages — a single very low-opacity
-// iris wash + a masked fine grid. No glow, no blobs. Purely decorative.
+// emerald wash + a masked fine grid. No glow, no blobs. Purely decorative.
 export function AmbientBackdrop({ className }: { className?: string }) {
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_50%_at_50%_-10%,rgba(104,114,212,0.05),transparent_58%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_50%_at_50%_-10%,rgba(12,122,108,0.06),transparent_58%)]" />
       <div
         className="absolute inset-0 opacity-[0.05]"
         style={{

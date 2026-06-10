@@ -12,6 +12,15 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
   const lenisRef = useRef<Lenis | null>(null);
 
   useEffect(() => {
+    // Respect users who prefer reduced motion — skip momentum smooth-scroll
+    // entirely (vestibular safety / WCAG 2.3.3). Native scrolling still works.
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
     const lenis = new Lenis({
       duration: 1.4,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),

@@ -71,7 +71,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"
           rel="stylesheet"
         />
-        <meta name="theme-color" content="#0b1220" />
+        <meta name="theme-color" content="#0a0a0c" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

@@ -31,7 +31,7 @@ function LightSweep() {
         className="absolute inset-y-0 w-[40%] animate-light-sweep"
         style={{
           background:
-            "linear-gradient(90deg, transparent, rgba(104,114,212,0.12), rgba(255,255,255,0.06), rgba(104,114,212,0.12), transparent)",
+            "linear-gradient(90deg, transparent, rgba(12,122,108,0.14), rgba(255,255,255,0.06), rgba(201,162,75,0.10), transparent)",
           transform: "translateX(-100%) skewX(-18deg)",
         }}
       />
@@ -62,18 +62,18 @@ function CinematicGrid() {
 function AmbientGlows() {
   return (
     <div className="pointer-events-none absolute inset-0 z-[1]" aria-hidden="true">
-      {/* Primary glow — large iris wash */}
+      {/* Primary glow — large emerald wash */}
       <div
         className="absolute left-1/2 top-1/4 h-[60vh] w-[50vw] -translate-x-1/2 rounded-full"
         style={{
-          background: "radial-gradient(ellipse, rgba(104,114,212,0.06), transparent 60%)",
+          background: "radial-gradient(ellipse, rgba(12,122,108,0.07), transparent 60%)",
         }}
       />
-      {/* Secondary glow — warm accent offset */}
+      {/* Secondary glow — champagne gold accent offset */}
       <div
         className="absolute -right-[10%] top-[10%] h-[50vh] w-[35vw] rounded-full"
         style={{
-          background: "radial-gradient(ellipse, rgba(130,139,221,0.04), transparent 60%)",
+          background: "radial-gradient(ellipse, rgba(201,162,75,0.05), transparent 60%)",
         }}
       />
     </div>
@@ -187,6 +187,15 @@ export default function HeroSection({
         className="relative flex h-[100svh] min-h-[560px] flex-col overflow-hidden bg-black"
         onMouseMove={handleMouseMove}
       >
+        {/* Accessible/SEO headline — the visible headline lives in the approved
+            hero video, so expose a real H1 to screen readers + crawlers without
+            altering the visual composition. */}
+        <h1 className="sr-only">
+          {isRtl
+            ? `${brandName} — منصة أتمتة واتساب وذكاء الأعمال للمتاجر والشركات`
+            : `${brandName} — WhatsApp automation & business intelligence for stores and businesses`}
+        </h1>
+
         {/* ── Background Layers ── */}
         <HeroVideo src={videoSrc} mobileSrc={mobileVideoSrc} />
         <AmbientGlows />

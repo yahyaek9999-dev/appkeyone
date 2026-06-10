@@ -56,7 +56,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => settle(false)}
           />
-          <div className="relative w-full max-w-sm rounded-xl border border-white/[0.09] bg-canvas-raised p-5 shadow-float">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
+            className="relative w-full max-w-sm rounded-xl border border-white/[0.09] bg-canvas-raised p-5 shadow-float"
+          >
             <div className="flex items-start gap-3">
               {pending.danger && (
                 <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-500/25 bg-rose-500/10">
@@ -64,14 +69,14 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <h3 className="text-base font-semibold text-white">{pending.title}</h3>
+                <h3 id="confirm-dialog-title" className="text-base font-semibold text-white">{pending.title}</h3>
                 {pending.body && (
                   <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{pending.body}</p>
                 )}
               </div>
             </div>
             <div className="mt-5 flex items-center justify-end gap-2">
-              <button onClick={() => settle(false)} className="btn-ghost px-4 py-2 text-sm">
+              <button onClick={() => settle(false)} autoFocus className="btn-ghost px-4 py-2 text-sm">
                 {pending.cancelLabel || "إلغاء"}
               </button>
               <button

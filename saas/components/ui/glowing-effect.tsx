@@ -19,7 +19,7 @@ const STRENGTHS = {
 export function GlowingEffect({
   children,
   className,
-  glowColor = "rgba(104,114,212,0.35)",
+  glowColor = "rgba(12,122,108,0.35)",
   strength = "md",
   disabled = false,
 }: GlowingEffectProps) {
@@ -45,7 +45,7 @@ interface PulseGlowProps {
   size?: number;
 }
 
-export function PulseGlow({ className, color = "rgba(104,114,212,0.4)", size = 300 }: PulseGlowProps) {
+export function PulseGlow({ className, color = "rgba(12,122,108,0.4)", size = 300 }: PulseGlowProps) {
   return (
     <motion.div
       className={cn("pointer-events-none absolute rounded-full blur-[80px]", className)}

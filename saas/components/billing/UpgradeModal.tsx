@@ -9,7 +9,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { X, Sparkles, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { X, Sparkles, ArrowLeft, ArrowRight, Check, Lightbulb } from "lucide-react";
 import { getTier } from "@/lib/pricing/catalog";
 
 export type UpgradeVariant =
@@ -125,8 +125,9 @@ export default function UpgradeModal({
         <h3 className="text-lg font-bold text-white">{copy.title[lang]}</h3>
         <p className="mt-2 text-sm leading-relaxed text-slate-400">{copy.body[lang]}</p>
 
-        <div className="mt-4 rounded-xl border border-brand-500/20 bg-brand-500/[0.06] p-3 text-[13px] leading-relaxed text-brand-100/90">
-          💡 {copy.roi[lang]}
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-gold-500/20 bg-gold-500/[0.07] p-3 text-[13px] leading-relaxed text-brand-100/90">
+          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-gold-400" />
+          <span>{copy.roi[lang]}</span>
         </div>
 
         {/* current → recommended */}
@@ -153,7 +154,7 @@ export default function UpgradeModal({
         <div className="mt-6 flex flex-col gap-2">
           <Link
             href={`/pricing?lang=${locale}#plans`}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-400 hover:shadow-[0_6px_24px_-6px_rgba(104,114,212,0.8)]"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-400 hover:shadow-[0_6px_24px_-6px_rgba(12,122,108,0.8)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
           >
             {locale === "ar" ? "عرض الباقات والترقية" : "View plans & upgrade"}
             <Arrow className="h-4 w-4" />
