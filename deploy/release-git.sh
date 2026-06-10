@@ -36,6 +36,11 @@ SAAS_DIR="${SAAS_DIR:-C:\\app\\saas}"
 SERVICE_NAME="${SERVICE_NAME:-mse-saas}"
 HEALTH_URL="${HEALTH_URL:-https://app.keyone1.com/api/ready}"
 DEPLOY_REF="${DEPLOY_REF:-$(git -C "$ROOT_DIR" rev-parse HEAD)}"
+# Build identity, baked into .next (NEXT_PUBLIC_BUILD_ID) and written to
+# .build-info so /api/health version, .build-info, and git HEAD all align.
+DEPLOY_SHORT="$(git -C "$ROOT_DIR" rev-parse --short "$DEPLOY_REF")"
+DEPLOY_DATE="$(date -u '+%Y%m%d-%H%M%S')"
+BUILD_ID="${DEPLOY_SHORT}-$(date -u '+%Y%m%d')"
 SSH=(ssh -i "$SSH_KEY" -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new)
 SCP=(scp -i "$SSH_KEY" -P "$SSH_PORT" -o StrictHostKeyChecking=accept-new)
 
@@ -63,12 +68,24 @@ npm ci --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { Fail 'npm ci failed (production left untouched)' }
 
 # postinstall already ran `prisma generate`; build (also regenerates client).
+# Bake the build identity so /api/health version == deployed commit.
+$head = (git rev-parse --short HEAD)
+$env:NEXT_PUBLIC_BUILD_ID = '__BUILD_ID__'
 Write-Host '-> next build (long step; service still serving old release)…'
 $env:NODE_OPTIONS = '--max-old-space-size=4096'
 npm run build
 if ($LASTEXITCODE -ne 0) { Fail 'next build failed (production left untouched)' }
 
-Write-Host '-> prisma db push (additive schema)…'
+# Write a fresh .build-info aligned to git HEAD (replaces any stale artifact).
+@(
+  "RELEASE=keyone-$head-__DEPLOY_DATE__",
+  "HASH=$head",
+  "BUILD_ID=__BUILD_ID__",
+  "DATE=__DEPLOY_DATE__",
+  "NODE=$(node -v)"
+) | Set-Content -Encoding ascii '.build-info'
+
+Write-Host '-> prisma db push (no-op when schema unchanged)…'
 & '.\node_modules\.bin\prisma.cmd' db push --skip-generate --accept-data-loss
 if ($LASTEXITCODE -ne 0) { Fail 'prisma db push failed' }
 
@@ -89,6 +106,8 @@ sed -i.bak \
   -e "s#__SAAS_DIR__#${SAAS_DIR//\\/\\\\}#g" \
   -e "s#__SERVICE_NAME__#${SERVICE_NAME}#g" \
   -e "s#__REF__#${DEPLOY_REF}#g" \
+  -e "s#__BUILD_ID__#${BUILD_ID}#g" \
+  -e "s#__DEPLOY_DATE__#${DEPLOY_DATE}#g" \
   /tmp/keyone-deploy.ps1
 rm -f /tmp/keyone-deploy.ps1.bak
 
