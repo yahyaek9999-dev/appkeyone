@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { chat as llmChat, buildMessages, detectOrderIntent } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
+import { generateBotReply } from "@/lib/integrations/ai/reply";
 import { getCached, setCached } from "@/lib/llm-cache";
 import { transcribeAudio, describeImage } from "@/lib/media";
 import { notifyMerchant, notifyAdmin, resolveNotifyPhone } from "@/lib/notify";
@@ -783,6 +784,7 @@ export async function POST(req: Request) {
     messageText.trim().length > 0;
 
   let reply: string = "";
+  let replySource: string = "legacy"; // registry | legacy | keyone (internal observability)
   let fromCache = false;
   if (cacheCandidate) {
     try {
@@ -898,14 +900,20 @@ export async function POST(req: Request) {
           : undefined,
     });
     try {
-      reply = await llmChat(messages, {
+      // Universal providers: registry (vault priority) → legacy Bot.aiProvider
+      // → KeyOne, with failover + usage + health. Gated by scalingFlags.waAiRegistry
+      // (OFF = exact legacy). The reply STRING only — send pipeline unchanged.
+      const r = await generateBotReply({
+        userId,
+        bot,
+        messages,
         temperature: pickTemperature(humanCfg),
-        provider: botProviderOverride(bot),
-        meterUserId: userId,
       });
+      reply = r.text;
+      replySource = r.source;
     } catch (e: any) {
-      console.error("[wa/incoming] llmChat failed:", e?.message || e);
-      Sentry.captureException(e, { tags: { context: "wa_incoming_llm" } });
+      console.error("[wa/incoming] generateBotReply failed:", e?.message || e);
+      Sentry.captureException(e, { tags: { context: "wa_incoming_llm", replySource } });
       reply = "عذراً، يبدو أن هناك خلل تقني مؤقت. سأعود لك خلال لحظات.";
     }
     // Cache the LLM-generated reply (best-effort). Skip the fallback error
@@ -1019,6 +1027,7 @@ export async function POST(req: Request) {
       conversationId: conv.id,
       messageId: assistantMessage.id,
       customerId: customer.id,
+      metadata: { source: replySource },
     });
   }
 
