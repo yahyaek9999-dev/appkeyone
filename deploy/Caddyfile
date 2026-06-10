@@ -13,6 +13,8 @@ k1wb.app.keyone1.com {
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "geolocation=(), microphone=(), camera=()"
         -Server
+        # Don't advertise the reverse proxy in responses (minor info-disclosure).
+        -Via
     }
 
     # Static assets - long cache

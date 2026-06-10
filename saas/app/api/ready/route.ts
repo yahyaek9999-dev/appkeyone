@@ -123,13 +123,18 @@ export async function GET(req: Request) {
   }
 
   const v = verdict(checks);
+  // This is an UNAUTHENTICATED probe. Expose only the coarse readiness verdict +
+  // per-check name/status/detail (enough for the deploy health-gate). Strip the
+  // build SHA (version) and each check's `meta` — those leak the exact commit,
+  // DB latency, and queue depth/failure counts to anonymous callers. The full
+  // detail remains available to operators via the internal-secret-gated
+  // /api/internal/queue-health and /api/internal/metrics endpoints.
+  const publicChecks = checks.map(({ name, status, detail }) => ({ name, status, detail }));
   const body = {
     ready: v === "ready",
     verdict: v,
-    version:
-      process.env.NEXT_PUBLIC_BUILD_ID ?? process.env.BUILD_ID ?? "dev",
     uptime: Math.floor(process.uptime()),
-    checks,
+    checks: publicChecks,
     timestamp: new Date().toISOString(),
     latencyMs: Date.now() - start,
   };
