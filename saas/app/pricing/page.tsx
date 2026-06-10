@@ -35,11 +35,8 @@ async function getData() {
   return { plans, cfg };
 }
 
-export default async function PricingPage({
-  searchParams,
-}: {
-  searchParams: { lang?: string };
-}) {
+export default async function PricingPage(props: { searchParams: Promise<{ lang?: string }> }) {
+  const searchParams = await props.searchParams;
   const locale = getLocale(searchParams.lang);
   const lang = locale === "ar" ? "ar" : "en";
   const m = t(locale);

@@ -19,8 +19,9 @@ const MAX_RECIPIENTS = 3000; // bound the IN() clause for big campaigns
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

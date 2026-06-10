@@ -4,8 +4,9 @@ import { getUserIdForPermission } from "@/lib/auth";
 
 export async function POST(
   req: Request,
-  ctx: { params: { customerId: string } },
+  ctx: { params: Promise<{ customerId: string }> },
 ) {
+  const params = await ctx.params;
   const uid = await getUserIdForPermission("inbox");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -16,7 +17,7 @@ export async function POST(
   const paused = !!body.paused;
 
   const customer = await prisma.customer.findFirst({
-    where: { id: ctx.params.customerId, userId: uid },
+    where: { id: params.customerId, userId: uid },
     include: { conversation: true },
   });
   if (!customer)

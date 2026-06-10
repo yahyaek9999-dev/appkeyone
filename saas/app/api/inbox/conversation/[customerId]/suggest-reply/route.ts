@@ -15,8 +15,9 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(
   req: Request,
-  { params }: { params: { customerId: string } }
+  props: { params: Promise<{ customerId: string }> }
 ) {
+  const params = await props.params;
   let user;
   try { user = await requirePermission("inbox"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }

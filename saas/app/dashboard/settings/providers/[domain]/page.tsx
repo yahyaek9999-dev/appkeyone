@@ -34,7 +34,8 @@ const INTRO: Record<ProviderDomain, { title: string; desc: string; steps: string
   },
 };
 
-export default async function ProviderDomainPage({ params }: { params: { domain: string } }) {
+export default async function ProviderDomainPage(props: { params: Promise<{ domain: string }> }) {
+  const params = await props.params;
   await requirePagePermission("settings");
   const domain = (SLUG_TO_DOMAIN[params.domain] || null) as ProviderDomain | null;
   if (!domain) notFound();

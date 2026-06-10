@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -10,7 +11,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   if (!bot) return NextResponse.json({ error: "no_bot" }, { status: 400 });
 
   const item = await prisma.quickReply.findFirst({
-    where: { id: ctx.params.id, botId: bot.id },
+    where: { id: params.id, botId: bot.id },
   });
   if (!item) return NextResponse.json({ error: "not found" }, { status: 404 });
 
@@ -26,11 +27,12 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   if (typeof body.reply === "string") data.reply = body.reply.trim();
   if (typeof body.enabled === "boolean") data.enabled = body.enabled;
 
-  await prisma.quickReply.update({ where: { id: ctx.params.id }, data });
+  await prisma.quickReply.update({ where: { id: params.id }, data });
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -38,7 +40,7 @@ export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
   if (!bot) return NextResponse.json({ error: "no_bot" }, { status: 400 });
 
   await prisma.quickReply.deleteMany({
-    where: { id: ctx.params.id, botId: bot.id },
+    where: { id: params.id, botId: bot.id },
   });
   return NextResponse.json({ ok: true });
 }

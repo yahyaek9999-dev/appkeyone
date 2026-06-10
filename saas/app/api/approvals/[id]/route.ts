@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 const db = prisma as any;
 
 /** Approve / reject. Only owner or admin may decide (team permission). */
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const g = await apiGate("approval_workflows", "team");
   if (g.response) return g.response;
   const uid = g.uid!;
@@ -30,14 +31,14 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   const decidedBy = c.principalEmail || c.user?.email || "";
 
   try {
-    const existing = await db.approvalRequest.findFirst({ where: { id: ctx.params.id, userId: uid } });
+    const existing = await db.approvalRequest.findFirst({ where: { id: params.id, userId: uid } });
     if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
     // 4-eyes control: the requester may not approve/reject their own request.
     if (existing.requestedBy && decidedBy && existing.requestedBy === decidedBy) {
       return NextResponse.json({ error: "self_approval_not_allowed" }, { status: 403 });
     }
     await db.approvalRequest.update({
-      where: { id: ctx.params.id },
+      where: { id: params.id },
       data: {
         status: action === "approve" ? "approved" : "rejected",
         decidedBy,
@@ -51,12 +52,13 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   }
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const g = await apiGate("approval_workflows", "team");
   if (g.response) return g.response;
   const uid = g.uid!;
   try {
-    await db.approvalRequest.deleteMany({ where: { id: ctx.params.id, userId: uid } });
+    await db.approvalRequest.deleteMany({ where: { id: params.id, userId: uid } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_ready", pending: true }, { status: 503 });

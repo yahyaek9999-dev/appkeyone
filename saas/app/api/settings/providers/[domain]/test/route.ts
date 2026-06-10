@@ -21,7 +21,8 @@ const Body = z.object({
   values: z.record(z.union([z.string(), z.number(), z.null()])).optional(),
 });
 
-export async function POST(req: Request, { params }: { params: { domain: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ domain: string }> }) {
+  const params = await props.params;
   const domain = (SLUG_TO_DOMAIN[params.domain] || null) as ProviderDomain | null;
   if (!domain) return NextResponse.json({ error: "unknown_domain" }, { status: 404 });
 

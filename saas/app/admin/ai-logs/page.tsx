@@ -2,7 +2,8 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminAiLogsPage({ searchParams }: { searchParams?: { page?: string } }) {
+export default async function AdminAiLogsPage(props: { searchParams?: Promise<{ page?: string }> }) {
+  const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams?.page || 1));
   const take = 100;
   const skip = (page - 1) * take;

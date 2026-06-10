@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({ prompt: z.string().min(1).max(2000), size: z.string().max(20).optional() });
 
-export async function POST(req: Request, { params }: { params: { domain: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ domain: string }> }) {
+  const params = await props.params;
   const domain = (SLUG_TO_DOMAIN[params.domain] || null) as ProviderDomain | null;
   if (domain !== "image") return NextResponse.json({ error: "generation_not_supported_for_domain" }, { status: 400 });
 

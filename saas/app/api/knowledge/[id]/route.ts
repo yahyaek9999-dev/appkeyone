@@ -4,7 +4,8 @@ import { requirePermission } from "@/lib/auth";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
 import { apiGate } from "@/lib/membership/gate";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const gate = await apiGate("knowledge_base");
   if (gate.response) return gate.response;
   const user = await requirePermission("settings");
@@ -16,7 +17,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const gate = await apiGate("knowledge_base");
   if (gate.response) return gate.response;
   const user = await requirePermission("settings");

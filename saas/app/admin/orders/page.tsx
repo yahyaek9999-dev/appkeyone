@@ -13,7 +13,8 @@ const STATUS_COLORS: Record<string, string> = {
   canceled: "bg-rose-500/15 text-rose-300 border-rose-500/30",
 };
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams?: { status?: string; q?: string; page?: string } }) {
+export default async function AdminOrdersPage(props: { searchParams?: Promise<{ status?: string; q?: string; page?: string }> }) {
+  const searchParams = await props.searchParams;
   const status = searchParams?.status;
   const q = (searchParams?.q || "").trim();
   const page = Math.max(1, Number(searchParams?.page || 1));

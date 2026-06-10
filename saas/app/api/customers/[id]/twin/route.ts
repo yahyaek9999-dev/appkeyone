@@ -16,7 +16,8 @@ import { intelTenantEnabled } from "@/lib/intelligence/flags";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const gate = await apiGate("smart_assistant");
   if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("customers");

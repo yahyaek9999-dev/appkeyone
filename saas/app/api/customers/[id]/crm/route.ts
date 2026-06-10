@@ -27,7 +27,8 @@ function parseTags(s: string | null | undefined): string[] {
   }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const uid = await getUserIdForPermission("customers");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

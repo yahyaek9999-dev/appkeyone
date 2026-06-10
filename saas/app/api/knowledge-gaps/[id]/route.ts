@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { apiGate } from "@/lib/membership/gate";
 
-export async function POST(req: Request, ctx: { params: { id: string } }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const gate = await apiGate("knowledge_base");
   if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
@@ -14,7 +15,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const action = body.action as "resolve" | "dismiss" | "add-knowledge";
 
   const gap = await prisma.knowledgeGap.findFirst({
-    where: { id: ctx.params.id, userId: uid },
+    where: { id: params.id, userId: uid },
   });
   if (!gap) return NextResponse.json({ error: "not found" }, { status: 404 });
 
@@ -61,13 +62,14 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   return NextResponse.json({ error: "invalid action" }, { status: 400 });
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const gate = await apiGate("knowledge_base");
   if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   await prisma.knowledgeGap.deleteMany({
-    where: { id: ctx.params.id, userId: uid },
+    where: { id: params.id, userId: uid },
   });
   return NextResponse.json({ ok: true });
 }

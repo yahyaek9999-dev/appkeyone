@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 const db = prisma as any;
 
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const g = await apiGate("multi_branch", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
@@ -15,7 +16,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   try { body = await req.json(); } catch {}
 
   try {
-    const existing = await db.branch.findFirst({ where: { id: ctx.params.id, userId: uid } });
+    const existing = await db.branch.findFirst({ where: { id: params.id, userId: uid } });
     if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
     // Setting a branch as default clears the flag on the others.
@@ -30,19 +31,20 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     if (typeof body.enabled === "boolean") data.enabled = body.enabled;
     if (typeof body.isDefault === "boolean") data.isDefault = body.isDefault;
 
-    await db.branch.update({ where: { id: ctx.params.id }, data });
+    await db.branch.update({ where: { id: params.id }, data });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_ready", pending: true }, { status: 503 });
   }
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const g = await apiGate("multi_branch", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
   try {
-    await db.branch.deleteMany({ where: { id: ctx.params.id, userId: uid } });
+    await db.branch.deleteMany({ where: { id: params.id, userId: uid } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_ready", pending: true }, { status: 503 });

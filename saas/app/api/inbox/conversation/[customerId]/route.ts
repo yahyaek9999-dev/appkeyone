@@ -6,13 +6,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
-  ctx: { params: { customerId: string } },
+  ctx: { params: Promise<{ customerId: string }> },
 ) {
+  const params = await ctx.params;
   const uid = await getUserIdForPermission("inbox");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   const customer = await prisma.customer.findFirst({
-    where: { id: ctx.params.customerId, userId: uid },
+    where: { id: params.customerId, userId: uid },
     include: {
       conversation: {
         include: {

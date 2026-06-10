@@ -23,15 +23,16 @@ function generatePassword(): string {
 
 export async function POST(
   _req: Request,
-  ctx: { params: { userId: string } }
+  ctx: { params: Promise<{ userId: string }> }
 ) {
+  const params = await ctx.params;
   try {
     await requireAdmin();
   } catch {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
-  const userId = ctx.params.userId;
+  const userId = params.userId;
   if (!userId) {
     return NextResponse.json({ error: "userId مطلوب" }, { status: 400 });
   }

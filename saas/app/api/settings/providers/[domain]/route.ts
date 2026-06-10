@@ -34,7 +34,8 @@ async function authOr401() {
   }
 }
 
-export async function GET(_req: Request, { params }: { params: { domain: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ domain: string }> }) {
+  const params = await props.params;
   const domain = domainOf(params.domain);
   if (!domain) return NextResponse.json({ error: "unknown_domain" }, { status: 404 });
   const { user } = await authOr401();
@@ -66,7 +67,8 @@ const PutBody = z.object({
   values: z.record(z.union([z.string(), z.number(), z.null()])).default({}),
 });
 
-export async function PUT(req: Request, { params }: { params: { domain: string } }) {
+export async function PUT(req: Request, props: { params: Promise<{ domain: string }> }) {
+  const params = await props.params;
   const domain = domainOf(params.domain);
   if (!domain) return NextResponse.json({ error: "unknown_domain" }, { status: 404 });
   const { user } = await authOr401();
@@ -100,7 +102,8 @@ export async function PUT(req: Request, { params }: { params: { domain: string }
   return NextResponse.json({ ok: true, credential: result.credential });
 }
 
-export async function DELETE(req: Request, { params }: { params: { domain: string } }) {
+export async function DELETE(req: Request, props: { params: Promise<{ domain: string }> }) {
+  const params = await props.params;
   const domain = domainOf(params.domain);
   if (!domain) return NextResponse.json({ error: "unknown_domain" }, { status: 404 });
   const { user } = await authOr401();

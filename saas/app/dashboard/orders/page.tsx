@@ -37,11 +37,8 @@ const STATUS_LABELS: Record<string, string> = {
   canceled: "ملغي",
 };
 
-export default async function OrdersPage({
-  searchParams,
-}: {
-  searchParams?: { status?: string };
-}) {
+export default async function OrdersPage(props: { searchParams?: Promise<{ status?: string }> }) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 

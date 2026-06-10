@@ -4,8 +4,9 @@ import { getUserIdForPermission } from "@/lib/auth";
 
 export async function POST(
   req: Request,
-  ctx: { params: { customerId: string } }
+  ctx: { params: Promise<{ customerId: string }> }
 ) {
+  const params = await ctx.params;
   const uid = await getUserIdForPermission("inbox");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -14,13 +15,13 @@ export async function POST(
   const notes = String(body.notes || "");
 
   const exists = await prisma.customer.findFirst({
-    where: { id: ctx.params.customerId, userId: uid },
+    where: { id: params.customerId, userId: uid },
     select: { id: true },
   });
   if (!exists) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   await prisma.customer.update({
-    where: { id: ctx.params.customerId },
+    where: { id: params.customerId },
     data: { notes } as any,
   });
 

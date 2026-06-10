@@ -135,11 +135,8 @@ function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boole
   );
 }
 
-export default async function LandingPage({
-  searchParams,
-}: {
-  searchParams: { lang?: string };
-}) {
+export default async function LandingPage(props: { searchParams: Promise<{ lang?: string }> }) {
+  const searchParams = await props.searchParams;
   const locale = getLocale(searchParams.lang);
   const m = t(locale);
   const isRtl = m.dir === "rtl";

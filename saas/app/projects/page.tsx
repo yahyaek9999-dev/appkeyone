@@ -343,11 +343,8 @@ function CaseCard({ cs, isRtl }: { cs: CaseStudy; isRtl: boolean }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function ProjectsPage({
-  searchParams,
-}: {
-  searchParams: { lang?: string };
-}) {
+export default async function ProjectsPage(props: { searchParams: Promise<{ lang?: string }> }) {
+  const searchParams = await props.searchParams;
   const locale = getLocale(searchParams.lang);
   const m = t(locale);
   const isRtl = m.dir === "rtl";

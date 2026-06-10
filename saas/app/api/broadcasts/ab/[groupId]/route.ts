@@ -7,7 +7,8 @@ import { evaluateAbSignificance } from "@/lib/intelligence/self-learning";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { groupId: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ groupId: string }> }) {
+  const params = await props.params;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

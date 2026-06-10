@@ -16,7 +16,8 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({ order: z.array(z.string().min(1).max(40)).max(20) });
 
-export async function POST(req: Request, { params }: { params: { domain: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ domain: string }> }) {
+  const params = await props.params;
   const domain = (SLUG_TO_DOMAIN[params.domain] || null) as ProviderDomain | null;
   if (!domain) return NextResponse.json({ error: "unknown_domain" }, { status: 404 });
 

@@ -25,14 +25,13 @@ function usd(n: number): string {
   return `$${(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export default async function AdminTenantCostsPage({
-  searchParams,
-}: {
-  searchParams: { days?: string };
+export default async function AdminTenantCostsPage(props: {
+  searchParams: Promise<{ days?: string }>;
 }) {
   // Flush in-memory metric buffers so very-recent LLM activity is included.
   await flush().catch(() => {});
 
+  const searchParams = await props.searchParams;
   const days = searchParams?.days === "7" ? 7 : 30;
   const data = await getTenantCosts({ days });
   const t = data.totals;

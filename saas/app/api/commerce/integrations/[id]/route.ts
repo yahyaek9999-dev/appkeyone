@@ -15,13 +15,14 @@ const PatchBody = z.object({
   configJson: z.record(z.unknown()).optional(),
 });
 
-export async function GET(req: Request, ctx: { params: { id: string } }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const integration = await (prisma as any).commerceIntegration.findFirst({
-    where: { id: ctx.params.id, userId: user.id },
+    where: { id: params.id, userId: user.id },
     include: { automations: true, _count: { select: { events: true, orders: true } } },
   });
   if (!integration) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -33,7 +34,8 @@ export async function GET(req: Request, ctx: { params: { id: string } }) {
   });
 }
 
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
@@ -44,7 +46,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });
 
-  const existing = await (prisma as any).commerceIntegration.findFirst({ where: { id: ctx.params.id, userId: user.id }, select: { id: true } });
+  const existing = await (prisma as any).commerceIntegration.findFirst({ where: { id: params.id, userId: user.id }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   const data: any = {};
@@ -53,26 +55,27 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   if (parsed.data.enabled !== undefined) data.enabled = parsed.data.enabled;
   if (parsed.data.configJson !== undefined) data.configJson = JSON.stringify(parsed.data.configJson).slice(0, 10000);
 
-  const updated = await (prisma as any).commerceIntegration.update({ where: { id: ctx.params.id }, data });
+  const updated = await (prisma as any).commerceIntegration.update({ where: { id: params.id }, data });
   return NextResponse.json({ ok: true, integration: publicIntegration(updated, new URL(req.url).origin) });
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
 
   const existing = await (prisma as any).commerceIntegration.findFirst({
-    where: { id: ctx.params.id, userId: user.id },
+    where: { id: params.id, userId: user.id },
     select: { id: true },
   });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   // Delete cascades: automations and webhook events are scoped to the integration.
   // We delete in order to avoid FK violations (events → automations → integration).
-  await (prisma as any).commerceWebhookEvent.deleteMany({ where: { integrationId: ctx.params.id } });
-  await (prisma as any).commerceAutomation.deleteMany({ where: { integrationId: ctx.params.id } });
-  await (prisma as any).commerceIntegration.delete({ where: { id: ctx.params.id } });
+  await (prisma as any).commerceWebhookEvent.deleteMany({ where: { integrationId: params.id } });
+  await (prisma as any).commerceAutomation.deleteMany({ where: { integrationId: params.id } });
+  await (prisma as any).commerceIntegration.delete({ where: { id: params.id } });
 
   return NextResponse.json({ ok: true, deleted: true });
 }

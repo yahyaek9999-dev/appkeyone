@@ -24,6 +24,11 @@ const nextConfig = {
   // Suppress the framework "X-Powered-By: Next.js" response header so the stack
   // version isn't leaked to clients/scanners.
   poweredByHeader: false,
+  // Next 15 multi-lockfile detection can infer the wrong workspace root (it may
+  // pick up a stray ~/package-lock.json), which would mis-root output file
+  // tracing. Pin it to this app directory so traced files are correct and the
+  // "inferred your workspace root" build warning is silenced.
+  outputFileTracingRoot: __dirname,
   env: {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
@@ -90,8 +95,9 @@ const nextConfig = {
   experimental: {
     // Existing: allow large server action payloads (e.g. PDF/DOCX uploads)
     serverActions: { bodySizeLimit: "10mb" },
-    // Phase 6: enables instrumentation.ts + onRequestError hook
-    instrumentationHook: true,
+    // Next 15: instrumentation.ts is stable and auto-loaded — the former
+    // `experimental.instrumentationHook` flag is obsolete (removed to silence
+    // the "no longer needed" build warning). onRequestError still fires.
   },
 };
 

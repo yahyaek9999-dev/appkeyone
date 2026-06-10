@@ -23,13 +23,14 @@ const ALLOWED_STATUS = new Set([
 ]);
 const ALLOWED_FULFILLMENT = new Set(["unfulfilled", "partial", "fulfilled"]);
 
-export async function GET(_req: Request, ctx: { params: { id: string } }) {
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const user = await getUserForPermission("customers");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const order = await (prisma as any).order.findFirst({
-    where: { id: ctx.params.id, userId: user.id },
+    where: { id: params.id, userId: user.id },
     include: {
       items: true,
       timeline: { orderBy: { createdAt: "asc" } },
@@ -41,7 +42,8 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
   return NextResponse.json({ ok: true, order });
 }
 
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const user = await getUserForPermission("customers");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -113,21 +115,21 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
 
   // Ownership guard
   const existing = await (prisma as any).order.findFirst({
-    where: { id: ctx.params.id, userId: user.id },
+    where: { id: params.id, userId: user.id },
     select: { id: true, status: true },
   });
   if (!existing)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   const updated = await (prisma as any).order.update({
-    where: { id: ctx.params.id },
+    where: { id: params.id },
     data,
   });
 
   void auditCtx(await getAuthContext(), "order.updated", {
     userId: user.id,
     targetType: "order",
-    targetId: ctx.params.id,
+    targetId: params.id,
     metadata: { fields: Object.keys(data) },
     req,
   });
@@ -137,7 +139,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     await (prisma as any).orderTimeline
       .create({
         data: {
-          orderId: ctx.params.id,
+          orderId: params.id,
           kind: "status_changed",
           message: `الحالة تغيّرت إلى: ${data.status}`,
           payload: JSON.stringify({ from: existing.status, to: data.status }),
@@ -150,7 +152,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     // the merchant enables templates.
     dispatchOrderStatusAutomation({
       userId: user.id,
-      orderId: ctx.params.id,
+      orderId: params.id,
       status: data.status,
       trackingCode: body.trackingCode || data.trackingCode || null,
     }).catch((e) => {
@@ -160,7 +162,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
 
     if (data.status === "shipped") {
       sendShipmentNotification(
-        ctx.params.id,
+        params.id,
         user.id,
         body.trackingCode || null,
       ).catch((e) =>
@@ -172,7 +174,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     // unless the merchant enabled Bot.orderStatusNotifyEnabled; queued + safe.
     maybeSendShippingUpdate({
       userId: user.id,
-      orderId: ctx.params.id,
+      orderId: params.id,
       status: data.status,
     }).catch((e) => {
       console.error("[orders] shipping update failed:", e?.message || e);
@@ -294,22 +296,23 @@ async function sendShipmentNotification(
   }
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const user = await getUserForPermission("customers");
   if (!user)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const existing = await (prisma as any).order.findFirst({
-    where: { id: ctx.params.id, userId: user.id },
+    where: { id: params.id, userId: user.id },
     select: { id: true },
   });
   if (!existing)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
-  await (prisma as any).order.delete({ where: { id: ctx.params.id } });
+  await (prisma as any).order.delete({ where: { id: params.id } });
 
   void auditCtx(await getAuthContext(), "order.deleted", {
     userId: user.id,
     targetType: "order",
-    targetId: ctx.params.id,
+    targetId: params.id,
     req: _req,
   });
 

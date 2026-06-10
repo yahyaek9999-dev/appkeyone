@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 const db = prisma as any;
 
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const g = await apiGate("flow_builder", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
@@ -16,7 +17,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
 
   try {
     const existing = await db.flowDefinition.findFirst({
-      where: { id: ctx.params.id, userId: uid },
+      where: { id: params.id, userId: uid },
     });
     if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
@@ -29,19 +30,20 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
       data.graphJson = body.graphJson;
       data.version = (existing.version || 1) + 1;
     }
-    await db.flowDefinition.update({ where: { id: ctx.params.id }, data });
+    await db.flowDefinition.update({ where: { id: params.id }, data });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_ready", pending: true }, { status: 503 });
   }
 }
 
-export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const g = await apiGate("flow_builder", "settings");
   if (g.response) return g.response;
   const uid = g.uid!;
   try {
-    await db.flowDefinition.deleteMany({ where: { id: ctx.params.id, userId: uid } });
+    await db.flowDefinition.deleteMany({ where: { id: params.id, userId: uid } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_ready", pending: true }, { status: 503 });
