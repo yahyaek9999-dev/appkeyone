@@ -17,8 +17,10 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,20 @@ const Body = z.object({
   password: z.string().min(8),
 });
 
+/** Constant-time secret comparison. Length mismatch is itself a constant-time false. */
+function secretMatches(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function POST(req: Request) {
+  // 0. Throttle this unauthenticated recovery endpoint — 5 attempts / IP / hour.
+  //    Without this an attacker can brute-force ADMIN_INIT_SECRET unbounded.
+  const limited = enforceRateLimit(req, { name: "admin-init", limit: 5, windowSec: 3600 });
+  if (limited) return limited;
+
   // 1. Parse body
   let json: unknown;
   try {
@@ -47,9 +62,18 @@ export async function POST(req: Request) {
 
   const { secret, email, password } = parsed.data;
 
-  // 2. Validate secret
+  // 2. Validate secret (constant-time; fail closed when unset/weak).
   const expectedSecret = process.env.ADMIN_INIT_SECRET;
-  if (!expectedSecret || secret !== expectedSecret) {
+  if (!expectedSecret) {
+    return NextResponse.json({ error: "السر غلط" }, { status: 403 });
+  }
+  // A short secret in production is a misconfiguration — fail closed rather than
+  // accept a guessable recovery secret (mirrors resolveAuthSecret in lib/auth.ts).
+  if (process.env.NODE_ENV === "production" && expectedSecret.length < 32) {
+    console.error("[admin/init] ADMIN_INIT_SECRET is set but too short (< 32 chars) — request rejected");
+    return NextResponse.json({ error: "السر غلط" }, { status: 403 });
+  }
+  if (!secretMatches(secret, expectedSecret)) {
     return NextResponse.json({ error: "السر غلط" }, { status: 403 });
   }
 
@@ -75,13 +99,11 @@ export async function POST(req: Request) {
     });
   }
 
-  // Case B: admin exists but different email → tell them the email
+  // Case B: admin exists but different email → 409. Do NOT leak any portion of
+  // the real admin email (the email is a second factor in the login flow).
   if (existingAdmin) {
     return NextResponse.json(
-      {
-        error: "يوجد أدمن بإيميل مختلف — استخدم إيميله أو تواصل مع المطوّر",
-        hint: `admin email starts with: ${(existingAdmin as any).email.slice(0, 3)}***`,
-      },
+      { error: "يوجد أدمن بإيميل مختلف — استخدم إيميله أو تواصل مع المطوّر" },
       { status: 409 },
     );
   }

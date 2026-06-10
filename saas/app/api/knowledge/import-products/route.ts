@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { importKnowledge } from "@/lib/knowledge-importer";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
 import { apiGate } from "@/lib/membership/gate";
@@ -15,6 +16,8 @@ export async function POST(req: Request) {
   if (gate.response) return gate.response;
   try {
     const user = await requirePermission("settings");
+    const limited = enforceRateLimit(req, { name: "import-products", identifier: user.id, ...RATE_LIMITS.api });
+    if (limited) return limited;
     const body = await req.json().catch(() => null);
     const text = typeof body?.text === "string" ? body.text : "";
     if (!text.trim() || text.trim().length < 5) {

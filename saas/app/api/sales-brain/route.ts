@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { apiGate } from "@/lib/membership/gate";
 import { revenueIntelligence } from "@/lib/sales-brain/revenue";
 import { aggregateForUser } from "@/lib/daily-report/aggregate";
@@ -20,11 +21,13 @@ import { getObjectionOutcomeInsights } from "@/lib/intelligence/memory-graph";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const gate = await apiGate("sales_pipeline");
   if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "sales-brain", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   const now = new Date();
   const [revenue, agg, learning, memoryGraph] = await Promise.all([

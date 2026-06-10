@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserForPermission } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { type Permission } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 
@@ -46,6 +47,8 @@ export async function GET(req: Request) {
   // a viewer/support member without it gets 403 (no data leak).
   const user = await getUserForPermission(EXPORT_PERMISSION[type]);
   if (!user) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const limited = enforceRateLimit(req, { name: "export", identifier: user.id, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   let csvContent = "";
   let filename = "";

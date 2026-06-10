@@ -3,6 +3,7 @@
 //   GET /api/segments?key=vip    → reachable members of one segment (open/filter)
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { apiGate } from "@/lib/membership/gate";
 import { computeSegments, resolveSegmentCustomers } from "@/lib/analytics/segments";
 
@@ -13,6 +14,8 @@ export async function GET(req: Request) {
   if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "segments", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   const key = new URL(req.url).searchParams.get("key");
   try {

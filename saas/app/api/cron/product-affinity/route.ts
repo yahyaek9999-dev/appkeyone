@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { runAffinityBatch } from "@/lib/commerce/affinity";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
-
-const SECRET =
-  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 /**
  * Product affinity batch (Agent 3, Task #9).
@@ -20,7 +18,7 @@ const SECRET =
  *   ?maxMerchants=N    cap merchants per run (default 500)
  */
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

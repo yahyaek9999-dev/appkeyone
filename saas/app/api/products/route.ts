@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { httpUrlOrNull } from "@/lib/url-safe";
 
 export const dynamic = "force-dynamic";
 
@@ -36,13 +37,13 @@ export async function POST(req: Request) {
     data: {
       userId: uid,
       name,
-      imageUrl: b.imageUrl ? String(b.imageUrl).trim().slice(0, 600) : null,
+      imageUrl: httpUrlOrNull(b.imageUrl),
       price: clampInt(b.price),
       compareAtPrice: b.compareAtPrice != null && b.compareAtPrice !== "" ? clampInt(b.compareAtPrice) : null,
       stock: clampInt(b.stock),
       description: b.description ? String(b.description).slice(0, 1000) : null,
       category: b.category ? String(b.category).trim().slice(0, 80) : null,
-      productLink: b.productLink ? String(b.productLink).trim().slice(0, 600) : null,
+      productLink: httpUrlOrNull(b.productLink),
       active: b.active !== false,
       sortOrder: clampInt(b.sortOrder, 0, 100000),
     },

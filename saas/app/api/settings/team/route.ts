@@ -17,6 +17,7 @@ import { requirePermission, getAuthContext } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ASSIGNABLE_ROLES } from "@/lib/rbac";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { getEntitlements } from "@/lib/membership/entitlements";
 import { auditCtx } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +63,31 @@ export async function POST(req: Request) {
   const parsed = InviteBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });
   const { email, name, role } = parsed.data;
+
+  // Only the workspace OWNER may create/assign the "admin" role. A workspace
+  // admin holds the "team" permission, but letting them mint more admins is a
+  // lateral privilege-escalation vector. Lower roles remain admin-manageable.
+  if (role === "admin") {
+    const ctx = await getAuthContext();
+    if (!ctx?.isOwner) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  // Enforce the plan's team-seat limit for enforced (k_*) plans. Non-regressive:
+  // legacy-slug active subscribers have enforce=false and unlimited plans have
+  // limits.team===0, so neither is affected.
+  try {
+    const ent = await getEntitlements(user.id);
+    if (ent.enforce && ent.limits.team > 0) {
+      const current = await prisma.teamMember.count({
+        where: { ownerId: user.id, status: { in: ["active", "invited"] } },
+      });
+      if (current >= ent.limits.team) {
+        return NextResponse.json({ error: "seat_limit_reached", limit: ent.limits.team }, { status: 402 });
+      }
+    }
+  } catch {
+    // fail-open on gating errors — never block team management on our own bug.
+  }
 
   // Don't let an owner invite their own owner-email or a platform admin email.
   if (email === user.email.toLowerCase()) {
@@ -119,6 +145,13 @@ export async function PATCH(req: Request) {
 
   const member = await prisma.teamMember.findFirst({ where: { id: parsed.data.id, ownerId: user.id }, select: { id: true, role: true } });
   if (!member) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  // Promoting/demoting to or from "admin" is owner-only (see POST). A workspace
+  // admin must not be able to escalate a peer (or themselves) to admin.
+  if (parsed.data.role === "admin" || member.role === "admin") {
+    const ctx = await getAuthContext();
+    if (!ctx?.isOwner) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   await prisma.teamMember.update({ where: { id: member.id }, data: { role: parsed.data.role } });
 

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { httpUrlOrNull } from "@/lib/url-safe";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +25,13 @@ export async function PATCH(req: Request, props: { params: Promise<{ id: string 
   } catch {}
   const data: any = {};
   if (b.name != null) data.name = String(b.name).trim().slice(0, 200);
-  if (b.imageUrl !== undefined) data.imageUrl = b.imageUrl ? String(b.imageUrl).trim().slice(0, 600) : null;
+  if (b.imageUrl !== undefined) data.imageUrl = httpUrlOrNull(b.imageUrl);
   if (b.price != null) data.price = clampInt(b.price);
   if (b.compareAtPrice !== undefined) data.compareAtPrice = b.compareAtPrice === "" || b.compareAtPrice == null ? null : clampInt(b.compareAtPrice);
   if (b.stock != null) data.stock = clampInt(b.stock);
   if (b.description !== undefined) data.description = b.description ? String(b.description).slice(0, 1000) : null;
   if (b.category !== undefined) data.category = b.category ? String(b.category).trim().slice(0, 80) : null;
-  if (b.productLink !== undefined) data.productLink = b.productLink ? String(b.productLink).trim().slice(0, 600) : null;
+  if (b.productLink !== undefined) data.productLink = httpUrlOrNull(b.productLink);
   if (b.active != null) data.active = !!b.active;
   if (b.sortOrder != null) data.sortOrder = clampInt(b.sortOrder, 0, 100000);
 

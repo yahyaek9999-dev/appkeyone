@@ -19,10 +19,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// ---------------------------------------------------------------------------
-// Auth guard
-// ---------------------------------------------------------------------------
-const SECRET = process.env.SAAS_INTERNAL_SECRET ?? "";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 function unauthorized() {
   return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -177,7 +174,7 @@ async function getCronStats(): Promise<{
 // Route handler
 // ---------------------------------------------------------------------------
 export async function GET(req: Request) {
-  if (!SECRET || req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return unauthorized();
   }
 

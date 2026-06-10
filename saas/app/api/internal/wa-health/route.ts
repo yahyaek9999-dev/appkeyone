@@ -22,6 +22,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/db";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 const SECRET = process.env.SAAS_INTERNAL_SECRET ?? "";
 const WA_BASE = process.env.WHATSAPP_SERVICE_URL || "http://127.0.0.1:3001";
@@ -115,7 +116,7 @@ async function getMetaQuality() {
 }
 
 export async function GET(req: Request) {
-  if (!SECRET || req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return unauthorized();
   }
 

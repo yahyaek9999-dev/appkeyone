@@ -5,11 +5,9 @@ import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { wa } from "@/lib/wa";
 import { processFollowUpTask } from "@/lib/follow-ups";
 import { recordUsage, usageIdempotencyKey } from "@/lib/usage-ledger";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
-
-const SECRET =
-  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 /**
  * Triggered by a scheduled task on the VPS (every 30 minutes).
@@ -17,7 +15,7 @@ const SECRET =
  * `followUpAt` has passed and `followUpSent` is still false.
  */
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -139,6 +139,10 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   if (payload.uid) {
     const user = await loadOwner(payload.uid);
     if (!user) return null;
+    // A suspended account must lose access immediately — including any JWT it
+    // already holds — not just at login. `suspended` is a scalar on User so it
+    // is already loaded by loadOwner's include. Treat as unauthenticated.
+    if ((user as any).suspended) return null;
     return {
       user,
       role: "owner",
@@ -154,6 +158,9 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     if (!member || member.status !== "active") return null;
     const owner = await loadOwner(member.ownerId);
     if (!owner) return null;
+    // A member operates inside the owner's workspace — if the owner is suspended,
+    // the whole workspace is frozen, so the member loses access too.
+    if ((owner as any).suspended) return null;
     return {
       user: owner,
       role: normalizeRole(member.role),
