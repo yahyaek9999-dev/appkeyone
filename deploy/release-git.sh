@@ -62,21 +62,29 @@ Write-Host ('   HEAD now: ' + (git rev-parse --short HEAD))
 
 Set-Location '__SAAS_DIR__'
 
-# Clean platform-native install (Prisma engine + swc must match Windows).
-Write-Host '-> npm ci (platform-native deps)…'
-npm ci --no-audit --no-fund
-if ($LASTEXITCODE -ne 0) { Fail 'npm ci failed (production left untouched)' }
+# On Windows the running Node service LOCKS loaded node_modules DLLs (e.g. the
+# Prisma query engine), so a clean `npm ci` requires the service to be stopped
+# first. This incurs a short maintenance window (npm ci + build). On any failure
+# the service is restarted on the existing build before exiting.
+Write-Host '-> stopping service (maintenance window begins)…'
+& nssm stop '__SERVICE_NAME__' | Out-Null
+Start-Sleep 2
+Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep 2
 
-# postinstall already ran `prisma generate`; build (also regenerates client).
-# Bake the build identity so /api/health version == deployed commit.
+Write-Host '-> npm ci (clean Windows-native deps)…'
+npm ci --no-audit --no-fund
+if ($LASTEXITCODE -ne 0) { & nssm start '__SERVICE_NAME__' | Out-Null; Fail 'npm ci failed (service restarted on previous build)' }
+
+# postinstall ran `prisma generate`; bake build identity so /api/health == commit.
 $head = (git rev-parse --short HEAD)
 $env:NEXT_PUBLIC_BUILD_ID = '__BUILD_ID__'
-Write-Host '-> next build (long step; service still serving old release)…'
+Write-Host '-> next build…'
 $env:NODE_OPTIONS = '--max-old-space-size=4096'
 npm run build
-if ($LASTEXITCODE -ne 0) { Fail 'next build failed (production left untouched)' }
+if ($LASTEXITCODE -ne 0) { & nssm start '__SERVICE_NAME__' | Out-Null; Fail 'next build failed (service restarted)' }
 
-# Write a fresh .build-info aligned to git HEAD (replaces any stale artifact).
+# Fresh .build-info aligned to git HEAD (replaces any stale artifact).
 @(
   "RELEASE=keyone-$head-__DEPLOY_DATE__",
   "HASH=$head",
@@ -89,11 +97,7 @@ Write-Host '-> prisma db push (no-op when schema unchanged)…'
 & '.\node_modules\.bin\prisma.cmd' db push --skip-generate --accept-data-loss
 if ($LASTEXITCODE -ne 0) { Fail 'prisma db push failed' }
 
-Write-Host '-> restart service…'
-& nssm stop '__SERVICE_NAME__' | Out-Null
-Start-Sleep 2
-Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep 1
+Write-Host '-> starting service…'
 & nssm start '__SERVICE_NAME__' | Out-Null
 Start-Sleep 8
 $s = & nssm status '__SERVICE_NAME__'
