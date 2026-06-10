@@ -65,6 +65,11 @@ const nextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // Isolate our browsing context (XS-Leaks / cross-window hardening).
+          // `-allow-popups` preserves any window.open()/opener flows so no UX breaks.
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+          // Block legacy Flash/Acrobat cross-domain policy probing. Harmless, additive.
+          { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
           // HSTS: enforce HTTPS for 2 years incl. subdomains (enterprise control).
           // Safe additive header — production is HTTPS-only behind the proxy.
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
