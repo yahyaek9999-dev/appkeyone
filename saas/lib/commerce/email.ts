@@ -130,6 +130,27 @@ async function sendBrevo(provider: any, args: CommerceEmailSendArgs, secret: str
 }
 
 export async function sendCommerceEmail(args: CommerceEmailSendArgs): Promise<CommerceEmailSendResult> {
+  // Universal Providers (additive): if the tenant configured email providers in
+  // the new vault (SendGrid/Mailgun/SES/Postmark/SMTP/Resend/Brevo), use them
+  // with priority-ordered failover first. Tenants with NO vault email providers
+  // fall through to the unchanged legacy CommerceEmailProvider path below.
+  try {
+    const { loadEnabledResolved } = await import("@/lib/integrations/vault");
+    const vault = await loadEnabledResolved(args.userId, "email");
+    if (vault.length > 0) {
+      const { sendEmailWithFailover } = await import("@/lib/integrations/email");
+      const r = await sendEmailWithFailover(
+        args.userId,
+        { to: args.to, subject: args.subject, html: args.html, text: args.text },
+        { includeLegacy: false },
+      );
+      if (r.ok) return { ok: true, provider: r.provider, messageId: r.result.messageId };
+      // All vault providers failed → fall through to the legacy path below.
+    }
+  } catch {
+    // Never let the universal layer break the existing email path.
+  }
+
   const provider = await (prisma as any).commerceEmailProvider.findFirst({
     where: { userId: args.userId, enabled: true },
     orderBy: { updatedAt: "desc" },

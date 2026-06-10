@@ -6,7 +6,7 @@ import {
 import { coalesce, fingerprintMessages } from "./fast-path";
 import { routeProviderChat } from "./providers/provider-router";
 import type { ProviderId } from "./providers/types";
-import { bumpProvider } from "./metrics";
+import { bumpProvider, bump } from "./metrics";
 
 // ---------------------------------------------------------------------------
 // Token estimation (Arabic-aware, no tokenizer dependency)
@@ -226,6 +226,13 @@ export async function chat(
     /** Optional per-call provider override (per-bot AI provider). */
     provider?: ProviderOverride | null;
     /**
+     * Optional ordered list of providers for cross-provider failover (universal
+     * providers vault). When non-empty, each is tried in turn; if all fail the
+     * call falls back to the in-house keyone cluster. Takes precedence over
+     * `provider`. Absent/empty → behavior is identical to before (no failover).
+     */
+    providers?: ProviderOverride[] | null;
+    /**
      * If supplied, the provider's call/failure/token/latency is recorded
      * under this userId in `ProviderUsage`. When omitted, metering is
      * skipped (e.g. anonymous internal callers).
@@ -250,15 +257,36 @@ export async function chat(
     ov.provider !== "keyone" &&
     !!(ov.apiKey && ov.apiKey.length > 0);
 
+  // Universal providers failover list (vault). Filtered to real external keys.
+  const failoverList = (opts.providers || []).filter(
+    (p): p is ProviderOverride =>
+      !!p && p.provider !== "keyone" && !!(p.apiKey && p.apiKey.length > 0),
+  );
+  const useFailover = failoverList.length > 0;
+
   const body: any = { model, messages };
   if (typeof opts.temperature === "number") body.temperature = opts.temperature;
   if (typeof opts.maxTokens === "number") body.max_tokens = opts.maxTokens;
 
   // Coalesce identical concurrent prompts. Disabled for randomized
-  // (high-temperature) replies so two callers don't lose their variations.
-  const canCoalesce = opts.coalesce !== false && (opts.temperature ?? 0) <= 0.6;
+  // (high-temperature) replies so two callers don't lose their variations, and
+  // for the failover path (per-provider attempts must not be shared).
+  const canCoalesce = opts.coalesce !== false && (opts.temperature ?? 0) <= 0.6 && !useFailover;
   const runOnce = () =>
-    useExternal
+    useFailover
+      ? runFailoverChat(
+          messages,
+          failoverList,
+          opts.temperature,
+          opts.maxTokens,
+          body,
+          key,
+          timeoutMs,
+          retries,
+          meterUserId,
+          model,
+        )
+      : useExternal
       ? runExternalChat(
           messages,
           ov!,
@@ -331,6 +359,44 @@ async function runExternalChat(
     throw e;
   } finally {
     release();
+  }
+}
+
+/**
+ * Cross-provider failover: try each external provider in order. On the first
+ * success, return it. If every external provider fails, fall back to the
+ * in-house keyone cluster (so the merchant always gets a reply). Each failover
+ * hop bumps the `provider_fallback` metric. Additive — only used when the
+ * caller supplies `opts.providers` (universal providers vault).
+ */
+async function runFailoverChat(
+  messages: Msg[],
+  list: ProviderOverride[],
+  temperature: number | undefined,
+  maxTokens: number | undefined,
+  body: any,
+  key: string,
+  timeoutMs: number,
+  retries: number,
+  meterUserId: string | undefined,
+  model: string,
+): Promise<string> {
+  let lastErr: any = null;
+  for (let i = 0; i < list.length; i++) {
+    const ov = list[i]!;
+    try {
+      return await runExternalChat(messages, ov, temperature, maxTokens, timeoutMs, retries, meterUserId);
+    } catch (e) {
+      lastErr = e;
+      if (meterUserId) bump("provider_fallback", meterUserId);
+      // advance to the next configured provider
+    }
+  }
+  // Every tenant-configured provider failed → in-house keyone fallback.
+  try {
+    return await runChatOnce(body, key, timeoutMs, retries, meterUserId, model);
+  } catch (e) {
+    throw lastErr || e;
   }
 }
 

@@ -11,7 +11,8 @@ export type ProviderId =
   | "gemini"
   | "openrouter"
   | "claude"
-  | "groq";
+  | "groq"
+  | "grok";
 
 export type ChatMsg = {
   role: "system" | "user" | "assistant";
@@ -39,6 +40,7 @@ export const DEFAULT_MODELS: Record<Exclude<ProviderId, "keyone">, string> = {
   openrouter: "meta-llama/llama-3.3-70b-instruct:free",
   claude: "claude-3-5-haiku-latest",
   groq: "llama-3.1-8b-instant",
+  grok: "grok-2-latest",
 };
 
 /** Quality tiers for model selection in the merchant settings UI. */
@@ -50,6 +52,7 @@ export const TIER_MODELS: Record<Exclude<ProviderId, "keyone">, Record<QualityTi
   gemini:     { fast: "gemini-2.0-flash",                        balanced: "gemini-1.5-pro",               smart: "gemini-1.5-pro" },
   openrouter: { fast: "meta-llama/llama-3.3-70b-instruct:free", balanced: "openai/gpt-4o",               smart: "anthropic/claude-opus-4" },
   groq:       { fast: "llama-3.1-8b-instant",                    balanced: "llama-3.3-70b-versatile",     smart: "llama-3.3-70b-versatile" },
+  grok:       { fast: "grok-2-latest",                           balanced: "grok-2-latest",               smart: "grok-3-latest" },
 };
 
 export const TIER_LABELS: Record<QualityTier, { ar: string; description: string }> = {
@@ -65,13 +68,14 @@ export const PROVIDER_LABELS: Record<ProviderId, string> = {
   openrouter: "OpenRouter",
   claude: "Anthropic Claude",
   groq: "Groq",
+  grok: "xAI Grok",
 };
 
 /** Returns true if the given string is a recognised provider id. */
 export function isProviderId(s: unknown): s is ProviderId {
   return (
     typeof s === "string" &&
-    ["keyone", "openai", "gemini", "openrouter", "claude", "groq"].includes(s)
+    ["keyone", "openai", "gemini", "openrouter", "claude", "groq", "grok"].includes(s)
   );
 }
 

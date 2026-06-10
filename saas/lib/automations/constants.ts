@@ -7,6 +7,7 @@ export const AUTOMATION_TRIGGERS = [
   "idle_hours",
   "order_status_changed",
   "cart_abandoned",
+  "order_value_gt", // order placed with value crossing a threshold
 ] as const;
 
 export const AUTOMATION_ACTIONS = [
@@ -14,6 +15,8 @@ export const AUTOMATION_ACTIONS = [
   "tag_customer",
   "notify_admin",
   "add_to_segment_broadcast",
+  "send_email", // via universal email providers (failover; graceful skip if none configured)
+  "send_sms", // via universal SMS providers (failover; graceful skip if none configured)
 ] as const;
 
 export const SCORE_METRICS = [

@@ -54,6 +54,10 @@ model User {
   commerceEmailProviders CommerceEmailProvider[]
   commerceEmailTemplates CommerceEmailTemplate[]
 
+  // ---- Universal Providers (additive, new tables only) ----
+  providerCredentials TenantProviderCredential[]
+  providerCallLogs    ProviderCallLog[]
+
   // ---- Phase 3: premium modules (additive, new tables only) ----
   flowDefinitions  FlowDefinition[]
   branches         Branch[]
@@ -832,6 +836,54 @@ model CommerceEmailProvider {
 
   @@unique([userId, provider])
   @@index([userId, enabled])
+}
+
+// ── Universal Providers: per-tenant credential vault ─────────────────────────
+// Generalizes the per-Bot AI key + CommerceEmailProvider pattern across every
+// integration domain (ai | speech | image | sms | email). One row per
+// (tenant, domain, provider). All secrets AES-256-GCM encrypted via crypto-util.
+model TenantProviderCredential {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain      String                       // ai | speech | image | sms | email
+  provider    String                       // openai | twilio | deepgram | sendgrid | ...
+  enabled     Boolean  @default(true)
+  priority    Int      @default(100)       // lower = tried first (failover order)
+  label       String   @default("")        // user-friendly name
+  secretEnc   String?                      // primary secret (API key / password / token)
+  secret2Enc  String?                      // secondary secret (AWS secret, Twilio token, ...)
+  publicId    String   @default("")        // non-secret id (Account SID, AWS key id, from-number/region)
+  endpoint    String   @default("")        // custom base URL / SMTP host (SSRF-validated)
+  model       String   @default("")        // default model / voice
+  configJson  String   @default("{}")      // provider-specific extras (fromEmail, region, senderId, ...)
+  status      String   @default("unknown") // unknown | healthy | degraded | down
+  lastCheckAt DateTime?
+  lastError   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, domain, provider])
+  @@index([userId, domain, enabled])
+}
+
+// ── Universal Providers: append-only call log (dashboard error logs/activity) ─
+model ProviderCallLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain     String                        // ai | speech | image | sms | email
+  provider   String
+  operation  String                        // chat | transcribe | generate | analyze | send | health
+  ok         Boolean  @default(true)
+  status     Int      @default(0)          // upstream HTTP status (0 if network/abort)
+  latencyMs  Int      @default(0)
+  error      String   @default("")         // redacted message (never secrets)
+  failedOver Boolean  @default(false)      // true if this attempt triggered failover to next provider
+  createdAt  DateTime @default(now())
+
+  @@index([userId, domain, createdAt])
+  @@index([userId, ok, createdAt])
 }
 
 model CommerceEmailTemplate {

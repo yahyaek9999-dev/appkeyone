@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/auth";
 import { evaluateSubscription, getSiteConfig } from "@/lib/admin";
 import { chat as llmChat, buildMessages, detectOrderIntent } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
+import { resolveAiOverrides } from "@/lib/integrations/ai";
 import { notifyMerchant } from "@/lib/notify";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { retrieveRelevantKb } from "@/lib/kb-cache";
@@ -216,10 +217,14 @@ export async function POST(req: Request) {
           : undefined,
     });
 
-    // Call LLM
+    // Call LLM. Prefer the universal providers vault (multi-provider failover)
+    // when configured; otherwise keep the legacy single per-bot provider.
     let reply: string;
     try {
-      reply = await llmChat(messages, { provider: botProviderOverride(bot) });
+      const aiOverrides = await resolveAiOverrides(user.id).catch(() => []);
+      reply = aiOverrides.length
+        ? await llmChat(messages, { providers: aiOverrides, meterUserId: user.id })
+        : await llmChat(messages, { provider: botProviderOverride(bot) });
     } catch (e: any) {
       console.error("[api/chat] llmChat failed:", e?.message || e);
       reply = "عذراً، يبدو أن هناك خلل تقني مؤقت. سأعود لك خلال لحظات.";

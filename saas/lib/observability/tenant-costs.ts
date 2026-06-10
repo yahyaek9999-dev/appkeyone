@@ -68,7 +68,12 @@ function loadPrices(): Record<string, Price> {
 }
 
 function priceFor(prices: Record<string, Price>, provider: string): Price {
-  return prices[(provider || "").toLowerCase()] || { in: 0, out: 0 };
+  const key = (provider || "").toLowerCase();
+  // Universal-providers usage is namespaced "<domain>:<provider>" (e.g.
+  // "ai:openai"). Price by the bare provider name (only AI is token-priced;
+  // other domains carry 0 tokens so their estimate is 0 regardless).
+  const bare = key.includes(":") ? key.slice(key.indexOf(":") + 1) : key;
+  return prices[key] || prices[bare] || { in: 0, out: 0 };
 }
 
 /** Estimated USD for a provider's token counts. Rounded to 4 decimals. */

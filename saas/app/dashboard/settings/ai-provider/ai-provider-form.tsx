@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Sparkles, FlaskConical, Zap, Brain, Rocket } from "lucide-react";
 
-type ProviderId = "keyone" | "openai" | "gemini" | "openrouter" | "claude" | "groq";
+type ProviderId = "keyone" | "openai" | "gemini" | "openrouter" | "claude" | "groq" | "grok";
 type QualityTier = "fast" | "balanced" | "smart";
 
 const TIER_MODELS: Record<Exclude<ProviderId, "keyone">, Record<QualityTier, string>> = {
@@ -13,6 +13,7 @@ const TIER_MODELS: Record<Exclude<ProviderId, "keyone">, Record<QualityTier, str
   gemini:     { fast: "gemini-2.0-flash",                        balanced: "gemini-1.5-pro",               smart: "gemini-1.5-pro" },
   openrouter: { fast: "meta-llama/llama-3.3-70b-instruct:free", balanced: "openai/gpt-4o",               smart: "anthropic/claude-opus-4" },
   groq:       { fast: "llama-3.1-8b-instant",                    balanced: "llama-3.3-70b-versatile",     smart: "llama-3.3-70b-versatile" },
+  grok:       { fast: "grok-2-latest",                           balanced: "grok-2-latest",               smart: "grok-3-latest" },
 };
 
 const TIERS: { id: QualityTier; ar: string; desc: string; Icon: React.ElementType }[] = [

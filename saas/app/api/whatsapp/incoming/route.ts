@@ -73,7 +73,7 @@ import {
   updateConversionScores,
 } from "@/lib/conversion-engine";
 import { evaluateInboundProtection } from "@/lib/protection";
-import { evaluateAutomations } from "@/lib/automations/engine";
+import { evaluateAutomations, fireOrderValueAutomation } from "@/lib/automations/engine";
 import { recordCartInterest } from "@/lib/commerce/abandoned-cart";
 
 const SECRET =
@@ -288,13 +288,13 @@ export async function POST(req: Request) {
   let messageText = rawText || "";
   if (mediaType === "voice") {
     if (mediaBase64) {
-      messageText = await transcribeAudio(mediaBase64, mimetype || "audio/ogg");
+      messageText = await transcribeAudio(mediaBase64, mimetype || "audio/ogg", { userId: user.id });
     } else {
       messageText = "[العميل أرسل رسالة صوتية]";
     }
   } else if (mediaType === "image") {
     if (mediaBase64) {
-      const desc = await describeImage(mediaBase64, mimetype || "image/jpeg", rawText || "");
+      const desc = await describeImage(mediaBase64, mimetype || "image/jpeg", rawText || "", { userId: user.id });
       messageText =
         `[العميل أرسل صورة]\nوصف الصورة: ${desc}` +
         (rawText ? `\nتعليق العميل: ${rawText}` : "");
@@ -1668,6 +1668,16 @@ async function extractAndStoreOrder(args: {
     });
 
     await markFollowUpsConvertedForCustomer(args.customerId);
+
+    // Conditional notifications engine: fire `order_value_gt` rules (which can
+    // send_email / send_sms via the universal providers). Fire-and-forget — the
+    // engine applies throttle/cap and never blocks or throws into this path.
+    void fireOrderValueAutomation({
+      userId: args.userId,
+      customerId: args.customerId,
+      value: Number((draft as any).total || 0),
+      conversationId: args.conversationId,
+    });
 
     // Notify the merchant when the order looks confident enough.
     return order;
