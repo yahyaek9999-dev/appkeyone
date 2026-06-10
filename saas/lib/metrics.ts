@@ -16,7 +16,10 @@
 // `kind` values used today (keep this list short; rename audit if you add):
 //   llm_call · llm_fail · cache_hit · semantic_hit · quick_reply_hit ·
 //   fast_path_hit · realism_active · anti_ban_cooldown · order_extracted ·
-//   daily_cap_hit · provider_fallback · ws_reconnect
+//   daily_cap_hit · provider_fallback · ws_reconnect ·
+//   WA AI registry migration: registry_success · registry_failover ·
+//   legacy_fallback · keyone_fallback · provider_timeout · provider_quota ·
+//   provider_auth_err · provider_failure
 //
 // Note: this module is intentionally tolerant of a missing/older Prisma
 // client. If `prisma.metricEvent` is undefined at runtime (pre-`prisma

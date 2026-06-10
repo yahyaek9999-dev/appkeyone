@@ -46,6 +46,17 @@ export const scalingFlags = {
     return flag("ENABLE_BACKGROUND_OFFLOADING");
   },
 
+  /**
+   * Route the live WhatsApp AI reply through the universal provider registry
+   * (vault → legacy → keyone failover). Default OFF → pure legacy path, byte-
+   * identical to today. Global kill-switch: set WA_AI_REGISTRY_ENABLED=0 (+
+   * restart) to revert all tenants to legacy. Per-tenant enablement is intrinsic
+   * (a tenant uses the registry only when they have enabled vault AI credentials).
+   */
+  get waAiRegistry(): boolean {
+    return flag("WA_AI_REGISTRY_ENABLED");
+  },
+
   // ---------------------------------------------------------------------------
   // Tunables (env-overridable with sane defaults)
   // ---------------------------------------------------------------------------
