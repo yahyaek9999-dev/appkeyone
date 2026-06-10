@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { apiGate } from "@/lib/membership/gate";
 import { computeForecast } from "@/lib/analytics/forecast";
 import { buildRevenueCopilot } from "@/lib/intelligence/revenue-opportunity";
@@ -215,6 +216,8 @@ export async function GET(req: Request) {
   if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "copilot", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   const raw = new URL(req.url).searchParams.get("context") || "dashboard";
   const context: CopilotContext = (CONTEXTS as readonly string[]).includes(raw)

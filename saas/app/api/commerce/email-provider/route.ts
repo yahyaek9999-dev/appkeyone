@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { encryptSecret, maskSecret, decryptSecret } from "@/lib/crypto-util";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { assertSmtpHostPublic } from "@/lib/commerce/email";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,13 @@ export async function PUT(req: Request) {
 
   const parsed = PutBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });
+
+  // Reject private/internal SMTP hosts at save time so they never reach the DB
+  // (defense-in-depth with the guard in connectSmtp). Only relevant for SMTP.
+  if (parsed.data.provider === "smtp" && parsed.data.host && parsed.data.host.trim()) {
+    try { await assertSmtpHostPublic(parsed.data.host.trim()); }
+    catch { return NextResponse.json({ error: "invalid_smtp_host" }, { status: 400 }); }
+  }
 
   const data: any = {
     enabled: parsed.data.enabled,

@@ -1,7 +1,7 @@
 import { messaging } from "@/lib/messaging";
 import { prisma } from "@/lib/db";
 import { sendCommerceEmail } from "./email";
-import { commerceTemplateVars, renderCommerceTemplate } from "./templates";
+import { commerceTemplateVars, renderCommerceTemplate, renderCommerceTemplateHtml } from "./templates";
 import { sha256 } from "./security";
 
 function safeJson(value: unknown): string {
@@ -172,7 +172,11 @@ export async function dispatchCommerceAutomations(args: {
     }
 
     if (channel === "email") {
-      const result = await sendCommerceEmail({ userId: args.userId, to: recipient, subject, html: body });
+      // HTML-escape interpolated values for the email body (order/customer data
+      // comes from external webhooks and must not inject markup). WhatsApp above
+      // uses the plain-text `body` unchanged.
+      const htmlBody = renderCommerceTemplateHtml(automation.template, vars).slice(0, 4000);
+      const result = await sendCommerceEmail({ userId: args.userId, to: recipient, subject, html: htmlBody, text: body });
       await (prisma as any).commerceNotificationLog.update({
         where: { id: log.id },
         data: {

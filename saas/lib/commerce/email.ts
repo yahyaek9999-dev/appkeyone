@@ -1,7 +1,48 @@
 import net from "net";
 import tls from "tls";
+import { lookup } from "dns";
+import { promisify } from "util";
 import { decryptSecret } from "@/lib/crypto-util";
+import { isPrivateIp } from "@/lib/ssrf";
 import { prisma } from "@/lib/db";
+
+const dnsLookup = promisify(lookup);
+
+/**
+ * SSRF guard for tenant-supplied SMTP hosts. The host/port come from a DB row
+ * the merchant fully controls; without this, connectSmtp() can be pointed at
+ * 127.0.0.1:3001 (WhatsApp service), 169.254.169.254 (cloud metadata), Redis,
+ * etc., and the SMTP banner is reflected back through the notification error
+ * log — a full internal port-scan + banner oracle. Reject private/internal
+ * destinations before any socket is opened.
+ */
+export async function assertSmtpHostPublic(host: string): Promise<void> {
+  const lower = String(host || "").toLowerCase().replace(/^\[|\]$/g, "");
+  if (!lower) throw new Error("smtp_host_required");
+  if (
+    lower === "localhost" ||
+    lower.endsWith(".localhost") ||
+    lower.endsWith(".local") ||
+    lower.endsWith(".internal") ||
+    lower === "metadata.google.internal"
+  ) {
+    throw new Error("blocked_smtp_host");
+  }
+  if (net.isIP(lower)) {
+    if (isPrivateIp(lower)) throw new Error("blocked_smtp_host");
+    return;
+  }
+  let records: { address: string }[];
+  try {
+    records = await dnsLookup(lower, { all: true });
+  } catch {
+    throw new Error("blocked_smtp_host");
+  }
+  if (!records.length) throw new Error("blocked_smtp_host");
+  for (const rec of records) {
+    if (isPrivateIp(rec.address)) throw new Error("blocked_smtp_host");
+  }
+}
 
 export type CommerceEmailSendArgs = {
   userId: string;
@@ -74,6 +115,7 @@ async function connectSmtp(provider: any): Promise<net.Socket | tls.TLSSocket> {
   const host = String(provider.host || "");
   const port = Number(provider.port || 587);
   if (!host) throw new Error("smtp_host_required");
+  await assertSmtpHostPublic(host); // SSRF guard before any socket opens
   if (port === 465) {
     const socket = tls.connect({ host, port, servername: host });
     await smtpRead(socket);

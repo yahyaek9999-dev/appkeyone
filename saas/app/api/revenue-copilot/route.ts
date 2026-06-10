@@ -7,17 +7,20 @@
 
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { apiGate } from "@/lib/membership/gate";
 import { buildRevenueCopilot } from "@/lib/intelligence/revenue-opportunity";
 import { buildSelfLearningReport } from "@/lib/intelligence/self-learning";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const gate = await apiGate("revenue_attribution");
   if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  const limited = enforceRateLimit(req, { name: "revenue-copilot", identifier: uid, ...RATE_LIMITS.api });
+  if (limited) return limited;
 
   const now = new Date();
   const [copilot, learning] = await Promise.all([

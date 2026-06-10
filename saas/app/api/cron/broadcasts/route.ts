@@ -4,11 +4,10 @@ import { wa } from "@/lib/wa";
 import { chat as llmChat } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { appendExtras } from "@/lib/broadcasts/extras";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 // How many messages to send per cron tick (cron runs every minute).
 const BATCH_SIZE = 20;
@@ -20,7 +19,7 @@ const SEND_DELAY_MS = 2_500;
  * minute. Honors `status='canceled'` mid-run.
  */
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { drainOutgoingQueue, getOutgoingQueueHealth } from "@/lib/messaging/outgoing-queue";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 
 /**
  * Phase A — durable outgoing WhatsApp queue drain.
@@ -16,7 +15,7 @@ const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-m
  * - never loops forever
  */
 export async function POST(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  if (req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const health = await getOutgoingQueueHealth();

@@ -7,8 +7,47 @@
 
 import net from "net";
 import tls from "tls";
+import { lookup } from "dns";
+import { promisify } from "util";
+import { isPrivateIp } from "@/lib/ssrf";
 import { IntegrationError, type ResolvedProvider } from "../types";
 import type { EmailMessage } from "./index";
+
+const dnsLookup = promisify(lookup);
+
+/**
+ * SSRF guard: the SMTP host comes from a tenant-configured provider row, so
+ * reject loopback / private / link-local / metadata destinations before opening
+ * any socket — otherwise this adapter (and its /test endpoint) is an internal
+ * port-scan + banner oracle. Mirrors the guard on the legacy commerce SMTP path.
+ */
+async function assertSmtpHostPublic(host: string): Promise<void> {
+  const lower = String(host || "").toLowerCase().replace(/^\[|\]$/g, "");
+  if (!lower) throw new Error("smtp_host_required");
+  if (
+    lower === "localhost" ||
+    lower.endsWith(".localhost") ||
+    lower.endsWith(".local") ||
+    lower.endsWith(".internal") ||
+    lower === "metadata.google.internal"
+  ) {
+    throw new Error("blocked_smtp_host");
+  }
+  if (net.isIP(lower)) {
+    if (isPrivateIp(lower)) throw new Error("blocked_smtp_host");
+    return;
+  }
+  let records: { address: string }[];
+  try {
+    records = await dnsLookup(lower, { all: true });
+  } catch {
+    throw new Error("blocked_smtp_host");
+  }
+  if (!records.length) throw new Error("blocked_smtp_host");
+  for (const rec of records) {
+    if (isPrivateIp(rec.address)) throw new Error("blocked_smtp_host");
+  }
+}
 
 function b64(v: string): string {
   return Buffer.from(v, "utf8").toString("base64");
@@ -63,6 +102,7 @@ async function cmd(socket: net.Socket | tls.TLSSocket, command: string, expected
 
 async function connect(host: string, port: number): Promise<net.Socket | tls.TLSSocket> {
   if (!host) throw new Error("smtp_host_required");
+  await assertSmtpHostPublic(host); // SSRF guard before any socket opens
   if (port === 465) {
     const s = tls.connect({ host, port, servername: host });
     await readReply(s);

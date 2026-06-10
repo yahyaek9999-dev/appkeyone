@@ -44,19 +44,29 @@ export async function POST(req: Request) {
   const passwordHash = await hashPassword(parsed.data.password);
   const approved = autoApprove();
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name: parsed.data.name,
-      passwordHash,
-      role: "user",
-      approvalStatus: approved ? "approved" : "pending",
-      approvedAt: approved ? new Date() : null,
-      approvedBy: approved ? "auto" : null,
-      // The owner's workspace = their auto-created Bot (no subscription → free tier).
-      bot: { create: {} },
-    } as any,
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        email,
+        name: parsed.data.name,
+        passwordHash,
+        role: "user",
+        approvalStatus: approved ? "approved" : "pending",
+        approvedAt: approved ? new Date() : null,
+        approvedBy: approved ? "auto" : null,
+        // The owner's workspace = their auto-created Bot (no subscription → free tier).
+        bot: { create: {} },
+      } as any,
+    });
+  } catch (e: any) {
+    // Concurrent signup with the same email can slip past the pre-check above and
+    // hit the unique constraint — return the same 409 rather than a raw 500.
+    if (e?.code === "P2002") {
+      return NextResponse.json({ error: "هذا البريد مسجّل مسبقاً" }, { status: 409 });
+    }
+    throw e;
+  }
 
   // Activation funnel: first milestone. Fire-and-forget — never blocks signup.
   recordMilestone(user.id, "signed_up", { approved }).catch(() => {});

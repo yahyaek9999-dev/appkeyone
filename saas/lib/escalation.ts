@@ -8,6 +8,21 @@ function safeJson(value: unknown): string {
   try { return JSON.stringify(value || {}); } catch { return "{}"; }
 }
 
+/**
+ * Escape HTML so attacker-controlled WhatsApp content (customer display name,
+ * message text) can't inject markup into the escalation ALERT EMAIL rendered in
+ * the merchant-admin's mail client. Only used for the html body; the plain-text
+ * WhatsApp alert is sent verbatim and must NOT be escaped.
+ */
+function escapeHtml(s: string): string {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function severityToHandoff(severity: string): string {
   return severity === "critical" || severity === "high" ? "human_required" : "escalation_pending";
 }
@@ -194,7 +209,7 @@ async function notifyEscalation(args: {
         userId: args.userId,
         to: user.email,
         subject: `KEYONE escalation: ${args.analysis.severity}`,
-        html: `<div dir="rtl"><h2>تصعيد جديد</h2><p>التذكرة: ${args.ticketId}</p><p>${text.replace(/\n/g, "<br/>")}</p></div>`,
+        html: `<div dir="rtl"><h2>تصعيد جديد</h2><p>التذكرة: ${escapeHtml(args.ticketId)}</p><p>${escapeHtml(text).replace(/\n/g, "<br/>")}</p></div>`,
         text,
       });
       await (prisma as any).escalationTimeline.create({

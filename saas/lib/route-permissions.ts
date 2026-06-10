@@ -98,6 +98,8 @@ export const ROUTE_PERMISSIONS: RoutePermissionEntry[] = [
   { route: "api/settings/ai-provider/route.ts", permission: "settings" },
   { route: "api/settings/ai-provider/test/route.ts", permission: "settings" },
   { route: "api/settings/meta-cloud/route.ts", permission: "settings" },
+  { route: "api/settings/orders/route.ts", permission: "settings", note: "order-settings (auto-confirm, etc.) writes" },
+  { route: "api/automations/rules/route.ts", permission: "settings", note: "premium automation rules; apiGate also checks advanced_automations" },
   { route: "api/commerce/integrations/route.ts", permission: "settings" },
   { route: "api/commerce/integrations/[id]/route.ts", permission: "settings" },
   { route: "api/commerce/integrations/[id]/rotate/route.ts", permission: "settings" },

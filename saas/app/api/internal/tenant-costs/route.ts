@@ -18,15 +18,14 @@ export const runtime = "nodejs";
 
 import { getTenantCosts } from "@/lib/observability/tenant-costs";
 import { flush } from "@/lib/metrics";
-
-const SECRET = process.env.SAAS_INTERNAL_SECRET ?? "";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 function unauthorized() {
   return Response.json({ error: "unauthorized" }, { status: 401 });
 }
 
 export async function GET(req: Request) {
-  if (!SECRET || req.headers.get("x-internal-secret") !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return unauthorized();
   }
 
