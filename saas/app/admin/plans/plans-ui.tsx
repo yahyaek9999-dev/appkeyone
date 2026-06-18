@@ -8,7 +8,10 @@ interface PlanRow {
   slug: string;
   name: string;
   nameEn: string;
+  description: string;
   priceUsd: number;
+  yearlyUsd: number | null;
+  status: "active" | "archived";
   monthlyMsgs: number;
   tier: "basic" | "pro" | "max" | "companies";
   aiRequestsMonthly: number;
@@ -53,6 +56,11 @@ export default function PlansUi({ initial }: { initial: PlanRow[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug: p.slug,
+          name: p.name,
+          nameEn: p.nameEn,
+          description: p.description || "",
+          priceUsd: Number(p.priceUsd) || 0,
+          yearlyUsd: p.yearlyUsd == null || p.yearlyUsd === ("" as any) ? null : Number(p.yearlyUsd),
           tier: p.tier,
           monthlyMsgs: Number(p.monthlyMsgs) || 0,
           aiRequestsMonthly: Number(p.aiRequestsMonthly) || 0,
@@ -68,6 +76,27 @@ export default function PlansUi({ initial }: { initial: PlanRow[] }) {
       if (r.ok) {
         setMsg(`تم حفظ ${p.name} ✓`);
         setEditing(null);
+        router.refresh();
+      } else {
+        const j = await r.json().catch(() => ({}));
+        setMsg(`فشل: ${j.error || r.status}`);
+      }
+    });
+  }
+
+  function toggleArchive(p: PlanRow) {
+    const next = p.status === "archived" ? "active" : "archived";
+    if (next === "archived" && !confirm(`أرشفة باقة "${p.name}"؟\nستختفي من صفحة الأسعار وشاشة الدفع للعملاء الجدد. المشتركون الحاليون يحتفظون بباقتهم ومزاياها.`)) return;
+    setMsg(null);
+    start(async () => {
+      const r = await fetch("/api/admin/plans", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: p.slug, status: next }),
+      });
+      if (r.ok) {
+        update(p.slug, { status: next });
+        setMsg(next === "archived" ? `تمت أرشفة ${p.name} ✓` : `تمت استعادة ${p.name} ✓`);
         router.refresh();
       } else {
         const j = await r.json().catch(() => ({}));
@@ -95,22 +124,37 @@ export default function PlansUi({ initial }: { initial: PlanRow[] }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {rows.map(p => (
-          <div key={p.slug} className="card p-5 space-y-3">
+          <div key={p.slug} className={`card p-5 space-y-3 ${p.status === "archived" ? "opacity-60" : ""}`}>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-bold text-lg">{p.name}</div>
-                <div className="text-xs text-slate-500">{p.slug} · {p.nameEn} · ${p.priceUsd}/mo</div>
+                <div className="font-bold text-lg flex items-center gap-2">
+                  {p.name}
+                  {p.status === "archived" && <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px]">مؤرشفة</span>}
+                </div>
+                <div className="text-xs text-slate-500">{p.slug} · {p.nameEn} · ${p.priceUsd}/mo{p.yearlyUsd ? ` · $${p.yearlyUsd}/yr` : ""}</div>
               </div>
-              <span className={`px-2 py-0.5 rounded text-[11px] ${
-                p.tier === "companies" ? "bg-gold-500/20 text-gold-300" :
-                p.tier === "max" ? "bg-brand-500/20 text-brand-300" :
-                p.tier === "pro" ? "bg-emerald-500/20 text-emerald-300" :
-                "bg-slate-500/20 text-slate-300"
-              }`}>{p.tier}</span>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-[11px] ${
+                  p.tier === "companies" ? "bg-gold-500/20 text-gold-300" :
+                  p.tier === "max" ? "bg-brand-500/20 text-brand-300" :
+                  p.tier === "pro" ? "bg-emerald-500/20 text-emerald-300" :
+                  "bg-slate-500/20 text-slate-300"
+                }`}>{p.tier}</span>
+                <button onClick={() => toggleArchive(p)} disabled={pending} className={`px-2 py-0.5 rounded text-[11px] disabled:opacity-50 ${p.status === "archived" ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" : "bg-white/5 text-slate-400 hover:bg-white/10"}`}>
+                  {p.status === "archived" ? "استعادة" : "أرشفة"}
+                </button>
+              </div>
             </div>
 
             {editing === p.slug ? (
               <div className="space-y-2 text-xs">
+                <Field label="الاسم (عربي)" value={p.name} onChange={v => update(p.slug, { name: v })} />
+                <Field label="الاسم (EN)" value={p.nameEn} onChange={v => update(p.slug, { nameEn: v })} />
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="السعر/شهر ($)" type="number" value={p.priceUsd} onChange={v => update(p.slug, { priceUsd: Number(v) })} />
+                  <Field label="السعر/سنة ($، فارغ=لا يوجد)" type="number" value={p.yearlyUsd ?? ""} onChange={v => update(p.slug, { yearlyUsd: v === "" ? null : Number(v) })} />
+                </div>
+                <Field label="الوصف" value={p.description} onChange={v => update(p.slug, { description: v })} />
                 <Field label="Tier (basic|pro|max|companies)" value={p.tier} onChange={v => update(p.slug, { tier: v as any })} />
                 <Field label="رسائل شهرياً (0=∞)" type="number" value={p.monthlyMsgs} onChange={v => update(p.slug, { monthlyMsgs: Number(v) })} />
                 <Field label="AI شهرياً (0=∞)" type="number" value={p.aiRequestsMonthly} onChange={v => update(p.slug, { aiRequestsMonthly: Number(v) })} />

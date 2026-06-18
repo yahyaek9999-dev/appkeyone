@@ -116,7 +116,12 @@ export default async function PricingPage({
     return out;
   }
 
-  const tiers: PricingTierVM[] = TIERS.map((tier) => {
+  const tiers: PricingTierVM[] = TIERS
+    // Hide plans an owner archived in /admin/plans. Default "active" → no change
+    // until explicitly archived. Existing subscribers are unaffected (entitlement
+    // resolves by planId, not by this list).
+    .filter((tier) => ((dbBySlug.get(tier.slug) as any)?.status ?? "active") !== "archived")
+    .map((tier) => {
     const db: any = dbBySlug.get(tier.slug);
     const priceMonthly = tier.contactSales
       ? null

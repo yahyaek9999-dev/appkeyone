@@ -43,6 +43,9 @@ export type AuditAction =
   | "admin.user_password_reset"
   | "admin.subscription_changed"
   | "admin.settings_changed"
+  | "admin.plan_changed"
+  | "admin.plan_archived"
+  | "admin.plan_restored"
   | (string & {});
 
 export interface AuditInput {

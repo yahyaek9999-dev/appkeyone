@@ -1,27 +1,43 @@
 /**
- * Admin: read + edit Plan limits & feature flags.
+ * Admin: read + edit Plan pricing, limits, feature flags & lifecycle.
  *
  * GET  /api/admin/plans              → list all plans with full membership fields
  * PUT  /api/admin/plans              → update one plan by slug
  *
- * Editable fields (additive only — pricing/monthlyMsgs are still editable
- * via the existing subscription endpoint flow if needed):
+ * Editable fields (additive only):
+ *   - name, nameEn, description                 (display)
+ *   - priceUsd, yearlyUsd                        (money — owner can reprice without a developer)
+ *   - status: active | archived                  (lifecycle — archived hides the plan from new
+ *                                                 signups/pricing; EXISTING subscribers keep their
+ *                                                 entitlements because enforcement resolves by planId,
+ *                                                 never by status — see lib/membership/plan.ts)
  *   - tier, aiRequestsMonthly, broadcastsMonthly, whatsappSessions
  *   - metaAccess, analyticsAccess, queuePriority, rateLimitPerMin
- *   - featureFlags (JSON object)
+ *   - featureFlags (JSON object), monthlyMsgs
  *
- * The endpoint is admin-only. Validation is strict on enums.
+ * Admin-only. Every mutation writes an audit row.
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
+import { audit } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
 
 const PutBody = z.object({
   slug: z.string().min(1).max(64),
+  // display
+  name: z.string().min(1).max(120).optional(),
+  nameEn: z.string().max(120).optional(),
+  description: z.string().max(2000).optional(),
+  // money
+  priceUsd: z.number().int().min(0).max(1_000_000).optional(),
+  yearlyUsd: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  // lifecycle
+  status: z.enum(["active", "archived"]).optional(),
+  // limits & flags
   tier: z.enum(["basic", "pro", "max", "companies"]).optional(),
   aiRequestsMonthly: z.number().int().min(0).optional(),
   broadcastsMonthly: z.number().int().min(0).optional(),
@@ -45,8 +61,11 @@ export async function GET() {
       slug: p.slug,
       name: p.name,
       nameEn: p.nameEn,
+      description: p.description || "",
       priceUsd: p.priceUsd,
+      yearlyUsd: p.yearlyUsd ?? null,
       monthlyMsgs: p.monthlyMsgs,
+      status: p.status || "active",
       tier: p.tier || "basic",
       aiRequestsMonthly: p.aiRequestsMonthly ?? 0,
       broadcastsMonthly: p.broadcastsMonthly ?? 0,
@@ -61,7 +80,8 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  try { await requireAdmin(); }
+  let admin: any = null;
+  try { admin = await requireAdmin(); }
   catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
 
   const body = await req.json().catch(() => null);
@@ -71,12 +91,33 @@ export async function PUT(req: Request) {
   }
 
   const { slug, featureFlags, ...rest } = parsed.data;
-  const plan = await prisma.plan.findUnique({ where: { slug } });
-  if (!plan) return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
+  const before = await prisma.plan.findUnique({ where: { slug } });
+  if (!before) return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
 
   const data: any = { ...rest };
   if (featureFlags !== undefined) data.featureFlags = JSON.stringify(featureFlags);
 
   await prisma.plan.update({ where: { slug }, data });
+
+  // Pick the most specific audit verb so the lifecycle is legible in the log.
+  const action =
+    data.status === "archived" && (before as any).status !== "archived" ? "admin.plan_archived"
+    : data.status === "active" && (before as any).status === "archived" ? "admin.plan_restored"
+    : "admin.plan_changed";
+  await audit({
+    userId: admin?.id || "platform",
+    action,
+    actorId: admin?.id || null,
+    actorEmail: admin?.email || null,
+    actorRole: "admin",
+    targetType: "plan",
+    targetId: slug,
+    metadata: {
+      fields: Object.keys(data),
+      ...(data.priceUsd !== undefined ? { priceUsd: data.priceUsd, fromPriceUsd: (before as any).priceUsd } : {}),
+      ...(data.status !== undefined ? { status: data.status, fromStatus: (before as any).status || "active" } : {}),
+    },
+  });
+
   return NextResponse.json({ ok: true });
 }

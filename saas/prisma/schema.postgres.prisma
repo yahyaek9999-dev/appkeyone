@@ -292,6 +292,7 @@ model Plan {
   highlight   String?  // e.g. "الأكثر طلباً"
   popular     Boolean  @default(false)
   sortOrder   Int      @default(0)
+  status      String   @default("active") // active | archived — archived hides from new signups/pricing; existing subscribers keep entitlements (resolved by planId)
 
   // ---- Membership foundation: granular limits + feature flags ----
   // All fields are additive with safe defaults so existing plans keep working
