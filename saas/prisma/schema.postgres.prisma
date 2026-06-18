@@ -2357,6 +2357,9 @@ model PaymentAccount {
   accountId       String   @default("")
   assignedStaffId String?
   enabled         Boolean  @default(true)
+  status          String   @default("active") // active | maintenance | archived
+  isDefault       Boolean  @default(false)
+  sortOrder       Int      @default(0)
   note            String   @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

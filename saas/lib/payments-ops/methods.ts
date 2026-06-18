@@ -28,9 +28,26 @@ export async function listPaymentMethods() {
   return rows;
 }
 
-export async function setPaymentMethod(key: string, patch: { enabled?: boolean; instructions?: string }) {
+export async function setPaymentMethod(key: string, patch: { enabled?: boolean; instructions?: string; label?: string }) {
   const data: any = {};
   if (patch.enabled !== undefined) data.enabled = !!patch.enabled;
   if (patch.instructions !== undefined) data.instructions = String(patch.instructions).slice(0, 1000);
+  if (patch.label !== undefined) data.label = String(patch.label).slice(0, 80);
   return prisma.paymentMethod.update({ where: { key }, data });
+}
+
+/** Reorder a method up/down by swapping sortOrder with its neighbour. */
+export async function reorderMethod(key: string, direction: "up" | "down") {
+  const m = await prisma.paymentMethod.findUnique({ where: { key } });
+  if (!m) return null;
+  const sibling = await prisma.paymentMethod.findFirst({
+    where: { sortOrder: direction === "up" ? { lt: m.sortOrder } : { gt: m.sortOrder } },
+    orderBy: { sortOrder: direction === "up" ? "desc" : "asc" },
+  });
+  if (!sibling) return m;
+  await prisma.$transaction([
+    prisma.paymentMethod.update({ where: { id: m.id }, data: { sortOrder: sibling.sortOrder } }),
+    prisma.paymentMethod.update({ where: { id: sibling.id }, data: { sortOrder: m.sortOrder } }),
+  ]);
+  return prisma.paymentMethod.findUnique({ where: { key } });
 }

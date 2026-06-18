@@ -17,15 +17,11 @@ export default async function BillingPage() {
     <div className="space-y-6">
       <h1 className="page-title mb-1">الاشتراك والدفع</h1>
       <p className="page-desc">اختر باقتك وطريقة الدفع، ارفع الإيصال — يعتمده الفريق فيُشحن رصيدك وتُفعّل باقتك تلقائيًا.</p>
-      <BillingClient plans={plans} methods={JSON.parse(JSON.stringify((methods as any[]).filter((m) => m.enabled)))} />
-      {myProofs.length > 0 && (
-        <div className="card p-5">
-          <h2 className="font-bold mb-3">طلباتك</h2>
-          <table className="w-full text-sm"><tbody>
-            {myProofs.map((p: any) => <tr key={p.id} className="border-t border-white/5"><td className="p-1.5 font-mono text-xs">{p.methodKey}</td><td className="p-1.5">${p.amountUsd}</td><td className="p-1.5">{p.planSlug || "—"}</td><td className="p-1.5 text-left">{p.status === "approved" ? <span className="text-emerald-300">معتمد</span> : p.status === "rejected" ? <span className="text-rose-300">مرفوض</span> : <span className="text-amber-300">قيد المراجعة</span>}</td></tr>)}
-          </tbody></table>
-        </div>
-      )}
+      <BillingClient
+        plans={plans}
+        methods={JSON.parse(JSON.stringify((methods as any[]).filter((m) => m.enabled)))}
+        proofs={JSON.parse(JSON.stringify(myProofs))}
+      />
     </div>
   );
 }

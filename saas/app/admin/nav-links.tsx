@@ -37,6 +37,7 @@ export const ADMIN_LINKS = [
   // Operations & Billing
   { href: "/admin/operations-center", label: "مركز العمليات", icon: Activity },
   { href: "/admin/payment-reviews", label: "مراجعة المدفوعات", icon: CreditCard },
+  { href: "/admin/payment-methods", label: "طرق الدفع", icon: CreditCard },
   { href: "/admin/payment-accounts", label: "حسابات الاستلام", icon: Wallet },
   { href: "/admin/staff", label: "إدارة الطاقم", icon: Users },
   { href: "/admin/incidents", label: "الحوادث", icon: ShieldCheck },

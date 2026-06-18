@@ -56,6 +56,15 @@ export async function reviewPaymentProof(proofId: string, input: { decision: "ap
   return { ok: true as const, reviewId: review.id, ledgerId, activatedPlan, status: input.decision === "approve" ? "approved" : "rejected" };
 }
 
+/** Customer cancels their own still-pending payment proof. */
+export async function cancelProof(userId: string, proofId: string) {
+  const proof = await prisma.paymentProof.findFirst({ where: { id: proofId, userId } });
+  if (!proof) return { ok: false as const, reason: "not_found" };
+  if (proof.status !== "pending") return { ok: false as const, reason: "not_pending" };
+  await prisma.paymentProof.update({ where: { id: proofId }, data: { status: "canceled" } });
+  return { ok: true as const };
+}
+
 export async function getProofStats() {
   const [pending, approved, rejected, byMethod] = await Promise.all([
     prisma.paymentProof.count({ where: { status: "pending" } }),
