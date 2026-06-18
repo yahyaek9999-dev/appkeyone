@@ -2063,3 +2063,134 @@ model ImportLog {
   @@index([importSessionId, createdAt])
   @@index([userId, createdAt])
 }
+
+// ===================== KEYONE Brain Foundation v1 =====================
+// Additive Business-Intelligence layer. Stores intelligence SEPARATELY from
+// conversations (Message/Conversation are untouched). Mirrors the proven
+// credit-ledger shape for Brain credits.
+
+model BrainProfile {
+  id                String    @id @default(cuid())
+  userId            String
+  customerId        String    @unique
+  industry          String    @default("generic") // furniture|cars|clinics|real_estate|restaurants|ecommerce|generic
+  dialect           String    @default("")          // eg|sa|ae|kw|jo|sy|iq|ma|dz|tn
+  dialectConfidence Float     @default(0)
+  leadScore         Int       @default(0)            // 0-100 brain-computed
+  persona           String    @default("")
+  stage             String    @default("new")        // new|engaged|negotiating|won|lost|dormant
+  tags              String    @default("[]")
+  lastEnrichedAt    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, updatedAt])
+  @@index([userId, industry])
+  @@index([userId, dialect])
+}
+
+model BrainMemory {
+  id              String   @id @default(cuid())
+  userId          String
+  customerId      String   @unique
+  preferences     String   @default("[]")
+  interests       String   @default("[]")
+  objections      String   @default("[]")
+  purchaseHistory String   @default("[]")
+  supportHistory  String   @default("[]")
+  summary         String   @default("")
+  sentiment       String   @default("neutral") // positive|neutral|negative|angry
+  sentimentScore  Float    @default(0)
+  factsJson       String   @default("{}")
+  confidence      Int      @default(0)
+  messageCount    Int      @default(0)
+  lastMessageId   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+model BrainInsight {
+  id         String   @id @default(cuid())
+  userId     String
+  customerId String
+  type       String   // PRICE_OBJECTION|DISCOUNT_REQUEST|BUYING_SIGNAL|FOLLOWUP_REQUIRED|VIP_CUSTOMER|ANGRY_CUSTOMER|RETURNING_CUSTOMER
+  label      String   @default("")
+  score      Float    @default(0)
+  evidence   String   @default("")
+  source     String   @default("heuristic") // heuristic|llm
+  messageId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, type, createdAt])
+  @@index([userId, customerId, createdAt])
+}
+
+model BrainMessage {
+  id             String   @id @default(cuid())
+  userId         String
+  customerId     String?
+  conversationId String?
+  role           String   @default("inbound") // inbound|brain|outbound
+  channel        String   @default("api")      // api|chat|classify|router
+  input          String   @default("")
+  output         String   @default("")
+  dialect        String   @default("")
+  industry       String   @default("")
+  insights       String   @default("[]")
+  provider       String   @default("")
+  model          String   @default("")
+  creditsUsed    Int      @default(0)
+  latencyMs      Int      @default(0)
+  status         String   @default("ok") // ok|blocked|error
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, customerId, createdAt])
+}
+
+model BrainKnowledgeLink {
+  id         String   @id @default(cuid())
+  userId     String
+  customerId String
+  documentId String
+  relevance  Float    @default(0)
+  reason     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, documentId])
+  @@index([userId, createdAt])
+}
+
+model BrainCreditWallet {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  balance        Int      @default(0)
+  totalPurchased Int      @default(0)
+  totalSpent     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model BrainCreditLedger {
+  id             String   @id @default(cuid())
+  userId         String
+  walletId       String
+  direction      String   // credit | debit
+  kind           String   // monthly | usage | purchase | refund | adjustment | reversal
+  amount         Int
+  balanceAfter   Int      @default(0)
+  source         String   @default("system")
+  reason         String   @default("")
+  refId          String?
+  idempotencyKey String   @unique
+  reversalOf     String?  @unique
+  actorId        String?
+  actorEmail     String?
+  metadata       String   @default("{}")
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([walletId, createdAt])
+}

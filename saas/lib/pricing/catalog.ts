@@ -349,3 +349,22 @@ export const MONTHLY_BROADCAST_CREDITS: Record<TierSlug, number> = {
 export function monthlyBroadcastCreditsForSlug(slug: string): number {
   return (slug in MONTHLY_BROADCAST_CREDITS) ? MONTHLY_BROADCAST_CREDITS[slug as TierSlug] : 0;
 }
+
+/**
+ * Monthly KEYONE Brain credit allotment per public tier (1 credit ≈ 1 Brain API
+ * call). Starter defaults; the grant is flag-gated OFF (BRAIN_MONTHLY_CREDITS_ENABLED)
+ * so these numbers are inert until enabled. Legacy/unknown slugs → 0.
+ */
+export const MONTHLY_BRAIN_CREDITS: Record<TierSlug, number> = {
+  k_start: 100,
+  k_growth: 500,
+  k_pro: 2000,
+  k_business: 5000,
+  k_scale: 20000,
+  k_enterprise: 100000,
+};
+
+/** Monthly Brain-credit allotment for a plan slug (unknown/legacy → 0). */
+export function monthlyBrainCreditsForSlug(slug: string): number {
+  return (slug in MONTHLY_BRAIN_CREDITS) ? MONTHLY_BRAIN_CREDITS[slug as TierSlug] : 0;
+}
