@@ -5,9 +5,14 @@ export default function IncidentsClient({ initial }: { initial: any[] }) {
   const [rows, setRows] = useState<any[]>(initial);
   const [busy, setBusy] = useState("");
   async function resolve(id: string) {
+    // Record WHAT was actually done — this persists to the incident's Resolution
+    // history, so the log is meaningful instead of a generic "resolved by admin".
+    const resolution = window.prompt("صف كيف تم حلّ الحادثة (يُحفظ في سجل الحوادث):", "");
+    if (resolution === null) return; // admin cancelled
+    const rootCause = window.prompt("السبب الجذري (اختياري):", "") || "";
     setBusy(id);
     try {
-      const res = await fetch(`/api/admin/incidents/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ resolution: "resolved by admin", rootCause: "manual" }) });
+      const res = await fetch(`/api/admin/incidents/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ resolution: resolution.trim() || "تم الحلّ يدويًا", rootCause: rootCause.trim() }) });
       const j = await res.json().catch(() => null);
       if (j?.ok) setRows((rs) => rs.filter((r) => r.id !== id));
     } finally { setBusy(""); }
