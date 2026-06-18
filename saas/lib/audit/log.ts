@@ -46,6 +46,9 @@ export type AuditAction =
   | "admin.plan_changed"
   | "admin.plan_archived"
   | "admin.plan_restored"
+  | "admin.payment_account_changed"
+  | "admin.payment_method_changed"
+  | "settings.meta_cloud_verified"
   | (string & {});
 
 export interface AuditInput {
