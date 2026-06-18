@@ -13,6 +13,7 @@ import Link from "next/link";
 import { getWalletPlatformStats } from "@/lib/wallet/analytics";
 import { getPaymentStats } from "@/lib/payments";
 import { getQueueSnapshot } from "@/lib/qr-queue";
+import { getExecutiveStats } from "@/lib/admin/executive";
 import { formatUsd } from "@/lib/wallet/money";
 import {
   LayoutGrid, Wallet, ArrowUpCircle, TrendingUp, CreditCard, Users,
@@ -33,13 +34,21 @@ const HUB_CARDS: Array<{ href: string; label: string; desc: string; icon: any }>
   { href: "/admin/api-keys", label: "مفاتيح API", desc: "إصدار وإدارة مفاتيح الوصول البرمجي", icon: KeyRound },
   { href: "/admin/tenant-costs", label: "التكلفة لكل تاجر", desc: "استهلاك الذكاء الاصطناعي والأداء التشغيلي", icon: Coins },
   { href: "/admin/usage-stats", label: "إحصائيات الاستخدام", desc: "أنماط الاستخدام والحجم عبر المنصة", icon: BarChart3 },
+  { href: "/admin/brain", label: "مركز الدماغ", desc: "الذاكرة والتصنيفات واللهجات والقطاعات وأرصدة الدماغ", icon: Activity },
+  { href: "/admin/brain/global", label: "الدماغ العالمي", desc: "أنماط مجهولة الهوية متعلَّمة من كل المستأجرين", icon: Activity },
+  { href: "/admin/agents", label: "مركز الوكلاء", desc: "تنفيذات الوكلاء والقرارات والإجراءات", icon: Users },
+  { href: "/admin/reports", label: "التقارير التنفيذية", desc: "تقارير يومية/أسبوعية/شهرية للإيراد والربح والاستخدام", icon: BarChart3 },
+  { href: "/admin/membership-audit", label: "تدقيق عزل الباقات", desc: "تغطية تبويب القدرات المدفوعة عبر الصفحات والـAPIs", icon: Activity },
+  { href: "/admin/white-label", label: "العلامة البيضاء", desc: "إعدادات العلامة والألوان والنطاقات عبر المستأجرين", icon: LayoutGrid },
+  { href: "/admin/brain/marketplace", label: "متجر الأدمغة", desc: "تفعيل/تعطيل وتسعير أدمغة القطاعات", icon: Coins },
 ];
 
 export default async function AdminSuperCenterPage() {
-  const [wallet, payments, snapshot] = await Promise.all([
+  const [wallet, payments, snapshot, exec] = await Promise.all([
     getWalletPlatformStats({ days: 30 }).catch(() => null),
     getPaymentStats({ days: 30 }).catch(() => null),
     getQueueSnapshot().catch(() => null),
+    getExecutiveStats().catch(() => null),
   ]);
 
   const wt = wallet?.totals;
@@ -64,6 +73,23 @@ export default async function AdminSuperCenterPage() {
         <Tile icon={<CalendarClock className="h-5 w-5 text-brand-300" />} label="مسارات QR نشطة الآن" value={`${snapshot?.activeNow ?? 0} / ${snapshot?.lanes ?? 0}`} sub={`${snapshot?.availableNow ?? 0} متاح الآن`} />
         <Tile icon={<AlertCircle className={"h-5 w-5 " + ((wt?.pendingTopups || 0) > 0 ? "text-amber-300" : "text-slate-400")} />} label="طلبات شحن معلّقة" value={(wt?.pendingTopups || 0).toLocaleString()} tone={(wt?.pendingTopups || 0) > 0 ? "warn" : "ok"} />
         <Tile icon={<AlertCircle className={"h-5 w-5 " + ((wt?.unbilledUsd || 0) > 0 ? "text-rose-300" : "text-slate-400")} />} label="ديون غير محصّلة" value={formatUsd(wt?.unbilledUsd || 0)} sub={`${(wt?.unbilledConversations || 0).toLocaleString()} محادثة`} tone={(wt?.unbilledUsd || 0) > 0 ? "warn" : "ok"} />
+      </div>
+
+      {/* Executive band (Phase 6) */}
+      <div>
+        <div className="flex items-center gap-2 text-slate-400 text-sm mb-3"><TrendingUp className="h-4 w-4" /><span>المؤشرات التنفيذية</span></div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <Tile icon={<TrendingUp className="h-5 w-5 text-emerald-300" />} label="MRR" value={formatUsd(exec?.mrr || 0)} />
+          <Tile icon={<TrendingUp className="h-5 w-5 text-emerald-300" />} label="ARR" value={formatUsd(exec?.arr || 0)} />
+          <Tile icon={<Wallet className="h-5 w-5 text-amber-300" />} label="التزام المحفظة" value={formatUsd(exec?.walletLiability || 0)} />
+          <Tile icon={<Coins className="h-5 w-5 text-brand-300" />} label="التزام رصيد الدماغ" value={(exec?.brainCreditsLiability || 0).toLocaleString()} />
+          <Tile icon={<Coins className="h-5 w-5 text-brand-300" />} label="التزام رصيد الحملات" value={(exec?.broadcastCreditsLiability || 0).toLocaleString()} />
+          <Tile icon={<Activity className="h-5 w-5 text-sky-300" />} label="استهلاك الدماغ" value={(exec?.brainUsage || 0).toLocaleString()} />
+          <Tile icon={<Send className="h-5 w-5 text-sky-300" />} label="استخدام API" value={(exec?.apiUsage || 0).toLocaleString()} />
+          <Tile icon={<Users className="h-5 w-5 text-sky-300" />} label="عملاء" value={(exec?.customers || 0).toLocaleString()} sub={`+${(exec?.customers30 || 0).toLocaleString()} (30 يوم)`} />
+          <Tile icon={<CalendarClock className="h-5 w-5 text-brand-300" />} label="حجوزات QR" value={(exec?.qrReservations || 0).toLocaleString()} sub={`${exec?.qrActive || 0} نشطة`} />
+          <Tile icon={<BarChart3 className="h-5 w-5 text-emerald-300" />} label="أعلى باقة" value={exec?.topPlans?.[0]?.slug || "—"} sub={`${exec?.topPlans?.[0]?.count || 0} مشترك`} />
+        </div>
       </div>
 
       {/* Hub navigation */}

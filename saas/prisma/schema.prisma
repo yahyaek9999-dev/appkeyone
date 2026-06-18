@@ -2205,3 +2205,143 @@ model BrainCreditLedger {
   @@index([userId, createdAt])
   @@index([walletId, createdAt])
 }
+
+// ===================== Final Completion Phase =====================
+
+// ---- Phase 1: Global Brain (anonymized cross-tenant learning; NO tenant data) ----
+model GlobalBrainInsight {
+  id        String   @id @default(cuid())
+  type      String
+  industry  String   @default("generic")
+  dialect   String   @default("")
+  count     Int      @default(0)
+  weight    Float    @default(0)
+  period    String   @default("all")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([type, industry, dialect, period])
+  @@index([type])
+}
+
+model GlobalBrainPattern {
+  id          String   @id @default(cuid())
+  patternType String   // objection | buying_signal | reply | support_resolution | lead_outcome
+  key         String
+  industry    String   @default("generic")
+  occurrences Int      @default(0)
+  successRate Float    @default(0)
+  sampleSize  Int      @default(0)
+  context     String   @default("")
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@unique([patternType, key, industry])
+  @@index([patternType])
+}
+
+model GlobalBrainKnowledge {
+  id         String   @id @default(cuid())
+  topic      String
+  industry   String   @default("generic")
+  content    String   @default("")
+  score      Float    @default(0)
+  usageCount Int      @default(0)
+  source     String   @default("learning")
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@index([industry])
+}
+
+// ---- Phase 2: Multi-Agent System ----
+model AgentExecution {
+  id             String   @id @default(cuid())
+  userId         String
+  customerId     String?
+  agent          String   // orchestrator | sales | support | crm | order | billing
+  trigger        String   @default("manual")
+  input          String   @default("")
+  status         String   @default("ok") // ok | error | skipped
+  decisionsCount Int      @default(0)
+  actionsCount   Int      @default(0)
+  latencyMs      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, agent, createdAt])
+}
+
+model AgentDecision {
+  id          String   @id @default(cuid())
+  executionId String
+  userId      String
+  agent       String
+  decision    String
+  action      String?
+  confidence  Float    @default(0)
+  reason      String   @default("")
+  payload     String   @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([executionId])
+  @@index([userId, createdAt])
+}
+
+// ---- Phase 3: Action Engine ----
+model ActionExecution {
+  id         String   @id @default(cuid())
+  userId     String
+  customerId String?
+  actionType String   // create_order | update_order | create_ticket | update_crm | schedule_followup | create_reservation | assign_agent | create_broadcast
+  status     String   @default("proposed") // proposed | executed | failed | skipped
+  source     String   @default("agent")    // agent | api | manual
+  dryRun     Boolean  @default(true)
+  refId      String?
+  params     String   @default("{}")
+  result     String   @default("{}")
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, actionType, createdAt])
+}
+
+model ActionAudit {
+  id                String   @id @default(cuid())
+  actionExecutionId String
+  userId            String
+  level             String   @default("info") // info | warn | error
+  message           String
+  payload           String   @default("{}")
+  createdAt         DateTime @default(now())
+
+  @@index([actionExecutionId])
+  @@index([userId, createdAt])
+}
+
+// ---- Phase 9: Brain Marketplace ----
+model BrainMarketplaceListing {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String   @default("")
+  description String   @default("")
+  enabled     Boolean  @default(true)
+  priceUsd    Float    @default(0)
+  installs    Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+// ---- Phase 10: Daily Learning Pipeline ----
+model DailyBrainLearning {
+  id                String   @id @default(cuid())
+  period            String   @unique
+  insightsProcessed Int      @default(0)
+  ordersProcessed   Int      @default(0)
+  patternsCreated   Int      @default(0)
+  patternsUpdated   Int      @default(0)
+  status            String   @default("ok")
+  detail            String   @default("")
+  createdAt         DateTime @default(now())
+}
