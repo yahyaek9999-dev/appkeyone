@@ -176,6 +176,7 @@ export async function runMetaCostReconciler(opts: MetaCostRunOptions = {}): Prom
           userId: b.userId, customerPhone: b.phone, category: b.cat, country,
           conversationKey, windowStart, windowEnd, messageCount: b.count,
           rateUsd: rate.rateUsd, metaCostUsd: rate.metaCostUsd, costUsd: rate.rateUsd,
+          unitCostUsd: rate.rateUsd, conversationType: b.cat,
           billed: false,
         },
       });
@@ -188,7 +189,7 @@ export async function runMetaCostReconciler(opts: MetaCostRunOptions = {}): Prom
         where: { id: existing.id },
         data: locked
           ? { messageCount: b.count }
-          : { messageCount: b.count, category: b.cat, country, rateUsd: rate.rateUsd, metaCostUsd: rate.metaCostUsd, costUsd: rate.rateUsd },
+          : { messageCount: b.count, category: b.cat, country, rateUsd: rate.rateUsd, metaCostUsd: rate.metaCostUsd, costUsd: rate.rateUsd, unitCostUsd: rate.rateUsd, conversationType: b.cat },
       });
       recordId = updated.id;
       costUsd = updated.costUsd;

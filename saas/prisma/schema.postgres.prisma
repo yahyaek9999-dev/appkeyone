@@ -1812,6 +1812,8 @@ model MetaUsageRecord {
   rateUsd         Float    @default(0) // price KEYONE charges the tenant
   metaCostUsd     Float    @default(0) // KEYONE's underlying cost to Meta
   costUsd         Float    @default(0) // billed (= rateUsd) for this conversation
+  unitCostUsd      Float    @default(0)  // explicit per-conversation unit cost (= category rate)
+  conversationType String   @default("") // Meta conversation category/type (marketing|utility|authentication|service)
   billed          Boolean  @default(false)
   walletLedgerId  String?
   source          String   @default("meta_cloud")

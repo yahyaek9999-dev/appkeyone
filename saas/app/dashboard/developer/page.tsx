@@ -7,9 +7,10 @@
  * /api/developer/* (which re-checks the same gate).
  */
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { pageGate } from "@/lib/membership/gate";
 import LockedFeature from "@/components/billing/LockedFeature";
-import { Code2 } from "lucide-react";
+import { Code2, BookOpen } from "lucide-react";
 import DeveloperClient from "./developer-client";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,11 @@ export default async function DeveloperPage() {
             مفاتيح API، مراقبة الاستخدام، حدود المعدّل، وتوثيق الواجهات البرمجية والويب هوك — لبناء تكاملاتك الخاصة فوق KEYONE.
           </p>
         </div>
+        {g.allowed ? (
+          <Link href="/dashboard/developer/docs" className="btn-secondary inline-flex items-center gap-2 text-sm whitespace-nowrap">
+            <BookOpen className="h-4 w-4" /> مركز التوثيق الكامل
+          </Link>
+        ) : null}
       </div>
 
       {!g.allowed ? (
