@@ -2345,3 +2345,186 @@ model DailyBrainLearning {
   detail            String   @default("")
   createdAt         DateTime @default(now())
 }
+
+// ===================== Operations / Billing / Staff =====================
+
+// ---- Phase 1/2: Payment Operations ----
+model PaymentMethod {
+  id           String   @id @default(cuid())
+  key          String   @unique // binance|usdt_trc20|vodafone_cash|instapay|bank_transfer|redotpay|bybit|kast|paypal
+  label        String
+  kind         String   @default("manual") // crypto|wallet|bank|gateway
+  enabled      Boolean  @default(true)
+  instructions String   @default("")
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PaymentAccount {
+  id              String   @id @default(cuid())
+  methodKey       String
+  label           String
+  accountId       String   @default("")
+  assignedStaffId String?
+  enabled         Boolean  @default(true)
+  note            String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([methodKey])
+  @@index([assignedStaffId])
+}
+
+model PaymentProof {
+  id        String   @id @default(cuid())
+  userId    String
+  methodKey String
+  accountId String?
+  planSlug  String   @default("")
+  amountUsd Float    @default(0)
+  reference String   @default("")
+  proofUrl  String   @default("")
+  note      String   @default("")
+  status    String   @default("pending") // pending|approved|rejected
+  reviewId  String?
+  ledgerId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([methodKey, status])
+}
+
+model PaymentReview {
+  id              String   @id @default(cuid())
+  proofId         String   @unique
+  reviewerStaffId String?
+  reviewerEmail   String   @default("")
+  decision        String   // approve|reject
+  note            String   @default("")
+  ledgerId        String?
+  activatedPlan   String?
+  createdAt       DateTime @default(now())
+}
+
+// ---- Phase 3: Staff Management ----
+model StaffDepartment {
+  id          String   @id @default(cuid())
+  key         String   @unique // finance|support|operations|sales|developer|admin
+  label       String
+  leadStaffId String?
+  createdAt   DateTime @default(now())
+}
+
+model StaffMember {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  role          String   @default("support") // owner|admin|finance|support|operations|sales|developer
+  departmentKey String   @default("")
+  status        String   @default("active") // active|suspended
+  permissions   String   @default("[]")
+  performance   Int      @default(0)
+  workload      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([departmentKey, status])
+  @@index([role, status])
+}
+
+model StaffAssignment {
+  id        String   @id @default(cuid())
+  staffId   String
+  kind      String   // payment_method|incident|work
+  refKey    String
+  note      String   @default("")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([staffId, active])
+  @@index([kind, refKey])
+}
+
+model StaffNotification {
+  id        String   @id @default(cuid())
+  staffId   String
+  type      String   @default("info")
+  title     String
+  body      String   @default("")
+  refType   String   @default("")
+  refId     String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([staffId, read, createdAt])
+}
+
+// ---- Phase 4/5/6: Incidents + internal KB ----
+model Issue {
+  id         String   @id @default(cuid())
+  category   String   // payments|billing|wallet|qr|brain|crm|api|customers
+  key        String   @unique
+  title      String
+  problem    String   @default("")
+  cause      String   @default("")
+  resolution String   @default("")
+  department String   @default("operations")
+  severity   String   @default("medium")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([category])
+}
+
+model Incident {
+  id              String    @id @default(cuid())
+  category        String    // payments|wallet|broadcast|api|brain|qr|other
+  source          String    @default("system") // system|customer|staff
+  severity        String    @default("medium")
+  status          String    @default("open") // open|assigned|resolved|closed
+  title           String
+  detail          String    @default("")
+  department      String    @default("operations")
+  assignedStaffId String?
+  issueKey        String?
+  refType         String    @default("")
+  refId           String?
+  userId          String?
+  customerId      String?
+  createdAt       DateTime  @default(now())
+  resolvedAt      DateTime?
+
+  @@index([status, createdAt])
+  @@index([department, status])
+  @@index([assignedStaffId, status])
+  @@index([category, status])
+}
+
+model CustomerProblem {
+  id          String   @id @default(cuid())
+  userId      String
+  customerId  String?
+  category    String   @default("other")
+  description String   @default("")
+  status      String   @default("open") // open|investigating|resolved
+  incidentId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, status])
+}
+
+model Resolution {
+  id                String   @id @default(cuid())
+  incidentId        String
+  resolvedByStaffId String?
+  resolvedByEmail   String   @default("")
+  resolution        String   @default("")
+  rootCause         String   @default("")
+  createdAt         DateTime @default(now())
+
+  @@index([incidentId])
+}

@@ -41,6 +41,13 @@ const HUB_CARDS: Array<{ href: string; label: string; desc: string; icon: any }>
   { href: "/admin/membership-audit", label: "تدقيق عزل الباقات", desc: "تغطية تبويب القدرات المدفوعة عبر الصفحات والـAPIs", icon: Activity },
   { href: "/admin/white-label", label: "العلامة البيضاء", desc: "إعدادات العلامة والألوان والنطاقات عبر المستأجرين", icon: LayoutGrid },
   { href: "/admin/brain/marketplace", label: "متجر الأدمغة", desc: "تفعيل/تعطيل وتسعير أدمغة القطاعات", icon: Coins },
+  { href: "/admin/operations-center", label: "مركز العمليات", desc: "شاشة واحدة: إيراد، مدفوعات معلّقة، التزامات، حوادث، طاقم", icon: Activity },
+  { href: "/admin/payment-reviews", label: "مراجعة المدفوعات", desc: "طابور اعتماد المدفوعات اليدوية → شحن + تفعيل", icon: CreditCard },
+  { href: "/admin/payment-accounts", label: "حسابات الاستلام", desc: "طرق الدفع (9) وحسابات الاستلام للطاقم", icon: Wallet },
+  { href: "/admin/staff", label: "إدارة الطاقم", desc: "إنشاء/إيقاف الطاقم، الأقسام، عبء العمل", icon: Users },
+  { href: "/admin/incidents", label: "الحوادث", desc: "كشف الأعطال وتوجيهها تلقائيًا للأقسام", icon: AlertCircle },
+  { href: "/admin/internal-kb", label: "المعرفة الداخلية", desc: "حلول الأعطال (مشكلة/سبب/حل) للطاقم", icon: BarChart3 },
+  { href: "/admin/memberships", label: "مصفوفة الباقات", desc: "المقارنة الدقيقة لكل الباقات", icon: LayoutGrid },
 ];
 
 export default async function AdminSuperCenterPage() {
