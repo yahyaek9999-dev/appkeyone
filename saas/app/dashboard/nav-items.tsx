@@ -149,6 +149,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "analytics" },
       { href: "/dashboard/playground", label: "ساحة التجربة", icon: FlaskConical, perm: "settings" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
+      { href: "/dashboard/brain", label: "مركز الدماغ", icon: Brain, perm: "settings" },
+      { href: "/dashboard/agents", label: "نظام الوكلاء", icon: Users, perm: "settings" },
     ],
   },
   {
@@ -209,6 +211,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
       { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },
+      { href: "/dashboard/plan", label: "لوحة الباقة", icon: Gauge, perm: "analytics" },
+      { href: "/dashboard/billing", label: "الاشتراك والدفع", icon: Wallet, perm: "billing" },
       { href: "/dashboard/wallet", label: "المحفظة والرصيد", icon: Wallet, perm: "billing" },
       { href: "/dashboard/developer", label: "مركز المطوّرين", icon: Code2, perm: "settings" },
     ],
