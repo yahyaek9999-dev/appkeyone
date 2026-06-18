@@ -34,6 +34,22 @@ export const ADMIN_LINKS = [
   { href: "/admin/knowledge-brain", label: "العقل المعرفي", icon: Brain },
   { href: "/admin/protection-logs", label: "سجل الحماية", icon: Shield },
   { href: "/admin/whatsapp", label: "حالة واتساب", icon: Phone },
+  // Operations & Billing
+  { href: "/admin/operations-center", label: "مركز العمليات", icon: Activity },
+  { href: "/admin/payment-reviews", label: "مراجعة المدفوعات", icon: CreditCard },
+  { href: "/admin/payment-accounts", label: "حسابات الاستلام", icon: Wallet },
+  { href: "/admin/staff", label: "إدارة الطاقم", icon: Users },
+  { href: "/admin/incidents", label: "الحوادث", icon: ShieldCheck },
+  { href: "/admin/internal-kb", label: "المعرفة الداخلية", icon: BarChart3 },
+  { href: "/admin/memberships", label: "مصفوفة الباقات", icon: Crown },
+  { href: "/admin/membership-audit", label: "تدقيق عزل الباقات", icon: Shield },
+  // Brain & Intelligence
+  { href: "/admin/brain", label: "مركز الدماغ", icon: Brain },
+  { href: "/admin/brain/global", label: "الدماغ العالمي", icon: Brain },
+  { href: "/admin/brain/marketplace", label: "متجر الأدمغة", icon: Coins },
+  { href: "/admin/agents", label: "مركز الوكلاء", icon: Users },
+  { href: "/admin/reports", label: "التقارير التنفيذية", icon: BarChart3 },
+  { href: "/admin/white-label", label: "العلامة البيضاء", icon: LayoutGrid },
   { href: "/admin/settings", label: "إعدادات الموقع", icon: Settings },
 ];
 
