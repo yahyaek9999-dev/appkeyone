@@ -6,6 +6,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { checkLimit, incrementUsage } from "@/lib/membership/limits";
 import { buildAudienceWhere } from "@/lib/broadcasts/audience";
 import { resolveSegmentCustomers } from "@/lib/analytics/segments";
+import { enforceWalletForSend, blockedSendMessage } from "@/lib/wallet/enforce";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,25 @@ export async function POST(req: Request) {
         cap: decision.cap,
       },
       { status: 403 }
+    );
+  }
+
+  // ---- Wallet balance gate (additive, flag-gated WALLET_ENFORCE_SENDS) -------
+  // Boundary enforcement: when prepaid billing enforcement is ON and the wallet
+  // is empty/suspended, block the broadcast HERE — before anything is queued —
+  // and record a billing audit + notify the merchant. The protected send
+  // pipeline (lib/messaging/*, the drain cron) is untouched. Default OFF →
+  // walletAllowsSend() fails open, so this is a no-op until an operator opts in.
+  const walletGate = await enforceWalletForSend(uid, "broadcast");
+  if (!walletGate.allowed) {
+    return NextResponse.json(
+      {
+        error: blockedSendMessage(walletGate.reason, walletGate.balance),
+        reason: walletGate.reason,
+        balance: walletGate.balance,
+        code: "insufficient_balance",
+      },
+      { status: 402 }
     );
   }
 

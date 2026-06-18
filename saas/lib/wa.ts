@@ -61,4 +61,21 @@ export const wa = {
   send: enqueueSend,
   sendNow,
   logout: (userId: string) => call(`/sessions/${userId}`, { method: "DELETE" }),
+  // ---- Smart QR Pool controls (additive; used by the slot scheduler) ----
+  /** Wake a hibernated session on demand (books it into the active pool). */
+  wake: (userId: string) => call(`/sessions/${userId}/wake`, { method: "POST" }),
+  /** Pool-wide stats (active/hibernated counts) for slot-capacity decisions. */
+  stats: () => call(`/sessions/stats`),
+  /**
+   * One-time import data export (contacts + recent chat history) from a live
+   * session. Read-only; backed by an additive whatsapp-service endpoint. Returns
+   * { ok:false } gracefully if the service/endpoint is unavailable.
+   */
+  exportData: (userId: string, opts?: { chatLimit?: number; msgLimit?: number }) => {
+    const q = new URLSearchParams();
+    if (opts?.chatLimit) q.set("chatLimit", String(opts.chatLimit));
+    if (opts?.msgLimit) q.set("msgLimit", String(opts.msgLimit));
+    const qs = q.toString();
+    return call(`/sessions/${userId}/export${qs ? "?" + qs : ""}`);
+  },
 };

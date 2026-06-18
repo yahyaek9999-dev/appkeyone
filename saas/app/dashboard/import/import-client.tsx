@@ -1,0 +1,306 @@
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  DownloadCloud, Loader2, CheckCircle2, XCircle, AlertTriangle, Clock,
+  ScanLine, DatabaseZap, Users, MessageSquare, Brain, Inbox, RefreshCw,
+} from "lucide-react";
+
+type ImportSession = {
+  id: string;
+  status: string;
+  qrJobId: string | null;
+  contactsFound: number;
+  contactsImported: number;
+  conversationsImported: number;
+  messagesImported: number;
+  customersCreated: number;
+  memoriesBuilt: number;
+  error: string | null;
+  requestedAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  closedAt: string | null;
+};
+type ImportLog = { id: string; level: string; message: string; createdAt: string };
+type ImportedCustomer = { id: string; name: string | null; phone: string; createdAt: string };
+
+// Lifecycle: requested|queued|scheduled|scanning|importing|completed|closed|failed
+const IN_PROGRESS = new Set(["requested", "queued", "scheduled", "scanning", "importing"]);
+const DONE = new Set(["completed", "closed"]);
+
+// Stepper stages → the session statuses that map onto each visual step.
+const STEPS: Array<{ key: string; label: string; icon: React.ComponentType<any>; statuses: string[] }> = [
+  { key: "requested", label: "طلب", icon: Clock, statuses: ["requested"] },
+  { key: "queued", label: "طابور", icon: Inbox, statuses: ["queued", "scheduled"] },
+  { key: "scanning", label: "مسح", icon: ScanLine, statuses: ["scanning"] },
+  { key: "importing", label: "استيراد", icon: DatabaseZap, statuses: ["importing"] },
+  { key: "completed", label: "اكتمل", icon: CheckCircle2, statuses: ["completed", "closed"] },
+];
+
+function stepIndex(status: string): number {
+  const i = STEPS.findIndex((s) => s.statuses.includes(status));
+  return i === -1 ? 0 : i;
+}
+
+export default function ImportClient() {
+  const [session, setSession] = useState<ImportSession | null>(null);
+  const [queuePosition, setQueuePosition] = useState(0);
+  const [logs, setLogs] = useState<ImportLog[]>([]);
+  const [customers, setCustomers] = useState<ImportedCustomer[]>([]);
+  const [memoriesBuilt, setMemoriesBuilt] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const resultsLoadedFor = useRef<string | null>(null);
+
+  const loadSession = useCallback(async () => {
+    try {
+      const r = await fetch("/api/import", { cache: "no-store" });
+      const j = await r.json();
+      if (j.ok) {
+        setSession(j.session || null);
+        setQueuePosition(j.queuePosition || 0);
+        setLogs(j.logs || []);
+      }
+    } catch {} finally { setLoaded(true); }
+  }, []);
+
+  const loadResults = useCallback(async () => {
+    try {
+      const r = await fetch("/api/import/results", { cache: "no-store" });
+      const j = await r.json();
+      if (j.ok) {
+        setCustomers(j.customers || []);
+        setMemoriesBuilt(j.memoriesBuilt || 0);
+        if (j.session) setSession((prev) => prev ?? j.session);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => { loadSession(); }, [loadSession]);
+
+  // Poll every 3s while the import is in progress.
+  useEffect(() => {
+    if (!session || !IN_PROGRESS.has(session.status)) return;
+    const t = setInterval(loadSession, 3000);
+    return () => clearInterval(t);
+  }, [session, loadSession]);
+
+  // Load results once when the import is done.
+  useEffect(() => {
+    if (session && DONE.has(session.status) && resultsLoadedFor.current !== session.id) {
+      resultsLoadedFor.current = session.id;
+      loadResults();
+    }
+  }, [session, loadResults]);
+
+  async function start() {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await fetch("/api/import", { method: "POST" });
+      const j = await r.json();
+      if (j.ok) {
+        setSession(j.session || null);
+        if (j.alreadyExists) setMsg({ ok: true, text: "الاستيراد موجود بالفعل لهذا الحساب." });
+        else setMsg({ ok: true, text: "تم بدء الاستيراد ودخوله في طابور الـ QR." });
+        loadSession();
+      } else {
+        setMsg({ ok: false, text: j.detail || j.error || "تعذّر بدء الاستيراد" });
+      }
+    } catch { setMsg({ ok: false, text: "خطأ في الشبكة" }); }
+    finally { setBusy(false); }
+  }
+
+  const status = session?.status || null;
+  const inProgress = !!status && IN_PROGRESS.has(status);
+  const done = !!status && DONE.has(status);
+  const failed = status === "failed";
+  // The big button is disabled once a session exists and is not failed.
+  const startDisabled = busy || (!!session && !failed);
+
+  return (
+    <div className="space-y-6">
+      {/* ── Import Dashboard: the one-time start action ── */}
+      <div className="card p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-xl">
+            <h2 className="font-bold text-lg flex items-center gap-2 mb-1">
+              <DownloadCloud className="h-5 w-5 text-brand-300" /> استيراد لمرة واحدة
+            </h2>
+            <p className="text-sm text-slate-400">
+              عند الضغط، نحجز جلسة الواتساب الخاصة بك داخل طابور الـ QR، ثم نسحب جهات الاتصال وآخر المحادثات
+              ونحوّلها إلى سجلات عملاء دائمة وذاكرة للذكاء الاصطناعي. لا تُرسَل أي رسالة أثناء الاستيراد.
+            </p>
+            <p className="text-xs text-amber-300/90 mt-2 flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" /> هذه العملية متاحة مرة واحدة فقط لكل حساب — بعد اكتمالها تُغلق نهائيًا ولا يمكن تكرارها.
+            </p>
+          </div>
+          <button
+            onClick={start}
+            disabled={startDisabled}
+            className="btn-primary justify-center disabled:opacity-50 shrink-0"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4" />}
+            {failed ? "إعادة محاولة الاستيراد" : "ابدأ الاستيراد (مرة واحدة)"}
+          </button>
+        </div>
+
+        {msg && (
+          <div className={`mt-4 text-sm flex items-center gap-1.5 ${msg.ok ? "text-emerald-300" : "text-rose-300"}`}>
+            {msg.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />} {msg.text}
+          </div>
+        )}
+
+        {loaded && !session && (
+          <div className="mt-4 rounded-xl bg-white/[0.03] p-3 text-xs text-slate-400">
+            لم تبدأ أي عملية استيراد بعد. اضغط الزر بالأعلى للبدء.
+          </div>
+        )}
+
+        {done && (
+          <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3 text-sm text-emerald-200 flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" /> اكتمل الاستيراد وأُغلق نهائيًا. بياناتك السابقة الآن داخل النظام.
+          </div>
+        )}
+        {failed && (
+          <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] p-3 text-sm text-rose-200 flex items-center gap-2">
+            <XCircle className="h-4 w-4" /> فشل الاستيراد{session?.error ? ` (${session.error})` : ""}. يمكنك إعادة المحاولة.
+          </div>
+        )}
+      </div>
+
+      {/* ── Import Progress: status stepper ── */}
+      {session && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-5 gap-2 flex-wrap">
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <RefreshCw className={`h-4 w-4 text-brand-300 ${inProgress ? "animate-spin" : ""}`} /> تقدّم الاستيراد
+            </h2>
+            {inProgress && session.status === "queued" && queuePosition > 0 && (
+              <span className="text-xs rounded-full bg-amber-500/20 text-amber-300 px-2.5 py-0.5">
+                ترتيبك في الطابور: {queuePosition}
+              </span>
+            )}
+            {inProgress && session.status !== "queued" && (
+              <span className="text-xs rounded-full bg-brand-500/20 text-brand-200 px-2.5 py-0.5">جارٍ المعالجة…</span>
+            )}
+          </div>
+          <Stepper status={session.status} />
+          {logs.length > 0 && (
+            <div className="mt-5 border-t border-white/5 pt-3">
+              <div className="text-xs text-slate-400 mb-2">آخر السجلّات</div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {logs.map((l) => (
+                  <div key={l.id} className="flex items-start gap-2 text-xs">
+                    <span className={
+                      l.level === "error" ? "text-rose-400" : l.level === "warn" ? "text-amber-400" : "text-slate-500"
+                    }>•</span>
+                    <span className="text-slate-500 whitespace-nowrap">
+                      {new Date(l.createdAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className="text-slate-300">{l.message}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Import Results: counts ── */}
+      {session && (done || inProgress) && (
+        <div className="card p-5">
+          <h2 className="font-bold text-lg mb-4">نتائج الاستيراد</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat icon={<Users className="h-5 w-5 text-sky-300" />} label="جهات الاتصال" value={session.contactsImported} sub={`من ${session.contactsFound}`} />
+            <Stat icon={<MessageSquare className="h-5 w-5 text-brand-300" />} label="المحادثات" value={session.conversationsImported} />
+            <Stat icon={<Inbox className="h-5 w-5 text-slate-300" />} label="الرسائل" value={session.messagesImported} />
+            <Stat icon={<Users className="h-5 w-5 text-emerald-300" />} label="عملاء جدد" value={session.customersCreated} />
+            <Stat icon={<Brain className="h-5 w-5 text-violet-300" />} label="ذاكرة مبنية" value={done ? memoriesBuilt || session.memoriesBuilt : session.memoriesBuilt} />
+            <Stat icon={<DatabaseZap className="h-5 w-5 text-amber-300" />} label="إجمالي مستورد" value={session.contactsImported + session.conversationsImported} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Imported Customers table ── */}
+      {done && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <Users className="h-4 w-4 text-emerald-300" /> العملاء المستوردون
+            </h2>
+            <span className="text-xs text-slate-500">{session?.conversationsImported || 0} محادثة مستوردة</span>
+          </div>
+          {customers.length === 0 ? (
+            <div className="text-slate-500 text-sm py-6 text-center">لا توجد سجلات عملاء مستوردة.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-slate-400 border-b border-white/5">
+                    <th className="text-right p-2">الاسم</th>
+                    <th className="text-right p-2">الرقم</th>
+                    <th className="text-right p-2">أُضيف في</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customers.map((c) => (
+                    <tr key={c.id} className="border-t border-white/5">
+                      <td className="p-2 font-semibold">{c.name || "—"}</td>
+                      <td className="p-2 font-mono text-slate-300 whitespace-nowrap" dir="ltr">{c.phone}</td>
+                      <td className="p-2 text-slate-500 whitespace-nowrap">{new Date(c.createdAt).toLocaleDateString("ar-EG")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {customers.length >= 50 && (
+                <p className="text-xs text-slate-500 mt-3">تُعرض أول 50 سجلًا فقط — البقية متاحة في صفحة العملاء.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stepper({ status }: { status: string }) {
+  const active = stepIndex(status);
+  const isFailed = status === "failed";
+  return (
+    <div className="flex items-center">
+      {STEPS.map((step, i) => {
+        const Icon = step.icon;
+        const reached = i <= active && !isFailed;
+        const current = i === active && !isFailed && !DONE.has(status);
+        return (
+          <div key={step.key} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={
+                "flex h-9 w-9 items-center justify-center rounded-full border transition-colors " +
+                (reached ? "border-brand-400/50 bg-brand-500/20 text-brand-200" : "border-white/10 bg-white/[0.03] text-slate-500")
+              }>
+                {current ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+              </div>
+              <span className={"text-[11px] " + (reached ? "text-slate-200" : "text-slate-500")}>{step.label}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={"h-0.5 flex-1 mx-1 rounded " + (i < active && !isFailed ? "bg-brand-400/50" : "bg-white/10")} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Stat({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: number; sub?: string }) {
+  return (
+    <div className="rounded-xl bg-white/[0.03] p-3">
+      <div className="flex items-center gap-1.5 text-slate-400 text-xs mb-1.5">{icon}<span>{label}</span></div>
+      <div className="text-xl font-extrabold text-white">{(value || 0).toLocaleString("ar-EG")}</div>
+      {sub && <div className="text-[10px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  );
+}

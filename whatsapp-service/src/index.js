@@ -145,6 +145,134 @@ app.post('/sessions/:userId/wake', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// One-Time QR Import — READ-ONLY data export (Phase 3, additive).
+//
+// Pulls the tenant's existing WhatsApp contacts + recent chat history from the
+// LIVE session so the saas can build permanent CRM records + AI memory ONCE.
+// This endpoint NEVER sends a message and NEVER touches the send pipeline — it
+// only reads via whatsapp-web.js (getContacts / getChats / chat.fetchMessages).
+// Everything is wrapped so a slow/large account can never crash the service.
+// ---------------------------------------------------------------------------
+const EXPORT_OP_TIMEOUT_MS = Math.max(15_000, Number(process.env.WA_EXPORT_OP_TIMEOUT_MS || 60_000));
+const EXPORT_CONNECT_WAIT_MS = Math.max(10_000, Number(process.env.WA_EXPORT_CONNECT_WAIT_MS || 30_000));
+const EXPORT_MAX_CHAT_LIMIT = Math.max(1, Number(process.env.WA_EXPORT_MAX_CHATS || 1000));
+const EXPORT_MAX_MSG_LIMIT = Math.max(1, Number(process.env.WA_EXPORT_MAX_MSGS || 100));
+
+// Bound any single whatsapp-web.js read so a hung Chromium can't wedge the request.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`timeout:${label}`)), ms)),
+  ]);
+}
+
+const digitsOnly = (v) => String(v || '').replace(/[^\d]/g, '');
+
+// Resolve a real, dialable phone from a contact/chat id (skip @lid / @g.us).
+function phoneFromId(idObj, fallbackNumber) {
+  const serialized = idObj?._serialized || '';
+  if (typeof serialized === 'string' && serialized.endsWith('@c.us')) {
+    return digitsOnly(serialized.replace('@c.us', ''));
+  }
+  const user = idObj?.user;
+  if (user && /^\d{6,15}$/.test(String(user))) return String(user);
+  const fb = digitsOnly(fallbackNumber);
+  return fb || null;
+}
+
+app.get('/sessions/:userId/export', async (req, res) => {
+  const userId = req.params.userId;
+  const chatLimit = Math.min(EXPORT_MAX_CHAT_LIMIT, Math.max(1, parseInt(req.query.chatLimit, 10) || 200));
+  const msgLimit = Math.min(EXPORT_MAX_MSG_LIMIT, Math.max(1, parseInt(req.query.msgLimit, 10) || 30));
+
+  try {
+    // 1) Ensure we have a live, connected client. Wake/start as needed — but we
+    //    NEVER create a fresh QR login here; if auth is gone the session simply
+    //    won't reach 'connected' and we return 409.
+    let s = manager.get(userId);
+    if (!s) {
+      // Try to auto-start from saved auth on disk (no QR forced).
+      try { s = await manager.start(userId); } catch { s = manager.get(userId); }
+    }
+    if (s && (s.status === 'hibernated' || s.status === 'idle-closed' || s.status === 'disconnected')) {
+      try { await manager._wakeSession(userId); } catch {}
+      try { if (manager.get(userId)?.status !== 'connected') await manager.start(userId); } catch {}
+      s = manager.get(userId) || s;
+    }
+    // Wait (bounded) for the session to settle into 'connected'.
+    const deadline = Date.now() + EXPORT_CONNECT_WAIT_MS;
+    while (Date.now() < deadline && s && s.status !== 'connected') {
+      await sleep(500);
+      s = manager.get(userId) || s;
+    }
+    if (!s || !s.client || s.status !== 'connected') {
+      return res.status(409).json({ ok: false, error: 'not_connected', status: s?.status || 'missing' });
+    }
+    const client = s.client;
+    if (s) s.lastActivityAt = Date.now(); // touch so the idle sweeper doesn't evict mid-export
+
+    // 2) Contacts → [{ phone, name }] (skip groups, self, and non-WA entries).
+    const contacts = [];
+    const seenPhones = new Set();
+    try {
+      const raw = await withTimeout(client.getContacts(), EXPORT_OP_TIMEOUT_MS, 'getContacts');
+      for (const c of raw || []) {
+        try {
+          if (!c || c.isGroup || c.isMe) continue;
+          // Only keep entries that are actually WhatsApp users with a phone.
+          if (c.isWAContact === false) continue;
+          if (c.id?._serialized && c.id._serialized.endsWith('@g.us')) continue;
+          const phone = phoneFromId(c.id, c.number);
+          if (!phone || phone.length < 8 || phone.length > 15) continue;
+          if (seenPhones.has(phone)) continue;
+          seenPhones.add(phone);
+          const name = c.name || c.pushname || c.shortName || null;
+          contacts.push({ phone, name });
+        } catch { /* skip a bad contact, keep going */ }
+      }
+    } catch (e) {
+      // Non-fatal: continue with whatever we have (possibly empty).
+      console.warn(`[wa] [${userId}] export getContacts failed:`, e?.message || e);
+    }
+
+    // 3) Chats → [{ phone, name, messages:[{ fromMe, body, ts }] }] (skip groups).
+    const chats = [];
+    try {
+      const allChats = await withTimeout(client.getChats(), EXPORT_OP_TIMEOUT_MS, 'getChats');
+      const direct = (allChats || []).filter((ch) => ch && !ch.isGroup).slice(0, chatLimit);
+      for (const ch of direct) {
+        try {
+          if (ch.id?._serialized && ch.id._serialized.endsWith('@g.us')) continue;
+          const phone = phoneFromId(ch.id, ch.id?.user);
+          if (!phone || phone.length < 8 || phone.length > 15) continue;
+          let msgs = [];
+          try {
+            const fetched = await withTimeout(ch.fetchMessages({ limit: msgLimit }), EXPORT_OP_TIMEOUT_MS, 'fetchMessages');
+            msgs = (fetched || []).map((m) => ({
+              fromMe: !!m.fromMe,
+              body: typeof m.body === 'string' ? m.body.slice(0, 4000) : '',
+              ts: m.timestamp ? m.timestamp * 1000 : null,
+            }));
+          } catch (e) {
+            console.warn(`[wa] [${userId}] export fetchMessages(${phone}) failed:`, e?.message || e);
+          }
+          chats.push({ phone, name: ch.name || null, messages: msgs });
+        } catch { /* skip a bad chat, keep going */ }
+      }
+    } catch (e) {
+      console.warn(`[wa] [${userId}] export getChats failed:`, e?.message || e);
+    }
+
+    if (s) s.lastActivityAt = Date.now();
+    return res.json({ ok: true, contacts, chats });
+  } catch (e) {
+    // Last-resort guard: never crash the service on an export.
+    console.error(`[wa] [${userId}] export fatal:`, e?.message || e);
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 // Pool stats — used by the admin dashboard to monitor capacity on the 8GB VPS
 app.get('/sessions/stats', (_req, res) => {
   res.json({ ok: true, ...manager.stats(), sessions: manager.list() });

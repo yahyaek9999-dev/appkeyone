@@ -133,6 +133,8 @@ export interface TierLimits {
   automations: number;
   /** Knowledge-base documents. 0 = unlimited (only when knowledge_base capability is on). */
   kbDocs: number;
+  /** CRM customer records. 0 = unlimited. Enforced only when grandfathering keeps existing tenants safe. */
+  customers: number;
 }
 
 export interface TierDef {
@@ -172,7 +174,7 @@ export const TIERS: TierDef[] = [
     internalTier: "basic",
     metaAccess: "none",
     analyticsAccess: "basic",
-    limits: { messages: 1000, ai: 500, broadcasts: 0, whatsapp: 1, team: 1, automations: 0, kbDocs: 0 },
+    limits: { messages: 1000, ai: 500, broadcasts: 0, whatsapp: 1, team: 1, automations: 0, kbDocs: 0, customers: 1000 },
   },
   {
     slug: "k_growth",
@@ -189,7 +191,7 @@ export const TIERS: TierDef[] = [
     internalTier: "pro",
     metaAccess: "none",
     analyticsAccess: "basic",
-    limits: { messages: 5000, ai: 3000, broadcasts: 4, whatsapp: 1, team: 3, automations: 5, kbDocs: 0 },
+    limits: { messages: 5000, ai: 3000, broadcasts: 4, whatsapp: 1, team: 3, automations: 5, kbDocs: 0, customers: 5000 },
   },
   {
     slug: "k_pro",
@@ -209,7 +211,7 @@ export const TIERS: TierDef[] = [
     internalTier: "pro",
     metaAccess: "limited",
     analyticsAccess: "advanced",
-    limits: { messages: 15000, ai: 10000, broadcasts: 12, whatsapp: 2, team: 5, automations: 20, kbDocs: 0 },
+    limits: { messages: 15000, ai: 10000, broadcasts: 12, whatsapp: 2, team: 5, automations: 20, kbDocs: 0, customers: 15000 },
   },
   {
     slug: "k_business",
@@ -227,7 +229,7 @@ export const TIERS: TierDef[] = [
     internalTier: "max",
     metaAccess: "limited",
     analyticsAccess: "advanced",
-    limits: { messages: 40000, ai: 30000, broadcasts: 30, whatsapp: 3, team: 10, automations: 50, kbDocs: 0 },
+    limits: { messages: 40000, ai: 30000, broadcasts: 30, whatsapp: 3, team: 10, automations: 50, kbDocs: 0, customers: 40000 },
   },
   {
     slug: "k_scale",
@@ -245,7 +247,7 @@ export const TIERS: TierDef[] = [
     internalTier: "max",
     metaAccess: "full",
     analyticsAccess: "advanced",
-    limits: { messages: 100000, ai: 80000, broadcasts: 100, whatsapp: 6, team: 25, automations: 0, kbDocs: 0 },
+    limits: { messages: 100000, ai: 80000, broadcasts: 100, whatsapp: 6, team: 25, automations: 0, kbDocs: 0, customers: 200000 },
   },
   {
     slug: "k_enterprise",
@@ -264,7 +266,7 @@ export const TIERS: TierDef[] = [
     internalTier: "companies",
     metaAccess: "full",
     analyticsAccess: "advanced",
-    limits: { messages: 0, ai: 0, broadcasts: 0, whatsapp: 0, team: 0, automations: 0, kbDocs: 0 },
+    limits: { messages: 0, ai: 0, broadcasts: 0, whatsapp: 0, team: 0, automations: 0, kbDocs: 0, customers: 0 },
   },
 ];
 
@@ -313,6 +315,7 @@ export function featureFlagsForTier(tier: TierDef): Record<string, boolean | num
   flags.team = tier.limits.team;
   flags.automations = tier.limits.automations;
   flags.kbDocs = tier.limits.kbDocs;
+  flags.customers = tier.limits.customers;
   return flags;
 }
 

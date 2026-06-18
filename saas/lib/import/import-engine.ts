@@ -1,0 +1,188 @@
+/**
+ * lib/import/import-engine.ts — One-Time QR Import (Phase 3).
+ *
+ * Imports a tenant's existing WhatsApp contacts + recent chat history ONCE into
+ * permanent CRM records (Customer) and AI memory (CustomerMemory). One-time is
+ * enforced by ImportSession.userId being @unique — a completed/closed session is
+ * never reopened.
+ *
+ * Activation semantics (honored): imported customers are flagged
+ * `historicalImported=true` and do NOT get `keyoneActivatedAt` — historical data
+ * is visible but does not start billing/safety/warmup until the first LIVE
+ * inbound, exactly like the existing import-awareness fields expect.
+ *
+ * The slot handler (`runImportJob`) wakes the booked session, pulls data via the
+ * additive whatsapp-service export endpoint (wa.exportData — read-only, never the
+ * send pipeline), then runs the pure builders. `importData` is callable directly
+ * with data for testing.
+ */
+
+import { prisma } from "@/lib/db";
+import { wa } from "@/lib/wa";
+import { audit } from "@/lib/audit/log";
+import { completeJob, failJob } from "@/lib/qr-pool/scheduler";
+
+export interface ImportContact { phone: string; name?: string | null }
+export interface ImportMessage { fromMe?: boolean; body?: string; ts?: number }
+export interface ImportChat { phone: string; name?: string | null; messages?: ImportMessage[] }
+export interface ImportData { contacts?: ImportContact[]; chats?: ImportChat[] }
+
+const REOPENABLE = new Set(["failed"]);
+
+/** Normalize a WhatsApp id/phone to a CRM phone key (digits, optional leading +). */
+function normPhone(raw: string): string {
+  const cleaned = String(raw || "").replace(/@c\.us|@s\.whatsapp\.net|@g\.us/gi, "").trim();
+  const digits = cleaned.replace(/[^\d]/g, "");
+  if (!digits) return "";
+  return cleaned.startsWith("+") ? "+" + digits : digits;
+}
+
+export async function getImportSession(userId: string) {
+  return prisma.importSession.findUnique({ where: { userId } });
+}
+
+/**
+ * Request the one-time import. Idempotent: returns the existing session unless it
+ * previously failed (then it is reset + re-queued). Throws nothing.
+ */
+export async function requestImport(userId: string): Promise<{ session: any; alreadyExists: boolean }> {
+  const existing = await prisma.importSession.findUnique({ where: { userId } });
+  if (existing && !REOPENABLE.has(existing.status)) {
+    return { session: existing, alreadyExists: true };
+  }
+  const session = existing
+    ? await prisma.importSession.update({ where: { userId }, data: { status: "queued", error: null, requestedAt: new Date() } })
+    : await prisma.importSession.create({ data: { userId, status: "queued" } });
+
+  const { enqueueJob } = await import("@/lib/qr-pool/scheduler");
+  const job = await enqueueJob({ userId, type: "import", refId: session.id, priority: 5 });
+  await prisma.importSession.update({ where: { id: session.id }, data: { qrJobId: job.id } });
+  await log(userId, session.id, "info", "تم طلب الاستيراد وإدخاله في طابور QR");
+  void audit({ userId, action: "import.requested", targetType: "import_session", targetId: session.id });
+  return { session, alreadyExists: false };
+}
+
+/** Append an import log line (best-effort). */
+export async function log(userId: string, importSessionId: string, level: "info" | "warn" | "error", message: string, payload?: Record<string, unknown>) {
+  await prisma.importLog.create({ data: { userId, importSessionId, level, message: message.slice(0, 500), payload: safeJson(payload) } }).catch(() => {});
+}
+
+/**
+ * PURE-ish builder: turn export data into permanent CRM + AI-memory records.
+ * Idempotent per (userId, phone): re-running updates instead of duplicating.
+ * Returns counters. Used by the slot handler and directly by tests.
+ */
+export async function importData(userId: string, sessionId: string, data: ImportData): Promise<{
+  contactsFound: number; contactsImported: number; conversationsImported: number; messagesImported: number; customersCreated: number; memoriesBuilt: number;
+}> {
+  const contacts = Array.isArray(data.contacts) ? data.contacts : [];
+  const chats = Array.isArray(data.chats) ? data.chats : [];
+  let contactsImported = 0, conversationsImported = 0, messagesImported = 0, customersCreated = 0, memoriesBuilt = 0;
+
+  // 1) Contacts → Customer rows (historicalImported, NOT activated).
+  for (const c of contacts) {
+    const phone = normPhone(c.phone);
+    if (!phone) continue;
+    const existing = await prisma.customer.findUnique({ where: { userId_phone: { userId, phone } } }).catch(() => null);
+    if (existing) {
+      await prisma.customer.update({ where: { id: existing.id }, data: { name: existing.name || c.name || null, historicalImported: true } }).catch(() => {});
+    } else {
+      await prisma.customer.create({ data: { userId, phone, name: c.name || null, historicalImported: true } }).catch(() => null);
+      customersCreated++;
+    }
+    contactsImported++;
+  }
+
+  // 2) Chats → ensure Customer + build AI memory from message history.
+  for (const chat of chats) {
+    const phone = normPhone(chat.phone);
+    if (!phone) continue;
+    let customer = await prisma.customer.findUnique({ where: { userId_phone: { userId, phone } } }).catch(() => null);
+    if (!customer) {
+      customer = await prisma.customer.create({ data: { userId, phone, name: chat.name || null, historicalImported: true } }).catch(() => null);
+      if (customer) customersCreated++;
+    }
+    if (!customer) continue;
+    const msgs = Array.isArray(chat.messages) ? chat.messages : [];
+    if (msgs.length === 0) continue;
+    conversationsImported++;
+    messagesImported += msgs.length;
+
+    const summary = buildMemorySummary(chat.name || phone, msgs);
+    const facts = buildFacts(msgs);
+    await prisma.customerMemory.upsert({
+      where: { customerId: customer.id },
+      create: { customerId: customer.id, summary, factsJson: safeJson(facts), messageCount: msgs.length },
+      update: { summary, factsJson: safeJson(facts), messageCount: msgs.length },
+    }).catch(() => {});
+    memoriesBuilt++;
+
+    // Stamp inbound counters from historical inbound messages (no activation).
+    const inbound = msgs.filter((m) => !m.fromMe).length;
+    if (inbound > 0) {
+      await prisma.customer.update({ where: { id: customer.id }, data: { inboundCount: { increment: inbound }, historicalImported: true } }).catch(() => {});
+    }
+  }
+
+  await prisma.importSession.update({
+    where: { id: sessionId },
+    data: { contactsFound: contacts.length, contactsImported, conversationsImported, messagesImported, customersCreated, memoriesBuilt },
+  }).catch(() => {});
+
+  return { contactsFound: contacts.length, contactsImported, conversationsImported, messagesImported, customersCreated, memoriesBuilt };
+}
+
+/** Slot handler: wake the session, export data, build CRM + memory, close. */
+export async function runImportJob(job: { id: string; userId: string; refId: string }): Promise<{ done?: boolean; error?: string }> {
+  const session = await prisma.importSession.findUnique({ where: { id: job.refId } });
+  if (!session) { await completeJob(job.id, { error: "session_not_found" }); return { done: true, error: "session_not_found" }; }
+  if (session.status === "completed" || session.status === "closed") { await completeJob(job.id, { skipped: true }); return { done: true }; }
+
+  try {
+    await prisma.importSession.update({ where: { id: session.id }, data: { status: "scanning", startedAt: session.startedAt || new Date() } });
+    await wa.wake(job.userId).catch(() => {});
+    await log(job.userId, session.id, "info", "تم إيقاظ جلسة QR، جاري سحب البيانات");
+
+    const exp = await wa.exportData(job.userId, { chatLimit: 500, msgLimit: 50 });
+    if (!exp.ok) {
+      await log(job.userId, session.id, "error", "تعذّر سحب بيانات الواتساب", { status: exp.status });
+      await prisma.importSession.update({ where: { id: session.id }, data: { status: "failed", error: "export_unavailable" } });
+      await failJob(job.id, "export_unavailable", { retry: true });
+      return { done: false, error: "export_unavailable" };
+    }
+
+    await prisma.importSession.update({ where: { id: session.id }, data: { status: "importing" } });
+    const data = (exp.data || {}) as ImportData;
+    const counts = await importData(job.userId, session.id, data);
+    await log(job.userId, session.id, "info", "اكتمل الاستيراد", counts as any);
+
+    // One-time: complete + close forever.
+    await prisma.importSession.update({ where: { id: session.id }, data: { status: "closed", completedAt: new Date(), closedAt: new Date() } });
+    await completeJob(job.id, counts);
+    void audit({ userId: job.userId, action: "import.completed", targetType: "import_session", targetId: session.id, metadata: counts });
+    return { done: true };
+  } catch (e: any) {
+    await prisma.importSession.update({ where: { id: session.id }, data: { status: "failed", error: String(e?.message || e).slice(0, 300) } }).catch(() => {});
+    await failJob(job.id, String(e?.message || e), { retry: true });
+    return { done: false, error: String(e?.message || e) };
+  }
+}
+
+// ── memory builders (heuristic, no LLM tokens) ───────────────────────────────
+function buildMemorySummary(who: string, msgs: ImportMessage[]): string {
+  const inbound = msgs.filter((m) => !m.fromMe).length;
+  const outbound = msgs.length - inbound;
+  const lastTexts = msgs.slice(-6).map((m) => `${m.fromMe ? "نحن" : "العميل"}: ${String(m.body || "").slice(0, 80)}`).join(" | ");
+  return `سجل مستورد لـ ${who}: ${msgs.length} رسالة (${inbound} واردة، ${outbound} صادرة). آخر الرسائل — ${lastTexts}`.slice(0, 1000);
+}
+
+function buildFacts(msgs: ImportMessage[]): Record<string, unknown> {
+  const texts = msgs.map((m) => String(m.body || "")).join(" ").toLowerCase();
+  const topics: string[] = [];
+  for (const [kw, tag] of [["سعر", "price"], ["شحن", "shipping"], ["مقاس", "size"], ["لون", "color"], ["خصم", "discount"]] as const) {
+    if (texts.includes(kw)) topics.push(tag);
+  }
+  return { imported: true, messageCount: msgs.length, firstTs: msgs[0]?.ts || null, lastTs: msgs[msgs.length - 1]?.ts || null, topics };
+}
+
+function safeJson(v: unknown): string { try { return JSON.stringify(v || {}); } catch { return "{}"; } }

@@ -335,6 +335,11 @@ model Subscription {
   aiRequestsUsed Int       @default(0)
   broadcastsUsed Int       @default(0)
   usageResetAt   DateTime?
+
+  // ---- Customer Cap (additive, grandfather floor) ----
+  // Optional per-tenant contracted customer ceiling. Null = use the plan limit.
+  // Used only as a non-shrinking floor so existing tenants are never broken.
+  contractedCustomers Int?
 }
 
 model ApiCall {
@@ -559,6 +564,13 @@ model Broadcast {
   // ---- A/B testing (additive, nullable — existing rows unaffected) ----
   abGroupId     String?                         // links the two variants of one A/B test
   abVariant     String?                         // "A" | "B" — null for normal campaigns
+  // ---- QR Broadcast Credit System (Phase 4, additive) ----
+  // Credit-funded campaigns are created with status "credit_queued" (invisible
+  // to the existing drain cron) until the QR slot scheduler promotes them to
+  // "queued". `creditsReserved` is the hold debited at create, settled on done.
+  viaCredits      Boolean  @default(false)
+  creditsReserved Int      @default(0)
+  qrJobId         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -1675,4 +1687,388 @@ model UpgradeRequest {
 
   @@index([userId, status])
   @@index([status, createdAt])
+}
+
+// ===========================================================================
+// Wallet + Meta Billing System (additive, self-contained, ledger-first).
+//
+// Business model: KEYONE owns the Meta (WhatsApp Cloud) account. Tenants never
+// pay Meta directly — they top up a prepaid USD wallet with KEYONE, and Meta
+// conversation costs are debited from that wallet by an append-only reconciler
+// that reads the existing WaMessage ledger (NEVER the send pipeline).
+//
+// Money convention: all amounts are USD stored as Float, rounded to 6 decimals
+// (micro-dollar precision) on every write. Double precision is exact for these
+// magnitudes; this avoids 32-bit Int overflow and BigInt JSON pain, and matches
+// the existing ApprovalRequest.amount Float precedent.
+//
+// Scoping: scalar `userId` (workspace owner) + index — same non-invasive pattern
+// as SafetyAudit / AuditLog / the Growth Suite, so no existing model changes.
+// ===========================================================================
+
+/// One prepaid wallet per tenant. `balanceUsd` is a fast cache; WalletLedger is
+/// the append-only source of financial truth (reconcilable at any time).
+model Wallet {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  balanceUsd             Float     @default(0)
+  currency               String    @default("USD")
+  status                 String    @default("active") // active | suspended
+  lowBalanceThresholdUsd Float     @default(5)
+  lowBalanceNotifiedAt   DateTime?
+  autoSuspendOnZero      Boolean   @default(false)
+  totalToppedUpUsd       Float     @default(0)
+  totalSpentUsd          Float     @default(0)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([status])
+}
+
+/// Append-only wallet ledger — the single source of financial truth. Every
+/// credit/debit writes exactly one row. `idempotencyKey` makes recording
+/// replay-safe; `reversalOf` makes a reversal idempotent PER original entry.
+model WalletLedger {
+  id              String   @id @default(cuid())
+  userId          String
+  walletId        String
+  direction       String   // credit | debit
+  kind            String   // topup | meta_usage | broadcast | adjustment | refund | reversal
+  amountUsd       Float
+  balanceAfterUsd Float    @default(0)
+  source          String   @default("system") // admin | meta_cost | broadcast | topup | reconcile
+  reason          String   @default("")
+  idempotencyKey  String   @unique
+  reversalOf      String?  @unique
+  actorId         String?
+  actorEmail      String?
+  metadata        String   @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([walletId, createdAt])
+  @@index([userId, kind, createdAt])
+}
+
+/// Customer-initiated wallet top-up request. No payment processor is wired, so
+/// (mirroring UpgradeRequest) an admin reviews and credits the wallet. Approval
+/// writes a WalletLedger `topup` credit and links it back here.
+model WalletTopupRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  amountUsd    Float
+  method       String    @default("manual") // manual | instapay | vodafone_cash | bank | card
+  status       String    @default("pending") // pending | approved | rejected | canceled
+  paymentRef   String?
+  note         String?
+  contactPhone String?
+  handledBy    String?
+  handledAt    DateTime?
+  ledgerId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// Payment-provider topup orders (Paymob / Stripe / manual). Bridges a customer
+// topup intent to a gateway transaction; webhook confirmation auto-credits the
+// wallet via the ledger. Reconciliation compares provider state to the ledger.
+model PaymentTransaction {
+  id              String    @id @default(cuid())
+  userId          String
+  provider        String    @default("manual") // manual | paymob | stripe
+  intentRef       String    @default("")        // internal idempotency reference
+  providerRef     String?                       // external provider intent/order id
+  providerOrderId String?                       // provider order id (e.g. Paymob order)
+  amountUsd       Float
+  amountMinor     Int       @default(0)          // provider minor units (cents/piasters)
+  currency        String    @default("USD")
+  status          String    @default("created")  // created | pending | paid | failed | expired | refunded | reconciled
+  checkoutUrl     String?
+  topupRequestId  String?                        // link to WalletTopupRequest
+  ledgerId        String?                        // WalletLedger.id once credited
+  reconciledAt    DateTime?
+  failureReason   String?
+  rawEvent        String    @default("{}")        // last provider webhook payload (capped)
+  metadata        String    @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([provider, providerRef])
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([provider, status])
+}
+
+// ===========================================================================
+// Meta Cost Engine (additive, append-only, DERIVED from WaMessage data).
+// The reconciler buckets billable Meta conversations and debits the wallet.
+// ===========================================================================
+
+/// One row per Meta (WhatsApp Cloud) billable CONVERSATION — a per-day window
+/// per (tenant, customer, category). Derived idempotently from the append-only
+/// WaMessage ledger by the meta-cost reconciler; never written by the send path.
+model MetaUsageRecord {
+  id              String   @id @default(cuid())
+  userId          String
+  customerPhone   String
+  category        String   // marketing | utility | authentication | service
+  country         String   @default("")
+  conversationKey String   // dedupe: phone:category:YYYY-MM-DD
+  windowStart     DateTime
+  windowEnd       DateTime
+  messageCount    Int      @default(0)
+  rateUsd         Float    @default(0) // price KEYONE charges the tenant
+  metaCostUsd     Float    @default(0) // KEYONE's underlying cost to Meta
+  costUsd         Float    @default(0) // billed (= rateUsd) for this conversation
+  billed          Boolean  @default(false)
+  walletLedgerId  String?
+  source          String   @default("meta_cloud")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, conversationKey])
+  @@index([userId, createdAt])
+  @@index([userId, category, createdAt])
+  @@index([billed, createdAt])
+}
+
+/// Admin-editable Meta conversation rate card per (country, category). The
+/// engine reads this first and falls back to the in-code default rate card.
+/// `rateUsd` = what KEYONE charges the tenant; `metaCostUsd` = KEYONE's cost.
+model MetaRateCard {
+  id          String   @id @default(cuid())
+  country     String   // ISO-2 (e.g. "EG") or "*" for default
+  category    String   // marketing | utility | authentication | service
+  rateUsd     Float    @default(0)
+  metaCostUsd Float    @default(0)
+  active      Boolean  @default(true)
+  note        String   @default("")
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([country, category])
+  @@index([active])
+}
+
+// ===========================================================================
+// Developer Center (Phase 7) — API keys, request logs, usage rollups. Additive.
+// Plan-gated by the existing `api_access` capability (k_scale+).
+// ===========================================================================
+
+/// Merchant API key. Only the SHA-256 hash is stored; the plaintext secret is
+/// shown ONCE at creation. Scopes + per-key rate limit + lifecycle (rotate/revoke).
+model ApiKey {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String    @default("مفتاح API")
+  keyHash         String    @unique
+  keyPrefix       String
+  scopes          String    @default("[\"read\"]")
+  status          String    @default("active") // active | revoked
+  rateLimitPerMin Int       @default(60)
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  rotatedFrom     String?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+/// Append-only API request log (usage tracking, metrics, abuse detection).
+model ApiRequestLog {
+  id        String   @id @default(cuid())
+  userId    String
+  apiKeyId  String
+  method    String
+  path      String
+  status    Int      @default(0)
+  latencyMs Int      @default(0)
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
+}
+
+/// Per-key per-day usage rollup for dashboards + abuse detection.
+model ApiUsageDaily {
+  id       String   @id @default(cuid())
+  userId   String
+  apiKeyId String
+  day      String
+  requests Int      @default(0)
+  errors   Int      @default(0)
+  lastAt   DateTime @default(now())
+
+  @@unique([apiKeyId, day])
+  @@index([userId, day])
+}
+
+// ===========================================================================
+// QR Slot Scheduler (shared by Broadcast Credits #4 and One-Time Import #3).
+// Books the existing Smart QR Pool (whatsapp-service hibernation) FIFO so no
+// session stays permanently active. NEVER modifies the send pipeline.
+// ===========================================================================
+
+/// A unit of QR work that must run inside a booked session slot.
+model QrSlotJob {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String    // broadcast | import
+  refId       String
+  status      String    @default("queued") // queued | scheduled | running | done | failed | canceled
+  priority    Int       @default(0)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  error       String?
+  lockedAt    DateTime?
+  lockedBy    String?
+  queuedAt    DateTime  @default(now())
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  result      String    @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, priority, queuedAt])
+  @@index([userId, status])
+  @@index([type, status])
+}
+
+// QR Queue Platform — a tenant booking/reservation for a scarce QR session slot.
+// The QR pool has finite concurrent capacity (HIBERNATE_MAX_ACTIVE). Reservations
+// book a future window; the capacity manager assigns a lane; the scheduler
+// activates due reservations (optionally promoting to a QrSlotJob execution).
+// This is QR session scheduling/reservation only — it never re-sends messages.
+model QrReservation {
+  id           String    @id @default(cuid())
+  userId       String
+  purpose      String    @default("session") // session | broadcast | import | maintenance | custom
+  status       String    @default("booked")  // booked | reserved | active | completed | canceled | expired | no_show
+  priority     Int       @default(0)
+  windowStart  DateTime
+  windowEnd    DateTime
+  durationMin  Int       @default(15)
+  slotJobId    String?                         // link to QrSlotJob execution if promoted
+  lane         Int?                            // assigned capacity lane index
+  reservedAt   DateTime?
+  activatedAt  DateTime?
+  completedAt  DateTime?
+  canceledAt   DateTime?
+  expiresAt    DateTime?
+  note         String?
+  result       String    @default("{}")        // JSON outcome blob
+  metadata     String    @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, windowStart])
+  @@index([userId, status])
+  @@index([windowStart, windowEnd])
+}
+
+// ===========================================================================
+// QR Broadcast Credit System (Phase 4). Credits are SEPARATE from the Meta
+// wallet. Ledger-first integer-credit accounting (mirrors the wallet engine).
+// ===========================================================================
+
+model BroadcastCreditWallet {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  balance        Int      @default(0)
+  totalPurchased Int      @default(0)
+  totalSpent     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model BroadcastCreditLedger {
+  id             String   @id @default(cuid())
+  userId         String
+  walletId       String
+  direction      String   // credit | debit
+  kind           String   // purchase | campaign | refund | adjustment | reversal
+  amount         Int
+  balanceAfter   Int      @default(0)
+  source         String   @default("system")
+  reason         String   @default("")
+  refId          String?
+  idempotencyKey String   @unique
+  reversalOf     String?  @unique
+  actorId        String?
+  actorEmail     String?
+  metadata       String   @default("{}")
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([walletId, createdAt])
+}
+
+/// Customer-initiated broadcast-credit purchase request → admin grants.
+model BroadcastCreditPurchaseRequest {
+  id         String    @id @default(cuid())
+  userId     String
+  credits    Int
+  amountUsd  Float     @default(0)
+  method     String    @default("manual")
+  status     String    @default("pending") // pending | approved | rejected | canceled
+  paymentRef String?
+  note       String?
+  handledBy  String?
+  handledAt  DateTime?
+  ledgerId   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// ===========================================================================
+// One-Time QR Import (Phase 3). One ImportSession per tenant EVER (userId is
+// @unique → enforces one-time). Builds CRM Customers + AI CustomerMemory.
+// ===========================================================================
+
+model ImportSession {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  status                String    @default("requested") // requested | queued | scheduled | scanning | importing | completed | failed | closed
+  qrJobId               String?
+  contactsFound         Int       @default(0)
+  contactsImported      Int       @default(0)
+  conversationsImported Int       @default(0)
+  messagesImported      Int       @default(0)
+  customersCreated      Int       @default(0)
+  memoriesBuilt         Int       @default(0)
+  error                 String?
+  requestedAt           DateTime  @default(now())
+  startedAt             DateTime?
+  completedAt           DateTime?
+  closedAt              DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model ImportLog {
+  id              String   @id @default(cuid())
+  userId          String
+  importSessionId String
+  level           String   @default("info") // info | warn | error
+  message         String
+  payload         String   @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([importSessionId, createdAt])
+  @@index([userId, createdAt])
 }

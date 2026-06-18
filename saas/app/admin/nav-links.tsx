@@ -5,17 +5,27 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
-  Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket,
+  Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
+  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock,
 } from "lucide-react";
 
 export const ADMIN_LINKS = [
   { href: "/admin", label: "الرئيسية", icon: LayoutDashboard },
+  { href: "/admin/super-center", label: "المركز الموحّد", icon: LayoutGrid },
   { href: "/admin/activation", label: "قُمع التفعيل", icon: Rocket },
   { href: "/admin/users", label: "العملاء والاشتراكات", icon: Users },
   { href: "/admin/businesses", label: "الأعمال", icon: Building2 },
   { href: "/admin/customers", label: "عملاء المنصة", icon: UserCheck },
   { href: "/admin/orders", label: "إدارة الطلبات", icon: ShoppingBag },
   { href: "/admin/plans", label: "الباقات والحدود", icon: Crown },
+  { href: "/admin/wallet", label: "المحفظة وفوترة Meta", icon: Wallet },
+  { href: "/admin/analytics", label: "تحليلات الإيرادات", icon: TrendingUp },
+  { href: "/admin/payments", label: "المدفوعات والبوابات", icon: CreditCard },
+  { href: "/admin/qr-queue", label: "طابور جلسات QR", icon: CalendarClock },
+  { href: "/admin/broadcast-credits", label: "رصيد الحملات (QR)", icon: Send },
+  { href: "/admin/import", label: "استيراد العملاء", icon: Download },
+  { href: "/admin/api-keys", label: "مفاتيح API", icon: KeyRound },
+  { href: "/admin/customer-cap", label: "حدّ العملاء", icon: Activity },
   { href: "/admin/upgrade-requests", label: "طلبات الترقية", icon: Rocket },
   { href: "/admin/metrics", label: "المقاييس والاستخدام", icon: BarChart3 },
   { href: "/admin/tenant-costs", label: "التكلفة والأداء لكل تاجر", icon: Coins },

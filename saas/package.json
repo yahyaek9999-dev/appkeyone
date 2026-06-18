@@ -22,6 +22,7 @@
     "verify:reliability": "node scripts/verify/run.js reliability",
     "verify:schema-parity": "node scripts/verify/schema-parity.js",
     "verify:rbac": "node scripts/verify/rbac-coverage.js",
+    "verify:wallet": "node scripts/verify/wallet.js",
     "verify:all": "node scripts/verify/run.js all",
     "worker:baileys": "node workers/baileys.worker.js"
   },

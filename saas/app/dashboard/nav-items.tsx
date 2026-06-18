@@ -48,6 +48,10 @@ import {
   Workflow,
   CheckSquare,
   Palette,
+  Wallet,
+  Code2,
+  Send,
+  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -111,6 +115,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag, perm: "customers" },
       { href: "/dashboard/products", label: "المنتجات", icon: Package, perm: "settings" },
       { href: "/dashboard/broadcasts", label: "الإرسال الجماعي", icon: Megaphone, perm: "broadcasts" },
+      { href: "/dashboard/broadcasts-pro", label: "حملات الرصيد (QR)", icon: Send, perm: "broadcasts" },
     ],
   },
   {
@@ -123,6 +128,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/customers", label: "العملاء", icon: Users, perm: "customers" },
       { href: "/dashboard/inbox", label: "صندوق المحادثات", icon: Inbox, perm: "inbox" },
       { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap, perm: "customers" },
+      { href: "/dashboard/import", label: "استيراد العملاء", icon: Download, perm: "customers" },
     ],
   },
   {
@@ -171,6 +177,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/branches", label: "الفروع", icon: Building2, perm: "settings" },
       { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
       { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },
+      { href: "/dashboard/qr-queue", label: "حجز جلسات QR", icon: CalendarClock, perm: "broadcasts" },
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/safety", label: "الأمان", icon: ShieldAlert, perm: "settings" },
       { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
@@ -202,6 +209,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
       { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },
+      { href: "/dashboard/wallet", label: "المحفظة والرصيد", icon: Wallet, perm: "billing" },
+      { href: "/dashboard/developer", label: "مركز المطوّرين", icon: Code2, perm: "settings" },
     ],
   },
 ];
