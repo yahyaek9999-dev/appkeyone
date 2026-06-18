@@ -327,3 +327,25 @@ export function yearlySavings(tier: TierDef): number | null {
 
 /** Marketing badge shown on the billing toggle. */
 export const YEARLY_SAVINGS_LABEL: Bilingual = { ar: "وفّر حتى 20%", en: "Save up to 20%" };
+
+/**
+ * Monthly broadcast-credit allotment auto-granted to active public-plan (k_*)
+ * subscribers, by tier (1 credit ≈ 1 QR-broadcast recipient). Completes the
+ * "Plan → Monthly Credits" model. These are starter defaults the business
+ * tunes; the grant itself is flag-gated OFF (BROADCAST_MONTHLY_CREDITS_ENABLED),
+ * so the numbers are inert until explicitly enabled. 0 = no automatic monthly
+ * grant (e.g. k_start has no broadcasts capability; legacy slugs map to 0).
+ */
+export const MONTHLY_BROADCAST_CREDITS: Record<TierSlug, number> = {
+  k_start: 0,
+  k_growth: 1000,
+  k_pro: 5000,
+  k_business: 15000,
+  k_scale: 50000,
+  k_enterprise: 200000,
+};
+
+/** Monthly broadcast-credit allotment for a plan slug (unknown/legacy → 0). */
+export function monthlyBroadcastCreditsForSlug(slug: string): number {
+  return (slug in MONTHLY_BROADCAST_CREDITS) ? MONTHLY_BROADCAST_CREDITS[slug as TierSlug] : 0;
+}

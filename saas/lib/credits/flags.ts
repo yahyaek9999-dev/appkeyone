@@ -26,4 +26,8 @@ export const creditFlags = {
   get enforce(): boolean {
     return flag("BROADCAST_CREDITS_ENFORCE", true);
   },
+  /** When ON, the monthly per-plan credit grant cron actually grants. Default OFF. */
+  get monthlyEnabled(): boolean {
+    return flag("BROADCAST_MONTHLY_CREDITS_ENABLED", false);
+  },
 } as const;
