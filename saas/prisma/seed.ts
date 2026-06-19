@@ -130,14 +130,19 @@ const plans = [
 
 async function main() {
   // ---- Plans ----
+  // These are LEGACY plan slugs from a previous version. The current KEYONE model
+  // is the canonical k_* catalog (seeded by prisma/seed-plans.ts). We keep these
+  // rows for back-compat but seed them ARCHIVED so they never appear in any
+  // customer/admin business flow.
   for (const p of plans) {
+    const data = { ...p, status: "archived" };
     await prisma.plan.upsert({
       where: { slug: p.slug },
-      update: p,
-      create: p,
+      update: data,
+      create: data,
     });
   }
-  console.log("✓ Seeded plans:", plans.map((p) => p.slug).join(", "));
+  console.log("✓ Seeded legacy plans (archived):", plans.map((p) => p.slug).join(", "));
 
   // ---- Site config singleton ----
   await prisma.siteConfig.upsert({

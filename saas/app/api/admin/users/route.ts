@@ -111,6 +111,10 @@ export async function POST(req: Request) {
   let subscriptionInfo: any = null;
   if (planSlug) {
     const plan = await prisma.plan.findUnique({ where: { slug: planSlug } });
+    // Never assign an archived/legacy plan — only current plans are sellable.
+    if (plan && (plan as any).status === "archived") {
+      return NextResponse.json({ error: "plan_archived", message: "هذه الباقة مؤرشفة ولا يمكن إسنادها — اختر باقة حالية." }, { status: 400 });
+    }
     if (plan) {
       const days = billingCycle === "yearly" ? 365 : 30;
       const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);

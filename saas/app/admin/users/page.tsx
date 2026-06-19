@@ -9,7 +9,9 @@ export default async function AdminUsersPage() {
       orderBy: { createdAt: "desc" },
       include: { subscription: { include: { plan: true } } },
     }),
-    prisma.plan.findMany({ orderBy: { sortOrder: "asc" } }),
+    // Only CURRENT plans are assignable — archived/legacy plans must never be
+    // offered when activating or changing a customer's subscription.
+    prisma.plan.findMany({ where: { status: { not: "archived" } }, orderBy: { sortOrder: "asc" } }),
   ]);
 
   return (
