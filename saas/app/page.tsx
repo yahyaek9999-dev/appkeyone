@@ -146,7 +146,7 @@ export default async function LandingPage({
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
   const [plans, cfg] = await Promise.all([getPlans(), getSiteConfig()]);
-  const brandName = cfg.brandName || "WKEYONE";
+  const brandName = cfg.brandName || "KEYONE";
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
   const waHref = waNum
     ? "https://wa.me/" +

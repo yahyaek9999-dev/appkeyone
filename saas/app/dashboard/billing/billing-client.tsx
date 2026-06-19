@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import ImageDropzone from "@/components/ui/image-dropzone";
 
 type Account = { id: string; label: string; accountHolder: string; accountId: string; instructions: string; note: string; isDefault: boolean };
 type Method = { key: string; label: string; kind: string; instructions: string; accounts: Account[] };
@@ -66,8 +67,6 @@ export default function BillingClient({ plans, payableMethods, proofs: initialPr
   const method = useMemo(() => payableMethods.find((m) => m.key === methodKey) || null, [payableMethods, methodKey]);
   const accounts = method?.accounts || [];
   const noPayments = payableMethods.length === 0;
-
-  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
   function pickMethod(k: string) {
     setMethodKey(k);
@@ -151,11 +150,10 @@ export default function BillingClient({ plans, payableMethods, proofs: initialPr
 
         <input placeholder="رقم العملية / المرجع (اختياري)" value={reference} onChange={(e) => setReference(e.target.value)} className="w-full bg-white/5 rounded px-2 py-1.5 text-sm" />
 
-        {/* ---- A2: real image upload ---- */}
+        {/* ---- A2: premium drag-&-drop receipt upload ---- */}
         <div>
           <label className="block text-sm mb-1">صورة إيصال الدفع <span className="text-rose-300">*</span></label>
-          <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="block w-full text-xs text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-brand-500/15 file:text-brand-300 file:px-3 file:py-1.5" />
-          {previewUrl && <img src={previewUrl} alt="إيصال" className="mt-2 max-h-44 rounded-lg border border-white/10" />}
+          <ImageDropzone onFile={setFile} />
         </div>
 
         <button disabled={busy || !plan || !methodKey || !file} onClick={submit} className="rounded bg-brand-500/15 text-brand-300 px-4 py-2 text-sm disabled:opacity-50">
@@ -191,7 +189,7 @@ export default function BillingClient({ plans, payableMethods, proofs: initialPr
                   <div><span className="text-rose-300 font-semibold">سبب الرفض:</span> {p.rejectionReason || "غير محدد — تواصل مع الدعم."}</div>
                   {retryFor === p.id ? (
                     <div className="space-y-1.5">
-                      <input type="file" accept="image/*" onChange={(e) => setRetryFile(e.target.files?.[0] || null)} className="block w-full text-xs file:rounded file:border-0 file:bg-brand-500/15 file:text-brand-300 file:px-2 file:py-1" />
+                      <ImageDropzone onFile={setRetryFile} compact hint="اسحب إيصالاً جديداً أو اضغط للاختيار" />
                       <div className="flex gap-2">
                         <button onClick={() => resubmit(p.id)} className="rounded bg-brand-500/15 text-brand-300 px-3 py-1">إعادة الإرسال</button>
                         <button onClick={() => { setRetryFor(null); setRetryFile(null); }} className="rounded bg-white/5 px-3 py-1">إلغاء</button>

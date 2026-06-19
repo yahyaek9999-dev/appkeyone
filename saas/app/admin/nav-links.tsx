@@ -47,10 +47,12 @@ export const ADMIN_LINKS = [
   // Brain & Intelligence
   { href: "/admin/brain", label: "مركز الدماغ", icon: Brain },
   { href: "/admin/brain/global", label: "الدماغ العالمي", icon: Brain },
-  { href: "/admin/brain/marketplace", label: "متجر الأدمغة", icon: Coins },
-  { href: "/admin/agents", label: "مركز الوكلاء", icon: Users },
+  // HIDDEN (final-polish): not production-ready — re-enable when complete
+  // { href: "/admin/brain/marketplace", label: "متجر الأدمغة", icon: Coins },
+  // { href: "/admin/agents", label: "مركز الوكلاء", icon: Users },
   { href: "/admin/reports", label: "التقارير التنفيذية", icon: BarChart3 },
-  { href: "/admin/white-label", label: "العلامة البيضاء", icon: LayoutGrid },
+  // HIDDEN (final-polish): not production-ready — branding not yet applied at runtime
+  // { href: "/admin/white-label", label: "العلامة البيضاء", icon: LayoutGrid },
   { href: "/admin/settings", label: "إعدادات الموقع", icon: Settings },
 ];
 

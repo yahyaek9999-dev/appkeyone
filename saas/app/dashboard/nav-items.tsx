@@ -150,7 +150,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/playground", label: "ساحة التجربة", icon: FlaskConical, perm: "settings" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/brain", label: "مركز الدماغ", icon: Brain, perm: "settings" },
-      { href: "/dashboard/agents", label: "نظام الوكلاء", icon: Users, perm: "settings" },
+      // HIDDEN (final-polish): not production-ready — re-enable when the workflow is complete
+      // { href: "/dashboard/agents", label: "نظام الوكلاء", icon: Users, perm: "settings" },
     ],
   },
   {
@@ -175,7 +176,8 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard/integrations", label: "التكاملات", icon: Plug, perm: "settings" },
       { href: "/dashboard/automations", label: "الأتمتة", icon: Zap, perm: "settings" },
-      { href: "/dashboard/flow-builder", label: "منشئ المسارات", icon: Workflow, perm: "settings" },
+      // HIDDEN (final-polish): not production-ready — re-enable when flows actually execute
+      // { href: "/dashboard/flow-builder", label: "منشئ المسارات", icon: Workflow, perm: "settings" },
       { href: "/dashboard/branches", label: "الفروع", icon: Building2, perm: "settings" },
       { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
       { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },
@@ -212,7 +214,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/settings", label: "الحساب", icon: Settings, perm: "analytics" },
       { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
-      { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
+      // HIDDEN (final-polish): not production-ready — branding not yet applied at runtime
+      // { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },
       { href: "/dashboard/plan", label: "لوحة الباقة", icon: Gauge, perm: "analytics" },
       { href: "/dashboard/billing", label: "الاشتراك والدفع", icon: Wallet, perm: "billing" },
