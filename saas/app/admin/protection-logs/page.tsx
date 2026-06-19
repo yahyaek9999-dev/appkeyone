@@ -36,8 +36,8 @@ export default async function AdminProtectionLogsPage({ searchParams }: { search
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">سجل الحماية</h1>
-        <p className="text-slate-400">أحداث الحماية من الحظر والحسابات المحظورة.</p>
+        <h1 className="page-title mb-1">سجل الحماية</h1>
+        <p className="page-desc">أحداث الحماية من الحظر والحسابات المحظورة.</p>
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm">

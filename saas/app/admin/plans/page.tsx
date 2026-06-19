@@ -28,8 +28,8 @@ export default async function AdminPlansPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">الباقات والحدود</h1>
-        <p className="text-slate-400">عدّل الحدود والـ feature flags لكل باقة. التغييرات تنطبق فوراً.</p>
+        <h1 className="page-title mb-1">الباقات والحدود</h1>
+        <p className="page-desc">عدّل الحدود والـ feature flags لكل باقة. التغييرات تنطبق فوراً.</p>
       </div>
       <PlansUi initial={ui} />
     </div>

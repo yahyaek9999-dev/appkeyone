@@ -27,8 +27,8 @@ export default async function AdminAiLogsPage({ searchParams }: { searchParams?:
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">سجل الذكاء الاصطناعي</h1>
-        <p className="text-slate-400">استخدام مزوّدي LLM واستدعاءات النظام.</p>
+        <h1 className="page-title mb-1">سجل الذكاء الاصطناعي</h1>
+        <p className="page-desc">استخدام مزوّدي LLM واستدعاءات النظام.</p>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">

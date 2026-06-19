@@ -100,7 +100,7 @@ export default async function AuditLogPage({
           <ScrollText className="h-5 w-5 text-white" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold">سجل النشاط</h1>
+          <h1 className="page-title">سجل النشاط</h1>
           <p className="text-sm text-slate-400">
             سجل غير قابل للتعديل لكل الإجراءات الحساسة داخل مساحة العمل — من فعل ماذا ومتى.
           </p>

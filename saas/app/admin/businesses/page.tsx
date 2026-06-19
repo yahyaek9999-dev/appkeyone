@@ -79,8 +79,8 @@ export default async function AdminBusinessesPage({ searchParams }: { searchPara
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">الأعمال (Real-time)</h1>
-        <p className="text-slate-400">حالة كل تاجر بأرقام حقيقية — قاعدة بيانات مباشرة.</p>
+        <h1 className="page-title mb-1">الأعمال (Real-time)</h1>
+        <p className="page-desc">حالة كل تاجر بأرقام حقيقية — قاعدة بيانات مباشرة.</p>
       </div>
 
       <form className="flex gap-2" action="/admin/businesses" method="GET">

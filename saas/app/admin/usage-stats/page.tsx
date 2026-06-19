@@ -19,8 +19,8 @@ export default async function AdminUsageStatsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">إحصائيات الاستخدام</h1>
-        <p className="text-slate-400">إجمالي الاستخدام المسجل على المنصة.</p>
+        <h1 className="page-title mb-1">إحصائيات الاستخدام</h1>
+        <p className="page-desc">إجمالي الاستخدام المسجل على المنصة.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

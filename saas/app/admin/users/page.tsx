@@ -17,8 +17,8 @@ export default async function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">العملاء والاشتراكات</h1>
-        <p className="text-slate-400">إدارة كاملة لاشتراكات العملاء.</p>
+        <h1 className="page-title mb-1">العملاء والاشتراكات</h1>
+        <p className="page-desc">إدارة كاملة لاشتراكات العملاء.</p>
       </div>
       <UsersUi
         users={users.map((u: any) => ({

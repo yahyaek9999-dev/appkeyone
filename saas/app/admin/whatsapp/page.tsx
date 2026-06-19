@@ -27,8 +27,8 @@ export default async function AdminWhatsappPage({ searchParams }: { searchParams
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">حالة واتساب</h1>
-        <p className="text-slate-400">حالة اتصال واتساب لكل تاجر وإعادة الإرسال.</p>
+        <h1 className="page-title mb-1">حالة واتساب</h1>
+        <p className="page-desc">حالة اتصال واتساب لكل تاجر وإعادة الإرسال.</p>
       </div>
 
       <form className="flex gap-2" method="GET">

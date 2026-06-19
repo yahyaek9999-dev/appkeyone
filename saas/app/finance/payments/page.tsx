@@ -14,7 +14,7 @@ export default async function FinancePaymentsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold mb-1">مراجعة المدفوعات</h1>
+        <h1 className="page-title mb-1">مراجعة المدفوعات</h1>
         <p className="text-sm text-slate-400">عاين الإيصال، اعتمد لشحن المحفظة وتفعيل الباقة تلقائيًا، أو ارفض مع ذكر السبب الذي يراه العميل.</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
