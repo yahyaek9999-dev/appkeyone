@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import HealthHero from "@/components/ui/health-hero";
 
 function fmt(d?: string | null) { if (!d) return ""; try { return new Date(d).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }); } catch { return ""; } }
 
@@ -32,8 +33,45 @@ export default function AiOperationsClient({ current, providers, providerStats, 
     } finally { setBusy(""); }
   }
 
+  // ---- Health 2.0: derive a 0–100 score + risk + recommendations from existing metrics ----
+  const calls = totals.calls;
+  const successRate = calls > 0 ? (calls - totals.failures) / calls : 1;
+  const failoverRate = calls > 0 ? totals.failovers / calls : 0;
+  const overallLatency = calls > 0 ? Math.round(providerStats.reduce((s, p) => s + (p.avgLatency || 0) * (p.calls || 0), 0) / calls) : 0;
+  const noKey = current.provider !== "keyone" && !current.hasKey;
+  let score = Math.round(successRate * 100);
+  score -= Math.min(20, Math.round(failoverRate * 40));
+  score -= overallLatency > 4000 ? 15 : overallLatency > 2000 ? 8 : 0;
+  if (noKey) score -= 25;
+  score = Math.max(0, Math.min(100, score));
+  const recs: string[] = [];
+  const warns: string[] = [];
+  if (noKey) { warns.push("المزوّد الحالي مفعّل بدون مفتاح محفوظ — الردود قد تفشل."); recs.push("أضف مفتاح المزوّد من «المفاتيح والاحتياطي» أو ارجع لمزوّد KeyOne الافتراضي."); }
+  if (calls > 0 && successRate < 0.9) { warns.push(`نسبة نجاح منخفضة (${Math.round(successRate * 100)}%) خلال آخر ${calls} استدعاء.`); recs.push("راجع «آخر الأعطال» وفكّر في تبديل المزوّد أو تفعيل الاحتياطي."); }
+  if (totals.failovers > 0) recs.push(`حدث تجاوز للمزوّد ${totals.failovers} مرة — تأكد من جاهزية المزوّد الأساسي.`);
+  if (overallLatency > 3000) recs.push(`زمن الاستجابة مرتفع (${overallLatency}ms) — راقب أداء المزوّد.`);
+  if (calls === 0) recs.push("لا توجد بيانات بعد — شغّل «اختبار المزوّد الآن» للتحقق من الجاهزية.");
+  const trend = calls === 0 ? "flat" : totals.failures === 0 ? "up" : "down";
+  const trendLabel = calls === 0 ? "بانتظار البيانات" : totals.failures === 0 ? "مستقر" : "أعطال حديثة";
+  const summary = calls === 0
+    ? "لم تُسجّل استدعاءات بعد. اختبر المزوّد للتأكد من جاهزية الردود الذكية."
+    : `${calls} استدعاء · نجاح ${Math.round(successRate * 100)}% · كمون ${overallLatency}ms · المزوّد: ${current.label}.`;
+
   return (
     <div className="space-y-4 max-w-3xl">
+      <HealthHero
+        title="صحة عمليات الذكاء الاصطناعي"
+        score={score}
+        summary={summary}
+        trend={trend as any}
+        trendLabel={trendLabel}
+        warnings={warns}
+        recommendations={recs}
+        actions={<>
+          <button onClick={probe} disabled={!!busy} className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-400 disabled:opacity-50">{busy === "probe" ? "جاري الاختبار..." : "اختبار سريع الآن"}</button>
+          {noKey && <Link href="/dashboard/settings/ai-provider" className="rounded-lg bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">إضافة مفتاح</Link>}
+        </>}
+      />
       <div className="grid grid-cols-3 gap-3">
         <div className="card p-4"><div className="text-slate-400 text-xs mb-1">إجمالي الاستدعاءات</div><div className="text-2xl font-extrabold">{totals.calls}</div></div>
         <div className="card p-4"><div className="text-slate-400 text-xs mb-1">الأعطال</div><div className={`text-2xl font-extrabold ${totals.failures > 0 ? "text-rose-300" : "text-emerald-300"}`}>{totals.failures}</div></div>

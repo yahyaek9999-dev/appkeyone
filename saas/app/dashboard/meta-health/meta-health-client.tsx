@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import HealthHero from "@/components/ui/health-hero";
 
 const QUALITY: Record<string, string> = { GREEN: "ممتازة", YELLOW: "متوسطة", RED: "ضعيفة" };
 
@@ -39,8 +40,37 @@ export default function MetaHealthClient({ data, issues }: { data: any; issues: 
     );
   }
 
+  // ---- Health 2.0 score from configuration + quality + verification ----
+  let score = 100;
+  const recs: string[] = [], warns: string[] = [];
+  if (!data.hasToken) { score -= 30; warns.push("لا يوجد رمز وصول (Token) محفوظ — الإرسال عبر Meta لن يعمل."); recs.push("أدخل رمز الوصول من إعدادات Meta Cloud."); }
+  if (!data.connected) { score -= 40; if (data.configured) { warns.push("لم يُتحقَّق من الاتصال بعد."); recs.push("شغّل «اختبار الاتصال الآن» للتأكد من صحة البيانات."); } }
+  if (!data.hasWebhookToken) { score -= 15; recs.push("اضبط رمز التحقق للويبهوك لاستقبال تحديثات الحالة من Meta."); }
+  if (data.qualityRating === "RED") { score -= 35; warns.push("جودة الرقم ضعيفة (RED) — خطر تقييد الإرسال."); recs.push("قلّل الرسائل غير المرغوبة وحسّن جودة المحتوى لرفع التقييم."); }
+  else if (data.qualityRating === "YELLOW") { score -= 15; recs.push("جودة الرقم متوسطة — راقبها وتجنّب الرسائل المزعجة."); }
+  const ageDays = data.verifiedAt ? Math.floor((Date.now() - new Date(data.verifiedAt).getTime()) / 86400000) : null;
+  if (ageDays !== null && ageDays > 50) recs.push(`آخر تحقق ناجح قبل ${ageDays} يومًا — قد يقترب التوكن من الانتهاء (~٦٠ يومًا)، جدّده.`);
+  for (const i of issues.filter((x) => x.severity === "critical").slice(0, 2)) warns.push(i.title);
+  score = Math.max(0, Math.min(100, score));
+  const trend = issues.some((i) => i.severity === "critical") ? "down" : data.connected ? "up" : "flat";
+  const trendLabel = issues.some((i) => i.severity === "critical") ? "تنبيهات حرجة" : data.connected ? "متصل" : "بانتظار التحقق";
+  const summary = `الحالة: ${data.connected ? "متصل" : data.configured ? "غير مُتحقَّق" : "غير مُهيّأ"} · جودة الرقم: ${data.qualityRating ? (QUALITY[data.qualityRating] ?? data.qualityRating) : "—"} · آخر تحقق: ${fmt(data.verifiedAt)}.`;
+
   return (
     <div className="space-y-4 max-w-3xl">
+      <HealthHero
+        title="صحة اتصال Meta Cloud"
+        score={score}
+        summary={summary}
+        trend={trend as any}
+        trendLabel={trendLabel}
+        warnings={warns}
+        recommendations={recs}
+        actions={<>
+          <button onClick={testNow} disabled={verifying} className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-400 disabled:opacity-50">{verifying ? "جاري الاختبار..." : "🔌 اختبار الاتصال الآن"}</button>
+          <Link href="/dashboard/settings/meta-cloud" className="rounded-lg bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">إعادة الربط / تدوير التوكن</Link>
+        </>}
+      />
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Stat label="الحالة" value={data.connected ? "متصل" : data.configured ? "غير مُتحقَّق" : "غير مُهيّأ"} good={data.connected ? true : data.configured ? null : false} />
         <Stat label="رمز الوصول (Token)" value={data.hasToken ? "محفوظ" : "غير مُدخل"} good={data.hasToken} />

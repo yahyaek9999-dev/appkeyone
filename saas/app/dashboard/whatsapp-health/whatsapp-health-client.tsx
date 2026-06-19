@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import HealthHero from "@/components/ui/health-hero";
 
 const STATUS_AR: Record<string, string> = { connected: "متصل", connecting: "جاري الربط", disconnected: "غير متصل", service_unreachable: "الخدمة غير متاحة" };
 
@@ -42,8 +43,37 @@ export default function WhatsappHealthClient({ initial, warnings, warnCount }: {
   }
 
   const ok = status === "connected";
+
+  // ---- Health 2.0 score from live session status + warnings ----
+  let score = status === "connected" ? 100 : status === "connecting" ? 60 : status === "disconnected" ? 35 : 10;
+  score -= Math.min(30, warnCount * 5);
+  score -= Math.min(20, warnings.filter((w) => w.severity === "critical" || w.severity === "block").length * 10);
+  score = Math.max(0, Math.min(100, score));
+  const recs: string[] = [], warns: string[] = [];
+  if (status === "service_unreachable") { warns.push("خدمة واتساب غير متاحة — لا إرسال ولا استقبال."); recs.push("تأكد أن خدمة الواتساب تعمل (المنفذ ٣٠٠١) ثم اضغط «إعادة الربط»."); }
+  else if (status === "disconnected") { warns.push("واتساب غير متصل — الرسائل لا تصل ولا تُرسل."); recs.push("اضغط «إعادة الربط» وامسح كود QR من هاتفك."); }
+  else if (status === "connecting") recs.push("الجلسة قيد الربط — أكمل مسح الكود من صفحة الربط.");
+  if (warnCount > 0) recs.push("راجع التحذيرات وخفّف وتيرة الإرسال لتجنّب قيود واتساب.");
+  for (const w of warnings.filter((x) => x.severity === "critical" || x.severity === "block").slice(0, 2)) warns.push(w.title);
+  const trend = ok ? "up" : status === "service_unreachable" ? "down" : "flat";
+  const trendLabel = ok ? "مستقر" : status === "service_unreachable" ? "الخدمة متوقفة" : "يحتاج ربط";
+  const summary = `الحالة: ${STATUS_AR[status] || status}${phone ? " · " + phone : ""} · التحذيرات: ${warnCount}.`;
+
   return (
     <div className="space-y-4 max-w-3xl">
+      <HealthHero
+        title="صحة جلسة واتساب"
+        score={score}
+        summary={summary}
+        trend={trend as any}
+        trendLabel={trendLabel}
+        warnings={warns}
+        recommendations={recs}
+        actions={<>
+          <button onClick={() => action("reconnect")} disabled={!!busy} className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-400 disabled:opacity-50">إعادة الربط</button>
+          <button onClick={() => action("restart")} disabled={!!busy} className="rounded-lg bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50">إعادة تشغيل الجلسة</button>
+        </>}
+      />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="card p-4"><div className="text-slate-400 text-xs mb-1">الحالة</div><div className={`text-sm font-bold ${ok ? "text-emerald-300" : status === "service_unreachable" ? "text-rose-300" : "text-amber-300"}`}>{STATUS_AR[status] || status}</div></div>
         <div className="card p-4"><div className="text-slate-400 text-xs mb-1">الرقم المرتبط</div><div className="text-sm font-mono" dir="ltr">{phone || "—"}</div></div>
