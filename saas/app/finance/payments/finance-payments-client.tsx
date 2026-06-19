@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function fmt(d?: string | null) { if (!d) return ""; try { return new Date(d).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" }); } catch { return ""; } }
 
@@ -11,37 +13,36 @@ export default function FinancePaymentsClient({ initial, approved = [] }: { init
   const [rejectFor, setRejectFor] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
-  const [err, setErr] = useState("");
+  const { success, error } = useToast();
 
   async function refund(id: string) {
     const why = window.prompt("سبب استرداد هذه الدفعة (يُسجَّل في سجل التدقيق):", "");
     if (why === null) return;
-    if (!why.trim()) { setErr("سبب الاسترداد مطلوب."); return; }
-    setBusy(id); setErr("");
+    if (!why.trim()) { error("سبب الاسترداد مطلوب."); return; }
+    setBusy(id);
     try {
       const res = await fetch(`/api/admin/payment-reviews/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "refund", reason: why.trim() }) });
       const j = await res.json().catch(() => null);
-      if (j?.ok) setDone((ds) => ds.map((d) => (d.id === id ? { ...d, status: "refunded" } : d)));
-      else setErr(j?.message || j?.reason || "تعذّر الاسترداد.");
+      if (j?.ok) { setDone((ds) => ds.map((d) => (d.id === id ? { ...d, status: "refunded" } : d))); success("تم استرداد الدفعة وعكس الرصيد ✓"); }
+      else error(j?.message || j?.reason || "تعذّر الاسترداد.");
     } finally { setBusy(""); }
   }
 
   async function act(id: string, payload: any, removeOnOk = true) {
-    setBusy(id); setErr("");
+    setBusy(id);
     try {
       const res = await fetch(`/api/admin/payment-reviews/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const j = await res.json().catch(() => null);
       if (j && (j.ok || j.status)) {
-        if (payload.action === "start_review") setRows((rs) => rs.map((r) => (r.id === id ? { ...r, status: "under_review", reviewStartedAt: new Date().toISOString() } : r)));
-        else if (removeOnOk) { setRows((rs) => rs.filter((r) => r.id !== id)); setRejectFor(null); setReason(""); setNote(""); }
-      } else setErr(j?.message || j?.error || "تعذّر تنفيذ الإجراء.");
+        if (payload.action === "start_review") { setRows((rs) => rs.map((r) => (r.id === id ? { ...r, status: "under_review", reviewStartedAt: new Date().toISOString() } : r))); }
+        else if (removeOnOk) { setRows((rs) => rs.filter((r) => r.id !== id)); setRejectFor(null); setReason(""); setNote(""); success(payload.decision === "approve" ? "تم الاعتماد — شُحنت المحفظة وفُعّلت الباقة 🎉" : "تم رفض الدفعة وإبلاغ العميل بالسبب."); }
+      } else error(j?.message || j?.error || "تعذّر تنفيذ الإجراء.");
     } finally { setBusy(""); }
   }
 
   return (
     <div className="space-y-3">
-      {err && <p className="text-rose-300 text-sm">{err}</p>}
-      {rows.length === 0 && <div className="card p-6 text-sm text-slate-400">لا توجد مدفوعات بانتظار المراجعة. 🎉</div>}
+      {rows.length === 0 && <EmptyState size="md" icon={<span>🎉</span>} title="لا توجد مدفوعات بانتظار المراجعة" description="طابور المراجعة فارغ — كل المدفوعات تمت معالجتها. ستظهر الطلبات الجديدة هنا فور وصولها." />}
       {rows.map((p) => (
         <div key={p.id} className="card p-4 flex flex-col gap-3 md:flex-row md:items-start">
           {/* receipt image */}

@@ -2,6 +2,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import ImageDropzone from "@/components/ui/image-dropzone";
+import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Account = { id: string; label: string; accountHolder: string; accountId: string; instructions: string; note: string; isDefault: boolean };
 type Method = { key: string; label: string; kind: string; instructions: string; accounts: Account[] };
@@ -57,11 +59,12 @@ export default function BillingClient({ plans, payableMethods, proofs: initialPr
   const [accountId, setAccountId] = useState(payableMethods[0]?.accounts?.[0]?.id || "");
   const [reference, setReference] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [formKey, setFormKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [proofs, setProofs] = useState<any[]>(initialProofs || []);
   const [retryFor, setRetryFor] = useState<string | null>(null);
   const [retryFile, setRetryFile] = useState<File | null>(null);
+  const { success, error } = useToast();
 
   const selectedPlan = plans.find((p) => p.slug === plan);
   const method = useMemo(() => payableMethods.find((m) => m.key === methodKey) || null, [payableMethods, methodKey]);
@@ -75,39 +78,44 @@ export default function BillingClient({ plans, payableMethods, proofs: initialPr
   }
 
   async function submit() {
-    if (!file) { setMsg({ ok: false, text: "ارفع صورة إيصال الدفع أولاً." }); return; }
-    setBusy(true); setMsg(null);
+    if (!file) { error("ارفع صورة إيصال الدفع أولاً."); return; }
+    setBusy(true);
     try {
       const fd = new FormData();
       fd.set("methodKey", methodKey); fd.set("planSlug", plan); fd.set("amountUsd", String(selectedPlan?.price || 0));
       fd.set("accountId", accountId); fd.set("reference", reference); fd.set("image", file);
       const res = await fetch("/api/payments/proof", { method: "POST", body: fd });
       const j = await res.json().catch(() => null);
-      if (j?.ok) { setMsg({ ok: true, text: "✓ تم إرسال طلب الدفع — بانتظار مراجعة فريق المالية." }); setProofs((ps) => [j.proof, ...ps]); setReference(""); setFile(null); }
-      else setMsg({ ok: false, text: j?.message || j?.error || "تعذّر الإرسال." });
+      if (j?.ok) { success("🎉 تم إرسال طلب الدفع — يراجعه فريق المالية خلال ٢٤ ساعة."); setProofs((ps) => [j.proof, ...ps]); setReference(""); setFile(null); setFormKey((k) => k + 1); }
+      else error(j?.message || j?.error || "تعذّر الإرسال.");
     } finally { setBusy(false); }
   }
 
   async function cancel(id: string) {
     const res = await fetch(`/api/payments/proof/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "cancel" }) });
     const j = await res.json().catch(() => null);
-    if (j?.ok) setProofs((ps) => ps.map((p) => (p.id === id ? { ...p, status: "canceled" } : p)));
+    if (j?.ok) { setProofs((ps) => ps.map((p) => (p.id === id ? { ...p, status: "canceled" } : p))); success("تم إلغاء الطلب."); }
   }
 
   async function resubmit(id: string) {
-    if (!retryFile) { setMsg({ ok: false, text: "اختر صورة إيصال جديدة لإعادة الإرسال." }); return; }
+    if (!retryFile) { error("اختر صورة إيصال جديدة لإعادة الإرسال."); return; }
     const fd = new FormData(); fd.set("action", "resubmit"); fd.set("image", retryFile);
     const res = await fetch(`/api/payments/proof/${id}`, { method: "POST", body: fd });
     const j = await res.json().catch(() => null);
-    if (j?.ok) { setProofs((ps) => ps.map((p) => (p.id === id ? { ...p, status: "pending", rejectionReason: "", reviewStartedAt: null, decidedAt: null } : p))); setRetryFor(null); setRetryFile(null); }
-    else setMsg({ ok: false, text: j?.message || "تعذّرت إعادة الإرسال." });
+    if (j?.ok) { setProofs((ps) => ps.map((p) => (p.id === id ? { ...p, status: "pending", rejectionReason: "", reviewStartedAt: null, decidedAt: null } : p))); setRetryFor(null); setRetryFile(null); success("تمت إعادة الإرسال — طلبك قيد المراجعة من جديد."); }
+    else error(j?.message || "تعذّرت إعادة الإرسال.");
   }
 
   if (noPayments) {
     return (
-      <div className="card p-6 max-w-2xl">
-        <h2 className="font-bold mb-2">الدفع غير متاح مؤقتًا</h2>
-        <p className="text-sm text-slate-400">لا توجد طريقة دفع مفعّلة حاليًا. يرجى المحاولة لاحقًا أو <Link href="/support" className="text-brand-300 underline">التواصل مع الدعم</Link> لإتمام اشتراكك.</p>
+      <div className="max-w-2xl">
+        <EmptyState
+          size="lg"
+          icon={<span>💳</span>}
+          title="الدفع غير متاح مؤقتًا"
+          description="لا توجد طريقة دفع مفعّلة حاليًا. يرجى المحاولة لاحقًا أو التواصل مع الدعم لإتمام اشتراكك."
+          action={<Link href="/support" className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-400">التواصل مع الدعم</Link>}
+        />
       </div>
     );
   }
@@ -153,13 +161,12 @@ export default function BillingClient({ plans, payableMethods, proofs: initialPr
         {/* ---- A2: premium drag-&-drop receipt upload ---- */}
         <div>
           <label className="block text-sm mb-1">صورة إيصال الدفع <span className="text-rose-300">*</span></label>
-          <ImageDropzone onFile={setFile} />
+          <ImageDropzone key={formKey} onFile={setFile} />
         </div>
 
         <button disabled={busy || !plan || !methodKey || !file} onClick={submit} className="rounded bg-brand-500/15 text-brand-300 px-4 py-2 text-sm disabled:opacity-50">
           {busy ? "جاري الإرسال..." : "إرسال طلب الدفع"}
         </button>
-        {msg && <p className={msg.ok ? "text-emerald-300 text-sm" : "text-rose-300 text-sm"}>{msg.text}</p>}
       </div>
 
       {/* ---- Trust block ---- */}
