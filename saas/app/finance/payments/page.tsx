@@ -1,14 +1,15 @@
 /** /finance/payments — finance review queue (pending + under_review), with receipt images. */
 import { prisma } from "@/lib/db";
-import { getProofStats } from "@/lib/payments-ops/proofs";
+import { getProofStats, listApprovedProofs } from "@/lib/payments-ops/proofs";
 import FinancePaymentsClient from "./finance-payments-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function FinancePaymentsPage() {
-  const [queue, stats] = await Promise.all([
+  const [queue, stats, approved] = await Promise.all([
     prisma.paymentProof.findMany({ where: { status: { in: ["pending", "under_review"] } }, orderBy: { createdAt: "asc" }, take: 200 }),
     getProofStats(),
+    listApprovedProofs(20),
   ]);
   return (
     <div className="space-y-5">
@@ -22,7 +23,7 @@ export default async function FinancePaymentsPage() {
         <Tile label="معتمدة" value={stats.approved} />
         <Tile label="مرفوضة" value={stats.rejected} />
       </div>
-      <FinancePaymentsClient initial={JSON.parse(JSON.stringify(queue))} />
+      <FinancePaymentsClient initial={JSON.parse(JSON.stringify(queue))} approved={JSON.parse(JSON.stringify(approved))} />
     </div>
   );
 }

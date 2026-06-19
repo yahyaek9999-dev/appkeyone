@@ -9,7 +9,7 @@
  * Every money-moving review writes an audit row.
  */
 import { prisma } from "@/lib/db";
-import { credit } from "@/lib/wallet/wallet";
+import { credit, reverse } from "@/lib/wallet/wallet";
 import { audit } from "@/lib/audit/log";
 
 export async function createPaymentProof(userId: string, input: { methodKey: string; planSlug?: string; amountUsd: number; reference?: string; proofUrl?: string; proofImagePath?: string; note?: string; accountId?: string }) {
@@ -120,6 +120,36 @@ export async function resubmitProof(userId: string, proofId: string, input: { pr
     },
   });
   return { ok: true as const, status: updated.status };
+}
+
+/**
+ * Refund an approved payment — reverses the wallet credit that the approval
+ * created (idempotent via the ledger's reversalOf) and marks the proof refunded.
+ * Reuses the existing wallet reverse() engine — no new money path. Finance/admin.
+ */
+export async function refundProof(proofId: string, input: { actorId?: string; actorEmail?: string; actorRole?: string; reason?: string }) {
+  const proof = await prisma.paymentProof.findUnique({ where: { id: proofId } });
+  if (!proof) return { ok: false as const, reason: "not_found" };
+  if (proof.status !== "approved") return { ok: false as const, reason: "not_approved" };
+  if (!proof.ledgerId) return { ok: false as const, reason: "no_ledger" };
+
+  const res = await reverse({ ledgerId: proof.ledgerId, reason: `refund:proof:${proof.id} ${input.reason || ""}`.trim(), actorId: input.actorId || null, actorEmail: input.actorEmail || null });
+  if (!res.ok) return { ok: false as const, reason: res.reason || "reverse_failed" };
+
+  await prisma.paymentProof.update({ where: { id: proof.id }, data: { status: "refunded", rejectionReason: String(input.reason || "").slice(0, 500) } });
+  await audit({
+    userId: input.actorId || proof.userId,
+    action: "admin.payment_refunded",
+    actorId: input.actorId || null, actorEmail: input.actorEmail || null, actorRole: input.actorRole || "admin",
+    targetType: "payment_proof", targetId: proof.id,
+    metadata: { amountUsd: proof.amountUsd, method: proof.methodKey, customerUserId: proof.userId, reason: input.reason || "", reversedLedgerId: proof.ledgerId, alreadyReversed: !!res.replay },
+  });
+  return { ok: true as const, alreadyReversed: !!res.replay };
+}
+
+/** Recently-approved proofs (for the refund view). */
+export async function listApprovedProofs(take = 20) {
+  return prisma.paymentProof.findMany({ where: { status: "approved" }, orderBy: { decidedAt: "desc" }, take: Math.min(take, 100) });
 }
 
 export async function getProofStats() {

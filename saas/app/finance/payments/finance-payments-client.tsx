@@ -3,14 +3,28 @@ import { useState } from "react";
 
 function fmt(d?: string | null) { if (!d) return ""; try { return new Date(d).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" }); } catch { return ""; } }
 
-export default function FinancePaymentsClient({ initial }: { initial: any[] }) {
+export default function FinancePaymentsClient({ initial, approved = [] }: { initial: any[]; approved?: any[] }) {
   const [rows, setRows] = useState<any[]>(initial);
+  const [done, setDone] = useState<any[]>(approved);
   const [busy, setBusy] = useState("");
   const [zoom, setZoom] = useState<string | null>(null);
   const [rejectFor, setRejectFor] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
+
+  async function refund(id: string) {
+    const why = window.prompt("سبب استرداد هذه الدفعة (يُسجَّل في سجل التدقيق):", "");
+    if (why === null) return;
+    if (!why.trim()) { setErr("سبب الاسترداد مطلوب."); return; }
+    setBusy(id); setErr("");
+    try {
+      const res = await fetch(`/api/admin/payment-reviews/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "refund", reason: why.trim() }) });
+      const j = await res.json().catch(() => null);
+      if (j?.ok) setDone((ds) => ds.map((d) => (d.id === id ? { ...d, status: "refunded" } : d)));
+      else setErr(j?.message || j?.reason || "تعذّر الاسترداد.");
+    } finally { setBusy(""); }
+  }
 
   async function act(id: string, payload: any, removeOnOk = true) {
     setBusy(id); setErr("");
@@ -24,11 +38,10 @@ export default function FinancePaymentsClient({ initial }: { initial: any[] }) {
     } finally { setBusy(""); }
   }
 
-  if (rows.length === 0) return <div className="card p-6 text-sm text-slate-400">لا توجد مدفوعات بانتظار المراجعة. 🎉</div>;
-
   return (
     <div className="space-y-3">
       {err && <p className="text-rose-300 text-sm">{err}</p>}
+      {rows.length === 0 && <div className="card p-6 text-sm text-slate-400">لا توجد مدفوعات بانتظار المراجعة. 🎉</div>}
       {rows.map((p) => (
         <div key={p.id} className="card p-4 flex flex-col gap-3 md:flex-row md:items-start">
           {/* receipt image */}
@@ -74,6 +87,30 @@ export default function FinancePaymentsClient({ initial }: { initial: any[] }) {
       {zoom && (
         <div onClick={() => setZoom(null)} className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-6 cursor-zoom-out">
           <img src={zoom} alt="إيصال مكبّر" className="max-h-[90vh] max-w-full rounded-lg" />
+        </div>
+      )}
+
+      {/* Recently approved — with refund (reverses the wallet credit) */}
+      {done.length > 0 && (
+        <div className="card p-5 mt-2">
+          <h2 className="font-bold mb-3 text-sm">المعتمدة مؤخرًا — استرداد عند الحاجة</h2>
+          <table className="w-full text-xs">
+            <tbody>
+              {done.map((p) => (
+                <tr key={p.id} className="border-t border-white/5">
+                  <td className="p-1.5"><b>${p.amountUsd}</b></td>
+                  <td className="p-1.5 font-mono text-slate-400">{p.methodKey}</td>
+                  <td className="p-1.5 text-slate-500">{p.planSlug || "—"}</td>
+                  <td className="p-1.5 font-mono text-[10px] text-slate-500">{String(p.userId).slice(0, 10)}</td>
+                  <td className="p-1.5 text-left">
+                    {p.status === "refunded"
+                      ? <span className="rounded bg-white/5 px-2 py-0.5 text-slate-400">مُسترَد</span>
+                      : <button disabled={busy === p.id} onClick={() => refund(p.id)} className="rounded bg-rose-500/10 text-rose-300 px-3 py-1 disabled:opacity-50">استرداد</button>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

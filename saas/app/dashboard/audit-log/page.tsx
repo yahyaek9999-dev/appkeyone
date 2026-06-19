@@ -43,6 +43,7 @@ const ACTION_LABELS: Record<string, string> = {
   "admin.payment_method_changed": "تغيير طريقة دفع",
   "admin.payment_approved": "اعتماد دفعة",
   "admin.payment_rejected": "رفض دفعة",
+  "admin.payment_refunded": "استرداد دفعة",
 };
 
 const FILTER_TABS: { key?: string; label: string }[] = [

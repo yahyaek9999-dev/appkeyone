@@ -7,7 +7,7 @@
  */
 import { NextResponse } from "next/server";
 import { requireFinanceOrAdmin } from "@/lib/finance/access";
-import { reviewPaymentProof, startReview } from "@/lib/payments-ops/proofs";
+import { reviewPaymentProof, startReview, refundProof } from "@/lib/payments-ops/proofs";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   if (body.action === "start_review") {
     return NextResponse.json(await startReview(id, reviewerName));
+  }
+
+  if (body.action === "refund") {
+    if (!String(body.reason || "").trim()) return NextResponse.json({ error: "reason_required", message: "سبب الاسترداد مطلوب." }, { status: 400 });
+    return NextResponse.json(await refundProof(id, { actorId: actor?.id || null, actorEmail: reviewerEmail, actorRole: actor?.role || "admin", reason: body.reason }));
   }
 
   const decision = body.decision === "approve" ? "approve" : body.decision === "reject" ? "reject" : null;
