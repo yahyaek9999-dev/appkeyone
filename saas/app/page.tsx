@@ -202,49 +202,6 @@ export default async function LandingPage({
       {/* ───────── Stats strip ───────── */}
       <AnimatedStatsSection stats={m.stats} />
 
-      {/* ───────── Outcomes ───────── */}
-      <section className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
-        <div className="mx-auto max-w-5xl">
-          <FadeInView className="text-center mb-10">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
-              {isRtl ? "نتائج حقيقية" : "Real outcomes"}
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              {isRtl ? "الشركات التي تستخدم KEYONE تشاهد فرقاً في أول شهر" : "Businesses using KEYONE see measurable results in the first month"}
-            </p>
-          </FadeInView>
-
-          <StaggerReveal className="grid gap-4 sm:grid-cols-3" stagger={0.1}>
-            {[
-              { value: isRtl ? "15 دقيقة" : "15 min/day", label: isRtl ? "إدارة العمليات اليومية" : "daily operations management", accent: false },
-              { value: isRtl ? "5 ثوانٍ" : "5 seconds", label: isRtl ? "متوسط وقت الرد على العملاء" : "average customer reply time", accent: true },
-              { value: isRtl ? "~3×" : "~3×", label: isRtl ? "زيادة في تحويل المبيعات" : "increase in sales conversion", accent: false },
-            ].map((item, i) => (
-              <StaggerItem key={i}>
-                <div className="surface p-6 text-center">
-                  <div className={`text-3xl font-semibold tabular-nums sm:text-4xl ${item.accent ? "text-brand-300" : "text-white"}`}>
-                    {item.value}
-                  </div>
-                  <div className="mt-1.5 text-sm text-slate-500">{item.label}</div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerReveal>
-
-          <FadeInView delay={0.3} className="mt-6 surface p-5 sm:p-6">
-            <p className="text-sm leading-relaxed text-slate-300">
-              {isRtl
-                ? `"قبل ${brandName}، كنا بنضيع ساعات يومياً على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً — الردود، تتبع الطلبات، والتقارير. الفرق في الشهر الأول كان واضح."`
-                : `"Before ${brandName}, we were losing hours on manual replies every day. Now everything runs automatically — replies, order tracking, and reports. The difference was clear in the first month."`
-              }
-            </p>
-            <div className="mt-3 text-xs text-slate-500">
-              {isRtl ? "— صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "— E-commerce store owner, user for 6 months"}
-            </div>
-          </FadeInView>
-        </div>
-      </section>
-
       {/* ───────── Features — bento grid (21st.dev features-8) ───────── */}
       <section id="features" className="px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
