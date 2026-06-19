@@ -253,9 +253,39 @@ function isActivePath(pathname: string, href: string) {
     : pathname === href || pathname.startsWith(href + "/");
 }
 
-function accessibleWorkspaces(role: Role): Workspace[] {
-  return WORKSPACES.map((w) => ({ ...w, items: w.items.filter((i) => can(role, i.perm)) })).filter(
-    (w) => w.items.length > 0,
+// Beginner mode: the essential destinations a non-technical owner needs daily.
+// Everything else is "advanced" and hidden until the user flips to "كل الأدوات".
+const CORE_HREFS = new Set<string>([
+  "/dashboard",
+  "/dashboard/orders", "/dashboard/products", "/dashboard/broadcasts",
+  "/dashboard/customers", "/dashboard/inbox", "/dashboard/leads",
+  "/dashboard/bot", "/dashboard/knowledge", "/dashboard/quick-replies",
+  "/dashboard/whatsapp", "/docs",
+  "/dashboard/settings", "/dashboard/billing", "/dashboard/wallet",
+]);
+const NAV_MODE_KEY = "keyone_nav_simple";
+
+function accessibleWorkspaces(role: Role, simple = false, pathname = ""): Workspace[] {
+  return WORKSPACES.map((w) => ({
+    ...w,
+    // In simple mode keep only core items — plus whatever page you're on, so the
+    // nav always answers "where am I?" even on an advanced screen.
+    items: w.items.filter((i) => can(role, i.perm) && (!simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href))),
+  })).filter((w) => w.items.length > 0);
+}
+
+function useNavMode(): [boolean, () => void] {
+  const [simple, setSimple] = useState(true);
+  useEffect(() => { try { setSimple(localStorage.getItem(NAV_MODE_KEY) !== "0"); } catch {} }, []);
+  const toggle = () => setSimple((v) => { const n = !v; try { localStorage.setItem(NAV_MODE_KEY, n ? "1" : "0"); } catch {} return n; });
+  return [simple, toggle];
+}
+
+function NavModeToggle({ simple, toggle }: { simple: boolean; toggle: () => void }) {
+  return (
+    <button onClick={toggle} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2 text-[11px] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200">
+      {simple ? "⚙ عرض كل الأدوات" : "↩ الأساسيات فقط"}
+    </button>
   );
 }
 
@@ -278,7 +308,8 @@ function ContextRow({ item, active }: { item: NavItem; active: boolean }) {
  */
 export function SidebarNav({ adminLink, role = "owner" }: { adminLink?: React.ReactNode; role?: Role }) {
   const pathname = usePathname();
-  const spaces = accessibleWorkspaces(role);
+  const [simple, toggleMode] = useNavMode();
+  const spaces = accessibleWorkspaces(role, simple, pathname);
   const currentWs = workspaceForPath(pathname);
   // Which workspace's items are shown in the panel. Defaults to the one holding
   // the current route; the user can preview another by clicking its rail glyph.
@@ -323,6 +354,7 @@ export function SidebarNav({ adminLink, role = "owner" }: { adminLink?: React.Re
         {viewed.items.map((it) => (
           <ContextRow key={it.href} item={it} active={isActivePath(pathname, it.href)} />
         ))}
+        <NavModeToggle simple={simple} toggle={toggleMode} />
       </nav>
     </div>
   );
@@ -334,7 +366,8 @@ export function SidebarNav({ adminLink, role = "owner" }: { adminLink?: React.Re
  */
 export function NavLinks({ role = "owner" }: { role?: Role }) {
   const pathname = usePathname();
-  const spaces = accessibleWorkspaces(role);
+  const [simple, toggleMode] = useNavMode();
+  const spaces = accessibleWorkspaces(role, simple, pathname);
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
       {spaces.map((w) => (
@@ -350,6 +383,7 @@ export function NavLinks({ role = "owner" }: { role?: Role }) {
           </div>
         </div>
       ))}
+      <NavModeToggle simple={simple} toggle={toggleMode} />
     </nav>
   );
 }
