@@ -12,22 +12,72 @@ const CATEGORY_DEPARTMENT: Record<string, string> = {
   api: "developer", brain: "developer", qr: "operations", customers: "support", other: "operations",
 };
 
-export async function reportIncident(input: { category: string; source?: string; severity?: string; title: string; detail?: string; refType?: string; refId?: string; userId?: string; customerId?: string; issueKey?: string }) {
+const SEVERITY_PRIORITY: Record<string, string> = { critical: "urgent", high: "high", medium: "medium", low: "low" };
+const PRIORITY_SLA_HOURS: Record<string, number> = { urgent: 4, high: 12, medium: 48, low: 120 };
+
+/** Append-only incident history event (assigned / reassigned / priority / status / resolved). */
+async function logEvent(incidentId: string, kind: string, e: { fromValue?: string; toValue?: string; actorEmail?: string; actorStaffId?: string | null; note?: string } = {}) {
+  return prisma.incidentEvent.create({
+    data: { incidentId, kind, fromValue: (e.fromValue || "").slice(0, 200), toValue: (e.toValue || "").slice(0, 200), actorEmail: (e.actorEmail || "system").slice(0, 160), actorStaffId: e.actorStaffId || null, note: (e.note || "").slice(0, 500) },
+  }).catch(() => null);
+}
+
+export async function listIncidentEvents(incidentId: string) {
+  return prisma.incidentEvent.findMany({ where: { incidentId }, orderBy: { createdAt: "asc" } });
+}
+
+export async function reportIncident(input: { category: string; source?: string; severity?: string; priority?: string; title: string; detail?: string; refType?: string; refId?: string; userId?: string; customerId?: string; issueKey?: string }) {
   const department = CATEGORY_DEPARTMENT[input.category] || "operations";
-  const assignedStaffId = await leastLoadedStaff(department);
+  // No orphan incidents: try the department's least-loaded staff, then ANY least-loaded staff as a fallback owner.
+  let assignedStaffId = await leastLoadedStaff(department);
+  if (!assignedStaffId) assignedStaffId = await leastLoadedStaff("operations");
+  if (!assignedStaffId) {
+    const any = await prisma.staffMember.findFirst({ where: { status: "active" }, orderBy: { workload: "asc" } });
+    assignedStaffId = any?.id || null;
+  }
+  const priority = input.priority || SEVERITY_PRIORITY[input.severity || "medium"] || "medium";
+  const dueDate = new Date(Date.now() + (PRIORITY_SLA_HOURS[priority] || 48) * 3600 * 1000);
   const inc = await prisma.incident.create({
     data: {
       category: input.category, source: input.source || "system", severity: input.severity || "medium",
+      priority, dueDate,
       status: assignedStaffId ? "assigned" : "open", title: input.title.slice(0, 200), detail: (input.detail || "").slice(0, 2000),
       department, assignedStaffId, issueKey: input.issueKey || null, refType: input.refType || "", refId: input.refId || null,
       userId: input.userId || null, customerId: input.customerId || null,
     },
   });
+  await logEvent(inc.id, "created", { toValue: department, note: input.title.slice(0, 200) });
   if (assignedStaffId) {
+    await logEvent(inc.id, "assigned", { toValue: assignedStaffId });
     await prisma.staffMember.update({ where: { id: assignedStaffId }, data: { workload: { increment: 1 } } }).catch(() => {});
     await notifyStaff(assignedStaffId, { type: "incident", title: `[${input.category}] ${inc.title}`, body: input.detail || "", refType: "incident", refId: inc.id });
   }
   return inc;
+}
+
+/** Manually assign or reassign an incident to a staff member, adjusting workloads + history. */
+export async function assignIncident(id: string, staffId: string, actorEmail?: string) {
+  const inc = await prisma.incident.findUnique({ where: { id } });
+  if (!inc) return { ok: false as const, reason: "not_found" };
+  const target = await prisma.staffMember.findUnique({ where: { id: staffId } });
+  if (!target) return { ok: false as const, reason: "staff_not_found" };
+  if (inc.assignedStaffId === staffId) return { ok: true as const };
+  if (inc.assignedStaffId) await prisma.staffMember.update({ where: { id: inc.assignedStaffId }, data: { workload: { decrement: 1 } } }).catch(() => {});
+  await prisma.staffMember.update({ where: { id: staffId }, data: { workload: { increment: 1 } } }).catch(() => {});
+  await prisma.incident.update({ where: { id }, data: { assignedStaffId: staffId, status: inc.status === "open" ? "assigned" : inc.status, department: target.departmentKey || inc.department } });
+  await logEvent(id, inc.assignedStaffId ? "reassigned" : "assigned", { fromValue: inc.assignedStaffId || "", toValue: staffId, actorEmail });
+  await notifyStaff(staffId, { type: "incident", title: `أُسندت إليك حادثة: ${inc.title}`, refType: "incident", refId: id });
+  return { ok: true as const };
+}
+
+export async function setIncidentPriority(id: string, priority: string, actorEmail?: string) {
+  if (!["low", "medium", "high", "urgent"].includes(priority)) return { ok: false as const, reason: "bad_priority" };
+  const inc = await prisma.incident.findUnique({ where: { id } });
+  if (!inc) return { ok: false as const, reason: "not_found" };
+  const dueDate = new Date(Date.now() + (PRIORITY_SLA_HOURS[priority] || 48) * 3600 * 1000);
+  await prisma.incident.update({ where: { id }, data: { priority, dueDate } });
+  await logEvent(id, "priority_changed", { fromValue: inc.priority, toValue: priority, actorEmail });
+  return { ok: true as const };
 }
 
 export async function resolveIncident(id: string, input: { resolution: string; rootCause?: string; resolvedByEmail?: string }) {
@@ -35,6 +85,7 @@ export async function resolveIncident(id: string, input: { resolution: string; r
   if (!inc) return { ok: false as const };
   await prisma.resolution.create({ data: { incidentId: id, resolution: input.resolution.slice(0, 1000), rootCause: (input.rootCause || "").slice(0, 500), resolvedByEmail: input.resolvedByEmail || "admin" } });
   await prisma.incident.update({ where: { id }, data: { status: "resolved", resolvedAt: new Date() } });
+  await logEvent(id, "resolved", { actorEmail: input.resolvedByEmail, note: input.resolution.slice(0, 200) });
   if (inc.assignedStaffId) await prisma.staffMember.update({ where: { id: inc.assignedStaffId }, data: { workload: { decrement: 1 } } }).catch(() => {});
   return { ok: true as const };
 }

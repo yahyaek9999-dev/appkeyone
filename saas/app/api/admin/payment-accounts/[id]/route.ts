@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return r ? NextResponse.json({ ok: true, account: r }) : NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const acct = await setAccount(id, { enabled: body.enabled, status: body.status, isDefault: body.isDefault, label: body.label, accountId: body.accountId, note: body.note, assignedStaffId: body.assignedStaffId });
+  const acct = await setAccount(id, { enabled: body.enabled, status: body.status, isDefault: body.isDefault, label: body.label, accountHolder: body.accountHolder, accountId: body.accountId, instructions: body.instructions, note: body.note, assignedStaffId: body.assignedStaffId });
   if (acct) await audit({
     userId: admin?.id || "platform", action: "admin.payment_account_changed",
     actorId: admin?.id || null, actorEmail: admin?.email || null, actorRole: "admin",

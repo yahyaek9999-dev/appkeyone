@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       role,
-      redirectTo: role === "admin" ? "/admin" : "/dashboard",
+      redirectTo: role === "admin" ? "/admin" : role === "finance" ? "/finance/payments" : "/dashboard",
     });
   }
 

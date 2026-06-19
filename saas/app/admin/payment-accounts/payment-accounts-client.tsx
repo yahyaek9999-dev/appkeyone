@@ -3,7 +3,7 @@ import { useState } from "react";
 
 export default function PaymentAccountsClient({ initial, methods }: { initial: any[]; methods: any[] }) {
   const [rows, setRows] = useState<any[]>(initial);
-  const [form, setForm] = useState({ methodKey: methods[0]?.key || "", label: "", accountId: "", note: "" });
+  const [form, setForm] = useState({ methodKey: methods[0]?.key || "", label: "", accountHolder: "", accountId: "", instructions: "", note: "" });
   const [busy, setBusy] = useState(false);
 
   async function create() {
@@ -12,7 +12,7 @@ export default function PaymentAccountsClient({ initial, methods }: { initial: a
     try {
       const res = await fetch("/api/admin/payment-accounts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) });
       const j = await res.json().catch(() => null);
-      if (j?.account) { setRows((rs) => [{ ...j.account, usage: 0 }, ...rs]); setForm({ ...form, label: "", accountId: "", note: "" }); }
+      if (j?.account) { setRows((rs) => [{ ...j.account, usage: 0 }, ...rs]); setForm({ ...form, label: "", accountHolder: "", accountId: "", instructions: "", note: "" }); }
     } finally { setBusy(false); }
   }
   async function action(id: string, body: any) {
@@ -30,8 +30,10 @@ export default function PaymentAccountsClient({ initial, methods }: { initial: a
       <div className="card p-4 flex flex-wrap gap-2 items-end">
         <select value={form.methodKey} onChange={(e) => setForm({ ...form, methodKey: e.target.value })} className="bg-white/5 rounded px-2 py-1.5 text-sm">{methods.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
         <input placeholder="اسم الحساب (مثلاً: فودافون كاش الرئيسي)" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} className="bg-white/5 rounded px-2 py-1.5 text-sm flex-1 min-w-[180px]" />
+        <input placeholder="اسم صاحب الحساب (يراه العميل)" value={form.accountHolder} onChange={(e) => setForm({ ...form, accountHolder: e.target.value })} className="bg-white/5 rounded px-2 py-1.5 text-sm flex-1 min-w-[160px]" />
         <input placeholder="الرقم / العنوان / المعرّف" value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })} className="bg-white/5 rounded px-2 py-1.5 text-sm flex-1 min-w-[160px]" />
-        <input placeholder="ملاحظة (اختياري)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="bg-white/5 rounded px-2 py-1.5 text-sm" />
+        <input placeholder="تعليمات للعميل (اختياري)" value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} className="bg-white/5 rounded px-2 py-1.5 text-sm flex-1 min-w-[160px]" />
+        <input placeholder="ملاحظة داخلية (اختياري)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="bg-white/5 rounded px-2 py-1.5 text-sm" />
         <button disabled={busy || !form.label} onClick={create} className="rounded bg-brand-500/15 text-brand-300 text-sm px-3 py-1.5 disabled:opacity-50">أضف حساب استلام</button>
       </div>
       <div className="card p-5 overflow-x-auto">

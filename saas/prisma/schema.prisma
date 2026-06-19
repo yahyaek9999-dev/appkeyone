@@ -2366,7 +2366,9 @@ model PaymentAccount {
   id              String   @id @default(cuid())
   methodKey       String
   label           String
-  accountId       String   @default("")
+  accountHolder   String   @default("") // account owner name shown to the customer
+  accountId       String   @default("") // the number/address/IBAN the customer pays to
+  instructions    String   @default("") // per-account payment instructions shown to the customer
   assignedStaffId String?
   enabled         Boolean  @default(true)
   status          String   @default("active") // active | maintenance | archived
@@ -2390,7 +2392,13 @@ model PaymentProof {
   reference String   @default("")
   proofUrl  String   @default("")
   note      String   @default("")
-  status    String   @default("pending") // pending|approved|rejected
+  proofImagePath String @default("") // stored uploaded receipt image (served via gated route)
+  status    String   @default("pending") // pending|under_review|approved|rejected|canceled
+  rejectionReason String @default("") // reason shown to the customer on reject
+  reviewerName String @default("") // who reviewed (shown in the customer timeline)
+  reviewStartedAt DateTime? // moved to under_review
+  decidedAt DateTime? // approved or rejected at
+  activatedAt DateTime? // membership/wallet activated at
   reviewId  String?
   ledgerId  String?
   createdAt DateTime @default(now())
@@ -2493,18 +2501,35 @@ model Incident {
   detail          String    @default("")
   department      String    @default("operations")
   assignedStaffId String?
+  priority        String    @default("medium") // low|medium|high|urgent
+  dueDate         DateTime?
   issueKey        String?
   refType         String    @default("")
   refId           String?
   userId          String?
   customerId      String?
   createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
   resolvedAt      DateTime?
 
   @@index([status, createdAt])
   @@index([department, status])
   @@index([assignedStaffId, status])
   @@index([category, status])
+}
+
+model IncidentEvent {
+  id           String   @id @default(cuid())
+  incidentId   String
+  kind         String   // created|assigned|reassigned|priority_changed|status_changed|due_set|note|resolved
+  fromValue    String   @default("")
+  toValue      String   @default("")
+  actorEmail   String   @default("")
+  actorStaffId String?
+  note         String   @default("")
+  createdAt    DateTime @default(now())
+
+  @@index([incidentId, createdAt])
 }
 
 model CustomerProblem {

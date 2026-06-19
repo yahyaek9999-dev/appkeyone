@@ -48,6 +48,8 @@ export type AuditAction =
   | "admin.plan_restored"
   | "admin.payment_account_changed"
   | "admin.payment_method_changed"
+  | "admin.payment_approved"
+  | "admin.payment_rejected"
   | "settings.meta_cloud_verified"
   | (string & {});
 

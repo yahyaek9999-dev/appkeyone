@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "keyone",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "saas", "run", "start"],
+      "port": 3000
+    }
+  ]
+}

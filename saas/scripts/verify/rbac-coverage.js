@@ -51,7 +51,7 @@ const WAIVED = new Set([
 ]);
 
 const GATE_RE =
-  /\b(requirePermission|getUserIdForPermission|getUserForPermission|requireAdmin|apiGate)\b/;
+  /\b(requirePermission|getUserIdForPermission|getUserForPermission|requireAdmin|requireFinanceOrAdmin|apiGate)\b/;
 const MUTATING_RE = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/g;
 // Routes guard the internal secret either inline (the literal header/env name)
 // or via the shared lib/internal-auth.ts helper (checkInternalSecret).

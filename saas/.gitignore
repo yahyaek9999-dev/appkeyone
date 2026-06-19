@@ -7,3 +7,6 @@ out
 prisma/dev.db
 prisma/dev.db-journal
 .DS_Store
+
+# Payment-proof receipt images (private, not committed)
+uploads/
