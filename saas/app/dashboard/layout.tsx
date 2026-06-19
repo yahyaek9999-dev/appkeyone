@@ -12,6 +12,7 @@ import CommandTrigger from "./command-trigger";
 import HelpDrawer from "./help-drawer";
 import PageTransition from "./page-transition";
 import { ToastProvider } from "@/components/ui/toast";
+import DashboardTour from "./dashboard-tour";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
 export default async function DashboardLayout({
@@ -95,16 +96,17 @@ export default async function DashboardLayout({
             {UserFooter}
           </MobileNav>
 
-          <aside className="hidden w-64 shrink-0 flex-col border-l border-white/[0.06] bg-canvas-deep md:flex">
+          <aside data-tour="sidebar" className="hidden w-64 shrink-0 flex-col border-l border-white/[0.06] bg-canvas-deep md:flex">
             <div className="border-b border-white/[0.06]">
               {Brand}
-              <div className="px-2.5 pb-2.5">
+              <div className="px-2.5 pb-2.5" data-tour="search">
                 <CommandTrigger />
               </div>
             </div>
             <SidebarNav adminLink={AdminLink} role={role} />
             {UserFooter}
           </aside>
+          <DashboardTour />
 
           <main className="min-h-screen min-w-0 flex-1">
             <div className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-safe pt-6 md:px-8 md:pt-8 lg:pt-10">
