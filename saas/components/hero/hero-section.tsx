@@ -181,51 +181,55 @@ export default function HeroSection({
       )}`
     : "";
 
+  const headline = isRtl
+    ? "أتمتة واتساب وذكاء الأعمال لمتجرك"
+    : "WhatsApp automation & business intelligence for your store";
+  const subhead = isRtl
+    ? "ردّ تلقائي على عملائك خلال ثوانٍ، يرصد كل طلب، ويرسل تقاريرك — مباشرةً داخل واتساب."
+    : "Reply to customers in seconds, capture every order, and get instant reports — right inside WhatsApp.";
+
   return (
-    <>
-      <section
-        className="relative flex h-[100svh] min-h-[560px] flex-col overflow-hidden bg-black"
-        onMouseMove={handleMouseMove}
-      >
-        {/* Accessible/SEO headline — the visible headline lives in the approved
-            hero video, so expose a real H1 to screen readers + crawlers without
-            altering the visual composition. */}
-        <h1 className="sr-only">
-          {isRtl
-            ? `${brandName} — منصة أتمتة واتساب وذكاء الأعمال للمتاجر والشركات`
-            : `${brandName} — WhatsApp automation & business intelligence for stores and businesses`}
-        </h1>
+    <section
+      className="relative flex h-[100svh] min-h-[600px] flex-col overflow-hidden bg-black"
+      onMouseMove={handleMouseMove}
+    >
+      {/* ── Background Layers (cinematic logo video) ── */}
+      <HeroVideo src={videoSrc} mobileSrc={mobileVideoSrc} />
+      <AmbientGlows />
+      <CinematicGrid />
+      <LightSweep />
+      <ParticleField />
 
-        {/* ── Background Layers ── */}
-        <HeroVideo src={videoSrc} mobileSrc={mobileVideoSrc} />
-        <AmbientGlows />
-        <CinematicGrid />
-        <LightSweep />
-        <ParticleField />
-
-        {/* ── Bottom fade ── */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-32 bg-gradient-to-t from-black to-transparent" />
-      </section>
-
-      {/* ── CTA Buttons below video ── */}
-      <div className="flex flex-col items-center justify-center gap-4 bg-black px-6 pb-16 pt-10 sm:flex-row sm:pb-20">
-        {waNum ? (
-          <FrameButton href={waHref} variant="solid" external>
-            <WhatsAppIcon className="h-4 w-4" />
-            {ctaPrimary}
-          </FrameButton>
-        ) : (
-          <FrameButton href="/pricing" variant="solid">
-            {ctaPrimary}
-            <Arrow />
-          </FrameButton>
-        )}
-
-        <FrameButton href="/pricing" variant="outline">
-          {ctaSecondary}
-          {!waNum && <Arrow />}
-        </FrameButton>
+      {/* ── Value-proposition overlay — VISIBLE within the first screen so a
+            first-time owner understands what KEYONE does + a CTA in <10s ── */}
+      <div ref={revealRef} className="relative z-20 mt-auto w-full px-6 pb-14 pt-28 text-center sm:pb-20">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/85 to-transparent" aria-hidden="true" />
+        <div ref={contentRef} className="relative mx-auto max-w-2xl">
+          <h1 data-reveal className="text-balance text-3xl font-bold leading-tight tracking-[-0.02em] text-white sm:text-5xl">
+            {headline}
+          </h1>
+          <p data-reveal className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
+            {subhead}
+          </p>
+          <div data-reveal className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            {waNum ? (
+              <FrameButton href={waHref} variant="solid" external>
+                <WhatsAppIcon className="h-4 w-4" />
+                {ctaPrimary}
+              </FrameButton>
+            ) : (
+              <FrameButton href="/pricing" variant="solid">
+                {ctaPrimary}
+                <Arrow />
+              </FrameButton>
+            )}
+            <FrameButton href="/pricing" variant="outline">
+              {ctaSecondary}
+              {!waNum && <Arrow />}
+            </FrameButton>
+          </div>
+        </div>
       </div>
-    </>
+    </section>
   );
 }
