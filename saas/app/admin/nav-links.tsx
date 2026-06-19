@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
   Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
-  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock,
+  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen,
 } from "lucide-react";
 
 export const ADMIN_LINKS = [
@@ -54,6 +54,7 @@ export const ADMIN_LINKS = [
   // HIDDEN (final-polish): not production-ready — branding not yet applied at runtime
   // { href: "/admin/white-label", label: "العلامة البيضاء", icon: LayoutGrid },
   { href: "/admin/settings", label: "إعدادات الموقع", icon: Settings },
+  { href: "/docs", label: "مركز المساعدة", icon: BookOpen },
 ];
 
 export function AdminNavLinks() {

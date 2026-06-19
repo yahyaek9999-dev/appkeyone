@@ -190,6 +190,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
       { href: "/dashboard/system-health", label: "صحة النظام", icon: Gauge, perm: "settings" },
       { href: "/dashboard/audit-log", label: "سجل التدقيق", icon: ScrollText, perm: "team" },
+      { href: "/docs", label: "مركز المساعدة", icon: BookOpen, perm: "analytics" },
     ],
   },
   {
