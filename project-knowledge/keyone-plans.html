@@ -69,6 +69,26 @@
   .notes li{ font-size:10.5px; color:#34424f; margin-bottom:4px; padding-right:14px; position:relative; list-style:none; }
   .notes li:before{ content:"•"; position:absolute; right:0; color:var(--gold); font-weight:900; }
   .foot{ margin-top:14px; text-align:center; font-size:9px; color:#9aa7b2; }
+
+  /* ── Features + benefit list ── */
+  .sec-title{ font-size:14px; font-weight:900; color:var(--teal); margin:2px 0 10px; padding-right:12px; position:relative; }
+  .sec-title:before{ content:""; position:absolute; right:0; top:3px; bottom:3px; width:4px; background:var(--gold); border-radius:3px; }
+  .f2{ display:grid; grid-template-columns:1fr 1fr; gap:0 18px; }
+  .fitem{ break-inside:avoid; padding:5.5px 0; border-bottom:1px dashed var(--line); display:flex; gap:7px; }
+  .fitem .num{ flex:0 0 auto; width:17px; height:17px; border-radius:6px; background:var(--soft2); color:var(--teal); font-weight:900; font-size:9px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .fitem .n{ font-weight:800; font-size:10.5px; color:var(--ink); }
+  .fitem .b{ font-size:9.5px; color:var(--muted); line-height:1.5; }
+  /* ── Support / advantages / problems blocks ── */
+  .three{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .block{ border:1px solid var(--line); border-radius:13px; padding:14px 15px; break-inside:avoid; }
+  .block.full{ grid-column:1 / -1; }
+  .block h4{ font-size:12.5px; color:var(--teal); margin-bottom:8px; }
+  .block .item{ font-size:10.5px; color:#27323d; padding:3px 0; padding-right:15px; position:relative; }
+  .block .item:before{ content:"✓"; position:absolute; right:0; color:var(--teal); font-weight:900; }
+  .block.adv .item:before{ content:"★"; color:var(--gold); }
+  .block.prob .item:before{ content:"→"; color:var(--gold); }
+  .pills{ display:flex; flex-wrap:wrap; gap:5px; }
+  .pill{ background:var(--soft); border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:9.5px; color:var(--ink); font-weight:600; }
 </style>
 </head>
 <body>
@@ -122,7 +142,7 @@
       <li>عند استخدام واتساب Cloud الرسمي تُحسب تكلفة محادثات Meta من رصيد محفظتك المسبق (منفصل عن سعر الاشتراك) وفق أسعار Meta لكل دولة/فئة.</li>
     </ul>
   </div>
-  <div class="foot">KEYONE — دليل الباقات للعملاء · صفحة ١ من ٢</div>
+  <div class="foot">KEYONE — دليل الباقات للعملاء · صفحة ١ من ٤</div>
 </div>
 
 <!-- PAGE 2 -->
@@ -222,7 +242,97 @@
     </div>
   </div>
 
-  <div class="foot">KEYONE — جميع الأسعار بالدولار · «قريبًا» = ميزة قيد الإطلاق تتوفّر لمشتركي الباقة عند إطلاقها دون تكلفة إضافية · صفحة ٢ من ٢</div>
+  <div class="foot">KEYONE — جميع الأسعار بالدولار · «قريبًا» = ميزة قيد الإطلاق تتوفّر لمشتركي الباقة عند إطلاقها دون تكلفة إضافية · صفحة ٢ من ٤</div>
+</div>
+
+<!-- PAGE 3 — Top features + benefit -->
+<div class="page">
+  <div class="head">
+    <div class="brand"><div class="logo">K</div><div><h1>أهم المميزات وفايدتها</h1><div class="sub">٣٠ ميزة — وماذا تقدّم لأعمالك فعليًا</div></div></div>
+    <div class="meta">كل ميزة = حلّ لمشكلة حقيقية</div>
+  </div>
+  <div class="f2">
+    <div class="fitem"><div class="num">1</div><div><div class="n">صندوق وارد واتساب موحّد</div><div class="b">كل محادثات عملائك في شاشة واحدة — لا رسالة تضيع ولا تتكرّر.</div></div></div>
+    <div class="fitem"><div class="num">2</div><div><div class="n">ردود تلقائية ذكية ٢٤/٧</div><div class="b">رد خلال ثوانٍ في أي وقت — العميل لا ينتظر ولا يذهب لمنافس.</div></div></div>
+    <div class="fitem"><div class="num">3</div><div><div class="n">المساعد الذكي + قاعدة المعرفة</div><div class="b">البوت يتعلّم منتجاتك وأسعارك وسياساتك فيرد بدقة بدل ردود عامة.</div></div></div>
+    <div class="fitem"><div class="num">4</div><div><div class="n">رصد الطلبات تلقائيًا</div><div class="b">يكتشف نية الشراء، يسجّل الطلب من المحادثة، ويبلّغك فورًا — لا طلب يفوت.</div></div></div>
+    <div class="fitem"><div class="num">5</div><div><div class="n">إدارة العملاء (CRM)</div><div class="b">ملف لكل عميل بسجل محادثاته وطلباته — تعرف عميلك وتتابعه.</div></div></div>
+    <div class="fitem"><div class="num">6</div><div><div class="n">تقييم العملاء المحتملين</div><div class="b">يرتّب الأقرب للشراء فتركّز جهد فريقك على الصفقات الجاهزة.</div></div></div>
+    <div class="fitem"><div class="num">7</div><div><div class="n">خطّ أنابيب المبيعات</div><div class="b">تابع كل صفقة من أول رسالة حتى الإغلاق — لا فرصة تُنسى.</div></div></div>
+    <div class="fitem"><div class="num">8</div><div><div class="n">تقسيم العملاء لشرائح</div><div class="b">استهدف كل فئة (جدد/متكرّرين/متعثّرين) برسالة مناسبة لها.</div></div></div>
+    <div class="fitem"><div class="num">9</div><div><div class="n">حملات البثّ الجماعي</div><div class="b">وصّل عرضك لآلاف العملاء برسالة واحدة + قِس التفاعل.</div></div></div>
+    <div class="fitem"><div class="num">10</div><div><div class="n">منشئ الحملات الذكي</div><div class="b">يساعدك تكتب الرسالة المناسبة وتجدولها في التوقيت الأفضل.</div></div></div>
+    <div class="fitem"><div class="num">11</div><div><div class="n">المتابعة الذكية واستعادة العملاء</div><div class="b">يتابع تلقائيًا من لم يكمل طلبه (سلة متروكة) → مبيعات مستردّة.</div></div></div>
+    <div class="fitem"><div class="num">12</div><div><div class="n">أتمتة سير العمل (بدون كود)</div><div class="b">قواعد if-this-then-that: تنبيه عند الشحن، تذكير لمن لم يرد، تصنيف تلقائي.</div></div></div>
+    <div class="fitem"><div class="num">13</div><div><div class="n">ساعات العمل وردود خارج الدوام</div><div class="b">العميل يجد دائمًا ردًّا لائقًا حتى بعد إغلاق المتجر.</div></div></div>
+    <div class="fitem"><div class="num">14</div><div><div class="n">الردود السريعة الجاهزة</div><div class="b">رُدّ على الأسئلة المتكرّرة بضغطة واحدة وفّر وقت فريقك.</div></div></div>
+    <div class="fitem"><div class="num">15</div><div><div class="n">تحليلات متقدّمة + إسناد الإيرادات</div><div class="b">تعرف أي قناة/حملة تجلب المال فعليًا فتضاعف ما ينجح.</div></div></div>
+    <div class="fitem"><div class="num">16</div><div><div class="n">تقارير تنفيذية وتوقّع الإيرادات</div><div class="b">قرارات مبنية على أرقام حقيقية لا على تخمين.</div></div></div>
+    <div class="fitem"><div class="num">17</div><div><div class="n">واتساب Cloud API الرسمي (Meta)</div><div class="b">استقرار وموثوقية أعلى + قوالب معتمدة + حدود إرسال أكبر.</div></div></div>
+    <div class="fitem"><div class="num">18</div><div><div class="n">أرقام واتساب متعدّدة</div><div class="b">افصل الفروع أو الأقسام على أرقام مختلفة من لوحة واحدة.</div></div></div>
+    <div class="fitem"><div class="num">19</div><div><div class="n">فريق عمل بصلاحيات + متعدّد الفرق</div><div class="b">وزّع العمل بأمان — كل عضو يرى ما يخصّه فقط.</div></div></div>
+    <div class="fitem"><div class="num">20</div><div><div class="n">الولاء والمكافآت</div><div class="b">حافظ على عملائك الحاليين وأعِد تنشيطهم — أرخص من اكتساب جديد.</div></div></div>
+    <div class="fitem"><div class="num">21</div><div><div class="n">تكاملات المتاجر + API</div><div class="b">اربط Shopify / WooCommerce / Salla / Zid وأنظمتك لمزامنة الطلبات.</div></div></div>
+    <div class="fitem"><div class="num">22</div><div><div class="n">محفظة مسبقة الدفع + فوترة Meta شفّافة</div><div class="b">تحكّم كامل في تكلفة المحادثات وتشاهد كل عملية خصم.</div></div></div>
+    <div class="fitem"><div class="num">23</div><div><div class="n">مركز صحة الأنظمة</div><div class="b">حالة واتساب/Meta/الذكاء في لحظة، مع إصلاح بضغطة (اختبار/إعادة ربط/تبديل).</div></div></div>
+    <div class="fitem"><div class="num">24</div><div><div class="n">بديل مزوّد الذكاء التلقائي (Failover)</div><div class="b">لو توقّف مزوّد، يعمل البديل تلقائيًا — الردود لا تتوقّف.</div></div></div>
+    <div class="fitem"><div class="num">25</div><div><div class="n">أمان وحماية وسجل تدقيق</div><div class="b">تشفير + نسخ احتياطي + تسجيل كل إجراء مالي/حسّاس (من فعل ماذا ومتى).</div></div></div>
+    <div class="fitem"><div class="num">26</div><div><div class="n">يفهم الصوت والصورة والنص</div><div class="b">العميل يراسلك بأي شكل والبوت يفهمه ويرد.</div></div></div>
+    <div class="fitem"><div class="num">27</div><div><div class="n">رؤى متقدّمة عن العملاء</div><div class="b">يكشف سلوك الشراء والاهتمامات لتخصيص العروض.</div></div></div>
+    <div class="fitem"><div class="num">28</div><div><div class="n">مسارات الموافقات + Flow Builder <span style="color:var(--gold)">(قريبًا)</span></div><div class="b">اعتماد قبل الإجراءات الحسّاسة + تصميم رحلات أتمتة معقّدة بصريًا.</div></div></div>
+    <div class="fitem"><div class="num">29</div><div><div class="n">إدارة الفروع المتعدّدة <span style="color:var(--gold)">(قريبًا)</span></div><div class="b">كل فرع ببياناته وتقاريره المستقلّة.</div></div></div>
+    <div class="fitem"><div class="num">30</div><div><div class="n">علامة بيضاء + بنية مخصّصة + SLA</div><div class="b">قدّم المنصة باسمك (للوكالات) أو بنية وخدمة مخصّصة للمؤسسات.</div></div></div>
+  </div>
+  <div class="foot">KEYONE — أهم المميزات وفايدتها · صفحة ٣ من ٤</div>
+</div>
+
+<!-- PAGE 4 — Support / Advantages / Problems -->
+<div class="page">
+  <div class="head">
+    <div class="brand"><div class="logo">K</div><div><h1>ندعم · نتميّز · نحلّ</h1><div class="sub">ما الذي ندعمه، ولماذا KEYONE، وأي مشاكل نحلّها</div></div></div>
+    <div class="meta">نظرة شاملة قبل القرار</div>
+  </div>
+
+  <div class="block full">
+    <h4>📡 بندعم إيه؟</h4>
+    <div style="margin-bottom:8px"><b style="font-size:10.5px">القناة:</b> <span class="b" style="font-size:10px;color:var(--muted)">واتساب — ربط سريع بكود QR، أو واتساب Cloud API الرسمي من Meta.</span></div>
+    <div style="margin-bottom:6px"><b style="font-size:10.5px">التكاملات:</b></div>
+    <div class="pills" style="margin-bottom:9px"><span class="pill">Shopify</span><span class="pill">WooCommerce</span><span class="pill">Salla</span><span class="pill">Zid</span><span class="pill">API للمطوّرين</span><span class="pill">Webhooks مخصّصة</span></div>
+    <div style="margin-bottom:6px"><b style="font-size:10.5px">طرق دفع الاشتراك:</b></div>
+    <div class="pills" style="margin-bottom:9px"><span class="pill">فودافون كاش</span><span class="pill">إنستاباي</span><span class="pill">تحويل بنكي</span><span class="pill">Binance</span><span class="pill">USDT</span><span class="pill">PayPal</span><span class="pill">RedotPay</span><span class="pill">Bybit</span><span class="pill">Kast</span><span class="pill">+ بوابات Paymob / Stripe</span></div>
+    <div><b style="font-size:10.5px">اللغة والوسائط:</b> <span class="b" style="font-size:10px;color:var(--muted)">عربي وإنجليزي بواجهة RTL كاملة · يفهم النص والصوت والصور.</span></div>
+  </div>
+
+  <div class="three" style="margin-top:12px">
+    <div class="block adv">
+      <h4>⭐ ليه KEYONE؟ (مميزاتنا)</h4>
+      <div class="item">كل شيء داخل واتساب — حيث عملاؤك فعلًا، بلا تطبيق جديد.</div>
+      <div class="item">ذكاء اصطناعي يتعلّم من بياناتك — ردود دقيقة لا قوالب جامدة.</div>
+      <div class="item">يعمل بدون مطوّر — دفع وباقات وفِرق وحوادث وصحة الأنظمة من اللوحة.</div>
+      <div class="item">شفافية مالية كاملة — محفظة مسبقة + سجل تدقيق لكل عملية.</div>
+      <div class="item">موثوقية عالية — بديل مزوّد ذكاء تلقائي ومراقبة صحّة مستمرة.</div>
+      <div class="item">عربي أولًا — تجربة RTL احترافية مصمّمة لسوقك.</div>
+    </div>
+    <div class="block prob">
+      <h4>🛠️ بنحلّ مشاكل إيه؟</h4>
+      <div class="item">رسائل عملاء تضيع وردّ متأخر → رد فوري ٢٤/٧.</div>
+      <div class="item">ساعات مهدورة على الردود اليدوية → أتمتة كاملة.</div>
+      <div class="item">طلبات تفوت بين الرسائل → رصد تلقائي وتنبيه فوري.</div>
+      <div class="item">عملاء يتركون السلة → متابعة تلقائية تستردّهم.</div>
+      <div class="item">لا رؤية للأداء → تحليلات وتقارير تنفيذية.</div>
+      <div class="item">فوضى إدارة الفريق → أدوار وصلاحيات واضحة.</div>
+      <div class="item">تعقيد تقني → إعداد في دقائق بدون كود.</div>
+    </div>
+  </div>
+
+  <div class="notes" style="margin-top:12px">
+    <h4>جاهز تبدأ؟</h4>
+    <ul>
+      <li>اختر باقتك من صفحة الأسعار، تواصل معنا على واتساب، وفعّل خلال دقائق.</li>
+      <li>ابدأ صغيرًا ورقِّ باقتك وقت ما تكبر — الترقية فورية والاشتراك السنوي يوفّر شهرين.</li>
+    </ul>
+  </div>
+  <div class="foot">KEYONE — أتمتة واتساب وذكاء الأعمال · صفحة ٤ من ٤</div>
 </div>
 
 </body>
