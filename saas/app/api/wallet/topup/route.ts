@@ -38,7 +38,13 @@ export async function POST(req: Request) {
   const amountUsd = parseUsdAmount(body.amountUsd);
   if (amountUsd <= 0) return NextResponse.json({ error: "invalid_amount" }, { status: 400 });
   if (amountUsd > MAX_TOPUP_USD) return NextResponse.json({ error: "amount_too_large" }, { status: 400 });
-  const method = METHODS.has(String(body.method)) ? String(body.method) : "manual";
+  // Accept any CONFIGURED payment-method key (binance/usdt_trc20/bank_transfer/…)
+  // so the request records the real method finance needs — not a "manual" fallback.
+  const rawMethod = String(body.method || "");
+  const isConfigured = rawMethod
+    ? await prisma.paymentMethod.findUnique({ where: { key: rawMethod }, select: { key: true } }).then((m) => !!m).catch(() => false)
+    : false;
+  const method = isConfigured || METHODS.has(rawMethod) ? rawMethod : "manual";
 
   // Anti-spam: cap concurrent pending requests.
   const pending = await prisma.walletTopupRequest.count({ where: { userId: user.id, status: "pending" } }).catch(() => 0);

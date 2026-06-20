@@ -29,20 +29,34 @@ const KIND_LABEL: Record<string, string> = { topup: "شحن رصيد", meta_usag
 
 const inputCls = "w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-brand-400/50 focus:outline-none";
 
-export default function WalletClient({ initialThreshold }: { initialThreshold: number }) {
+type TAccount = { id: string; label: string; accountHolder: string; accountId: string; instructions: string; note: string };
+type TMethod = { key: string; label: string; instructions: string; accounts: TAccount[] };
+
+function CopyBtn({ value }: { value: string }) {
+  const [done, setDone] = useState(false);
+  if (!value) return null;
+  return (
+    <button type="button" onClick={() => { navigator.clipboard?.writeText(value).then(() => { setDone(true); setTimeout(() => setDone(false), 1500); }).catch(() => {}); }}
+      className="ms-2 rounded bg-white/10 px-2 py-0.5 text-[10px] text-slate-200 hover:bg-white/20">{done ? "✓ تم النسخ" : "نسخ"}</button>
+  );
+}
+
+export default function WalletClient({ initialThreshold, payableMethods = [] }: { initialThreshold: number; payableMethods?: TMethod[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <TopupCard />
+      <TopupCard payableMethods={payableMethods} />
       <CalculatorCard />
       <div className="lg:col-span-2"><LedgerCard /></div>
     </div>
   );
 }
 
-function TopupCard() {
+function TopupCard({ payableMethods }: { payableMethods: TMethod[] }) {
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("instapay");
+  const [method, setMethod] = useState(payableMethods[0]?.key || "");
+  const [accountId, setAccountId] = useState(payableMethods[0]?.accounts?.[0]?.id || "");
   const [note, setNote] = useState("");
+  const selMethod = payableMethods.find((m) => m.key === method) || null;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [requests, setRequests] = useState<TopupRequest[]>([]);
@@ -104,7 +118,7 @@ function TopupCard() {
     try {
       const r = await fetch("/api/wallet/topup", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ amountUsd: amt, method, note }),
+        body: JSON.stringify({ amountUsd: amt, method, accountId, note }),
       });
       const j = await r.json();
       if (j.ok) { setMsg({ ok: true, text: "تم إرسال طلب الشحن. ستتم مراجعته من الإدارة." }); setAmount(""); setNote(""); load(); }
@@ -125,16 +139,40 @@ function TopupCard() {
           </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">طريقة الدفع</label>
-            <select className={inputCls} value={method} onChange={(e) => setMethod(e.target.value)}>
-              {METHODS.map((m) => <option key={m.v} value={m.v} className="bg-slate-900">{m.l}</option>)}
+            <select className={inputCls} value={method} onChange={(e) => { setMethod(e.target.value); const m = payableMethods.find((x) => x.key === e.target.value); setAccountId(m?.accounts?.[0]?.id || ""); }}>
+              {payableMethods.map((m) => <option key={m.key} value={m.key} className="bg-slate-900">{m.label}</option>)}
             </select>
           </div>
         </div>
+
+        {/* Receiving account for the selected method — so the customer knows WHERE to send the money */}
+        {payableMethods.length === 0 ? (
+          <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.05] p-3 text-xs text-amber-200">
+            لا توجد طريقة تحويل يدوي مفعّلة حاليًا. استخدم الدفع الإلكتروني بالأسفل (إن وُجد) أو تواصل مع الدعم.
+          </div>
+        ) : selMethod && selMethod.accounts.length > 0 ? (
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.05] p-3 space-y-2">
+            <div className="text-xs text-slate-400">حوّل المبلغ إلى الحساب التالي ثم أرسل طلب الشحن:</div>
+            {selMethod.accounts.map((a) => (
+              <label key={a.id} className={`block rounded-lg p-2.5 cursor-pointer border text-xs ${accountId === a.id ? "border-emerald-400/50 bg-emerald-500/10" : "border-white/10 bg-white/5"}`}>
+                <div className="flex items-start gap-2">
+                  <input type="radio" name="wallet-acct" checked={accountId === a.id} onChange={() => setAccountId(a.id)} className="mt-1 accent-emerald-500" />
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    {a.accountHolder && <div><span className="text-slate-400">اسم صاحب الحساب:</span> <b className="text-slate-100">{a.accountHolder}</b></div>}
+                    <div className="flex items-center"><span className="text-slate-400">المعرّف:</span> <b className="text-slate-100 font-mono ms-1" dir="ltr">{a.accountId || "—"}</b><CopyBtn value={a.accountId} /></div>
+                    {(a.instructions || selMethod.instructions) && <div className="text-slate-400 whitespace-pre-wrap mt-1">{a.instructions || selMethod.instructions}</div>}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        ) : null}
+
         <div>
           <label className="block text-xs text-slate-400 mb-1">ملاحظة / مرجع التحويل (اختياري)</label>
           <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="رقم العملية أو ملاحظة" />
         </div>
-        <button type="submit" disabled={busy} className="btn-primary w-full justify-center disabled:opacity-50">
+        <button type="submit" disabled={busy || payableMethods.length === 0} className="btn-primary w-full justify-center disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} إرسال طلب الشحن
         </button>
         {msg && (

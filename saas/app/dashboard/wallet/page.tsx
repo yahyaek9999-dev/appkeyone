@@ -14,6 +14,7 @@ import { getTenantMetaBreakdown } from "@/lib/wallet/analytics";
 import { walletFlags } from "@/lib/wallet/flags";
 import { formatUsd, formatUsdPrecise } from "@/lib/wallet/money";
 import { Wallet as WalletIcon, AlertTriangle, TrendingDown, ArrowUpCircle, MessageSquare, Coins } from "lucide-react";
+import { customerPayableMethods } from "@/lib/payments-ops/accounts";
 import WalletClient from "./wallet-client";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +29,10 @@ export default async function WalletPage() {
   if (!can(ctx.role, "billing")) redirect("/dashboard");
 
   const uid = ctx.user.id;
-  const [wallet, meta] = await Promise.all([
+  const [wallet, meta, payableMethods] = await Promise.all([
     getWalletSummary(uid),
     getTenantMetaBreakdown(uid, { days: 30 }),
+    customerPayableMethods().catch(() => [] as any[]),
   ]);
 
   const stateTone =
@@ -131,7 +133,7 @@ export default async function WalletPage() {
       </div>
 
       {/* Interactive: top-up, calculator, ledger */}
-      <WalletClient initialThreshold={wallet.lowBalanceThresholdUsd} />
+      <WalletClient initialThreshold={wallet.lowBalanceThresholdUsd} payableMethods={JSON.parse(JSON.stringify(payableMethods))} />
 
       <p className="text-xs text-slate-500">
         الأسعار بالدولار الأمريكي. تُحسب تكلفة Meta لكل محادثة (نافذة 24 ساعة) حسب فئة الرسالة ودولة العميل.{" "}
