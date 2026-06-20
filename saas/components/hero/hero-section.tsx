@@ -189,47 +189,47 @@ export default function HeroSection({
     : "Reply to customers in seconds, capture every order, and get instant reports — right inside WhatsApp.";
 
   return (
-    <section
-      className="relative flex h-[100svh] min-h-[600px] flex-col overflow-hidden bg-black"
-      onMouseMove={handleMouseMove}
-    >
-      {/* ── Background Layers (cinematic logo video) ── */}
-      <HeroVideo src={videoSrc} mobileSrc={mobileVideoSrc} />
-      <AmbientGlows />
-      <CinematicGrid />
-      <LightSweep />
-      <ParticleField />
+    <>
+      {/* ── Cinematic logo video — clean, no text overlaid on it ── */}
+      <section
+        className="relative flex h-[70svh] min-h-[420px] flex-col overflow-hidden bg-black"
+        onMouseMove={handleMouseMove}
+      >
+        <HeroVideo src={videoSrc} mobileSrc={mobileVideoSrc} />
+        <AmbientGlows />
+        <CinematicGrid />
+        <LightSweep />
+        <ParticleField />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-32 bg-gradient-to-t from-black to-transparent" />
+      </section>
 
-      {/* ── Value-proposition overlay — VISIBLE within the first screen so a
-            first-time owner understands what KEYONE does + a CTA in <10s ── */}
-      <div ref={revealRef} className="relative z-20 mt-auto w-full px-6 pb-14 pt-28 text-center sm:pb-20">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/85 to-transparent" aria-hidden="true" />
-        <div ref={contentRef} className="relative mx-auto max-w-2xl">
-          <h1 data-reveal className="text-balance text-3xl font-bold leading-tight tracking-[-0.02em] text-white sm:text-5xl">
-            {headline}
-          </h1>
-          <p data-reveal className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
-            {subhead}
-          </p>
-          <div data-reveal className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            {waNum ? (
-              <FrameButton href={waHref} variant="solid" external>
-                <WhatsAppIcon className="h-4 w-4" />
-                {ctaPrimary}
-              </FrameButton>
-            ) : (
-              <FrameButton href="/pricing" variant="solid">
-                {ctaPrimary}
-                <Arrow />
-              </FrameButton>
-            )}
-            <FrameButton href="/pricing" variant="outline">
-              {ctaSecondary}
-              {!waNum && <Arrow />}
+      {/* ── Value proposition + CTAs BELOW the video so a first-time owner reads
+            what KEYONE does + a CTA, with nothing overlapping the logo ── */}
+      <div ref={revealRef} className="bg-black px-6 pb-16 pt-4 text-center sm:pb-20">
+        <h1 data-reveal className="mx-auto max-w-2xl text-balance text-3xl font-bold leading-tight tracking-[-0.02em] text-white sm:text-4xl">
+          {headline}
+        </h1>
+        <p data-reveal className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
+          {subhead}
+        </p>
+        <div data-reveal className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {waNum ? (
+            <FrameButton href={waHref} variant="solid" external>
+              <WhatsAppIcon className="h-4 w-4" />
+              {ctaPrimary}
             </FrameButton>
-          </div>
+          ) : (
+            <FrameButton href="/pricing" variant="solid">
+              {ctaPrimary}
+              <Arrow />
+            </FrameButton>
+          )}
+          <FrameButton href="/pricing" variant="outline">
+            {ctaSecondary}
+            {!waNum && <Arrow />}
+          </FrameButton>
         </div>
       </div>
-    </section>
+    </>
   );
 }
