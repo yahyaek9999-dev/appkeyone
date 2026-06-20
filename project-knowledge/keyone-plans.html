@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#0C7A6C; --teal-d:#0a5f54; --gold:#B8893B; --ink:#0f172a; --muted:#5b6b7a;
+    --line:#e6ebf0; --soft:#f6f9f9; --soft2:#eef5f4; --pro:#0C7A6C;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{font-family:'Cairo','Noto Sans Arabic','Geeza Pro',Tahoma,sans-serif; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  body{font-size:12px; line-height:1.6;}
+  @page{ size:A4; margin:14mm 12mm; }
+  .page{ page-break-after:always; }
+  .page:last-child{ page-break-after:auto; }
+
+  /* ── Header ── */
+  .head{ display:flex; align-items:center; justify-content:space-between; border-bottom:3px solid var(--teal); padding-bottom:14px; margin-bottom:18px; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .logo{ width:42px; height:42px; border-radius:11px; background:linear-gradient(135deg,var(--teal),var(--teal-d)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:22px; }
+  .brand h1{ font-size:20px; font-weight:900; letter-spacing:-.5px; }
+  .brand .sub{ font-size:11px; color:var(--muted); font-weight:600; }
+  .head .meta{ text-align:left; font-size:10px; color:var(--muted); }
+  .head .meta b{ color:var(--teal); }
+
+  .lead{ font-size:13px; color:var(--muted); margin-bottom:16px; }
+  .lead b{ color:var(--ink); }
+
+  /* ── Comparison table ── */
+  table{ width:100%; border-collapse:separate; border-spacing:0; font-size:10.5px; }
+  th,td{ padding:8px 7px; text-align:center; border-bottom:1px solid var(--line); }
+  thead th{ background:var(--ink); color:#fff; font-weight:700; }
+  thead th:first-child{ border-radius:0 9px 0 0; }
+  thead th:last-child{ border-radius:9px 0 0 0; text-align:right; }
+  tbody td:first-child{ text-align:right; font-weight:700; color:var(--ink); background:var(--soft); white-space:nowrap; }
+  .pro-col{ background:var(--soft2)!important; }
+  thead th.pro-col{ background:var(--teal)!important; position:relative; }
+  .price-row td{ font-weight:800; color:var(--teal); font-size:12px; }
+  .badge-top{ display:inline-block; background:var(--gold); color:#fff; font-size:8px; font-weight:800; padding:1px 6px; border-radius:6px; margin-bottom:2px; }
+  .yes{ color:var(--teal); font-weight:800; }
+  .no{ color:#c2ccd4; }
+
+  /* ── Tier cards ── */
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
+  .card{ border:1px solid var(--line); border-radius:13px; padding:14px 15px; break-inside:avoid; }
+  .card.pro{ border:2px solid var(--teal); background:linear-gradient(180deg,var(--soft2),#fff); }
+  .card .top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .card h3{ font-size:15px; font-weight:900; }
+  .card .price{ font-size:17px; font-weight:900; color:var(--teal); white-space:nowrap; }
+  .card .price small{ font-size:10px; color:var(--muted); font-weight:600; }
+  .card .tag{ font-size:11px; color:var(--gold); font-weight:700; margin:2px 0 8px; }
+  .card .yr{ font-size:10px; color:var(--muted); margin-bottom:8px; }
+  .limits{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:9px; }
+  .chip{ background:var(--soft); border:1px solid var(--line); border-radius:7px; padding:3px 7px; font-size:9.5px; color:var(--ink); font-weight:600; }
+  .chip b{ color:var(--teal); }
+  .feat{ list-style:none; }
+  .feat li{ font-size:10.5px; padding:2.5px 0; padding-right:16px; position:relative; color:#27323d; }
+  .feat li:before{ content:"✓"; position:absolute; right:0; color:var(--teal); font-weight:900; }
+  .feat li.soon:before{ content:"◷"; color:var(--gold); }
+  .feat .head-line{ font-size:9.5px; color:var(--muted); font-weight:700; padding-right:0; margin-top:4px; }
+  .feat .head-line:before{ content:""; }
+
+  /* ── Notes ── */
+  .notes{ margin-top:16px; background:var(--soft); border:1px solid var(--line); border-radius:12px; padding:13px 15px; }
+  .notes h4{ font-size:12px; color:var(--teal); margin-bottom:6px; }
+  .notes li{ font-size:10.5px; color:#34424f; margin-bottom:4px; padding-right:14px; position:relative; list-style:none; }
+  .notes li:before{ content:"•"; position:absolute; right:0; color:var(--gold); font-weight:900; }
+  .foot{ margin-top:14px; text-align:center; font-size:9px; color:#9aa7b2; }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="head">
+    <div class="brand">
+      <div class="logo">K</div>
+      <div><h1>KEYONE</h1><div class="sub">أتمتة واتساب وذكاء الأعمال للمتاجر والشركات</div></div>
+    </div>
+    <div class="meta">دليل الباقات والأسعار<br/><b>للعملاء</b> · جميع الأسعار بالدولار (USD)</div>
+  </div>
+
+  <p class="lead">اختر الباقة المناسبة لحجم أعمالك. <b>الاشتراك السنوي = سعر ١٠ أشهر (شهران مجانًا)</b>، والترقية متاحة في أي وقت. الجدول التالي يلخّص الفروق، وتفاصيل كل باقة في الصفحات التالية.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>الميزة</th>
+        <th>Start</th>
+        <th>Growth</th>
+        <th class="pro-col"><span class="badge-top">الأكثر طلبًا</span><br/>Pro</th>
+        <th>Business</th>
+        <th>Scale</th>
+        <th>Enterprise</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="price-row"><td>السعر / شهر</td><td>$29</td><td>$59</td><td class="pro-col">$119</td><td>$249</td><td>$499</td><td>مخصّص</td></tr>
+      <tr><td>السعر / سنة</td><td>$290</td><td>$590</td><td class="pro-col">$1,190</td><td>$2,490</td><td>$4,990</td><td>حسب الاتفاق</td></tr>
+      <tr><td>رسائل / شهر</td><td>1,000</td><td>5,000</td><td class="pro-col">15,000</td><td>40,000</td><td>100,000</td><td>غير محدودة</td></tr>
+      <tr><td>ردود ذكاء اصطناعي / شهر</td><td>500</td><td>3,000</td><td class="pro-col">10,000</td><td>30,000</td><td>80,000</td><td>غير محدودة</td></tr>
+      <tr><td>حملات بثّ / شهر</td><td class="no">—</td><td>4</td><td class="pro-col">12</td><td>30</td><td>100</td><td>غير محدودة</td></tr>
+      <tr><td>أرقام واتساب</td><td>1</td><td>1</td><td class="pro-col">2</td><td>3</td><td>6</td><td>غير محدودة</td></tr>
+      <tr><td>واتساب Cloud الرسمي (Meta)</td><td class="no">—</td><td class="no">—</td><td class="pro-col">محدود</td><td>محدود</td><td class="yes">كامل</td><td class="yes">كامل</td></tr>
+      <tr><td>التحليلات</td><td>أساسية</td><td>أساسية</td><td class="pro-col">متقدّمة</td><td>متقدّمة</td><td>متقدّمة</td><td>متقدّمة</td></tr>
+      <tr><td>حدّ الإرسال / دقيقة</td><td>30</td><td>60</td><td class="pro-col">90</td><td>120</td><td>200</td><td>300</td></tr>
+      <tr><td>فريق العمل</td><td class="yes">✓</td><td class="yes">✓</td><td class="pro-col yes">✓</td><td>متعدّد الفرق</td><td>متعدّد الفرق</td><td>متعدّد الفرق</td></tr>
+      <tr><td>المساعد الذكي + قاعدة المعرفة</td><td class="no">—</td><td class="no">—</td><td class="pro-col yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>API للمطوّرين + تكاملات مخصّصة</td><td class="no">—</td><td class="no">—</td><td class="pro-col no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>بنية مخصّصة + SLA + دعم أولوية</td><td class="no">—</td><td class="no">—</td><td class="pro-col no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+    </tbody>
+  </table>
+
+  <div class="notes">
+    <h4>كيف تشترك؟</h4>
+    <ul>
+      <li>اختر الباقة وطريقة الدفع من لوحة التحكم، ثم ارفع صورة إيصال التحويل.</li>
+      <li>يعتمد فريق المالية طلبك (عادةً خلال ٢٤ ساعة) فيُفعَّل اشتراكك ويُشحن رصيدك تلقائيًا.</li>
+      <li>عند استخدام واتساب Cloud الرسمي تُحسب تكلفة محادثات Meta من رصيد محفظتك المسبق (منفصل عن سعر الاشتراك) وفق أسعار Meta لكل دولة/فئة.</li>
+    </ul>
+  </div>
+  <div class="foot">KEYONE — دليل الباقات للعملاء · صفحة ١ من ٢</div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="head">
+    <div class="brand"><div class="logo">K</div><div><h1>تفاصيل الباقات</h1><div class="sub">ما تحصل عليه في كل مستوى</div></div></div>
+    <div class="meta">كل باقة تشمل مميزات الباقة الأقل + الإضافات</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="top"><h3>KEYONE Start</h3><div class="price">$29<small>/شهر</small></div></div>
+      <div class="tag">ابدأ رحلتك على واتساب باحتراف</div>
+      <div class="yr">$290 سنويًا · للمتاجر الصغيرة والمشاريع الناشئة</div>
+      <div class="limits"><span class="chip"><b>1,000</b> رسالة/شهر</span><span class="chip"><b>500</b> ردّ ذكاء</span><span class="chip"><b>1</b> رقم واتساب</span></div>
+      <ul class="feat">
+        <li>صندوق وارد واتساب موحّد</li>
+        <li>ردود تلقائية ذكية خلال ثوانٍ</li>
+        <li>إدارة العملاء (CRM) وسجل المحادثات</li>
+        <li>إدارة الطلبات — رصد تلقائي من المحادثات</li>
+        <li>ردود سريعة جاهزة</li>
+        <li>أعضاء فريق بصلاحيات</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="top"><h3>KEYONE Growth</h3><div class="price">$59<small>/شهر</small></div></div>
+      <div class="tag">نمِّ مبيعاتك بالأتمتة والحملات</div>
+      <div class="yr">$590 سنويًا · للأعمال التي بدأت تكبر</div>
+      <div class="limits"><span class="chip"><b>5,000</b> رسالة/شهر</span><span class="chip"><b>3,000</b> ردّ ذكاء</span><span class="chip"><b>4</b> حملات/شهر</span></div>
+      <ul class="feat">
+        <li class="head-line">كل مميزات Start، بالإضافة إلى:</li>
+        <li>حملات البثّ الجماعي</li>
+        <li>أتمتة متقدّمة + سير عمل تلقائي</li>
+        <li>ساعات العمل وردود خارج الدوام</li>
+      </ul>
+    </div>
+
+    <div class="card pro">
+      <div class="top"><h3>KEYONE Pro ⭐</h3><div class="price">$119<small>/شهر</small></div></div>
+      <div class="tag">ذكاء كامل ورؤى متقدّمة للمبيعات — الأكثر طلبًا</div>
+      <div class="yr">$1,190 سنويًا · للأعمال الجادّة</div>
+      <div class="limits"><span class="chip"><b>15,000</b> رسالة/شهر</span><span class="chip"><b>10,000</b> ردّ ذكاء</span><span class="chip"><b>2</b> رقم واتساب</span><span class="chip">Meta محدود</span></div>
+      <ul class="feat">
+        <li class="head-line">كل مميزات Growth، بالإضافة إلى:</li>
+        <li>المساعد الذكي (Knowledge Brain) + قاعدة المعرفة</li>
+        <li>تحليلات متقدّمة + إسناد الإيرادات</li>
+        <li>تقييم العملاء المحتملين (Lead Scoring)</li>
+        <li>خطّ أنابيب المبيعات + تقسيم العملاء</li>
+        <li>منشئ الحملات الذكي</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="top"><h3>KEYONE Business</h3><div class="price">$249<small>/شهر</small></div></div>
+      <div class="tag">فِرق متعدّدة وتقارير وموافقات</div>
+      <div class="yr">$2,490 سنويًا · للأعمال المتوسّطة</div>
+      <div class="limits"><span class="chip"><b>40,000</b> رسالة/شهر</span><span class="chip"><b>30,000</b> ردّ ذكاء</span><span class="chip"><b>3</b> أرقام واتساب</span></div>
+      <ul class="feat">
+        <li class="head-line">كل مميزات Pro، بالإضافة إلى:</li>
+        <li>وصول متعدّد الفرق</li>
+        <li>تقارير تنفيذية متقدّمة</li>
+        <li>الولاء والمكافآت</li>
+        <li class="soon">مسارات الموافقات (قريبًا)</li>
+        <li class="soon">منشئ المسارات Flow Builder (قريبًا)</li>
+        <li class="soon">إدارة الفروع المتعدّدة (قريبًا)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="top"><h3>KEYONE Scale</h3><div class="price">$499<small>/شهر</small></div></div>
+      <div class="tag">للعمليات عالية الحجم والتكاملات</div>
+      <div class="yr">$4,990 سنويًا · لحجم المراسلات الكبير</div>
+      <div class="limits"><span class="chip"><b>100,000</b> رسالة/شهر</span><span class="chip"><b>80,000</b> ردّ ذكاء</span><span class="chip"><b>6</b> أرقام واتساب</span><span class="chip">Meta كامل</span></div>
+      <ul class="feat">
+        <li class="head-line">كل مميزات Business، بالإضافة إلى:</li>
+        <li>أرقام واتساب متعدّدة</li>
+        <li>واتساب Cloud الرسمي كامل</li>
+        <li>وصول API للمطوّرين</li>
+        <li>تكاملات مخصّصة مع أنظمتك</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="top"><h3>KEYONE Enterprise</h3><div class="price" style="font-size:14px">مخصّص</div></div>
+      <div class="tag">حلول بلا حدود مع SLA</div>
+      <div class="yr">تواصل مع المبيعات · للمؤسسات الكبرى</div>
+      <div class="limits"><span class="chip">رسائل <b>غير محدودة</b></span><span class="chip">أرقام <b>غير محدودة</b></span><span class="chip">أولوية قصوى</span></div>
+      <ul class="feat">
+        <li class="head-line">كل مميزات Scale، بالإضافة إلى:</li>
+        <li>بنية تحتية مخصّصة</li>
+        <li>دعم ذو أولوية + مدير حساب</li>
+        <li>تطوير مخصّص حسب احتياجك</li>
+        <li>اتفاقية مستوى خدمة (SLA)</li>
+        <li class="soon">علامة بيضاء White Label (قريبًا)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot">KEYONE — جميع الأسعار بالدولار · «قريبًا» = ميزة قيد الإطلاق تتوفّر لمشتركي الباقة عند إطلاقها دون تكلفة إضافية · صفحة ٢ من ٢</div>
+</div>
+
+</body>
+</html>
