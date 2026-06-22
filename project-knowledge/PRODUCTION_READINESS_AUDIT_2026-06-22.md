@@ -86,6 +86,26 @@ Areas 1–5, 7–12, 15 were covered + fixed above. This round adds the three ar
 - **Impact**: degraded awareness, **not a broken workflow** — the customer can complete every flow because status is shown on the pages they already use: payment status + reason + resubmit on `/dashboard/billing` (timeline), connection state on `/dashboard/whatsapp` + `/dashboard/whatsapp-health`, Meta state on the Meta health surface. So per the "judge outcomes" rule the workflow is completable.
 - **Recommendation (post-launch)**: add a lightweight in-app `Notification` model + bell, and emit on payment-approved/rejected/refund and subscription-expiry (cron). Optional WhatsApp/email when a platform channel is configured. Not required to onboard paying customers.
 
+### Live business-owner simulation (real HTTP execution against the running app)
+
+Executed every UI/API-reachable workflow as real users against a running server (dev mode so the session cookie flows over HTTP — identical route handlers/auth/RBAC/capability gates/Prisma as production; the prod build is separately verified green). Evidence = HTTP status codes from the running app.
+
+| Stage | Executed result |
+|---|---|
+| 1 New company | signup → auto-approve → login → owner-only API `200` ✅ |
+| 2 Purchase | `/pricing 200`; proof submitted (status pending); customer can track proofs `200` ✅ |
+| 8 Owner ops | admin login `200`; manages users; **provisioned a FINANCE operator from the API (no DB)** ✅ |
+| 9 Finance ops | finance approves payment → **plan activates (`k_pro`)**; finance refund reverses ledger `200`; finance **blocked** from admin-only API `401` ✅ |
+| 3 Membership | k_pro **blocked** from `api_access` (Scale+) → `402`; free tier **blocked** from segments (Pro+) → `402` ✅ |
+| 12 Role escalation | customer → admin API `401`; customer self-grant admin `401` ✅ |
+| 11 Tenant isolation | B PATCH on A's record → `404`; B delete = scoped no-op; **read-back proved A's record survived** (no cross-tenant deletion) ✅ |
+| 7 API activation | k_scale key created → authenticates `/api/v1/me 200` (identity derived) → revoke → reused key `401` ✅ |
+| 6 QR booking | customer booked a slot `200` → cancel `200` ✅ |
+| 4 Meta (in-app) | save `meta_cloud` without app secret → `400` (META-3 fix) ✅ |
+| 15 Cron | runs with internal secret `200`; rejects wrong/missing secret `401` ✅ |
+
+**Not executable without live external infra** (honestly flagged, not failures): Stage 4/5 real Meta send/receive + WhatsApp QR pairing need live Meta credentials + the whatsapp-service + a phone (go-live config). Stage 13 notifications confirmed absent (status visible on pages → MEDIUM). Stage 14 backup scripts present (Windows PowerShell, not runnable on this host).
+
 ### Area 14 — Backup & Recovery → ✅ PRESENT
 - **Evidence**: `deploy/backup-all.ps1`, `deploy/backup-db.ps1`, `deploy/verify-backup.ps1`, `deploy/rollback.ps1` all exist; customer self-service export at `app/dashboard/export` (+ `/api/export`). SQLite prod DB is file-backed (snapshot-friendly); off-site backup + DR runbook are tracked in project-knowledge per the DR plan.
 - **Recovery path**: stop services → restore the latest DB snapshot (verify with `verify-backup.ps1`) → `start-services.ps1` → run `install-all-cron-tasks.ps1`. **Action**: schedule `backup-db.ps1` (or `backup-all.ps1`) as a recurring task and confirm an off-site copy.
