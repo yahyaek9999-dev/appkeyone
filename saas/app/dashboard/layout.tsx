@@ -7,6 +7,7 @@ import { LayoutDashboard, ShieldCheck } from "lucide-react";
 import LogoutButton from "./logout-button";
 import MobileNav from "./mobile-nav";
 import { NavLinks, SidebarNav } from "./nav-items";
+import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import CommandPalette from "./command-palette";
 import CommandTrigger from "./command-trigger";
 import HelpDrawer from "./help-drawer";
@@ -33,6 +34,9 @@ export default async function DashboardLayout({
   // admins and team members of an active workspace are always "activated".
   const sub = (user as any).subscription;
   const activated = !ctx.isOwner || isAdmin || (!!sub && sub.status === "active");
+  // Connection-mode visibility: Meta merchants never see QR pages and vice-versa.
+  const metaMode: "qr" | "meta" =
+    normalizeConnectionMode((user as any).bot?.connectionMode) === "meta_cloud" ? "meta" : "qr";
 
   const Brand = (
     <Link href="/dashboard" className="flex items-center gap-2.5 px-3.5 py-4">
@@ -89,7 +93,7 @@ export default async function DashboardLayout({
   return (
     <ToastProvider>
       <ConfirmProvider>
-        <CommandPalette role={role} />
+        <CommandPalette role={role} activated={activated} metaMode={metaMode} />
         <div className="ai-page min-h-screen md:flex">
           <MobileNav brandName={brandName}>
             {Brand}
@@ -97,7 +101,7 @@ export default async function DashboardLayout({
               <CommandTrigger />
             </div>
             <div className="px-3 pt-1">{AdminLink}</div>
-            <NavLinks role={role} activated={activated} />
+            <NavLinks role={role} activated={activated} metaMode={metaMode} />
             {UserFooter}
           </MobileNav>
 
@@ -108,7 +112,7 @@ export default async function DashboardLayout({
                 <CommandTrigger />
               </div>
             </div>
-            <SidebarNav adminLink={AdminLink} role={role} activated={activated} />
+            <SidebarNav adminLink={AdminLink} role={role} activated={activated} metaMode={metaMode} />
             {UserFooter}
           </aside>
           <DashboardTour />

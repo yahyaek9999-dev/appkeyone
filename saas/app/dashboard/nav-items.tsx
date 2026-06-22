@@ -60,6 +60,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   perm: Permission;
+  /** Connection-mode scope: "qr" pages hidden in Meta mode and vice-versa. */
+  mode?: "qr" | "meta";
 };
 
 /**
@@ -180,9 +182,9 @@ export const WORKSPACES: Workspace[] = [
       // { href: "/dashboard/flow-builder", label: "منشئ المسارات", icon: Workflow, perm: "settings" },
       { href: "/dashboard/branches", label: "الفروع", icon: Building2, perm: "settings" },
       { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
-      { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings" },
-      { href: "/dashboard/whatsapp-health", label: "صحة جلسة واتساب", icon: Phone, perm: "settings" },
-      { href: "/dashboard/meta-health", label: "صحة اتصال Meta", icon: ShieldCheck, perm: "settings" },
+      { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings", mode: "qr" },
+      { href: "/dashboard/whatsapp-health", label: "صحة جلسة واتساب", icon: Phone, perm: "settings", mode: "qr" },
+      { href: "/dashboard/meta-health", label: "صحة اتصال Meta", icon: ShieldCheck, perm: "settings", mode: "meta" },
       { href: "/dashboard/ai-operations", label: "عمليات الذكاء", icon: Brain, perm: "settings" },
       { href: "/dashboard/qr-queue", label: "حجز جلسات QR", icon: CalendarClock, perm: "broadcasts" },
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
@@ -278,13 +280,33 @@ const PRE_ACTIVATION_HREFS = new Set<string>([
   "/dashboard/settings",
 ]);
 
-function accessibleWorkspaces(role: Role, simple = false, pathname = "", activated = true): Workspace[] {
+export type NavMode = "qr" | "meta";
+
+/** Single source of truth for "can this principal see this nav destination". */
+export function navItemVisible(
+  i: NavItem,
+  opts: { role: Role; activated: boolean; metaMode: NavMode },
+): boolean {
+  if (!can(opts.role, i.perm)) return false;
+  // Pre-activation: only the get-started essentials are visible.
+  if (!opts.activated) return PRE_ACTIVATION_HREFS.has(i.href);
+  // Meta merchants never see QR connection pages and vice-versa.
+  if (i.mode === "qr" && opts.metaMode === "meta") return false;
+  if (i.mode === "meta" && opts.metaMode === "qr") return false;
+  return true;
+}
+
+/** Flat list of destinations the principal may reach — used by the command palette. */
+export function visibleNavItems(role: Role, opts: { activated: boolean; metaMode: NavMode }): NavItem[] {
+  return NAV_ITEMS.filter((i) => navItemVisible(i, { role, ...opts }));
+}
+
+function accessibleWorkspaces(role: Role, simple = false, pathname = "", activated = true, metaMode: NavMode = "qr"): Workspace[] {
   return WORKSPACES.map((w) => ({
     ...w,
     items: w.items.filter((i) => {
-      if (!can(role, i.perm)) return false;
-      // Pre-activation: only the get-started essentials are visible.
-      if (!activated) return PRE_ACTIVATION_HREFS.has(i.href);
+      if (!navItemVisible(i, { role, activated, metaMode })) return false;
+      if (!activated) return true; // pre-activation set already minimal
       // In simple mode keep only core items — plus whatever page you're on, so the
       // nav always answers "where am I?" even on an advanced screen.
       return !simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href);
@@ -324,10 +346,10 @@ function ContextRow({ item, active }: { item: NavItem; active: boolean }) {
  * Desktop chrome: workspace icon RAIL + CONTEXTUAL panel. The rail is the
  * identity of the OS; the panel is the context you're working in.
  */
-export function SidebarNav({ adminLink, role = "owner", activated = true }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean }) {
+export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr" }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode }) {
   const pathname = usePathname();
   const [simple, toggleMode] = useNavMode();
-  const spaces = accessibleWorkspaces(role, simple, pathname, activated);
+  const spaces = accessibleWorkspaces(role, simple, pathname, activated, metaMode);
   const currentWs = workspaceForPath(pathname);
   // Which workspace's items are shown in the panel. Defaults to the one holding
   // the current route; the user can preview another by clicking its rail glyph.
@@ -382,10 +404,10 @@ export function SidebarNav({ adminLink, role = "owner", activated = true }: { ad
  * Mobile drawer: full workspace map, each workspace as a labelled group. No rail
  * (touch targets win over density on small screens).
  */
-export function NavLinks({ role = "owner", activated = true }: { role?: Role; activated?: boolean }) {
+export function NavLinks({ role = "owner", activated = true, metaMode = "qr" }: { role?: Role; activated?: boolean; metaMode?: NavMode }) {
   const pathname = usePathname();
   const [simple, toggleMode] = useNavMode();
-  const spaces = accessibleWorkspaces(role, simple, pathname, activated);
+  const spaces = accessibleWorkspaces(role, simple, pathname, activated, metaMode);
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
       {spaces.map((w) => (
