@@ -176,6 +176,10 @@ export async function cancelReservation(id: string, userId?: string) {
 
 /** Mark a reservation completed (its session window finished cleanly). */
 export async function completeReservation(id: string, result?: Record<string, unknown>) {
+  // Guard: missing id or an already-final row must not 500 the caller.
+  const r = await prisma.qrReservation.findUnique({ where: { id } });
+  if (!r) return null;
+  if (["completed", "canceled", "expired", "no_show"].includes(r.status)) return r;
   return prisma.qrReservation.update({
     where: { id },
     data: { status: "completed", completedAt: new Date(), result: safeJson(result) },

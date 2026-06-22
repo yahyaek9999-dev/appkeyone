@@ -69,3 +69,23 @@ Open items worth a follow-up pass — none block launch once the checklist above
 ---
 
 *Generated 2026-06-22. Source branch: `recovery/inspiring-meninsky-wallet-billing-qr`. Fixes verified: `tsc` 0 errors, `next build` green, runtime tests pass for META-1, A6-1, A5-1, A15-2.*
+
+---
+
+## Go-Live Audit — Round 2 (2026-06-22): areas 6, 13, 14
+
+Areas 1–5, 7–12, 15 were covered + fixed above. This round adds the three areas not previously verified.
+
+### Area 6 — QR booking UX (explicit "simplify" request) → ✅ SIMPLIFIED
+- **Evidence**: `app/dashboard/qr-queue/qr-queue-client.tsx` used a raw `datetime-local` + free-text "duration in minutes" + a "purpose" dropdown — not understandable by a non-technical owner in 30s.
+- **Fix**: plain-language explanation ("choose **when** and **how long** — we'll reserve a spot"), tap-to-pick **time presets** (Now / +1h / +3h / Tomorrow AM) with a custom-time fallback, and **duration chips** (15/30/60). Purpose defaults to "session". Client-only, additive — no features added. Also fixed **A5-3**: `completeReservation` now guards missing/already-final rows (no 500).
+- **Verification**: `tsc` 0, `next build` green. Overbooking/collision/capacity already proven in round 1 (A5-1 concurrency test: 1 of 2 simultaneous bookings wins).
+
+### Area 13 — Notifications → ⚠️ MEDIUM (not a launch blocker)
+- **Evidence**: `lib/notify.ts` provides merchant↔customer message alerts (`notifyMerchant`/`notifyAdmin`, WhatsApp) and a `SafetyAudit` trail, but there is **no platform→merchant transactional channel**: no general in-app `Notification` model (only `CommerceNotificationLog`/`StaffNotification`), and email is per-merchant SMTP only (`lib/commerce/email.ts`). The 9 lifecycle events (payment approved/rejected/refund, subscription expiring/expired, Meta/WhatsApp/broadcast failure, incident assigned) do **not** push a proactive notification to the customer.
+- **Impact**: degraded awareness, **not a broken workflow** — the customer can complete every flow because status is shown on the pages they already use: payment status + reason + resubmit on `/dashboard/billing` (timeline), connection state on `/dashboard/whatsapp` + `/dashboard/whatsapp-health`, Meta state on the Meta health surface. So per the "judge outcomes" rule the workflow is completable.
+- **Recommendation (post-launch)**: add a lightweight in-app `Notification` model + bell, and emit on payment-approved/rejected/refund and subscription-expiry (cron). Optional WhatsApp/email when a platform channel is configured. Not required to onboard paying customers.
+
+### Area 14 — Backup & Recovery → ✅ PRESENT
+- **Evidence**: `deploy/backup-all.ps1`, `deploy/backup-db.ps1`, `deploy/verify-backup.ps1`, `deploy/rollback.ps1` all exist; customer self-service export at `app/dashboard/export` (+ `/api/export`). SQLite prod DB is file-backed (snapshot-friendly); off-site backup + DR runbook are tracked in project-knowledge per the DR plan.
+- **Recovery path**: stop services → restore the latest DB snapshot (verify with `verify-backup.ps1`) → `start-services.ps1` → run `install-all-cron-tasks.ps1`. **Action**: schedule `backup-db.ps1` (or `backup-all.ps1`) as a recurring task and confirm an off-site copy.

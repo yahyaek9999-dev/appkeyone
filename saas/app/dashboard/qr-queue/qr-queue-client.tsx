@@ -202,6 +202,22 @@ export default function QrQueueClient({
     }
   }
 
+  // Simple, tap-to-pick start times so an owner never has to reason about a raw
+  // datetime picker. All options are in the future (no "in the past" surprises).
+  function timePresets(): Array<{ l: string; d: Date }> {
+    const now = new Date();
+    const tomorrowAM = new Date(now);
+    tomorrowAM.setDate(now.getDate() + 1);
+    tomorrowAM.setHours(10, 0, 0, 0);
+    return [
+      { l: "الآن", d: new Date(now.getTime() + 2 * 60000) },
+      { l: "بعد ساعة", d: new Date(now.getTime() + 60 * 60000) },
+      { l: "بعد ٣ ساعات", d: new Date(now.getTime() + 3 * 60 * 60000) },
+      { l: "غدًا صباحًا", d: tomorrowAM },
+    ];
+  }
+  const DURATION_PRESETS = [15, 30, 60];
+
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {/* Booking form */}
@@ -210,39 +226,66 @@ export default function QrQueueClient({
           <CalendarClock className="h-4 w-4 text-brand-300" /> حجز فترة جديدة
         </h2>
         <p className="text-xs text-slate-500 mb-4">
-          اختر الغرض ووقت البداية والمدة. يمكن الحجز خلال {horizonDays} يومًا القادمة.
+          احجز وقتًا لتشغيل رقم واتساب على المجدول المشترك. اختر{" "}
+          <b className="text-slate-300">متى</b> و<b className="text-slate-300">كم المدة</b> — وسنحجز لك مكانًا.
+          {" "}(متاح خلال {horizonDays} يومًا القادمة)
         </p>
-        <form onSubmit={submit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">الغرض</label>
-              <select className={inputCls} value={purpose} onChange={(e) => setPurpose(e.target.value)}>
-                {PURPOSES.map((p) => (
-                  <option key={p.v} value={p.v} className="bg-slate-900">
-                    {p.l}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">المدة (دقائق)</label>
-              <input
-                className={inputCls}
-                inputMode="numeric"
-                value={durationMin}
-                onChange={(e) => setDurationMin(e.target.value)}
-                placeholder={String(defaultDurationMin)}
-              />
-            </div>
-          </div>
+        <form onSubmit={submit} className="space-y-4">
+          {/* When — tap a quick option or pick a custom time */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1">وقت البداية</label>
+            <label className="block text-xs text-slate-400 mb-1.5">متى تريد التشغيل؟</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {timePresets().map((p) => (
+                <button
+                  key={p.l}
+                  type="button"
+                  onClick={() => { setWindowStart(isoToLocalInput(p.d.toISOString())); setMsg(null); }}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 hover:border-brand-400/50 hover:bg-brand-500/10"
+                >
+                  {p.l}
+                </button>
+              ))}
+            </div>
             <input
               className={inputCls}
               type="datetime-local"
               value={windowStart}
               onChange={(e) => setWindowStart(e.target.value)}
+              aria-label="وقت مخصّص"
             />
+            <p className="text-[11px] text-slate-500 mt-1">اضغط زرًا سريعًا أعلاه، أو اختر وقتًا مخصّصًا.</p>
+          </div>
+
+          {/* Duration — preset chips */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5">المدة</label>
+            <div className="flex flex-wrap gap-2">
+              {DURATION_PRESETS.map((d) => {
+                const sel = String(d) === String(durationMin);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDurationMin(String(d))}
+                    className={`rounded-full border px-3 py-1.5 text-xs ${sel ? "border-brand-400/60 bg-brand-500/15 text-brand-200" : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"}`}
+                  >
+                    {d} دقيقة
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Purpose — defaults to a session; most owners never change this */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">الغرض</label>
+            <select className={inputCls} value={purpose} onChange={(e) => setPurpose(e.target.value)}>
+              {PURPOSES.map((p) => (
+                <option key={p.v} value={p.v} className="bg-slate-900">
+                  {p.l}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">ملاحظة (اختياري)</label>
