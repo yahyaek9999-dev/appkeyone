@@ -1,6 +1,10 @@
 import { getAuthContext } from "./auth";
 import { prisma } from "./db";
 
+/** Platform roles an admin may assign from the UI (user | finance | admin). */
+export const ASSIGNABLE_PLATFORM_ROLES = ["user", "finance", "admin"] as const;
+export type AssignablePlatformRole = (typeof ASSIGNABLE_PLATFORM_ROLES)[number];
+
 /**
  * Throws if the request is not made by a platform admin.
  * SECURITY: requires an OWNER session whose User.role is "admin". A team member

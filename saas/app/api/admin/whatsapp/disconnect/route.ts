@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
+import { wa } from "@/lib/wa";
 
 export async function POST(req: Request) {
   try { await requireAdmin(); }
@@ -14,6 +15,12 @@ export async function POST(req: Request) {
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { bot: true } });
   if (!user) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
 
+  // Terminate the live session through the SAME proven client the merchant logout
+  // uses (DELETE /sessions/{userId}). The previous hand-rolled POST /sessions/logout
+  // did not match the service contract, so the DB flipped to disconnected while the
+  // real session kept running.
+  const waRes: any = await wa.logout(userId).catch(() => ({ ok: false }));
+
   if (user.bot) {
     await prisma.bot.update({
       where: { id: user.bot.id },
@@ -21,19 +28,5 @@ export async function POST(req: Request) {
     });
   }
 
-  try {
-    await fetch(
-      (process.env.WHATSAPP_SERVICE_URL || "http://127.0.0.1:3001") + "/sessions/logout",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Internal-Secret": process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me",
-        },
-        body: JSON.stringify({ userId }),
-      },
-    ).catch(() => null);
-  } catch {}
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, serviceAck: !!waRes?.ok });
 }

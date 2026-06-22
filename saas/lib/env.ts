@@ -160,6 +160,14 @@ export function validateEnv(): void {
     warnings.push(`[env] META_CLOUD_ENABLED=1 but META_APP_SECRET is not set. Webhook signature verification will fail.`);
   }
 
+  // Premium feature enforcement is INERT until FREE_TIER_ENFORCEMENT=1. With it
+  // off in production, any no-subscription / expired / legacy user gets every paid
+  // capability for free (the fail-open path). Make that loud so it is a conscious
+  // go-live decision, not a silent revenue leak.
+  if (IS_PROD && getEnv("FREE_TIER_ENFORCEMENT") !== "1") {
+    warnings.push(`[env] FREE_TIER_ENFORCEMENT is not "1" in production — premium feature gating is INERT for non-k_* / no-subscription users (they get all paid features free). Set FREE_TIER_ENFORCEMENT=1 after confirming every paying customer has an active subscription.`);
+  }
+
   // ---- Emit warnings ----
   for (const w of warnings) {
     console.warn(w);

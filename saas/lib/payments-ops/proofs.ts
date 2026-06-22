@@ -65,9 +65,18 @@ export async function reviewPaymentProof(proofId: string, input: { decision: "ap
   let activatedPlan: string | null = null;
   const now = new Date();
   if (input.decision === "approve") {
-    const res = await credit({ userId: proof.userId, kind: "topup", amountUsd: proof.amountUsd, source: "manual_review", reason: `proof:${proof.methodKey}`, idempotencyKey: `proof:${proof.id}` });
-    ledgerId = res.ledgerId;
-    activatedPlan = await activateMembership(proof.userId, proof.planSlug);
+    // A payment proof is EITHER a plan purchase (planSlug set, from the billing
+    // page) OR a pure wallet top-up (no planSlug). These must not both happen:
+    //  - plan purchase  → the receipt pays the subscription. Activate the plan,
+    //    do NOT also credit the wallet (that handed out the plan price as Meta
+    //    balance on top of a paid plan — a money-loss double-credit).
+    //  - wallet top-up  → credit the prepaid balance (idempotent per proof).
+    if (proof.planSlug) {
+      activatedPlan = await activateMembership(proof.userId, proof.planSlug);
+    } else {
+      const res = await credit({ userId: proof.userId, kind: "topup", amountUsd: proof.amountUsd, source: "manual_review", reason: `proof:${proof.methodKey}`, idempotencyKey: `proof:${proof.id}` });
+      ledgerId = res.ledgerId;
+    }
   }
   const reviewerName = (input.reviewerName || input.reviewerEmail || "الفريق").slice(0, 160);
   const review = await prisma.paymentReview.create({

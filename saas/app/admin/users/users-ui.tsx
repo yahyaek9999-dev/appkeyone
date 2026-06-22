@@ -528,6 +528,7 @@ function CreateUserModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [planSlug, setPlanSlug] = useState<string>("");
+  const [role, setRole] = useState<"user" | "finance" | "admin">("user");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
     "monthly",
   );
@@ -557,6 +558,7 @@ function CreateUserModal({
           phone: phone.trim() || null,
           planSlug: planSlug || null,
           billingCycle,
+          role,
         }),
       });
       const j = await r.json();
@@ -604,6 +606,7 @@ function CreateUserModal({
     setEmail("");
     setPhone("");
     setPlanSlug("");
+    setRole("user");
     setBillingCycle("monthly");
     setResult(null);
     setErr("");
@@ -769,6 +772,28 @@ function CreateUserModal({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">
+                صلاحية الحساب
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as "user" | "finance" | "admin")}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-brand-400"
+              >
+                <option value="user" className="bg-slate-900">عميل عادي (Customer)</option>
+                <option value="finance" className="bg-slate-900">موظّف مالية — مراجعة المدفوعات (Finance)</option>
+                <option value="admin" className="bg-slate-900">مدير منصة كامل (Admin)</option>
+              </select>
+              {role !== "user" && (
+                <p className="text-xs text-amber-300/80 mt-1">
+                  {role === "finance"
+                    ? "سيتمكّن من الدخول ومراجعة/اعتماد إيصالات الدفع دون صلاحيات الإدارة الكاملة."
+                    : "صلاحيات إدارة كاملة للمنصة — امنحها بحذر."}
+                </p>
+              )}
             </div>
 
             {planSlug && (

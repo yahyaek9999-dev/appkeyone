@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
+import { wa } from "@/lib/wa";
 
 export const dynamic = "force-dynamic";
 
@@ -16,26 +17,18 @@ export async function POST(req: Request) {
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { bot: true } });
   if (!user) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
 
+  // Resend QR = clear any stale session then (re)start so the service emits a fresh
+  // QR. Use the same proven client contract (DELETE then POST /sessions/{userId}/start)
+  // instead of the old POST /sessions/logout, which the service does not expose.
+  await wa.logout(userId).catch(() => null);
+  const startRes: any = await wa.start(userId).catch(() => ({ ok: false }));
+
   if (user.bot) {
     await prisma.bot.update({
       where: { id: user.bot.id },
-      data: { whatsappStatus: "disconnected" },
+      data: { whatsappStatus: "connecting" },
     });
   }
 
-  try {
-    const waRes = await fetch(
-      (process.env.WHATSAPP_SERVICE_URL || "http://127.0.0.1:3001") + "/sessions/logout",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Internal-Secret": process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me",
-        },
-        body: JSON.stringify({ userId }),
-      },
-    ).catch(() => null);
-  } catch {}
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, serviceAck: !!startRes?.ok });
 }

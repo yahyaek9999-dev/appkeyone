@@ -100,4 +100,8 @@ Write-Host "============================================" -ForegroundColor Green
 Write-Host "  Bootstrap finished." -ForegroundColor Green
 Write-Host "  Next: copy your .env files, then run:" -ForegroundColor Green
 Write-Host "     .\start-services.ps1" -ForegroundColor Green
+Write-Host "  Then register ALL cron jobs (REQUIRED — Meta webhooks," -ForegroundColor Green
+Write-Host "  payments reconcile, QR scheduler, monthly credits, etc.):" -ForegroundColor Green
+Write-Host "     Copy-Item .\run-cron.ps1 C:\app\run-cron.ps1 -Force" -ForegroundColor Green
+Write-Host "     .\install-all-cron-tasks.ps1" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green

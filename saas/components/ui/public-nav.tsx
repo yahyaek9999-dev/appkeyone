@@ -140,6 +140,13 @@ export default function PublicNav({
             {locale === "ar" ? "تسجيل دخول" : "Log in"}
           </Link>
 
+          <Link
+            href={`/signup${locale === "en" ? "?lang=en" : ""}`}
+            className="rounded-xl border border-white/[0.12] px-4 py-2 text-sm font-medium text-slate-200 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+          >
+            {locale === "ar" ? "إنشاء حساب" : "Sign up"}
+          </Link>
+
           <motion.a
             {...requestProps}
             whileHover={{ y: -1, boxShadow: "0 4px 20px rgba(12,122,108,0.35)" }}
@@ -250,6 +257,13 @@ export default function PublicNav({
                 <WhatsAppIcon className="h-4 w-4" />
                 {locale === "ar" ? "اطلب حسابك" : "Get started"}
               </a>
+              <Link
+                href={`/signup${locale === "en" ? "?lang=en" : ""}`}
+                onClick={() => setOpen(false)}
+                className="flex w-full items-center justify-center rounded-xl border border-white/[0.12] py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                {locale === "ar" ? "إنشاء حساب" : "Sign up"}
+              </Link>
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}

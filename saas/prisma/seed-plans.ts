@@ -16,8 +16,6 @@ import {
   type TierDef,
 } from "../lib/pricing/catalog";
 
-const prisma = new PrismaClient();
-
 /** Human-readable Arabic feature bullets for the marketing `features` JSON. */
 function featureBullets(tier: TierDef): string[] {
   const unlocked = CAPABILITIES.filter((c) => tier.index >= c.minTierIndex);
@@ -60,7 +58,7 @@ function featureBullets(tier: TierDef): string[] {
   return bullets;
 }
 
-async function main() {
+export async function seedPlans(prisma: PrismaClient) {
   for (const tier of TIERS) {
     const isContact = Boolean(tier.contactSales);
     const flags = featureFlagsForTier(tier);
@@ -101,9 +99,13 @@ async function main() {
   console.log(`\n✓ Seeded ${TIERS.length} public plans. Legacy rows untouched.`);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+// Standalone runner: `npx tsx prisma/seed-plans.ts`. No-op when imported (e.g. by seed.ts).
+if (process.argv[1] && /seed-plans\.(ts|js|mjs|cjs)$/.test(process.argv[1])) {
+  const prisma = new PrismaClient();
+  seedPlans(prisma)
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}

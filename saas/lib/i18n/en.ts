@@ -31,10 +31,10 @@ export const en = {
   },
 
   stats: [
-    { num: "5", unit: "sec", label: "Average reply time" },
-    { num: "24/7", unit: "", label: "Always-on operations" },
-    { num: "99.9%", unit: "", label: "Uptime SLA" },
-    { num: "100K+", unit: "", label: "Messages per month" },
+    { num: "24/7", unit: "", label: "Always-on auto-reply" },
+    { num: "5", unit: "sec", label: "Average auto-reply time" },
+    { num: "0", unit: "", label: "Missed customer messages" },
+    { num: "15", unit: "min", label: "From signup to first reply" },
   ],
 
   features: {

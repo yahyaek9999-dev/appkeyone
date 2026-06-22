@@ -12,10 +12,18 @@
  */
 import { prisma } from "@/lib/db";
 import { wa } from "@/lib/wa";
-import { qrQueueFlags, type QrReservationPurpose } from "./flags";
-import { checkAvailability, lowestFreeLane, suggestNextSlot } from "./capacity";
+import { qrQueueFlags, HOLDING_STATUSES, type QrReservationPurpose } from "./flags";
+import { checkAvailability, suggestNextSlot } from "./capacity";
 
 const PURPOSES: QrReservationPurpose[] = ["session", "broadcast", "import", "maintenance", "custom"];
+
+/** Thrown inside the booking transaction when the chosen window/lane was taken concurrently. */
+class BookingConflict extends Error {}
+
+/** Postgres write-conflict / serialization failure (P2034) — treat as a lost race. */
+function isSerializationError(e: any): boolean {
+  return e?.code === "P2034" || /write conflict|deadlock|could not serialize/i.test(String(e?.message || ""));
+}
 
 export interface BookInput {
   userId: string;
@@ -78,36 +86,79 @@ export async function bookReservation(input: BookInput): Promise<BookResult> {
     return { ok: false, reason: "tenant_limit_reached" };
   }
 
-  // Capacity + lane assignment.
+  // Fast pre-check (also drives the "next free slot" suggestion on refusal).
   const avail = await checkAvailability(start, end);
   if (!avail.canBook) {
     const suggestion = await suggestNextSlot(new Date(Math.max(now, start.getTime())), durationMin);
     return { ok: false, reason: "no_capacity", suggestionISO: suggestion ? suggestion.toISOString() : null };
   }
-  const lane = await lowestFreeLane(start, end);
-  if (lane < 0) {
-    const suggestion = await suggestNextSlot(new Date(Math.max(now, start.getTime())), durationMin);
-    return { ok: false, reason: "no_capacity", suggestionISO: suggestion ? suggestion.toISOString() : null };
+
+  // Atomic booking. The pre-check above is racy on its own (two requests for the
+  // same window can both pass it), so the authoritative capacity decision happens
+  // INSIDE a transaction: pick the lowest lane free for this window, create the row,
+  // then verify no other holding reservation grabbed the same lane+window. On
+  // Postgres, Serializable isolation makes two concurrent winners impossible (the
+  // loser aborts with a write-conflict); on SQLite, writes serialize so the second
+  // transaction sees the first's row. Either way the pool can never be overbooked.
+  const isPg = (process.env.DATABASE_URL || "").startsWith("postgres");
+  try {
+    const reservation = await prisma.$transaction(async (tx) => {
+      const overlapping = await tx.qrReservation.findMany({
+        where: {
+          status: { in: HOLDING_STATUSES as string[] },
+          windowStart: { lt: end },
+          windowEnd: { gt: start },
+        },
+        select: { lane: true },
+      });
+      const used = new Set(overlapping.map((r) => r.lane));
+      let lane = -1;
+      for (let i = 0; i < qrQueueFlags.lanes; i++) {
+        if (!used.has(i)) { lane = i; break; }
+      }
+      if (lane < 0) throw new BookingConflict();
+
+      const created = await tx.qrReservation.create({
+        data: {
+          userId: input.userId,
+          purpose,
+          status: "reserved",
+          priority: input.priority || 0,
+          windowStart: start,
+          windowEnd: end,
+          durationMin,
+          lane,
+          reservedAt: new Date(),
+          expiresAt: new Date(end.getTime() + qrQueueFlags.noShowGraceMin * 60_000),
+          note: input.note ? String(input.note).slice(0, 500) : null,
+          metadata: safeJson(input.metadata),
+        },
+      });
+
+      // Post-insert guard: any OTHER holding reservation on this lane overlapping
+      // the window means we lost a race — roll back.
+      const clash = await tx.qrReservation.count({
+        where: {
+          id: { not: created.id },
+          lane,
+          status: { in: HOLDING_STATUSES as string[] },
+          windowStart: { lt: end },
+          windowEnd: { gt: start },
+        },
+      });
+      if (clash > 0) throw new BookingConflict();
+
+      return created;
+    }, isPg ? ({ isolationLevel: "Serializable" } as any) : undefined);
+
+    return { ok: true, reservation };
+  } catch (e) {
+    if (e instanceof BookingConflict || isSerializationError(e)) {
+      const suggestion = await suggestNextSlot(new Date(Math.max(now, start.getTime())), durationMin);
+      return { ok: false, reason: "no_capacity", suggestionISO: suggestion ? suggestion.toISOString() : null };
+    }
+    throw e;
   }
-
-  const reservation = await prisma.qrReservation.create({
-    data: {
-      userId: input.userId,
-      purpose,
-      status: "reserved",
-      priority: input.priority || 0,
-      windowStart: start,
-      windowEnd: end,
-      durationMin,
-      lane,
-      reservedAt: new Date(),
-      expiresAt: new Date(end.getTime() + qrQueueFlags.noShowGraceMin * 60_000),
-      note: input.note ? String(input.note).slice(0, 500) : null,
-      metadata: safeJson(input.metadata),
-    },
-  });
-
-  return { ok: true, reservation };
 }
 
 /** Cancel a reservation (tenant- or admin-initiated). */

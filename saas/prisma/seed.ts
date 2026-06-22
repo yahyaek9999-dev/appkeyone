@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { seedPlans } from "./seed-plans";
 
 const prisma = new PrismaClient();
 
@@ -143,6 +144,13 @@ async function main() {
     });
   }
   console.log("✓ Seeded legacy plans (archived):", plans.map((p) => p.slug).join(", "));
+
+  // ---- Public catalog plans (the REAL product: k_start … k_enterprise) ----
+  // These are the only plans every activation path resolves by slug. Seeding them
+  // here (not just in the standalone seed-plans.ts) guarantees a fresh install can
+  // actually activate a paid plan — otherwise upgrade/approval 404s plan_not_found.
+  await seedPlans(prisma);
+  console.log("✓ Seeded public catalog plans (k_*)");
 
   // ---- Site config singleton ----
   await prisma.siteConfig.upsert({

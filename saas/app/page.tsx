@@ -26,7 +26,12 @@ export const dynamic = "force-dynamic";
 
 async function getPlans() {
   try {
-    return await prisma.plan.findMany({ orderBy: { sortOrder: "asc" } });
+    // Only the live public catalog — never the archived legacy plans (which carry
+    // stale names/prices/limits). Mirrors /pricing and /dashboard/billing.
+    return await prisma.plan.findMany({
+      where: { status: { not: "archived" } },
+      orderBy: { sortOrder: "asc" },
+    });
   } catch {
     return [];
   }
