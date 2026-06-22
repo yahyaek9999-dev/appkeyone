@@ -185,11 +185,11 @@ export default function PricingExperience({
                   )}
                 </div>
 
-                {/* CTA */}
+                {/* CTA — priced plans go to self-serve signup (same tab); only the
+                    Enterprise "contact sales" plan opens a WhatsApp chat (new tab). */}
                 <a
                   href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  {...(t.contactSales ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   className={`mb-5 inline-flex min-h-[2.75rem] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
                     featured
                       ? "bg-brand-500 text-white hover:bg-brand-400 hover:shadow-[0_6px_24px_-6px_rgba(12,122,108,0.8)]"
@@ -197,12 +197,12 @@ export default function PricingExperience({
                   }`}
                 >
                   {t.contactSales ? (
-                    labels.contactCta
-                  ) : (
                     <>
                       <WhatsAppIcon className="h-4 w-4" />
-                      {labels.subscribeCta}
+                      {labels.contactCta}
                     </>
+                  ) : (
+                    labels.subscribeCta
                   )}
                 </a>
 

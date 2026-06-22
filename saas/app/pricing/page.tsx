@@ -49,20 +49,13 @@ export default async function PricingPage({
   // DB price overrides (admin-editable) keyed by slug.
   const dbBySlug = new Map(plans.map((p: any) => [p.slug, p]));
 
-  const siteBase = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-  const billingUrl = siteBase ? `${siteBase}/dashboard/billing` : "/dashboard/billing";
-  function waLink(planName: string, price: number | string, yearly = false) {
-    const cycleText = yearly
-      ? locale === "ar" ? "سنوي" : "yearly"
-      : locale === "ar" ? "شهري" : "monthly";
-    // Hybrid handoff: the prefilled chat carries the plan + price + payment ask +
-    // the exact dashboard link where the customer finalizes (upload proof + track).
-    const text = encodeURIComponent(
-      locale === "ar"
-        ? `مرحباً ${cfg.brandName} 👋\nأريد الاشتراك في باقة *${planName}* (${cycleText}) — ${price}\nأرجو تزويدي بحساب الدفع. سأكمل الدفع وأرفع الإيصال وأتابع الحالة من:\n${billingUrl}`
-        : `Hello ${cfg.brandName} 👋\nI'd like the *${planName}* plan (${cycleText}) — ${price}\nPlease send me the payment account. I'll pay, upload the receipt, and track status at:\n${billingUrl}`,
-    );
-    return waNum ? `https://wa.me/${waNum}?text=${text}` : "#";
+  // Self-serve purchase. The CTA takes the customer into signup → /dashboard/billing,
+  // where they see the REAL receiving account, pay, upload the receipt, and track it —
+  // instead of the old "WhatsApp the founder to ask for a payment account" handoff.
+  function signupLink(slug: string, yearly = false) {
+    const cycle = yearly ? "yearly" : "monthly";
+    const lang = locale === "en" ? "&lang=en" : "";
+    return `/signup?plan=${encodeURIComponent(slug)}&cycle=${cycle}${lang}`;
   }
 
   function contactLink(planName: string) {
@@ -148,8 +141,8 @@ export default async function PricingPage({
       popular: Boolean(tier.popular),
       recommended: Boolean(tier.recommended),
       features: bullets(tier),
-      hrefMonthly: waLink(tier.name.en, `$${priceMonthly}`),
-      hrefYearly: waLink(tier.name.en, `$${priceYearly}`, true),
+      hrefMonthly: signupLink(tier.slug),
+      hrefYearly: signupLink(tier.slug, true),
       contactHref: contactLink(tier.name.en),
       savings,
     };

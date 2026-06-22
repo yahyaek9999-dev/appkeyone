@@ -4,7 +4,6 @@ import { useRef, useCallback, useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import HeroVideo from "./hero-video";
 import ParticleField from "./particle-field";
-import { WhatsAppIcon } from "@/components/ui/marketing";
 import { FrameButton } from "@/components/ui/frame-button";
 import { cn } from "@/lib/utils";
 
@@ -172,15 +171,6 @@ export default function HeroSection({
   const { contentRef, handleMouseMove } = useMouseParallax();
   const revealRef = useRevealAnimation();
 
-  const waNum = (supportWhatsapp || "").replace(/[^\d]/g, "");
-  const waHref = waNum
-    ? `https://wa.me/${waNum}?text=${encodeURIComponent(
-        isRtl
-          ? `أريد طلب حساب جديد في ${brandName}`
-          : `I'd like to subscribe to ${brandName}`,
-      )}`
-    : "";
-
   const headline = isRtl
     ? "أتمتة واتساب وذكاء الأعمال لمتجرك"
     : "WhatsApp automation & business intelligence for your store";
@@ -213,20 +203,13 @@ export default function HeroSection({
           {subhead}
         </p>
         <div data-reveal className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          {waNum ? (
-            <FrameButton href={waHref} variant="solid" external>
-              <WhatsAppIcon className="h-4 w-4" />
-              {ctaPrimary}
-            </FrameButton>
-          ) : (
-            <FrameButton href="/pricing" variant="solid">
-              {ctaPrimary}
-              <Arrow />
-            </FrameButton>
-          )}
-          <FrameButton href="/pricing" variant="outline">
+          {/* Self-serve: create an account in minutes. */}
+          <FrameButton href={`/signup${isRtl ? "" : "?lang=en"}`} variant="solid">
+            {ctaPrimary}
+            <Arrow />
+          </FrameButton>
+          <FrameButton href={`/pricing${isRtl ? "" : "?lang=en"}`} variant="outline">
             {ctaSecondary}
-            {!waNum && <Arrow />}
           </FrameButton>
         </div>
       </div>

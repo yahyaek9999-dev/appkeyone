@@ -9,9 +9,10 @@ import BillingClient from "./billing-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function BillingPage() {
+export default async function BillingPage({ searchParams }: { searchParams: { plan?: string } }) {
   const uid = await getUserId();
   if (!uid) redirect("/login");
+  const initialPlan = typeof searchParams?.plan === "string" ? searchParams.plan : "";
   const [payableMethods, myProofs, dbPlans] = await Promise.all([
     customerPayableMethods(),
     listPaymentProofs({ userId: uid, take: 12 }),
@@ -29,6 +30,7 @@ export default async function BillingPage() {
       <p className="page-desc">اختر باقتك وطريقة الدفع، ادفع للحساب الظاهر، ثم ارفع صورة الإيصال — يعتمده فريق المالية فيُشحن رصيدك وتُفعّل باقتك.</p>
       <BillingClient
         plans={plans}
+        initialPlan={initialPlan}
         payableMethods={JSON.parse(JSON.stringify(payableMethods))}
         proofs={JSON.parse(JSON.stringify(myProofs))}
       />

@@ -53,8 +53,10 @@ function Timeline({ p }: { p: any }) {
   );
 }
 
-export default function BillingClient({ plans, payableMethods, proofs: initialProofs }: { plans: any[]; payableMethods: Method[]; proofs: any[] }) {
-  const [plan, setPlan] = useState(plans[0]?.slug || "");
+export default function BillingClient({ plans, initialPlan, payableMethods, proofs: initialProofs }: { plans: any[]; initialPlan?: string; payableMethods: Method[]; proofs: any[] }) {
+  const [plan, setPlan] = useState(
+    initialPlan && plans.some((p) => p.slug === initialPlan) ? initialPlan : (plans[0]?.slug || ""),
+  );
   const [methodKey, setMethodKey] = useState(payableMethods[0]?.key || "");
   const [accountId, setAccountId] = useState(payableMethods[0]?.accounts?.[0]?.id || "");
   const [reference, setReference] = useState("");

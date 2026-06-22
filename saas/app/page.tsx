@@ -14,7 +14,7 @@ import RoiSection from "@/components/ui/roi-section";
 import HeroSection from "@/components/hero/hero-section";
 import {
   ArrowLeft, ArrowRight, BarChart3, Bell, Database, CheckCircle2, Users,
-  Phone, Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
+  Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { BentoFeatures } from "@/components/ui/bento-features";
@@ -152,17 +152,10 @@ export default async function LandingPage({
 
   const [plans, cfg] = await Promise.all([getPlans(), getSiteConfig()]);
   const brandName = cfg.brandName || "KEYONE";
-  const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
-  const waHref = waNum
-    ? "https://wa.me/" +
-      waNum +
-      "?text=" +
-      encodeURIComponent(
-        locale === "ar"
-          ? "أريد طلب حساب جديد في " + brandName
-          : "I'd like to subscribe to " + brandName,
-      )
-    : "";
+  // Self-serve signup is the primary conversion path (the WhatsApp-to-founder
+  // handoff is gone). Logged-out visitors land on /signup; Enterprise still has
+  // a "contact sales" WhatsApp CTA on /pricing.
+  const signupHref = `/signup${locale === "en" ? "?lang=en" : ""}`;
 
   const previewPlans: PricingPlan[] = plans.map((p: any) => ({
     slug: p.slug,
@@ -231,7 +224,7 @@ export default async function LandingPage({
       <RoiSection
         locale={locale}
         dir={m.dir}
-        ctaHref={waHref || `/pricing${locale === "en" ? "?lang=en" : ""}`}
+        ctaHref={signupHref}
         ctaLabel={locale === "ar" ? "ابدأ وحوّل رسائلك لمبيعات" : "Turn messages into sales"}
       />
 
@@ -316,15 +309,9 @@ export default async function LandingPage({
               <h2 className="display-heading relative text-3xl sm:text-4xl">{m.cta.heading}</h2>
               <p className="relative mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-slate-400">{m.cta.subheading}</p>
               <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                {waNum ? (
-                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 px-5 text-sm">
-                    <Phone className="h-4 w-4" /> {m.cta.primary}
-                  </a>
-                ) : (
-                  <Link href="/pricing" className="btn-premium h-11 px-5 text-sm">
-                    {m.cta.primary} <Arrow className="h-4 w-4" />
-                  </Link>
-                )}
+                <Link href={signupHref} className="btn-premium h-11 px-5 text-sm">
+                  {m.cta.primary} <Arrow className="h-4 w-4" />
+                </Link>
                 <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 text-sm">
                   {m.cta.secondary}
                 </Link>
