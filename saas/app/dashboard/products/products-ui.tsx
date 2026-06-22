@@ -8,6 +8,7 @@ import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import ImageDropzone from "@/components/ui/image-dropzone";
 
 type Product = {
   id: string;
@@ -29,8 +30,28 @@ export default function ProductsUi() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imgBusy, setImgBusy] = useState(false);
   const { error: toastError } = useToast();
   const confirm = useConfirm();
+
+  // Device upload (drag&drop or pick) → store the gated internal path. No URL input.
+  async function uploadImage(file: File | null) {
+    if (!file) { setEditing((e) => (e ? { ...e, imageUrl: null } : e)); return; }
+    setImgBusy(true);
+    try {
+      const fd = new FormData();
+      fd.set("image", file);
+      const r = await fetch("/api/products/image", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.path) {
+        setEditing((e) => (e ? { ...e, imageUrl: j.path } : e));
+      } else {
+        toastError(j.message || j.error || "تعذّر رفع الصورة");
+      }
+    } finally {
+      setImgBusy(false);
+    }
+  }
 
   async function load() {
     try {
@@ -178,8 +199,19 @@ export default function ProductsUi() {
               <Field label="الاسم *">
                 <input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className="input px-3 py-2 text-sm" placeholder="اسم المنتج" />
               </Field>
-              <Field label="رابط الصورة" icon={<ImageIcon className="h-3.5 w-3.5" />}>
-                <input value={editing.imageUrl || ""} onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })} dir="ltr" className="input px-3 py-2 text-sm" placeholder="https://..." />
+              <Field label="صورة المنتج" icon={<ImageIcon className="h-3.5 w-3.5" />}>
+                {editing.imageUrl ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={editing.imageUrl} alt="معاينة" className="h-16 w-16 rounded-lg border border-white/10 object-cover" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-emerald-300">✓ تم اختيار الصورة</div>
+                      <button type="button" onClick={() => setEditing({ ...editing, imageUrl: null })} className="mt-1.5 rounded bg-rose-500/10 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-500/20">حذف / تغيير</button>
+                    </div>
+                  </div>
+                ) : (
+                  <ImageDropzone onFile={uploadImage} compact hint={imgBusy ? "جارٍ الرفع…" : "اسحب صورة المنتج هنا أو اضغط للاختيار من جهازك"} />
+                )}
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="السعر (ج.م)">

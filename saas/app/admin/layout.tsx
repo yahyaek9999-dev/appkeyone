@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth";
 import MobileNav from "@/app/dashboard/mobile-nav";
 import { AdminNavLinks } from "./nav-links";
 import { ShieldCheck, LogOut } from "lucide-react";
@@ -8,9 +8,14 @@ import { ShieldCheck, LogOut } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if ((user as any).role !== "admin") redirect("/dashboard");
+  // SECURITY: require the PRINCIPAL to be an owner whose User.role is "admin".
+  // getCurrentUser() resolves a team-member session to the OWNER user, so a
+  // support/viewer member of an admin-owner workspace would otherwise inherit the
+  // admin panel and read every tenant's data. Mirror requireAdmin() exactly.
+  const ctx = await getAuthContext();
+  if (!ctx) redirect("/login");
+  if (!ctx.isOwner || (ctx.user as any).role !== "admin") redirect("/dashboard");
+  const user = ctx.user;
 
   const Brand = (
     <div className="flex items-center gap-2 px-4 py-5">

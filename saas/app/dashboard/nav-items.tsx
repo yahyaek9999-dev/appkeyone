@@ -188,7 +188,6 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/safety", label: "الأمان", icon: ShieldAlert, perm: "settings" },
       { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
-      { href: "/dashboard/system-health", label: "صحة النظام", icon: Gauge, perm: "settings" },
       { href: "/dashboard/audit-log", label: "سجل التدقيق", icon: ScrollText, perm: "team" },
       { href: "/docs", label: "مركز المساعدة", icon: BookOpen, perm: "analytics" },
     ],
@@ -265,12 +264,31 @@ const CORE_HREFS = new Set<string>([
 ]);
 const NAV_MODE_KEY = "keyone_nav_simple";
 
-function accessibleWorkspaces(role: Role, simple = false, pathname = ""): Workspace[] {
+// Before a workspace is activated (no active subscription) the owner should see
+// ONLY the get-started essentials — welcome, billing, plan, wallet, account.
+// Every premium area (CRM, broadcasts, AI, QR, analytics, API, integrations,
+// orders, customers…) stays hidden until they activate. Pure visibility — the
+// backend capability gates enforce access independently.
+const PRE_ACTIVATION_HREFS = new Set<string>([
+  "/dashboard",
+  "/dashboard/billing",
+  "/dashboard/wallet",
+  "/dashboard/plan",
+  "/dashboard/usage",
+  "/dashboard/settings",
+]);
+
+function accessibleWorkspaces(role: Role, simple = false, pathname = "", activated = true): Workspace[] {
   return WORKSPACES.map((w) => ({
     ...w,
-    // In simple mode keep only core items — plus whatever page you're on, so the
-    // nav always answers "where am I?" even on an advanced screen.
-    items: w.items.filter((i) => can(role, i.perm) && (!simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href))),
+    items: w.items.filter((i) => {
+      if (!can(role, i.perm)) return false;
+      // Pre-activation: only the get-started essentials are visible.
+      if (!activated) return PRE_ACTIVATION_HREFS.has(i.href);
+      // In simple mode keep only core items — plus whatever page you're on, so the
+      // nav always answers "where am I?" even on an advanced screen.
+      return !simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href);
+    }),
   })).filter((w) => w.items.length > 0);
 }
 
@@ -306,10 +324,10 @@ function ContextRow({ item, active }: { item: NavItem; active: boolean }) {
  * Desktop chrome: workspace icon RAIL + CONTEXTUAL panel. The rail is the
  * identity of the OS; the panel is the context you're working in.
  */
-export function SidebarNav({ adminLink, role = "owner" }: { adminLink?: React.ReactNode; role?: Role }) {
+export function SidebarNav({ adminLink, role = "owner", activated = true }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean }) {
   const pathname = usePathname();
   const [simple, toggleMode] = useNavMode();
-  const spaces = accessibleWorkspaces(role, simple, pathname);
+  const spaces = accessibleWorkspaces(role, simple, pathname, activated);
   const currentWs = workspaceForPath(pathname);
   // Which workspace's items are shown in the panel. Defaults to the one holding
   // the current route; the user can preview another by clicking its rail glyph.
@@ -354,7 +372,7 @@ export function SidebarNav({ adminLink, role = "owner" }: { adminLink?: React.Re
         {viewed.items.map((it) => (
           <ContextRow key={it.href} item={it} active={isActivePath(pathname, it.href)} />
         ))}
-        <NavModeToggle simple={simple} toggle={toggleMode} />
+        {activated && <NavModeToggle simple={simple} toggle={toggleMode} />}
       </nav>
     </div>
   );
@@ -364,10 +382,10 @@ export function SidebarNav({ adminLink, role = "owner" }: { adminLink?: React.Re
  * Mobile drawer: full workspace map, each workspace as a labelled group. No rail
  * (touch targets win over density on small screens).
  */
-export function NavLinks({ role = "owner" }: { role?: Role }) {
+export function NavLinks({ role = "owner", activated = true }: { role?: Role; activated?: boolean }) {
   const pathname = usePathname();
   const [simple, toggleMode] = useNavMode();
-  const spaces = accessibleWorkspaces(role, simple, pathname);
+  const spaces = accessibleWorkspaces(role, simple, pathname, activated);
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
       {spaces.map((w) => (
@@ -383,7 +401,7 @@ export function NavLinks({ role = "owner" }: { role?: Role }) {
           </div>
         </div>
       ))}
-      <NavModeToggle simple={simple} toggle={toggleMode} />
+      {activated && <NavModeToggle simple={simple} toggle={toggleMode} />}
     </nav>
   );
 }

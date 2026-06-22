@@ -4,8 +4,9 @@
     {
       "name": "keyone",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "saas", "run", "start"],
-      "port": 3000
+      "runtimeArgs": ["--prefix", "/Users/yahyaemad/Desktop/appkeyone/.claude/worktrees/inspiring-meninsky-d3cd92/saas", "run", "start"],
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }

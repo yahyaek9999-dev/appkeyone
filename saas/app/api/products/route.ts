@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { httpUrlOrNull } from "@/lib/url-safe";
+import { isInternalProductImage } from "@/lib/media/product-image";
+
+/** Accept a device-uploaded internal image path; keep legacy http for back-compat. */
+function productImage(v: any): string | null {
+  return isInternalProductImage(v) ? String(v) : httpUrlOrNull(v);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +43,7 @@ export async function POST(req: Request) {
     data: {
       userId: uid,
       name,
-      imageUrl: httpUrlOrNull(b.imageUrl),
+      imageUrl: productImage(b.imageUrl),
       price: clampInt(b.price),
       compareAtPrice: b.compareAtPrice != null && b.compareAtPrice !== "" ? clampInt(b.compareAtPrice) : null,
       stock: clampInt(b.stock),

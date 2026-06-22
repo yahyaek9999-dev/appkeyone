@@ -28,6 +28,11 @@ export default async function DashboardLayout({
   // a team member never inherits the admin panel.
   const isAdmin = ctx.isOwner && (user as any).role === "admin";
   const brandName = cfg.brandName || "KEYONE";
+  // Pre-activation gate (visibility): an owner with no ACTIVE subscription sees
+  // only the get-started essentials (welcome/billing/plan/account). Platform
+  // admins and team members of an active workspace are always "activated".
+  const sub = (user as any).subscription;
+  const activated = !ctx.isOwner || isAdmin || (!!sub && sub.status === "active");
 
   const Brand = (
     <Link href="/dashboard" className="flex items-center gap-2.5 px-3.5 py-4">
@@ -92,7 +97,7 @@ export default async function DashboardLayout({
               <CommandTrigger />
             </div>
             <div className="px-3 pt-1">{AdminLink}</div>
-            <NavLinks role={role} />
+            <NavLinks role={role} activated={activated} />
             {UserFooter}
           </MobileNav>
 
@@ -103,7 +108,7 @@ export default async function DashboardLayout({
                 <CommandTrigger />
               </div>
             </div>
-            <SidebarNav adminLink={AdminLink} role={role} />
+            <SidebarNav adminLink={AdminLink} role={role} activated={activated} />
             {UserFooter}
           </aside>
           <DashboardTour />

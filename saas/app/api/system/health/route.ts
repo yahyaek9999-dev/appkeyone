@@ -9,7 +9,7 @@
 // it could gather. This page must render even when a dependency is unhealthy.
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { getUserId } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import * as os from "os";
@@ -50,8 +50,16 @@ function toSafeNumber(v: unknown): number | null {
 }
 
 export async function GET() {
-  const uid = await getUserId().catch(() => null);
-  if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  // SECURITY: this is a PLATFORM ops view — it exposes host hardware (CPU/RAM),
+  // DB size, and cross-tenant aggregate counts. Restrict to platform admins so a
+  // regular tenant (or team member) can never read another tenant's totals or the
+  // server's internals. Tenant-scoped health lives on /dashboard/whatsapp-health
+  // and /dashboard/meta-health.
+  const ctx = await getAuthContext().catch(() => null);
+  if (!ctx) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  if (!ctx.isOwner || (ctx.user as any).role !== "admin") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 86400000);
