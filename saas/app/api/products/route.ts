@@ -10,6 +10,12 @@ function productImage(v: any): string | null {
   return isInternalProductImage(v) ? String(v) : httpUrlOrNull(v);
 }
 
+/** Normalize a gallery of device-uploaded image paths (max 8). */
+function productImages(v: any): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => (isInternalProductImage(x) ? String(x) : httpUrlOrNull(x))).filter(Boolean).slice(0, 8) as string[];
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET() {
@@ -43,7 +49,10 @@ export async function POST(req: Request) {
     data: {
       userId: uid,
       name,
-      imageUrl: productImage(b.imageUrl),
+      ...(() => {
+        const gallery = productImages(b.images);
+        return { imagesJson: gallery.length ? JSON.stringify(gallery) : null, imageUrl: gallery[0] || productImage(b.imageUrl) };
+      })(),
       price: clampInt(b.price),
       compareAtPrice: b.compareAtPrice != null && b.compareAtPrice !== "" ? clampInt(b.compareAtPrice) : null,
       stock: clampInt(b.stock),

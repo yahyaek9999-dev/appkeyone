@@ -1401,6 +1401,7 @@ model Product {
   userId         String
   name           String
   imageUrl       String?
+  imagesJson     String?                 // JSON array of device-uploaded image paths (gallery); imageUrl = first
   price          Int      @default(0)   // whole EGP
   compareAtPrice Int?                    // optional "was" price
   stock          Int      @default(0)

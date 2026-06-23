@@ -8,12 +8,13 @@ import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import ImageDropzone from "@/components/ui/image-dropzone";
 
 type Product = {
   id: string;
   name: string;
   imageUrl: string | null;
+  imagesJson?: string | null;
+  images?: string[];
   price: number;
   compareAtPrice: number | null;
   stock: number;
@@ -22,6 +23,16 @@ type Product = {
   productLink: string | null;
   active: boolean;
 };
+
+/** Parse a product's stored gallery (imagesJson) into an array, falling back to imageUrl. */
+function galleryOf(p: Partial<Product>): string[] {
+  if (Array.isArray(p.images)) return p.images;
+  try {
+    const arr = JSON.parse(p.imagesJson || "[]");
+    if (Array.isArray(arr) && arr.length) return arr;
+  } catch { /* ignore */ }
+  return p.imageUrl ? [p.imageUrl] : [];
+}
 
 const EMPTY: Partial<Product> = { name: "", price: 0, stock: 0, active: true };
 
@@ -34,23 +45,39 @@ export default function ProductsUi() {
   const { error: toastError } = useToast();
   const confirm = useConfirm();
 
-  // Device upload (drag&drop or pick) → store the gated internal path. No URL input.
-  async function uploadImage(file: File | null) {
-    if (!file) { setEditing((e) => (e ? { ...e, imageUrl: null } : e)); return; }
+  // Device upload (drag&drop or pick) — multiple images → gated internal paths. No URL input.
+  async function addImages(files: FileList | File[] | null) {
+    const list = files ? Array.from(files) : [];
+    if (!list.length) return;
     setImgBusy(true);
     try {
-      const fd = new FormData();
-      fd.set("image", file);
-      const r = await fetch("/api/products/image", { method: "POST", body: fd });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok && j.path) {
-        setEditing((e) => (e ? { ...e, imageUrl: j.path } : e));
-      } else {
-        toastError(j.message || j.error || "تعذّر رفع الصورة");
+      const uploaded: string[] = [];
+      for (const file of list.slice(0, 8)) {
+        const fd = new FormData();
+        fd.set("image", file);
+        const r = await fetch("/api/products/image", { method: "POST", body: fd });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.path) uploaded.push(j.path);
+        else toastError(j.message || j.error || "تعذّر رفع الصورة");
+      }
+      if (uploaded.length) {
+        setEditing((e) => {
+          if (!e) return e;
+          const next = [...galleryOf(e), ...uploaded].slice(0, 8);
+          return { ...e, images: next, imageUrl: next[0] || null };
+        });
       }
     } finally {
       setImgBusy(false);
     }
+  }
+
+  function removeImage(idx: number) {
+    setEditing((e) => {
+      if (!e) return e;
+      const next = galleryOf(e).filter((_, i) => i !== idx);
+      return { ...e, images: next, imageUrl: next[0] || null };
+    });
   }
 
   async function load() {
@@ -199,18 +226,24 @@ export default function ProductsUi() {
               <Field label="الاسم *">
                 <input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className="input px-3 py-2 text-sm" placeholder="اسم المنتج" />
               </Field>
-              <Field label="صورة المنتج" icon={<ImageIcon className="h-3.5 w-3.5" />}>
-                {editing.imageUrl ? (
-                  <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={editing.imageUrl} alt="معاينة" className="h-16 w-16 rounded-lg border border-white/10 object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-emerald-300">✓ تم اختيار الصورة</div>
-                      <button type="button" onClick={() => setEditing({ ...editing, imageUrl: null })} className="mt-1.5 rounded bg-rose-500/10 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-500/20">حذف / تغيير</button>
-                    </div>
+              <Field label={`صور المنتج (${galleryOf(editing).length}/8)`} icon={<ImageIcon className="h-3.5 w-3.5" />}>
+                {galleryOf(editing).length > 0 && (
+                  <div className="mb-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                    {galleryOf(editing).map((src, i) => (
+                      <div key={src + i} className="group relative aspect-square overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt={`صورة ${i + 1}`} className="h-full w-full object-cover" />
+                        {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-brand-500/80 text-center text-[9px] text-white">الرئيسية</span>}
+                        <button type="button" onClick={() => removeImage(i)} title="حذف" className="absolute top-0.5 left-0.5 rounded bg-rose-600/90 px-1 text-[10px] text-white opacity-0 transition group-hover:opacity-100">✕</button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <ImageDropzone onFile={uploadImage} compact hint={imgBusy ? "جارٍ الرفع…" : "اسحب صورة المنتج هنا أو اضغط للاختيار من جهازك"} />
+                )}
+                {galleryOf(editing).length < 8 && (
+                  <label className="block cursor-pointer rounded-xl border-2 border-dashed border-white/15 bg-white/[0.03] px-4 py-4 text-center text-sm text-slate-300 transition-colors hover:border-brand-400/50 hover:bg-white/[0.05]">
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addImages(e.target.files); e.currentTarget.value = ""; }} />
+                    {imgBusy ? "جارٍ الرفع…" : "⬆️ اسحب صورًا هنا أو اضغط للاختيار من جهازك (تدعم عدة صور)"}
+                  </label>
                 )}
               </Field>
               <div className="grid grid-cols-2 gap-3">

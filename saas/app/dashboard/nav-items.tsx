@@ -149,7 +149,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },
       { href: "/dashboard/intel", label: "الرصد الذكي", icon: Activity, perm: "analytics" },
       { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "analytics" },
-      { href: "/dashboard/playground", label: "ساحة التجربة", icon: FlaskConical, perm: "settings" },
+      { href: "/dashboard/testing-arena", label: "ساحة الاختبار", icon: Beaker, perm: "settings" },
+      { href: "/dashboard/playground", label: "تجربة المحادثة", icon: FlaskConical, perm: "settings" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/brain", label: "مركز الدماغ", icon: Brain, perm: "settings" },
       // HIDDEN (final-polish): not production-ready — re-enable when the workflow is complete
