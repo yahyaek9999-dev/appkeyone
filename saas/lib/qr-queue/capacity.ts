@@ -95,6 +95,55 @@ export async function lowestFreeLane(
  * Scans in `stepMin` increments up to the booking horizon. Returns null if the
  * horizon is full.
  */
+export interface DaySlot {
+  startISO: string;
+  endISO: string;
+  hour: number;
+  available: number;
+  capacity: number;
+  state: "past" | "available" | "busy" | "full";
+}
+
+/**
+ * Per-slot availability for a whole calendar day (one query, peak per slot).
+ * Powers the booking calendar: each hour-long slot is available / busy / full /
+ * past with its remaining capacity. No manual date entry needed.
+ */
+export async function dayAvailability(dayLocal: Date, slotMin = 60): Promise<{ lanes: number; slots: DaySlot[] }> {
+  const lanes = qrQueueFlags.lanes;
+  const dayStart = new Date(dayLocal);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60_000);
+
+  const rows = await prisma.qrReservation.findMany({
+    where: {
+      status: { in: HOLDING_STATUSES as string[] },
+      windowStart: { lt: dayEnd },
+      windowEnd: { gt: dayStart },
+    },
+    select: { windowStart: true, windowEnd: true, lane: true },
+    take: 2000,
+  });
+  const items: Interval[] = rows.map((r) => ({ start: r.windowStart.getTime(), end: r.windowEnd.getTime(), lane: r.lane }));
+
+  const now = Date.now();
+  const slotMs = slotMin * 60_000;
+  const slots: DaySlot[] = [];
+  for (let t = dayStart.getTime(); t < dayEnd.getTime(); t += slotMs) {
+    const s = t;
+    const e = t + slotMs;
+    const peak = peakOverlap(items, s, e);
+    const available = Math.max(0, lanes - peak);
+    let state: DaySlot["state"];
+    if (e <= now) state = "past";
+    else if (available <= 0) state = "full";
+    else if (peak > 0) state = "busy";
+    else state = "available";
+    slots.push({ startISO: new Date(s).toISOString(), endISO: new Date(e).toISOString(), hour: new Date(s).getHours(), available, capacity: lanes, state });
+  }
+  return { lanes, slots };
+}
+
 export async function suggestNextSlot(
   from: Date,
   durationMin: number,

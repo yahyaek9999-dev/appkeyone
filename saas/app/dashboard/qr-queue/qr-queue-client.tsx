@@ -3,12 +3,11 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   CalendarClock,
-  Clock,
   Loader2,
   CheckCircle2,
   XCircle,
   Activity,
-  Users,
+  Clock,
 } from "lucide-react";
 
 type Reservation = {
@@ -35,12 +34,14 @@ type Snapshot = {
   nextWindowISO: string | null;
 };
 
-const PURPOSES: Array<{ v: string; l: string }> = [
-  { v: "session", l: "جلسة" },
-  { v: "broadcast", l: "بث جماعي" },
-  { v: "import", l: "استيراد" },
-  { v: "maintenance", l: "صيانة" },
-];
+type Slot = {
+  startISO: string;
+  endISO: string;
+  hour: number;
+  available: number;
+  capacity: number;
+  state: "past" | "available" | "busy" | "full";
+};
 
 const STATUS_LABEL: Record<string, string> = {
   reserved: "محجوز",
@@ -51,7 +52,6 @@ const STATUS_LABEL: Record<string, string> = {
   no_show: "لم يحضر",
   booked: "محجوز",
 };
-
 const STATUS_TONE: Record<string, string> = {
   reserved: "bg-sky-500/15 text-sky-300",
   booked: "bg-sky-500/15 text-sky-300",
@@ -61,25 +61,19 @@ const STATUS_TONE: Record<string, string> = {
   expired: "bg-amber-500/15 text-amber-300",
   no_show: "bg-rose-500/15 text-rose-300",
 };
-
-// Statuses where the reservation is final and cannot be canceled.
 const FINAL_STATUSES = new Set(["completed", "canceled", "expired", "no_show"]);
 
-// Arabic translations for engine rejection reasons.
-const REASON_LABEL: Record<string, string> = {
-  queue_disabled: "نظام الحجز غير مُفعّل حاليًا.",
-  invalid_start: "وقت البداية غير صالح.",
-  invalid_window: "الفترة الزمنية غير صالحة.",
-  too_long: "المدة تتجاوز الحد الأقصى المسموح به.",
-  in_the_past: "لا يمكن الحجز في وقت ماضٍ.",
-  beyond_horizon: "الموعد أبعد من المدى المسموح بالحجز خلاله.",
-  tenant_limit_reached: "وصلت إلى الحد الأقصى لعدد حجوزاتك.",
-  no_capacity: "لا توجد سعة متاحة في هذه الفترة.",
-};
+const WEEKDAYS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
-const inputCls =
-  "w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-brand-400/50 focus:outline-none";
-
+function ymd(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function hourLabel(h: number): string {
+  const period = h < 12 ? "ص" : "م";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12} ${period}`;
+}
 function fmt(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -87,19 +81,9 @@ function fmt(iso: string | null): string {
   return d.toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
 }
 
-// Convert an ISO instant to the `value` a <input type="datetime-local"> expects
-// (local wall-clock, no timezone suffix).
-function isoToLocalInput(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export default function QrQueueClient({
   initialReservations,
   snapshot,
-  defaultDurationMin,
   horizonDays,
 }: {
   initialReservations: Reservation[];
@@ -108,81 +92,72 @@ export default function QrQueueClient({
   horizonDays: number;
 }) {
   const [reservations, setReservations] = useState<Reservation[]>(initialReservations);
-  const [purpose, setPurpose] = useState("session");
-  const [windowStart, setWindowStart] = useState("");
-  const [durationMin, setDurationMin] = useState(String(defaultDurationMin));
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [days] = useState<Date[]>(() => {
+    const out: Date[] = [];
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    for (let i = 0; i < Math.min(horizonDays, 14); i++) {
+      out.push(new Date(base.getTime() + i * 86400000));
+    }
+    return out;
+  });
+  const [selected, setSelected] = useState<string>(() => ymd(new Date()));
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [bookingISO, setBookingISO] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [suggestionISO, setSuggestionISO] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
+  const loadSlots = useCallback(async (date: string) => {
+    setLoadingSlots(true);
+    try {
+      const r = await fetch(`/api/qr-queue/availability/day?date=${date}`);
+      const j = await r.json();
+      setSlots(j.ok ? j.slots || [] : []);
+    } catch {
+      setSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, []);
+
+  const refreshReservations = useCallback(async () => {
     try {
       const r = await fetch("/api/qr-queue/reservations");
       const j = await r.json();
       if (j.ok) setReservations(j.reservations || []);
     } catch {
       /* ignore */
-    } finally {
-      setRefreshing(false);
     }
   }, []);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    loadSlots(selected);
+  }, [selected, loadSlots]);
+
+  async function book(slot: Slot) {
+    if (slot.state === "full" || slot.state === "past") return;
+    setBookingISO(slot.startISO);
     setMsg(null);
-    setSuggestionISO(null);
-
-    if (!windowStart) {
-      setMsg({ ok: false, text: "اختر وقت بداية الحجز" });
-      return;
-    }
-    const start = new Date(windowStart);
-    if (isNaN(start.getTime())) {
-      setMsg({ ok: false, text: "وقت البداية غير صالح" });
-      return;
-    }
-
-    const dur = parseInt(durationMin, 10);
-    setBusy(true);
     try {
       const r = await fetch("/api/qr-queue/reservations", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          purpose,
-          windowStart: start.toISOString(),
-          durationMin: Number.isFinite(dur) ? dur : undefined,
-          note: note || undefined,
-        }),
+        body: JSON.stringify({ windowStart: slot.startISO, durationMin: 60, purpose: "session" }),
       });
       const j = await r.json();
       if (r.ok && j.ok) {
-        setMsg({ ok: true, text: "تم حجز الفترة بنجاح." });
-        setNote("");
-        await refresh();
+        setMsg({ ok: true, text: `تم حجز ${hourLabel(slot.hour)} بنجاح.` });
+        await Promise.all([loadSlots(selected), refreshReservations()]);
       } else {
-        const reason: string = j.error || "no_capacity";
-        setMsg({ ok: false, text: REASON_LABEL[reason] || "تعذّر إتمام الحجز." });
-        if (reason === "no_capacity" && j.suggestionISO) {
-          setSuggestionISO(j.suggestionISO);
-        }
+        setMsg({ ok: false, text: j.reason === "no_capacity" ? "هذه الفترة ممتلئة." : "تعذّر إتمام الحجز." });
+        await loadSlots(selected);
       }
     } catch {
       setMsg({ ok: false, text: "خطأ في الشبكة" });
     } finally {
-      setBusy(false);
+      setBookingISO(null);
     }
-  }
-
-  function applySuggestion() {
-    if (!suggestionISO) return;
-    setWindowStart(isoToLocalInput(suggestionISO));
-    setSuggestionISO(null);
-    setMsg(null);
   }
 
   async function cancel(id: string) {
@@ -190,233 +165,154 @@ export default function QrQueueClient({
     try {
       const r = await fetch(`/api/qr-queue/reservations/${id}`, { method: "DELETE" });
       const j = await r.json();
-      if (r.ok && j.ok) {
-        await refresh();
-      } else {
-        setMsg({ ok: false, text: "تعذّر إلغاء الحجز." });
-      }
-    } catch {
-      setMsg({ ok: false, text: "خطأ في الشبكة" });
+      if (r.ok && j.ok) await Promise.all([refreshReservations(), loadSlots(selected)]);
+      else setMsg({ ok: false, text: "تعذّر إلغاء الحجز." });
     } finally {
       setCancelingId(null);
     }
   }
 
-  // Simple, tap-to-pick start times so an owner never has to reason about a raw
-  // datetime picker. All options are in the future (no "in the past" surprises).
-  function timePresets(): Array<{ l: string; d: Date }> {
-    const now = new Date();
-    const tomorrowAM = new Date(now);
-    tomorrowAM.setDate(now.getDate() + 1);
-    tomorrowAM.setHours(10, 0, 0, 0);
-    return [
-      { l: "الآن", d: new Date(now.getTime() + 2 * 60000) },
-      { l: "بعد ساعة", d: new Date(now.getTime() + 60 * 60000) },
-      { l: "بعد ٣ ساعات", d: new Date(now.getTime() + 3 * 60 * 60000) },
-      { l: "غدًا صباحًا", d: tomorrowAM },
-    ];
-  }
-  const DURATION_PRESETS = [15, 30, 60];
+  const visibleSlots = slots.filter((s) => s.state !== "past" || s.hour >= new Date().getHours());
+  const occupancyPct = snapshot.lanes > 0 ? Math.round((snapshot.activeNow / snapshot.lanes) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      {/* Booking form */}
-      <div className="card p-5">
-        <h2 className="font-bold text-lg flex items-center gap-2 mb-1">
-          <CalendarClock className="h-4 w-4 text-brand-300" /> حجز فترة جديدة
-        </h2>
-        <p className="text-xs text-slate-500 mb-4">
-          احجز وقتًا لتشغيل رقم واتساب على المجدول المشترك. اختر{" "}
-          <b className="text-slate-300">متى</b> و<b className="text-slate-300">كم المدة</b> — وسنحجز لك مكانًا.
-          {" "}(متاح خلال {horizonDays} يومًا القادمة)
-        </p>
-        <form onSubmit={submit} className="space-y-4">
-          {/* When — tap a quick option or pick a custom time */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1.5">متى تريد التشغيل؟</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {timePresets().map((p) => (
-                <button
-                  key={p.l}
-                  type="button"
-                  onClick={() => { setWindowStart(isoToLocalInput(p.d.toISOString())); setMsg(null); }}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 hover:border-brand-400/50 hover:bg-brand-500/10"
-                >
-                  {p.l}
-                </button>
-              ))}
-            </div>
-            <input
-              className={inputCls}
-              type="datetime-local"
-              value={windowStart}
-              onChange={(e) => setWindowStart(e.target.value)}
-              aria-label="وقت مخصّص"
-            />
-            <p className="text-[11px] text-slate-500 mt-1">اضغط زرًا سريعًا أعلاه، أو اختر وقتًا مخصّصًا.</p>
-          </div>
-
-          {/* Duration — preset chips */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1.5">المدة</label>
-            <div className="flex flex-wrap gap-2">
-              {DURATION_PRESETS.map((d) => {
-                const sel = String(d) === String(durationMin);
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDurationMin(String(d))}
-                    className={`rounded-full border px-3 py-1.5 text-xs ${sel ? "border-brand-400/60 bg-brand-500/15 text-brand-200" : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"}`}
-                  >
-                    {d} دقيقة
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Purpose — defaults to a session; most owners never change this */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">الغرض</label>
-            <select className={inputCls} value={purpose} onChange={(e) => setPurpose(e.target.value)}>
-              {PURPOSES.map((p) => (
-                <option key={p.v} value={p.v} className="bg-slate-900">
-                  {p.l}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">ملاحظة (اختياري)</label>
-            <input
-              className={inputCls}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="ملاحظة قصيرة"
-            />
-          </div>
-          <button type="submit" disabled={busy} className="btn-primary w-full justify-center disabled:opacity-50">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarClock className="h-4 w-4" />} احجز الفترة
-          </button>
-
-          {msg && (
-            <div className={`text-sm flex items-center gap-1.5 ${msg.ok ? "text-emerald-300" : "text-rose-300"}`}>
-              {msg.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />} {msg.text}
-            </div>
-          )}
-
-          {suggestionISO && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-              <div className="text-amber-200 mb-2">
-                أقرب موعد متاح: <b>{fmt(suggestionISO)}</b>
-              </div>
-              <button type="button" onClick={applySuggestion} className="btn-ghost justify-center text-xs">
-                <Clock className="h-3.5 w-3.5" /> استخدم هذا الموعد
-              </button>
-            </div>
-          )}
-        </form>
-      </div>
-
-      {/* Snapshot summary */}
-      <div className="card p-5">
-        <h2 className="font-bold text-lg flex items-center gap-2 mb-4">
-          <Activity className="h-4 w-4 text-emerald-300" /> حالة المجمّع
-        </h2>
-        <div className="space-y-3 text-sm">
-          <Row icon={<Users className="h-4 w-4 text-brand-300" />} label="عدد المسارات" value={String(snapshot.lanes)} />
-          <Row icon={<Activity className="h-4 w-4 text-emerald-300" />} label="نشط الآن" value={String(snapshot.activeNow)} />
-          <Row icon={<CalendarClock className="h-4 w-4 text-sky-300" />} label="متاح الآن" value={String(snapshot.availableNow)} />
-          <Row icon={<Clock className="h-4 w-4 text-amber-300" />} label="حجوزات قادمة" value={String(snapshot.reservedUpcoming)} />
-          <Row
-            icon={<CalendarClock className="h-4 w-4 text-slate-300" />}
-            label="أقرب نافذة متاحة"
-            value={snapshot.nextWindowISO ? fmt(snapshot.nextWindowISO) : "—"}
+    <div className="space-y-5">
+      {/* Live occupancy bar */}
+      <div className="card p-4">
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="flex items-center gap-2 font-semibold text-white">
+            <Activity className="h-4 w-4 text-emerald-300" /> الإشغال المباشر
+          </span>
+          <span className="text-slate-400">
+            {snapshot.activeNow} / {snapshot.lanes} مسار مشغول · {snapshot.availableNow} متاح الآن
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+          <div
+            className={`h-full rounded-full ${occupancyPct >= 100 ? "bg-rose-400" : occupancyPct >= 60 ? "bg-amber-400" : "bg-emerald-400"}`}
+            style={{ width: `${Math.min(100, occupancyPct)}%` }}
           />
         </div>
       </div>
 
-      {/* My reservations */}
-      <div className="lg:col-span-2">
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-lg flex items-center gap-2">
-              <Clock className="h-4 w-4 text-slate-300" /> حجوزاتي
-            </h2>
-            <button onClick={refresh} disabled={refreshing} className="btn-ghost text-xs disabled:opacity-50">
-              {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} تحديث
-            </button>
-          </div>
+      {/* Calendar: day tabs */}
+      <div className="card p-5">
+        <h2 className="mb-1 flex items-center gap-2 text-lg font-bold">
+          <CalendarClock className="h-4 w-4 text-brand-300" /> احجز فترة جلسة
+        </h2>
+        <p className="mb-4 text-xs text-slate-500">اختر اليوم ثم اضغط على فترة متاحة — حجز بضغطة واحدة، بدون إدخال تاريخ يدوي.</p>
 
-          {reservations.length === 0 ? (
-            <div className="text-slate-500 text-sm py-8 text-center">لا توجد حجوزات بعد. احجز فترة للبدء.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-slate-400 border-b border-white/5">
-                    <th className="text-right p-2">الحالة</th>
-                    <th className="text-right p-2">الغرض</th>
-                    <th className="text-right p-2">من</th>
-                    <th className="text-right p-2">إلى</th>
-                    <th className="text-right p-2">المسار</th>
-                    <th className="text-right p-2">المدة</th>
-                    <th className="text-right p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reservations.map((r) => {
-                    const purposeLabel = PURPOSES.find((p) => p.v === r.purpose)?.l || r.purpose;
-                    const isFinal = FINAL_STATUSES.has(r.status);
-                    return (
-                      <tr key={r.id} className="border-t border-white/5">
-                        <td className="p-2">
-                          <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                              STATUS_TONE[r.status] || "bg-slate-500/15 text-slate-300"
-                            }`}
-                          >
-                            {STATUS_LABEL[r.status] || r.status}
-                          </span>
-                        </td>
-                        <td className="p-2 text-slate-300">{purposeLabel}</td>
-                        <td className="p-2 text-slate-400 whitespace-nowrap">{fmt(r.windowStart)}</td>
-                        <td className="p-2 text-slate-400 whitespace-nowrap">{fmt(r.windowEnd)}</td>
-                        <td className="p-2 text-slate-300">{r.lane != null ? r.lane : "—"}</td>
-                        <td className="p-2 text-slate-400 whitespace-nowrap">{r.durationMin} د</td>
-                        <td className="p-2 text-left">
-                          {!isFinal && (
-                            <button
-                              onClick={() => cancel(r.id)}
-                              disabled={cancelingId === r.id}
-                              className="btn-ghost text-xs text-rose-300 disabled:opacity-50"
-                            >
-                              {cancelingId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />} إلغاء
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {days.map((d, i) => {
+            const key = ymd(d);
+            const label = i === 0 ? "اليوم" : i === 1 ? "غدًا" : `${WEEKDAYS_AR[d.getDay()]} ${d.getDate()}`;
+            const active = key === selected;
+            return (
+              <button
+                key={key}
+                onClick={() => setSelected(key)}
+                className={`rounded-lg border px-3 py-1.5 text-xs ${active ? "border-brand-400/60 bg-brand-500/15 text-brand-100" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Legend */}
+        <div className="mb-3 flex flex-wrap gap-3 text-[11px] text-slate-400">
+          <Legend tone="bg-emerald-400" label="متاح" />
+          <Legend tone="bg-amber-400" label="مشغول جزئياً" />
+          <Legend tone="bg-rose-400" label="ممتلئ" />
+        </div>
+
+        {/* Slot grid */}
+        {loadingSlots ? (
+          <div className="flex items-center justify-center py-10 text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        ) : visibleSlots.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-500">لا توجد فترات متاحة في هذا اليوم.</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+            {visibleSlots.map((s) => {
+              const tone =
+                s.state === "full" ? "border-rose-500/30 bg-rose-500/10 text-rose-300 cursor-not-allowed"
+                : s.state === "busy" ? "border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
+                : s.state === "past" ? "border-white/5 bg-white/[0.02] text-slate-600 cursor-not-allowed"
+                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20";
+              const disabled = s.state === "full" || s.state === "past" || bookingISO === s.startISO;
+              return (
+                <button
+                  key={s.startISO}
+                  onClick={() => book(s)}
+                  disabled={disabled}
+                  title={`${s.available}/${s.capacity} متاح`}
+                  className={`flex flex-col items-center rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors ${tone}`}
+                >
+                  {bookingISO === s.startISO ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span>{hourLabel(s.hour)}</span>
+                      <span className="mt-0.5 text-[10px] opacity-80">
+                        {s.state === "full" ? "ممتلئ" : `${s.available}/${s.capacity}`}
+                      </span>
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {msg && (
+          <div className={`mt-3 flex items-center gap-1.5 text-sm ${msg.ok ? "text-emerald-300" : "text-rose-300"}`}>
+            {msg.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />} {msg.text}
+          </div>
+        )}
+      </div>
+
+      {/* My reservations */}
+      <div className="card p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
+          <Clock className="h-4 w-4 text-brand-300" /> حجوزاتي
+        </h2>
+        {reservations.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-500">لا توجد حجوزات بعد — اختر فترة من التقويم أعلاه.</p>
+        ) : (
+          <div className="space-y-2">
+            {reservations.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded px-2 py-0.5 text-[11px] ${STATUS_TONE[r.status] || "bg-white/10 text-slate-300"}`}>
+                      {STATUS_LABEL[r.status] || r.status}
+                    </span>
+                    <span className="text-slate-300">{fmt(r.windowStart)}</span>
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">المدة: {r.durationMin} دقيقة{r.lane != null ? ` · مسار ${r.lane}` : ""}</div>
+                </div>
+                {!FINAL_STATUSES.has(r.status) && (
+                  <button
+                    onClick={() => cancel(r.id)}
+                    disabled={cancelingId === r.id}
+                    className="shrink-0 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"
+                  >
+                    {cancelingId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "إلغاء"}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Legend({ tone, label }: { tone: string; label: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="flex items-center gap-2 text-slate-400">
-        {icon}
-        {label}
-      </span>
-      <span className="font-semibold text-white">{value}</span>
-    </div>
+    <span className="flex items-center gap-1.5">
+      <span className={`h-2.5 w-2.5 rounded-full ${tone}`} /> {label}
+    </span>
   );
 }
