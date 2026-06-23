@@ -22,6 +22,7 @@
 
 import { prisma } from "@/lib/db";
 import { assertPublicHttpUrl } from "@/lib/ssrf";
+import { decryptSecret } from "@/lib/crypto-util";
 
 const PAGES_PER_RUN = 5;
 const PAGE_SIZE     = 100;
@@ -193,7 +194,16 @@ async function* zidProducts(cfg: { accessToken: string; storeId: string }): Asyn
 // ── Orchestrator ─────────────────────────────────────────────────────────────
 
 function parseConfig(raw: unknown): Record<string, any> {
-  try { return JSON.parse(String(raw || "{}")) || {}; } catch { return {}; }
+  const s = String(raw || "{}");
+  // Credentials are stored AES-256-GCM encrypted (integration PATCH route).
+  // Decrypt first; fall back to plaintext JSON for any legacy rows.
+  try { return JSON.parse(decryptSecret(s)) || {}; }
+  catch { try { return JSON.parse(s) || {}; } catch { return {}; } }
+}
+
+/** Public shape of the config for the engine + a verifier (decrypts once). */
+export function readIntegrationConfig(raw: unknown): Record<string, any> {
+  return parseConfig(raw);
 }
 
 function stripHtml(html: string): string {
