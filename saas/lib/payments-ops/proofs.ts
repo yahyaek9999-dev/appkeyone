@@ -132,18 +132,44 @@ export async function resubmitProof(userId: string, proofId: string, input: { pr
 }
 
 /**
- * Refund an approved payment — reverses the wallet credit that the approval
- * created (idempotent via the ledger's reversalOf) and marks the proof refunded.
- * Reuses the existing wallet reverse() engine — no new money path. Finance/admin.
+ * Refund an approved payment. Two payment kinds, handled independently:
+ *   - Wallet TOP-UP (has ledgerId): reverse the wallet credit (idempotent via
+ *     reversalOf). Unchanged behaviour.
+ *   - Plan PURCHASE (has planSlug, no ledger because activation never credits the
+ *     wallet): DEACTIVATE the subscription so plan access is revoked — but only if
+ *     the customer's CURRENT active subscription is still on the refunded plan
+ *     (never cancel a newer plan they upgraded to).
+ * A legacy double-credited proof (both ledgerId + planSlug) does both.
+ * Reuses the existing wallet reverse() engine + subscription row — no new money
+ * path. Finance/admin. Every refund is audited; the proof moves to "refunded"
+ * (visible on the customer billing timeline + the finance refund view).
  */
 export async function refundProof(proofId: string, input: { actorId?: string; actorEmail?: string; actorRole?: string; reason?: string }) {
   const proof = await prisma.paymentProof.findUnique({ where: { id: proofId } });
   if (!proof) return { ok: false as const, reason: "not_found" };
   if (proof.status !== "approved") return { ok: false as const, reason: "not_approved" };
-  if (!proof.ledgerId) return { ok: false as const, reason: "no_ledger" };
+  if (!proof.ledgerId && !proof.planSlug) return { ok: false as const, reason: "nothing_to_refund" };
 
-  const res = await reverse({ ledgerId: proof.ledgerId, reason: `refund:proof:${proof.id} ${input.reason || ""}`.trim(), actorId: input.actorId || null, actorEmail: input.actorEmail || null });
-  if (!res.ok) return { ok: false as const, reason: res.reason || "reverse_failed" };
+  // (1) Wallet top-up → reverse the credit.
+  let reversedLedgerId: string | null = null;
+  let alreadyReversed = false;
+  if (proof.ledgerId) {
+    const res = await reverse({ ledgerId: proof.ledgerId, reason: `refund:proof:${proof.id} ${input.reason || ""}`.trim(), actorId: input.actorId || null, actorEmail: input.actorEmail || null });
+    if (!res.ok) return { ok: false as const, reason: res.reason || "reverse_failed" };
+    reversedLedgerId = proof.ledgerId;
+    alreadyReversed = !!res.replay;
+  }
+
+  // (2) Plan purchase → deactivate the subscription (revoke plan access), only if
+  // the current active subscription is still the plan this proof paid for.
+  let deactivatedPlan: string | null = null;
+  if (proof.planSlug) {
+    const sub = await prisma.subscription.findUnique({ where: { userId: proof.userId }, include: { plan: true } }).catch(() => null);
+    if (sub && sub.status === "active" && (sub as any).plan?.slug === proof.planSlug) {
+      await prisma.subscription.update({ where: { userId: proof.userId }, data: { status: "canceled", expiresAt: new Date() } });
+      deactivatedPlan = proof.planSlug;
+    }
+  }
 
   await prisma.paymentProof.update({ where: { id: proof.id }, data: { status: "refunded", rejectionReason: String(input.reason || "").slice(0, 500) } });
   await audit({
@@ -151,9 +177,9 @@ export async function refundProof(proofId: string, input: { actorId?: string; ac
     action: "admin.payment_refunded",
     actorId: input.actorId || null, actorEmail: input.actorEmail || null, actorRole: input.actorRole || "admin",
     targetType: "payment_proof", targetId: proof.id,
-    metadata: { amountUsd: proof.amountUsd, method: proof.methodKey, customerUserId: proof.userId, reason: input.reason || "", reversedLedgerId: proof.ledgerId, alreadyReversed: !!res.replay },
+    metadata: { amountUsd: proof.amountUsd, method: proof.methodKey, plan: proof.planSlug || null, customerUserId: proof.userId, reason: input.reason || "", reversedLedgerId, deactivatedPlan, alreadyReversed },
   });
-  return { ok: true as const, alreadyReversed: !!res.replay };
+  return { ok: true as const, alreadyReversed, reversedLedgerId, deactivatedPlan };
 }
 
 /** Recently-approved proofs (for the refund view). */
