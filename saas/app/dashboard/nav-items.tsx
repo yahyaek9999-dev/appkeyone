@@ -282,31 +282,77 @@ const PRE_ACTIVATION_HREFS = new Set<string>([
 
 export type NavMode = "qr" | "meta";
 
+export interface NavAccess {
+  role: Role;
+  activated: boolean;
+  metaMode: NavMode;
+  /** Whether plan capability gating is enforced for this principal (k_* plans). */
+  enforce?: boolean;
+  /** capabilityKey -> allowed (from getEntitlements). */
+  caps?: Record<string, boolean>;
+}
+
+/**
+ * Capability required to SEE each premium destination. Keys are the EXACT same
+ * capability the page's pageGate() enforces, so the nav never shows a feature the
+ * plan can't open (the page itself renders the upgrade CTA on direct URL access).
+ * Derived from app/dashboard/<page>/page.tsx pageGate() calls.
+ */
+const NAV_CAP_BY_HREF: Record<string, string> = {
+  "/dashboard/analytics": "advanced_analytics",
+  "/dashboard/command-center": "advanced_analytics",
+  "/dashboard/broadcasts": "broadcasts",
+  "/dashboard/broadcasts-pro": "broadcasts",
+  "/dashboard/leads": "lead_scoring",
+  "/dashboard/knowledge": "knowledge_base",
+  "/dashboard/knowledge-brain": "smart_assistant",
+  "/dashboard/brain": "smart_assistant",
+  "/dashboard/suggestions": "smart_assistant",
+  "/dashboard/sales-brain": "sales_pipeline",
+  "/dashboard/revenue-copilot": "revenue_attribution",
+  "/dashboard/revenue-forecast": "revenue_attribution",
+  "/dashboard/business-intelligence": "advanced_analytics",
+  "/dashboard/intel": "advanced_insights",
+  "/dashboard/funnel": "advanced_analytics",
+  "/dashboard/segments": "customer_segmentation",
+  "/dashboard/recovery": "smart_campaign_builder",
+  "/dashboard/coupons": "smart_campaign_builder",
+  "/dashboard/business": "advanced_reporting",
+  "/dashboard/automations": "advanced_automations",
+  "/dashboard/branches": "multi_branch",
+  "/dashboard/approvals": "approval_workflows",
+  "/dashboard/developer": "api_access",
+  "/dashboard/working-hours": "working_hours",
+};
+
 /** Single source of truth for "can this principal see this nav destination". */
-export function navItemVisible(
-  i: NavItem,
-  opts: { role: Role; activated: boolean; metaMode: NavMode },
-): boolean {
+export function navItemVisible(i: NavItem, opts: NavAccess): boolean {
   if (!can(opts.role, i.perm)) return false;
   // Pre-activation: only the get-started essentials are visible.
   if (!opts.activated) return PRE_ACTIVATION_HREFS.has(i.href);
   // Meta merchants never see QR connection pages and vice-versa.
   if (i.mode === "qr" && opts.metaMode === "meta") return false;
   if (i.mode === "meta" && opts.metaMode === "qr") return false;
+  // Per-plan feature visibility: hide what the plan doesn't own (k_* enforced).
+  // The page's pageGate renders the upgrade CTA if reached by direct URL.
+  if (opts.enforce && opts.caps) {
+    const cap = NAV_CAP_BY_HREF[i.href];
+    if (cap && !opts.caps[cap]) return false;
+  }
   return true;
 }
 
 /** Flat list of destinations the principal may reach — used by the command palette. */
-export function visibleNavItems(role: Role, opts: { activated: boolean; metaMode: NavMode }): NavItem[] {
+export function visibleNavItems(role: Role, opts: Omit<NavAccess, "role">): NavItem[] {
   return NAV_ITEMS.filter((i) => navItemVisible(i, { role, ...opts }));
 }
 
-function accessibleWorkspaces(role: Role, simple = false, pathname = "", activated = true, metaMode: NavMode = "qr"): Workspace[] {
+function accessibleWorkspaces(role: Role, simple = false, pathname = "", access: Omit<NavAccess, "role"> = { activated: true, metaMode: "qr" }): Workspace[] {
   return WORKSPACES.map((w) => ({
     ...w,
     items: w.items.filter((i) => {
-      if (!navItemVisible(i, { role, activated, metaMode })) return false;
-      if (!activated) return true; // pre-activation set already minimal
+      if (!navItemVisible(i, { role, ...access })) return false;
+      if (!access.activated) return true; // pre-activation set already minimal
       // In simple mode keep only core items — plus whatever page you're on, so the
       // nav always answers "where am I?" even on an advanced screen.
       return !simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href);
@@ -346,10 +392,10 @@ function ContextRow({ item, active }: { item: NavItem; active: boolean }) {
  * Desktop chrome: workspace icon RAIL + CONTEXTUAL panel. The rail is the
  * identity of the OS; the panel is the context you're working in.
  */
-export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr" }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode }) {
+export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean> }) {
   const pathname = usePathname();
   const [simple, toggleMode] = useNavMode();
-  const spaces = accessibleWorkspaces(role, simple, pathname, activated, metaMode);
+  const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps });
   const currentWs = workspaceForPath(pathname);
   // Which workspace's items are shown in the panel. Defaults to the one holding
   // the current route; the user can preview another by clicking its rail glyph.
@@ -404,10 +450,10 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
  * Mobile drawer: full workspace map, each workspace as a labelled group. No rail
  * (touch targets win over density on small screens).
  */
-export function NavLinks({ role = "owner", activated = true, metaMode = "qr" }: { role?: Role; activated?: boolean; metaMode?: NavMode }) {
+export function NavLinks({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean> }) {
   const pathname = usePathname();
   const [simple, toggleMode] = useNavMode();
-  const spaces = accessibleWorkspaces(role, simple, pathname, activated, metaMode);
+  const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps });
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
       {spaces.map((w) => (

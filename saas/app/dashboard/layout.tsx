@@ -8,6 +8,7 @@ import LogoutButton from "./logout-button";
 import MobileNav from "./mobile-nav";
 import { NavLinks, SidebarNav } from "./nav-items";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
+import { getEntitlements } from "@/lib/membership/entitlements";
 import CommandPalette from "./command-palette";
 import CommandTrigger from "./command-trigger";
 import HelpDrawer from "./help-drawer";
@@ -37,6 +38,11 @@ export default async function DashboardLayout({
   // Connection-mode visibility: Meta merchants never see QR pages and vice-versa.
   const metaMode: "qr" | "meta" =
     normalizeConnectionMode((user as any).bot?.connectionMode) === "meta_cloud" ? "meta" : "qr";
+  // Per-plan feature visibility: hide destinations the plan doesn't own (k_* only;
+  // legacy/fallback plans keep full nav — non-regressive, matches backend gating).
+  const ent = await getEntitlements(user.id).catch(() => null);
+  const enforce = !!ent?.enforce;
+  const caps = ent?.capabilities;
 
   const Brand = (
     <Link href="/dashboard" className="flex items-center gap-2.5 px-3.5 py-4">
@@ -93,7 +99,7 @@ export default async function DashboardLayout({
   return (
     <ToastProvider>
       <ConfirmProvider>
-        <CommandPalette role={role} activated={activated} metaMode={metaMode} />
+        <CommandPalette role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} />
         <div className="ai-page min-h-screen md:flex">
           <MobileNav brandName={brandName}>
             {Brand}
@@ -101,7 +107,7 @@ export default async function DashboardLayout({
               <CommandTrigger />
             </div>
             <div className="px-3 pt-1">{AdminLink}</div>
-            <NavLinks role={role} activated={activated} metaMode={metaMode} />
+            <NavLinks role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} />
             {UserFooter}
           </MobileNav>
 
@@ -112,7 +118,7 @@ export default async function DashboardLayout({
                 <CommandTrigger />
               </div>
             </div>
-            <SidebarNav adminLink={AdminLink} role={role} activated={activated} metaMode={metaMode} />
+            <SidebarNav adminLink={AdminLink} role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} />
             {UserFooter}
           </aside>
           <DashboardTour />
