@@ -15,6 +15,7 @@ import HelpDrawer from "./help-drawer";
 import PageTransition from "./page-transition";
 import { ToastProvider } from "@/components/ui/toast";
 import DashboardTour from "./dashboard-tour";
+import ActivationGuard from "./activation-guard";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
 export default async function DashboardLayout({
@@ -99,6 +100,7 @@ export default async function DashboardLayout({
   return (
     <ToastProvider>
       <ConfirmProvider>
+        <ActivationGuard activated={activated} />
         <CommandPalette role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} />
         <div className="ai-page min-h-screen md:flex">
           <MobileNav brandName={brandName}>
