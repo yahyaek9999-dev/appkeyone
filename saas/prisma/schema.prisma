@@ -69,6 +69,10 @@ model User {
   promptVersions   PromptVersion[]
   aiAuditRuns      AiAuditRun[]
   knowledgeConflicts KnowledgeConflict[]
+  businessProfile  BusinessProfile?
+  customerImports  CustomerImport[]
+  creditPurchases  CreditPurchase[]
+  commerceSyncLogs CommerceSyncLog[]
 
   // ---- Meta Enterprise Platform (additive, new tables only) ----
   metaTenant        MetaTenant?
@@ -3182,5 +3186,257 @@ model RevenueSnapshot {
   createdAt       DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+
+// ===== Testing Arena 2.0 (recovered from pedantic-feynman; additive) =====
+model ArenaRun {
+  id            String   @id @default(cuid())
+  userId        String
+  total         Int      @default(0)
+  passed        Int      @default(0)
+  weak          Int      @default(0)
+  failed        Int      @default(0)
+  score         Int      @default(0)   // 0-100
+  avgConfidence Int      @default(0)   // 0-100
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ArenaConversation {
+  id              String   @id @default(cuid())
+  userId          String
+  scenarioId      String
+  category        String
+  persona         String
+  turns           Int      @default(0)
+  resolutionState String   @default("unresolved") // resolved | escalated | unresolved
+  avgConfidence   Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ArenaMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  turn           Int
+  role           String                    // customer | assistant
+  content        String
+  confidence     Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model ArenaResult {
+  id         String   @id @default(cuid())
+  runId      String
+  userId     String
+  category   String
+  message    String
+  matched    Boolean  @default(false)
+  confidence Int      @default(0)
+  topDoc     String   @default("")
+  verdict    String   @default("fail") // pass | weak | fail
+  createdAt  DateTime @default(now())
+
+  @@index([userId, runId])
+  @@index([runId, verdict])
+}
+
+model ArenaFix {
+  id           String    @id @default(cuid())
+  userId       String
+  type         String                       // knowledge | faq | prompt | product | quick_reply | integration | brain
+  category     String    @default("")
+  title        String
+  detail       String    @default("")
+  status       String    @default("queued") // queued | applied | rejected
+  beforeScore  Int       @default(0)
+  afterScore   Int       @default(0)
+  improvement  Int       @default(0)
+  artifactType String    @default("")       // document | quickReply | promptVersion
+  artifactId   String    @default("")
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+
+  @@index([userId, status])
+}
+
+model CompetitorBenchmark {
+  id                  String   @id @default(cuid())
+  userId              String
+  knowledge           Int      @default(0)
+  automation          Int      @default(0)
+  support             Int      @default(0)
+  monitoring          Int      @default(0)
+  aiReadiness         Int      @default(0)
+  conversationQuality Int      @default(0)
+  overall             Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model HallucinationEvent {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String                        // unsupported_claim | missing_source | knowledge_conflict | contradiction | outdated | low_confidence
+  severity   String    @default("medium")  // low | medium | high
+  confidence Int       @default(0)
+  source     String    @default("")
+  message    String
+  status     String    @default("open")    // open | resolved
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, severity])
+}
+
+model QualityBenchmark {
+  id                String   @id @default(cuid())
+  userId            String
+  resolution        Int      @default(0)
+  completeness      Int      @default(0)
+  knowledge         Int      @default(0)
+  confidence        Int      @default(0)
+  flow              Int      @default(0)
+  hallucinationRisk Int      @default(0)
+  overall           Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model OptimizationJob {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String                       // prompt | knowledge | faq | quick_reply | brain
+  status      String    @default("queued") // queued | running | completed | failed
+  beforeScore Int       @default(0)
+  afterScore  Int       @default(0)
+  improvement Int       @default(0)
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+
+// ===== Business profile + import + credit purchase + readiness/brain bench (recovered) =====
+model BusinessProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName          String?
+  businessType         String?
+  industry             String?
+  country              String?
+  city                 String?
+  whatsappNumber       String?
+  phoneNumber          String?
+  website              String?
+  facebook             String?
+  instagram            String?
+  tiktok               String?
+  linkedin             String?
+  monthlyCustomers     String?  // range bucket, e.g. "100-500"
+  currentWhatsappUsage String?  // personal | business_app | api | none
+  metaApiStatus        String?  // none | pending | approved | unknown
+  storePlatform        String?  // shopify | woocommerce | salla | zid | none | other
+  // Area 1 (signup registration) — additive
+  businessDescription  String?
+  monthlyOrders        String?  // range bucket
+  teamSize             String?  // range bucket
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model CustomerImport {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  total     Int      @default(0)
+  created   Int      @default(0)
+  skipped   Int      @default(0)
+  invalid   Int      @default(0)
+  source    String?  // paste | csv
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model CreditPurchase {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount     Int       // whole EGP requested
+  method     String?   // instapay | vodafone_cash | bank | other
+  paymentRef String?
+  receiptUrl String?
+  status     String    @default("pending") // pending | approved | rejected
+  reviewedBy String?
+  reviewedAt DateTime?
+  note       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model ReadinessScore {
+  id           String   @id @default(cuid())
+  userId       String
+  knowledge    Int      @default(0)
+  arena        Int      @default(0)
+  monitoring   Int      @default(0)
+  revenue      Int      @default(0)
+  prompts      Int      @default(0)
+  integrations Int      @default(0)
+  automation   Int      @default(0)
+  score        Int      @default(0)   // 0-100
+  level        String   @default("critical") // critical | weak | good | excellent
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model BrainBenchmark {
+  id                String   @id @default(cuid())
+  userId            String
+  coverage          Int      @default(0)   // 0-100 (empirical answerable rate)
+  retrievalAccuracy Int      @default(0)   // 0-100 (avg retrieval confidence)
+  missingKnowledge  Int      @default(0)   // unresolved gaps
+  conflicts         Int      @default(0)   // unresolved conflicts
+  density           Int      @default(0)   // knowledge-graph density %
+  health            Int      @default(0)   // 0-100
+  score             Int      @default(0)   // 0-100 brain score
+  createdAt         DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model CommerceSyncLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integrationId String
+  platform      String
+  products      Int      @default(0)
+  customers     Int      @default(0)
+  orders        Int      @default(0)
+  status        String   @default("success") // success | partial | failed
+  error         String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([integrationId, createdAt])
 }
 
