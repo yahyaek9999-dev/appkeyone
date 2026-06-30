@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
   Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
-  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe,
+  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug,
 } from "lucide-react";
 
 type AdminLink = { href: string; label: string; icon: typeof LayoutDashboard; core?: boolean };
@@ -63,6 +63,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     { href: "/admin/brain", label: "مركز الدماغ", icon: Brain },
     { href: "/admin/brain/global", label: "الدماغ العالمي", icon: Brain },
     { href: "/admin/api-keys", label: "مفاتيح API", icon: KeyRound },
+    { href: "/admin/integrations", label: "التكاملات والمفاتيح", icon: Plug },
     { href: "/admin/protection-logs", label: "سجل الحماية", icon: Shield },
   ] },
   { title: "الإعدادات", icon: Settings, items: [

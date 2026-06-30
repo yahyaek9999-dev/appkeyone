@@ -1410,6 +1410,24 @@ model SiteConfig {
   supportWhatsapp String   @default("+201000000000")
   supportEmail    String   @default("support@keyone1.com")
   paymentNote     String   @default("")
+
+  // ---- wallet top-up payment instructions (admin-set, customer-shown) ----
+  paymentMethod   String   @default("")
+  paymentNumber   String   @default("")
+
+  // ---- admin-managed platform integrations (additive, nullable) ----
+  // Secrets are AES-256-GCM encrypted at rest. Nullable so env-based paths stay
+  // unaffected until an admin fills them in.
+  metaAppId          String?
+  metaBusinessId     String?
+  metaPhoneNumberId  String?
+  metaAccessTokenEnc String?
+  metaAppSecretEnc   String?
+  defaultAiProvider  String?  // openai | claude | gemini
+  openaiKeyEnc       String?
+  claudeKeyEnc       String?
+  geminiKeyEnc       String?
+
   updatedAt       DateTime @updatedAt
 }
 
