@@ -59,8 +59,11 @@ export default function EmbeddingsUi() {
   async function test(type: string) {
     setBusy(type);
     try {
-      await fetch(`/api/admin/embeddings/${type}/test`, { method: "POST" });
+      const r = await fetch(`/api/admin/embeddings/${type}/test`, { method: "POST" });
+      if (!r.ok) alert("فشل اختبار المزوّد");
       await load();
+    } catch {
+      alert("تعذّر الاتصال بالخادم");
     } finally {
       setBusy(null);
     }
@@ -68,12 +71,15 @@ export default function EmbeddingsUi() {
   async function toggle(p: Provider) {
     setBusy(p.type);
     try {
-      await fetch(`/api/admin/embeddings/${p.type}`, {
+      const r = await fetch(`/api/admin/embeddings/${p.type}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !p.enabled }),
       });
+      if (!r.ok) alert("فشل تغيير حالة المزوّد");
       await load();
+    } catch {
+      alert("تعذّر الاتصال بالخادم");
     } finally {
       setBusy(null);
     }

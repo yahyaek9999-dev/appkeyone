@@ -10,7 +10,10 @@ export default function MarketplaceClient({ initial }: { initial: any[] }) {
     try {
       const res = await fetch(`/api/admin/brain/marketplace/${key}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) });
       const j = await res.json().catch(() => null);
-      if (j?.listing) setRows((rs) => rs.map((r) => (r.key === key ? j.listing : r)));
+      if (res.ok && j?.listing) setRows((rs) => rs.map((r) => (r.key === key ? j.listing : r)));
+      else alert("فشل تحديث القائمة");
+    } catch {
+      alert("تعذّر الاتصال بالخادم");
     } finally { setBusy(""); }
   }
 

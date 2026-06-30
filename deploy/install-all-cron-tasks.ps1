@@ -50,6 +50,7 @@ $crons = @(
   @{ name = 'meta-quality-monitor';   path = '/api/cron/meta-quality-monitor';   sc = 'HOURLY'; mo = 1  }
   @{ name = 'payments-reconcile';     path = '/api/cron/payments-reconcile';     sc = 'HOURLY'; mo = 1  }
   @{ name = 'brain-learning';         path = '/api/cron/brain-learning';         sc = 'HOURLY'; mo = 6  }
+  @{ name = 'trial-expiry';           path = '/api/cron/trial-expiry';           sc = 'HOURLY'; mo = 1  }
   @{ name = 'meta-cost';              path = '/api/cron/meta-cost';              sc = 'DAILY';  st = '02:00' }
   @{ name = 'product-affinity';       path = '/api/cron/product-affinity';       sc = 'DAILY';  st = '03:00' }
   @{ name = 'provider-maintenance';   path = '/api/cron/provider-maintenance';   sc = 'DAILY';  st = '03:30' }

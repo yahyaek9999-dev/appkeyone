@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
   Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
-  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database, Truck,
+  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database, Truck, Palette,
 } from "lucide-react";
 
 type AdminLink = { href: string; label: string; icon: typeof LayoutDashboard; core?: boolean };
@@ -65,6 +65,8 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     { href: "/admin/knowledge-brain", label: "العقل المعرفي", icon: Brain },
     { href: "/admin/brain", label: "مركز الدماغ", icon: Brain },
     { href: "/admin/brain/global", label: "الدماغ العالمي", icon: Brain },
+    { href: "/admin/brain/marketplace", label: "سوق العقول", icon: ShoppingBag },
+    { href: "/admin/agents", label: "مركز الوكلاء", icon: Activity },
     { href: "/admin/api-keys", label: "مفاتيح API", icon: KeyRound },
     { href: "/admin/integrations", label: "التكاملات والمفاتيح", icon: Plug },
     { href: "/admin/protection-logs", label: "سجل الحماية", icon: Shield },
@@ -72,6 +74,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
   { title: "الإعدادات", icon: Settings, items: [
     { href: "/admin/settings", label: "إعدادات الموقع", icon: Settings, core: true },
     { href: "/admin/plans", label: "الباقات والحدود", icon: Crown },
+    { href: "/admin/white-label", label: "العلامة البيضاء", icon: Palette },
     { href: "/admin/payment-methods", label: "طرق الدفع", icon: CreditCard },
     { href: "/admin/payment-accounts", label: "حسابات الاستلام", icon: Wallet },
     { href: "/admin/memberships", label: "مصفوفة الباقات", icon: Crown },

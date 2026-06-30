@@ -24,7 +24,8 @@
     "verify:rbac": "node scripts/verify/rbac-coverage.js",
     "verify:wallet": "node scripts/verify/wallet.js",
     "verify:all": "node scripts/verify/run.js all",
-    "worker:baileys": "node workers/baileys.worker.js"
+    "worker:baileys": "node workers/baileys.worker.js",
+    "worker:start": "node dist/workers/index.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
