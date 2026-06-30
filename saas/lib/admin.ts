@@ -17,6 +17,18 @@ export async function requireAdmin() {
   return ctx.user;
 }
 
+/**
+ * Throws unless the requester is a platform admin OR a finance-role owner.
+ * Used for money operations (Meta credit/settle, payment reviews).
+ */
+export async function requireFinanceAccess() {
+  const ctx = await getAuthContext();
+  if (!ctx) throw new Error("UNAUTHORIZED");
+  const role = (ctx.user as any).role;
+  if (!ctx.isOwner || (role !== "admin" && role !== "finance")) throw new Error("FORBIDDEN");
+  return ctx.user;
+}
+
 /** Returns the singleton site config row, creating it on first access. */
 export async function getSiteConfig() {
   return prisma.siteConfig.upsert({

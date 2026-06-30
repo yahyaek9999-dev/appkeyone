@@ -10,6 +10,15 @@
 
 import { PrismaClient } from "@prisma/client";
 
+// BigInt JSON serialization. The Meta usage/invoice aggregates use BigInt
+// columns (overflow-safe micro-USD sums); JSON.stringify throws on BigInt
+// without this. Additive, global, idempotent.
+if (typeof (BigInt.prototype as unknown as { toJSON?: () => string }).toJSON !== "function") {
+  (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+    return this.toString();
+  };
+}
+
 const globalForPrisma = global as unknown as { prisma?: PrismaClient };
 
 function createClient(): PrismaClient {

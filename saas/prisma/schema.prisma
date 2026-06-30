@@ -64,6 +64,19 @@ model User {
   approvalRequests ApprovalRequest[]
   whiteLabel       WhiteLabelConfig?
   upgradeRequests  UpgradeRequest[]
+  wallet           Wallet?
+
+  // ---- Meta Enterprise Platform (additive, new tables only) ----
+  metaTenant        MetaTenant?
+  metaPhones        MetaPhone[]
+  metaConversations MetaConversation[]
+  metaUsageDaily    MetaUsageDaily[]
+  metaTransactions  MetaTransaction[]
+  metaInvoices      MetaInvoice[]
+  metaLimits        MetaLimit[]
+  metaSyncHistory   MetaSyncHistory[]
+  metaAudits        MetaAudit[]
+  metaIncidents     MetaIncident[]
 }
 
 /// Team members who can log into a workspace under the OWNER's account with a
@@ -1713,6 +1726,7 @@ model UpgradeRequest {
 model Wallet {
   id                     String    @id @default(cuid())
   userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   balanceUsd             Float     @default(0)
   currency               String    @default("USD")
   status                 String    @default("active") // active | suspended
@@ -2557,4 +2571,308 @@ model Resolution {
   createdAt         DateTime @default(now())
 
   @@index([incidentId])
+}
+
+
+// ===========================================================================
+// Meta Enterprise Platform (recovered from pedantic-feynman; billing adapted to
+// the canonical USD Wallet/WalletLedger — amounts in EGP are display-derived).
+// ===========================================================================
+model MetaTenant {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Lifecycle state machine (admin-controlled).
+  status             String   @default("pending") // pending | enabled | disabled | suspended | expired | blocked | maintenance
+  statusReason       String?
+  statusChangedAt    DateTime @default(now())
+
+  // Connection + verification (synced from Meta health checks).
+  connectionStatus   String   @default("disconnected") // disconnected | connecting | connected | error
+  verificationStatus String   @default("unverified")   // unverified | pending | verified | failed
+  verifiedAt         DateTime?
+  healthStatus       String   @default("unknown")       // unknown | healthy | degraded | down
+  qualityRating      String?                            // GREEN | YELLOW | RED
+  messagingLimitTier String?                            // TIER_50 | TIER_250 | TIER_1K | TIER_10K | TIER_UNLIMITED
+
+  // Last-seen operational timestamps (health engine).
+  lastSyncAt         DateTime?
+  lastErrorAt        DateTime?
+  lastError          String?
+  lastWebhookAt      DateTime?
+  lastApiCheckAt     DateTime?
+
+  // Free-form per-tenant settings (notification prefs, auto-recovery, etc.).
+  settings           String   @default("{}") // JSON
+
+  // Sub-EGP charge carry (microEGP remainder, always < 1_000_000) so per-
+  // conversation USD costs debit the whole-EGP wallet exactly, without bias.
+  carryMicroEgp      Int      @default(0)
+
+  // Soft delete + optimistic versioning.
+  deletedAt          DateTime?
+  version            Int      @default(1)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([status])
+  @@index([healthStatus])
+  @@index([connectionStatus])
+}
+
+/// A single Meta Cloud phone number registered under a tenant. Enterprise
+/// tenants may run several. The PRIMARY phone's live credentials remain in
+/// `Bot` (unchanged send path); secondary phones may carry their own encrypted
+/// token here. Quality/limit/status are refreshed by the health engine.
+model MetaPhone {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phoneNumberId      String                              // Meta phone_number_id
+  wabaId             String?                             // owning WABA
+  displayPhone       String?                             // +20...
+  verifiedName       String?
+  isPrimary          Boolean  @default(false)            // primary = creds live in Bot
+
+  // Optional per-phone encrypted credential (secondary phones). AES-256-GCM.
+  accessTokenEnc     String?
+
+  status             String   @default("pending")        // pending | connected | disconnected | flagged | banned | restricted
+  qualityRating      String?                             // GREEN | YELLOW | RED
+  messagingLimitTier String?
+  lastCheckedAt      DateTime?
+  lastError          String?
+
+  deletedAt          DateTime?
+  version            Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, phoneNumberId])
+  @@index([userId, status])
+  @@index([phoneNumberId])
+}
+
+/// Admin-configurable Meta conversation pricing (global config, no tenant FK).
+/// One row per (country, category). `baseCostMicroUsd` is Meta's wholesale
+/// per-conversation price in micro-USD (USD × 1e6); `markupBps` is the platform
+/// markup in basis points (10000 = +100%); `taxBps` is tax in basis points.
+/// country="*" is the default market. Drives ALL cost + revenue calculation.
+model MetaRate {
+  id               String   @id @default(cuid())
+  country          String   @default("*")               // ISO-3166 alpha-2 or "*"
+  category         String                               // marketing | utility | authentication | service
+  baseCostMicroUsd Int      @default(0)                 // Meta wholesale price, micro-USD
+  markupBps        Int      @default(0)                 // platform markup, basis points
+  taxBps           Int      @default(0)                 // tax, basis points
+  currency         String   @default("USD")
+  enabled          Boolean  @default(true)
+  note             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([country, category])
+  @@index([category])
+}
+
+/// One Meta billable conversation (24h category window). Derived additively
+/// from the WaMessage ledger by the cost engine — the send pipeline is never
+/// touched. Idempotent on `windowKey`. Cost is captured in micro-USD; the EGP
+/// wallet debit is recorded on the linked MetaTransaction.
+model MetaConversation {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumberId      String?
+  metaConversationId String?                              // Meta-provided conversation id (when known)
+  windowKey          String                               // dedupe key: userId:phone:category:windowStartEpoch
+  category           String                               // marketing | utility | authentication | service
+  originType         String   @default("business_initiated") // business_initiated | user_initiated
+  country            String   @default("*")
+  customerPhone      String?
+
+  billable           Boolean  @default(true)              // free-tier service windows -> false
+  costMicroUsd       Int      @default(0)                 // Meta wholesale cost
+  chargedMicroUsd    Int      @default(0)                 // cost + markup + tax (what tenant owes)
+  currency           String   @default("USD")
+  billingStatus      String   @default("pending")         // pending | charged | free | skipped | failed
+  messageCount       Int      @default(0)
+
+  windowStart        DateTime
+  windowEnd          DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, windowKey])
+  @@index([userId, windowStart])
+  @@index([userId, category, windowStart])
+  @@index([billingStatus])
+}
+
+/// Daily per-tenant usage + cost rollup (analytics performance). One row per
+/// (userId, day). Recomputed idempotently by the analytics processor from
+/// MetaConversation. Revenue = chargedMicroUsd - costMicroUsd.
+model MetaUsageDaily {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day             String                                   // YYYY-MM-DD (UTC)
+  conversations   Int      @default(0)
+  marketing       Int      @default(0)
+  utility         Int      @default(0)
+  authentication  Int      @default(0)
+  service         Int      @default(0)
+  messages        Int      @default(0)
+  // Aggregate cost is BigInt: a high-volume tenant's daily micro-USD sum can
+  // exceed 32-bit on PostgreSQL. SQLite stores both as 64-bit INTEGER.
+  costMicroUsd    BigInt   @default(0)
+  chargedMicroUsd BigInt   @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, day])
+  @@index([day])
+}
+
+/// Meta-scoped money movement. Mirrors a WalletLedger entry (link via
+/// walletLedgerId) so wallet balance accounting stays single-source in
+/// Wallet/WalletLedger — this table adds Meta context (cost snapshot, kind,
+/// conversation ref). Amounts are signed whole EGP (-debit / +credit).
+model MetaTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind            String                                   // charge | credit | debit | refund | adjustment
+  amountEgp       Int                                      // signed whole EGP
+  costMicroUsd    Int      @default(0)                     // USD cost snapshot (for charges)
+  fxRateMicro     Int      @default(0)                     // USD->EGP rate used, micro (rate x 1e6)
+  conversationId  String?                                  // MetaConversation.id when kind=charge
+  invoiceId       String?
+  walletLedgerId  String?                                  // WalletLedger.id (single-source balance)
+  status          String   @default("posted")             // posted | pending | failed | reversed
+  note            String?
+  createdBy       String?                                  // admin id for manual adjustments
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, kind, createdAt])
+  @@index([status])
+}
+
+/// Monthly Meta invoice per tenant. Aggregates conversations + charges for a
+/// billing period. status drives the customer-facing invoice list.
+model MetaInvoice {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period          String                                   // YYYY-MM
+  conversations   Int      @default(0)
+  // Aggregate micro-USD totals are BigInt (overflow-safe on PostgreSQL).
+  costMicroUsd    BigInt   @default(0)
+  markupMicroUsd  BigInt   @default(0)
+  taxMicroUsd     BigInt   @default(0)
+  totalMicroUsd   BigInt   @default(0)
+  totalEgp        Int      @default(0)
+  currency        String   @default("EGP")
+  status          String   @default("open")               // open | finalized | paid | void
+  finalizedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, period])
+  @@index([status])
+}
+
+/// Configurable Meta limit. Resolution precedence (highest wins):
+/// emergency > tenant > plan > global. `scope` selects the layer; `scopeRef`
+/// is the userId (tenant) / plan slug / "*" (global, emergency). `kind`
+/// enumerates the limited dimension; `value` is the cap (-1 = unlimited).
+/// `userId` is set only for tenant-scope rows (enables cascade + back-relation).
+model MetaLimit {
+  id        String   @id @default(cuid())
+  scope     String                                         // global | plan | tenant | emergency
+  scopeRef  String   @default("*")                         // userId | planSlug | "*"
+  kind      String                                         // conversation | daily | weekly | monthly | budget | cost | country | template | phone | campaign | queue | automation
+  value     Int      @default(-1)                          // -1 = unlimited
+  unit      String   @default("count")                     // count | egp | micro_usd
+  enabled   Boolean  @default(true)
+  note      String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, scopeRef, kind])
+  @@index([scope, kind])
+  @@index([userId])
+}
+
+/// History of Meta sync / health-check runs (per tenant, or global when
+/// userId is null). The health engine writes one row per run with what was
+/// checked and the outcome.
+model MetaSyncHistory {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String                                       // health | quality | phone | webhook | usage | full
+  status      String   @default("ok")                      // ok | partial | failed
+  changed     String   @default("{}")                      // JSON summary of changes
+  error       String?
+  durationMs  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+}
+
+/// Append-only audit of every privileged Meta action (admin or customer):
+/// enable/disable/suspend, rotate token, reset webhook, move/transfer phone,
+/// force sync, manual credit/adjustment, etc. Meta-scoped sibling of AuditLog.
+model MetaAudit {
+  id         String   @id @default(cuid())
+  userId     String?                                       // tenant the action targets
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actorId    String?                                       // who performed it (admin/customer/system)
+  actorRole  String   @default("system")                  // admin | customer | system
+  action     String                                       // enable | disable | suspend | rotate_token | reset_webhook | move_phone | transfer | force_sync | credit | adjustment
+  target     String?                                       // phoneNumberId / invoiceId / etc.
+  before     String   @default("{}")                       // JSON snapshot
+  after      String   @default("{}")                       // JSON snapshot
+  ip         String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Operational incident raised by the health engine (or manually). Idempotent
+/// per (userId, dedupeKey) while OPEN — the health engine resolves an incident
+/// automatically when its condition clears. Drives the admin incident center.
+model MetaIncident {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String                                       // token_expired | webhook_failure | phone_disconnected | rate_limited | quality_downgrade | spam | ban | blocked_number | template_rejected | api_failure | latency | connection_failure | conversation_failure | retry_loop | low_balance
+  severity    String    @default("medium")                // low | medium | high | critical
+  priority    String    @default("normal")                // low | normal | high | urgent
+  status      String    @default("open")                  // open | acknowledged | resolved | auto_resolved
+  title       String
+  detail      String    @default("")
+  owner       String?
+  dedupeKey   String                                       // one OPEN incident per (userId, dedupeKey)
+  timeline    String    @default("[]")                    // JSON event log
+  autoFixed   Boolean   @default(false)
+  escalated   Boolean   @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, severity])
+  @@index([userId, status])
+  @@index([type, createdAt])
 }
