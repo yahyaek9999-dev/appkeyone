@@ -65,6 +65,7 @@ model User {
   whiteLabel       WhiteLabelConfig?
   upgradeRequests  UpgradeRequest[]
   wallet           Wallet?
+  shipments        Shipment[]
 
   // ---- Meta Enterprise Platform (additive, new tables only) ----
   metaTenant        MetaTenant?
@@ -702,6 +703,7 @@ model Order {
 
   items     OrderItem[]
   timeline  OrderTimeline[]
+  shipments Shipment[]
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -2875,4 +2877,45 @@ model MetaIncident {
   @@index([status, severity])
   @@index([userId, status])
   @@index([type, createdAt])
+}
+
+
+// ===========================================================================
+// Shipping providers + shipments (recovered from pedantic-feynman; additive).
+// ===========================================================================
+model ShippingProvider {
+  id           String   @id @default(cuid())
+  type         String   // bosta | aramex | mylerz | smsa | manual
+  name         String
+  apiKeyEnc    String?
+  apiSecretEnc String?
+  accountEnc   String?
+  enabled      Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  lastTestAt   DateTime?
+  lastTestOk   Boolean?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  shipments    Shipment[]
+}
+
+model Shipment {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  providerId     String?
+  provider       ShippingProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  providerType   String   // snapshot of provider type at creation
+  trackingNumber String?
+  status         String   @default("created") // created | picked_up | in_transit | out_for_delivery | delivered | returned | canceled
+  timelineJson   String   @default("[]")
+  lastSyncAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([orderId])
 }
