@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_URL")           // pooled connection (PgBouncer via Supabase)
-  directUrl = env("POSTGRES_DIRECT_URL")    // direct connection (migrations, setup)
+  provider = "postgresql"
+  url       = env("POSTGRES_URL")
+  directUrl = env("POSTGRES_DIRECT_URL")
 }
 
 model User {
@@ -65,6 +65,27 @@ model User {
   approvalRequests ApprovalRequest[]
   whiteLabel       WhiteLabelConfig?
   upgradeRequests  UpgradeRequest[]
+  wallet           Wallet?
+  shipments        Shipment[]
+  promptVersions   PromptVersion[]
+  aiAuditRuns      AiAuditRun[]
+  knowledgeConflicts KnowledgeConflict[]
+  businessProfile  BusinessProfile?
+  customerImports  CustomerImport[]
+  creditPurchases  CreditPurchase[]
+  commerceSyncLogs CommerceSyncLog[]
+
+  // ---- Meta Enterprise Platform (additive, new tables only) ----
+  metaTenant        MetaTenant?
+  metaPhones        MetaPhone[]
+  metaConversations MetaConversation[]
+  metaUsageDaily    MetaUsageDaily[]
+  metaTransactions  MetaTransaction[]
+  metaInvoices      MetaInvoice[]
+  metaLimits        MetaLimit[]
+  metaSyncHistory   MetaSyncHistory[]
+  metaAudits        MetaAudit[]
+  metaIncidents     MetaIncident[]
 }
 
 /// Team members who can log into a workspace under the OWNER's account with a
@@ -229,6 +250,10 @@ model Bot {
   abandonedCartWindowHours Int     @default(24)  // ignore carts older than this (avoid reminding ancient interest)
 
   // ---- Order extraction controls ----
+  // Off by default for service businesses; on for product businesses.
+  // Confidence threshold (0-100) below which extractions are discarded.
+  // requireProduct: reject if no product name detected.
+  // requireConfirmation: only extract when customer says a confirmation keyword.
   orderExtractionEnabled     Boolean @default(true)
   orderConfidenceThreshold   Int     @default(50)
   orderRequireProduct        Boolean @default(false)
@@ -534,6 +559,8 @@ model Document {
 
   createdAt DateTime @default(now())
 
+  chunks DocumentChunk[]
+
   @@index([userId])
   @@index([userId, priorityScore])
 }
@@ -686,6 +713,7 @@ model Order {
 
   items     OrderItem[]
   timeline  OrderTimeline[]
+  shipments Shipment[]
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -1165,15 +1193,21 @@ model ProviderUsage {
 // Records, at most once per (user, milestone), the FIRST time a merchant
 // reaches a step on the signup→value journey. Powers the dashboard activation
 // checklist and the admin funnel drop-off view. The @@unique makes recording
-// idempotent (first occurrence wins, so `at` = time-to-first-X). See
-// lib/activation/track.ts. Kept in sync with schema.prisma (sqlite).
+// idempotent (first occurrence wins, so `at` = time-to-first-X).
+//
+// IMPORTANT: milestones that happen inside the WhatsApp send pipeline / queue /
+// commerce backends (first_ai_reply_sent, first_order_extracted,
+// first_broadcast_sent) are NEVER emitted from those pipelines — they are
+// derived from existing tables on read and recorded here idempotently. Only
+// signed_up / onboarding_completed / whatsapp_connected are emitted inline from
+// safe (non-pipeline) routes. See lib/activation/track.ts.
 // ---------------------------------------------------------------------------
 model ActivationEvent {
   id        String   @id @default(cuid())
   userId    String
   milestone String   // signed_up | onboarding_completed | whatsapp_connected | first_ai_reply_sent | first_order_extracted | first_broadcast_sent
   at        DateTime @default(now())
-  metadata  String?  // optional JSON blob (stringified)
+  metadata  String?  // optional JSON blob (stringified), e.g. {"documents":3}
 
   @@unique([userId, milestone])
   @@index([milestone, at])
@@ -1382,10 +1416,28 @@ model SafetyAudit {
 model SiteConfig {
   id              String   @id @default("singleton")
   brandName       String   @default("KEYONE")
-  brandTagline    String   @default("منصة الذكاء الاصطناعي للأعمال")
+  brandTagline    String   @default("أتمتة واتساب — ردود فورية، مبيعات أعلى، عملاء أسعد")
   supportWhatsapp String   @default("+201000000000")
   supportEmail    String   @default("support@keyone1.com")
   paymentNote     String   @default("")
+
+  // ---- wallet top-up payment instructions (admin-set, customer-shown) ----
+  paymentMethod   String   @default("")
+  paymentNumber   String   @default("")
+
+  // ---- admin-managed platform integrations (additive, nullable) ----
+  // Secrets are AES-256-GCM encrypted at rest. Nullable so env-based paths stay
+  // unaffected until an admin fills them in.
+  metaAppId          String?
+  metaBusinessId     String?
+  metaPhoneNumberId  String?
+  metaAccessTokenEnc String?
+  metaAppSecretEnc   String?
+  defaultAiProvider  String?  // openai | claude | gemini
+  openaiKeyEnc       String?
+  claudeKeyEnc       String?
+  geminiKeyEnc       String?
+
   updatedAt       DateTime @updatedAt
 }
 
@@ -1578,6 +1630,8 @@ model AuditLog {
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 3 — Premium modules (ALL additive; new tables only; no existing model
 // altered). Every column has a safe default so the migration is non-breaking.
+// Until the production migration runs, app code accesses these via
+// (prisma as any).<model> and guards failures, so production stays safe.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Visual automation flow (Flow Builder). The graph (nodes + edges) is stored
@@ -1702,6 +1756,7 @@ model UpgradeRequest {
 model Wallet {
   id                     String    @id @default(cuid())
   userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   balanceUsd             Float     @default(0)
   currency               String    @default("USD")
   status                 String    @default("active") // active | suspended
@@ -2547,3 +2602,842 @@ model Resolution {
 
   @@index([incidentId])
 }
+
+
+// ===========================================================================
+// Meta Enterprise Platform (recovered from pedantic-feynman; billing adapted to
+// the canonical USD Wallet/WalletLedger — amounts in EGP are display-derived).
+// ===========================================================================
+model MetaTenant {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Lifecycle state machine (admin-controlled).
+  status             String   @default("pending") // pending | enabled | disabled | suspended | expired | blocked | maintenance
+  statusReason       String?
+  statusChangedAt    DateTime @default(now())
+
+  // Connection + verification (synced from Meta health checks).
+  connectionStatus   String   @default("disconnected") // disconnected | connecting | connected | error
+  verificationStatus String   @default("unverified")   // unverified | pending | verified | failed
+  verifiedAt         DateTime?
+  healthStatus       String   @default("unknown")       // unknown | healthy | degraded | down
+  qualityRating      String?                            // GREEN | YELLOW | RED
+  messagingLimitTier String?                            // TIER_50 | TIER_250 | TIER_1K | TIER_10K | TIER_UNLIMITED
+
+  // Last-seen operational timestamps (health engine).
+  lastSyncAt         DateTime?
+  lastErrorAt        DateTime?
+  lastError          String?
+  lastWebhookAt      DateTime?
+  lastApiCheckAt     DateTime?
+
+  // Free-form per-tenant settings (notification prefs, auto-recovery, etc.).
+  settings           String   @default("{}") // JSON
+
+  // Sub-EGP charge carry (microEGP remainder, always < 1_000_000) so per-
+  // conversation USD costs debit the whole-EGP wallet exactly, without bias.
+  carryMicroEgp      Int      @default(0)
+
+  // Soft delete + optimistic versioning.
+  deletedAt          DateTime?
+  version            Int      @default(1)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([status])
+  @@index([healthStatus])
+  @@index([connectionStatus])
+}
+
+/// A single Meta Cloud phone number registered under a tenant. Enterprise
+/// tenants may run several. The PRIMARY phone's live credentials remain in
+/// `Bot` (unchanged send path); secondary phones may carry their own encrypted
+/// token here. Quality/limit/status are refreshed by the health engine.
+model MetaPhone {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phoneNumberId      String                              // Meta phone_number_id
+  wabaId             String?                             // owning WABA
+  displayPhone       String?                             // +20...
+  verifiedName       String?
+  isPrimary          Boolean  @default(false)            // primary = creds live in Bot
+
+  // Optional per-phone encrypted credential (secondary phones). AES-256-GCM.
+  accessTokenEnc     String?
+
+  status             String   @default("pending")        // pending | connected | disconnected | flagged | banned | restricted
+  qualityRating      String?                             // GREEN | YELLOW | RED
+  messagingLimitTier String?
+  lastCheckedAt      DateTime?
+  lastError          String?
+
+  deletedAt          DateTime?
+  version            Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, phoneNumberId])
+  @@index([userId, status])
+  @@index([phoneNumberId])
+}
+
+/// Admin-configurable Meta conversation pricing (global config, no tenant FK).
+/// One row per (country, category). `baseCostMicroUsd` is Meta's wholesale
+/// per-conversation price in micro-USD (USD × 1e6); `markupBps` is the platform
+/// markup in basis points (10000 = +100%); `taxBps` is tax in basis points.
+/// country="*" is the default market. Drives ALL cost + revenue calculation.
+model MetaRate {
+  id               String   @id @default(cuid())
+  country          String   @default("*")               // ISO-3166 alpha-2 or "*"
+  category         String                               // marketing | utility | authentication | service
+  baseCostMicroUsd Int      @default(0)                 // Meta wholesale price, micro-USD
+  markupBps        Int      @default(0)                 // platform markup, basis points
+  taxBps           Int      @default(0)                 // tax, basis points
+  currency         String   @default("USD")
+  enabled          Boolean  @default(true)
+  note             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([country, category])
+  @@index([category])
+}
+
+/// One Meta billable conversation (24h category window). Derived additively
+/// from the WaMessage ledger by the cost engine — the send pipeline is never
+/// touched. Idempotent on `windowKey`. Cost is captured in micro-USD; the EGP
+/// wallet debit is recorded on the linked MetaTransaction.
+model MetaConversation {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumberId      String?
+  metaConversationId String?                              // Meta-provided conversation id (when known)
+  windowKey          String                               // dedupe key: userId:phone:category:windowStartEpoch
+  category           String                               // marketing | utility | authentication | service
+  originType         String   @default("business_initiated") // business_initiated | user_initiated
+  country            String   @default("*")
+  customerPhone      String?
+
+  billable           Boolean  @default(true)              // free-tier service windows -> false
+  costMicroUsd       Int      @default(0)                 // Meta wholesale cost
+  chargedMicroUsd    Int      @default(0)                 // cost + markup + tax (what tenant owes)
+  currency           String   @default("USD")
+  billingStatus      String   @default("pending")         // pending | charged | free | skipped | failed
+  messageCount       Int      @default(0)
+
+  windowStart        DateTime
+  windowEnd          DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, windowKey])
+  @@index([userId, windowStart])
+  @@index([userId, category, windowStart])
+  @@index([billingStatus])
+}
+
+/// Daily per-tenant usage + cost rollup (analytics performance). One row per
+/// (userId, day). Recomputed idempotently by the analytics processor from
+/// MetaConversation. Revenue = chargedMicroUsd - costMicroUsd.
+model MetaUsageDaily {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day             String                                   // YYYY-MM-DD (UTC)
+  conversations   Int      @default(0)
+  marketing       Int      @default(0)
+  utility         Int      @default(0)
+  authentication  Int      @default(0)
+  service         Int      @default(0)
+  messages        Int      @default(0)
+  // Aggregate cost is BigInt: a high-volume tenant's daily micro-USD sum can
+  // exceed 32-bit on PostgreSQL. SQLite stores both as 64-bit INTEGER.
+  costMicroUsd    BigInt   @default(0)
+  chargedMicroUsd BigInt   @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, day])
+  @@index([day])
+}
+
+/// Meta-scoped money movement. Mirrors a WalletLedger entry (link via
+/// walletLedgerId) so wallet balance accounting stays single-source in
+/// Wallet/WalletLedger — this table adds Meta context (cost snapshot, kind,
+/// conversation ref). Amounts are signed whole EGP (-debit / +credit).
+model MetaTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind            String                                   // charge | credit | debit | refund | adjustment
+  amountEgp       Int                                      // signed whole EGP
+  costMicroUsd    Int      @default(0)                     // USD cost snapshot (for charges)
+  fxRateMicro     Int      @default(0)                     // USD->EGP rate used, micro (rate x 1e6)
+  conversationId  String?                                  // MetaConversation.id when kind=charge
+  invoiceId       String?
+  walletLedgerId  String?                                  // WalletLedger.id (single-source balance)
+  status          String   @default("posted")             // posted | pending | failed | reversed
+  note            String?
+  createdBy       String?                                  // admin id for manual adjustments
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, kind, createdAt])
+  @@index([status])
+}
+
+/// Monthly Meta invoice per tenant. Aggregates conversations + charges for a
+/// billing period. status drives the customer-facing invoice list.
+model MetaInvoice {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period          String                                   // YYYY-MM
+  conversations   Int      @default(0)
+  // Aggregate micro-USD totals are BigInt (overflow-safe on PostgreSQL).
+  costMicroUsd    BigInt   @default(0)
+  markupMicroUsd  BigInt   @default(0)
+  taxMicroUsd     BigInt   @default(0)
+  totalMicroUsd   BigInt   @default(0)
+  totalEgp        Int      @default(0)
+  currency        String   @default("EGP")
+  status          String   @default("open")               // open | finalized | paid | void
+  finalizedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, period])
+  @@index([status])
+}
+
+/// Configurable Meta limit. Resolution precedence (highest wins):
+/// emergency > tenant > plan > global. `scope` selects the layer; `scopeRef`
+/// is the userId (tenant) / plan slug / "*" (global, emergency). `kind`
+/// enumerates the limited dimension; `value` is the cap (-1 = unlimited).
+/// `userId` is set only for tenant-scope rows (enables cascade + back-relation).
+model MetaLimit {
+  id        String   @id @default(cuid())
+  scope     String                                         // global | plan | tenant | emergency
+  scopeRef  String   @default("*")                         // userId | planSlug | "*"
+  kind      String                                         // conversation | daily | weekly | monthly | budget | cost | country | template | phone | campaign | queue | automation
+  value     Int      @default(-1)                          // -1 = unlimited
+  unit      String   @default("count")                     // count | egp | micro_usd
+  enabled   Boolean  @default(true)
+  note      String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, scopeRef, kind])
+  @@index([scope, kind])
+  @@index([userId])
+}
+
+/// History of Meta sync / health-check runs (per tenant, or global when
+/// userId is null). The health engine writes one row per run with what was
+/// checked and the outcome.
+model MetaSyncHistory {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String                                       // health | quality | phone | webhook | usage | full
+  status      String   @default("ok")                      // ok | partial | failed
+  changed     String   @default("{}")                      // JSON summary of changes
+  error       String?
+  durationMs  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+}
+
+/// Append-only audit of every privileged Meta action (admin or customer):
+/// enable/disable/suspend, rotate token, reset webhook, move/transfer phone,
+/// force sync, manual credit/adjustment, etc. Meta-scoped sibling of AuditLog.
+model MetaAudit {
+  id         String   @id @default(cuid())
+  userId     String?                                       // tenant the action targets
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actorId    String?                                       // who performed it (admin/customer/system)
+  actorRole  String   @default("system")                  // admin | customer | system
+  action     String                                       // enable | disable | suspend | rotate_token | reset_webhook | move_phone | transfer | force_sync | credit | adjustment
+  target     String?                                       // phoneNumberId / invoiceId / etc.
+  before     String   @default("{}")                       // JSON snapshot
+  after      String   @default("{}")                       // JSON snapshot
+  ip         String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Operational incident raised by the health engine (or manually). Idempotent
+/// per (userId, dedupeKey) while OPEN — the health engine resolves an incident
+/// automatically when its condition clears. Drives the admin incident center.
+model MetaIncident {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String                                       // token_expired | webhook_failure | phone_disconnected | rate_limited | quality_downgrade | spam | ban | blocked_number | template_rejected | api_failure | latency | connection_failure | conversation_failure | retry_loop | low_balance
+  severity    String    @default("medium")                // low | medium | high | critical
+  priority    String    @default("normal")                // low | normal | high | urgent
+  status      String    @default("open")                  // open | acknowledged | resolved | auto_resolved
+  title       String
+  detail      String    @default("")
+  owner       String?
+  dedupeKey   String                                       // one OPEN incident per (userId, dedupeKey)
+  timeline    String    @default("[]")                    // JSON event log
+  autoFixed   Boolean   @default(false)
+  escalated   Boolean   @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, severity])
+  @@index([userId, status])
+  @@index([type, createdAt])
+}
+
+
+// ===========================================================================
+// Shipping providers + shipments (recovered from pedantic-feynman; additive).
+// ===========================================================================
+model ShippingProvider {
+  id           String   @id @default(cuid())
+  type         String   // bosta | aramex | mylerz | smsa | manual
+  name         String
+  apiKeyEnc    String?
+  apiSecretEnc String?
+  accountEnc   String?
+  enabled      Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  lastTestAt   DateTime?
+  lastTestOk   Boolean?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  shipments    Shipment[]
+}
+
+model Shipment {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  providerId     String?
+  provider       ShippingProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  providerType   String   // snapshot of provider type at creation
+  trackingNumber String?
+  status         String   @default("created") // created | picked_up | in_transit | out_for_delivery | delivered | returned | canceled
+  timelineJson   String   @default("[]")
+  lastSyncAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+}
+
+// ===== Prompts + AI Control (recovered from pedantic-feynman; additive) =====
+model PromptVersion {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String    @default("نسخة")
+  body        String
+  status      String    @default("draft") // draft | published | archived
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, version])
+}
+
+model PromptTest {
+  id              String   @id @default(cuid())
+  userId          String
+  promptVersionId String   @default("")
+  promptLabel     String
+  message         String
+  confidence      Int      @default(0)   // 0-100 retrieval confidence
+  sourceCount     Int      @default(0)
+  groundingScore  Int      @default(0)   // 0-100 (can the brain ground an answer)
+  topSource       String   @default("")
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, promptVersionId])
+}
+
+model PromptBenchmark {
+  id                  String   @id @default(cuid())
+  userId              String
+  aLabel              String   @default("")
+  aScore              Int      @default(0)
+  bLabel              String   @default("")
+  bScore              Int      @default(0)
+  cLabel              String   @default("")
+  cScore              Int      @default(0)
+  winner              String   @default("")
+  knowledgeCoverage   Int      @default(0)
+  confidence          Int      @default(0)
+  resolution          Int      @default(0)
+  hallucinationRisk   Int      @default(0)
+  arenaScore          Int      @default(0)
+  brainScore          Int      @default(0)
+  conversationQuality Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AiAuditRun {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score     Int      @default(0)   // 0-100
+  critical  Int      @default(0)
+  high      Int      @default(0)
+  medium    Int      @default(0)
+  low       Int      @default(0)
+  total     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+
+// ===== Embeddings + Knowledge Graph (recovered from pedantic-feynman) =====
+model EmbeddingProvider {
+  id            String    @id @default(cuid())
+  type          String    @unique          // local | openai | gemini
+  name          String
+  enabled       Boolean   @default(true)
+  priority      Int       @default(100)    // lower = tried first
+  model         String    @default("")
+  status        String    @default("unknown") // unknown | healthy | failed
+  lastError     String    @default("")
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model EmbeddingUsage {
+  id             String   @id @default(cuid())
+  provider       String
+  operation      String                     // embed_query | embed_chunk | test
+  day            String                     // YYYY-MM-DD (UTC)
+  count          Int      @default(0)
+  tokens         Int      @default(0)
+  totalLatencyMs Int      @default(0)
+  failures       Int      @default(0)
+
+  @@unique([provider, operation, day])
+  @@index([provider, day])
+}
+
+model EmbeddingJob {
+  id         String    @id @default(cuid())
+  userId     String
+  kind       String    @default("reindex")
+  status     String    @default("done")   // running | done | failed
+  documents  Int       @default(0)
+  chunks     Int       @default(0)
+  provider   String    @default("local")
+  error      String    @default("")
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([userId, createdAt])
+}
+
+model KnowledgeGraphNode {
+  id        String   @id @default(cuid())
+  userId    String
+  refType   String                  // product | document | faq
+  refId     String                  // source row id
+  label     String
+  degree    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, refType, refId])
+  @@index([userId])
+}
+
+model KnowledgeGraphEdge {
+  id        String   @id @default(cuid())
+  userId    String
+  sourceId  String                  // KnowledgeGraphNode.id
+  targetId  String
+  type      String   @default("related_to") // related_to | mentions
+  weight    Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, type])
+}
+
+model KnowledgeConflict {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity       String                      // the product/entity in conflict
+  conflictType String   @default("price")  // price | number | policy
+  sourceALabel String
+  sourceAValue String
+  sourceBLabel String
+  sourceBValue String
+  suggestion   String   @default("")
+  severity     String   @default("high")   // high | medium | low
+  signature    String                      // dedupe key (stable across rescans)
+  resolved     Boolean  @default(false)
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, signature])
+  @@index([userId, resolved])
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  userId     String
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  position   Int      @default(0)
+  content    String
+  vec        String                  // JSON: { term: tf } sparse vector
+  norm       Float    @default(0)    // precomputed L2 norm
+  tokens     Int      @default(0)
+  provider   String   @default("local")
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([documentId])
+}
+
+
+// ===== Monitoring + Revenue-Pro (recovered from pedantic-feynman; additive) =====
+model MonitoringSnapshot {
+  id               String   @id @default(cuid())
+  userId           String
+  salesNow         Int      @default(0)
+  salesPrev        Int      @default(0)
+  ordersNow        Int      @default(0)
+  ordersPrev       Int      @default(0)
+  newCustomersNow  Int      @default(0)
+  newCustomersPrev Int      @default(0)
+  escalationsNow   Int      @default(0)
+  escalationsPrev  Int      @default(0)
+  aiCalls          Int      @default(0)
+  aiFailures       Int      @default(0)
+  businessHealth   Int      @default(0)
+  revenueRisk      Int      @default(0)
+  churnRisk        Int      @default(0)
+  serviceRisk      Int      @default(0)
+  campaignRisk     Int      @default(0)
+  aiRisk           Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model MonitoringAlert {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String                        // sales_drop | lead_drop | escalation_spike | ai_failure | broadcast_failure | churn_risk | service_risk
+  severity   String    @default("medium")  // low | medium | high | critical
+  title      String
+  message    String
+  metric     String    @default("")
+  value      Int       @default(0)
+  baseline   Int       @default(0)
+  status     String    @default("open")     // open | resolved
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, severity])
+}
+
+model RevenueSnapshot {
+  id              String   @id @default(cuid())
+  userId          String
+  revenue30d      Int      @default(0)
+  revenuePrev30d  Int      @default(0)
+  everCustomers   Int      @default(0)
+  activeCustomers Int      @default(0)
+  churnRate       Int      @default(0)
+  repeatRate      Int      @default(0)
+  avgLtv          Int      @default(0)
+  revenueHealth   Int      @default(0)
+  revenueScore    Int      @default(0)
+  forecastNext30d Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+
+// ===== Testing Arena 2.0 (recovered from pedantic-feynman; additive) =====
+model ArenaRun {
+  id            String   @id @default(cuid())
+  userId        String
+  total         Int      @default(0)
+  passed        Int      @default(0)
+  weak          Int      @default(0)
+  failed        Int      @default(0)
+  score         Int      @default(0)   // 0-100
+  avgConfidence Int      @default(0)   // 0-100
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ArenaConversation {
+  id              String   @id @default(cuid())
+  userId          String
+  scenarioId      String
+  category        String
+  persona         String
+  turns           Int      @default(0)
+  resolutionState String   @default("unresolved") // resolved | escalated | unresolved
+  avgConfidence   Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ArenaMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  turn           Int
+  role           String                    // customer | assistant
+  content        String
+  confidence     Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model ArenaResult {
+  id         String   @id @default(cuid())
+  runId      String
+  userId     String
+  category   String
+  message    String
+  matched    Boolean  @default(false)
+  confidence Int      @default(0)
+  topDoc     String   @default("")
+  verdict    String   @default("fail") // pass | weak | fail
+  createdAt  DateTime @default(now())
+
+  @@index([userId, runId])
+  @@index([runId, verdict])
+}
+
+model ArenaFix {
+  id           String    @id @default(cuid())
+  userId       String
+  type         String                       // knowledge | faq | prompt | product | quick_reply | integration | brain
+  category     String    @default("")
+  title        String
+  detail       String    @default("")
+  status       String    @default("queued") // queued | applied | rejected
+  beforeScore  Int       @default(0)
+  afterScore   Int       @default(0)
+  improvement  Int       @default(0)
+  artifactType String    @default("")       // document | quickReply | promptVersion
+  artifactId   String    @default("")
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+
+  @@index([userId, status])
+}
+
+model CompetitorBenchmark {
+  id                  String   @id @default(cuid())
+  userId              String
+  knowledge           Int      @default(0)
+  automation          Int      @default(0)
+  support             Int      @default(0)
+  monitoring          Int      @default(0)
+  aiReadiness         Int      @default(0)
+  conversationQuality Int      @default(0)
+  overall             Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model HallucinationEvent {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String                        // unsupported_claim | missing_source | knowledge_conflict | contradiction | outdated | low_confidence
+  severity   String    @default("medium")  // low | medium | high
+  confidence Int       @default(0)
+  source     String    @default("")
+  message    String
+  status     String    @default("open")    // open | resolved
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, severity])
+}
+
+model QualityBenchmark {
+  id                String   @id @default(cuid())
+  userId            String
+  resolution        Int      @default(0)
+  completeness      Int      @default(0)
+  knowledge         Int      @default(0)
+  confidence        Int      @default(0)
+  flow              Int      @default(0)
+  hallucinationRisk Int      @default(0)
+  overall           Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model OptimizationJob {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String                       // prompt | knowledge | faq | quick_reply | brain
+  status      String    @default("queued") // queued | running | completed | failed
+  beforeScore Int       @default(0)
+  afterScore  Int       @default(0)
+  improvement Int       @default(0)
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+
+// ===== Business profile + import + credit purchase + readiness/brain bench (recovered) =====
+model BusinessProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName          String?
+  businessType         String?
+  industry             String?
+  country              String?
+  city                 String?
+  whatsappNumber       String?
+  phoneNumber          String?
+  website              String?
+  facebook             String?
+  instagram            String?
+  tiktok               String?
+  linkedin             String?
+  monthlyCustomers     String?  // range bucket, e.g. "100-500"
+  currentWhatsappUsage String?  // personal | business_app | api | none
+  metaApiStatus        String?  // none | pending | approved | unknown
+  storePlatform        String?  // shopify | woocommerce | salla | zid | none | other
+  // Area 1 (signup registration) — additive
+  businessDescription  String?
+  monthlyOrders        String?  // range bucket
+  teamSize             String?  // range bucket
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model CustomerImport {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  total     Int      @default(0)
+  created   Int      @default(0)
+  skipped   Int      @default(0)
+  invalid   Int      @default(0)
+  source    String?  // paste | csv
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model CreditPurchase {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount     Int       // whole EGP requested
+  method     String?   // instapay | vodafone_cash | bank | other
+  paymentRef String?
+  receiptUrl String?
+  status     String    @default("pending") // pending | approved | rejected
+  reviewedBy String?
+  reviewedAt DateTime?
+  note       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model ReadinessScore {
+  id           String   @id @default(cuid())
+  userId       String
+  knowledge    Int      @default(0)
+  arena        Int      @default(0)
+  monitoring   Int      @default(0)
+  revenue      Int      @default(0)
+  prompts      Int      @default(0)
+  integrations Int      @default(0)
+  automation   Int      @default(0)
+  score        Int      @default(0)   // 0-100
+  level        String   @default("critical") // critical | weak | good | excellent
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model BrainBenchmark {
+  id                String   @id @default(cuid())
+  userId            String
+  coverage          Int      @default(0)   // 0-100 (empirical answerable rate)
+  retrievalAccuracy Int      @default(0)   // 0-100 (avg retrieval confidence)
+  missingKnowledge  Int      @default(0)   // unresolved gaps
+  conflicts         Int      @default(0)   // unresolved conflicts
+  density           Int      @default(0)   // knowledge-graph density %
+  health            Int      @default(0)   // 0-100
+  score             Int      @default(0)   // 0-100 brain score
+  createdAt         DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model CommerceSyncLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integrationId String
+  platform      String
+  products      Int      @default(0)
+  customers     Int      @default(0)
+  orders        Int      @default(0)
+  status        String   @default("success") // success | partial | failed
+  error         String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([integrationId, createdAt])
+}
+
