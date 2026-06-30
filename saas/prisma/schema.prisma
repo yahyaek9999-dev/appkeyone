@@ -3122,3 +3122,65 @@ model DocumentChunk {
   @@index([documentId])
 }
 
+
+// ===== Monitoring + Revenue-Pro (recovered from pedantic-feynman; additive) =====
+model MonitoringSnapshot {
+  id               String   @id @default(cuid())
+  userId           String
+  salesNow         Int      @default(0)
+  salesPrev        Int      @default(0)
+  ordersNow        Int      @default(0)
+  ordersPrev       Int      @default(0)
+  newCustomersNow  Int      @default(0)
+  newCustomersPrev Int      @default(0)
+  escalationsNow   Int      @default(0)
+  escalationsPrev  Int      @default(0)
+  aiCalls          Int      @default(0)
+  aiFailures       Int      @default(0)
+  businessHealth   Int      @default(0)
+  revenueRisk      Int      @default(0)
+  churnRisk        Int      @default(0)
+  serviceRisk      Int      @default(0)
+  campaignRisk     Int      @default(0)
+  aiRisk           Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model MonitoringAlert {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String                        // sales_drop | lead_drop | escalation_spike | ai_failure | broadcast_failure | churn_risk | service_risk
+  severity   String    @default("medium")  // low | medium | high | critical
+  title      String
+  message    String
+  metric     String    @default("")
+  value      Int       @default(0)
+  baseline   Int       @default(0)
+  status     String    @default("open")     // open | resolved
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, severity])
+}
+
+model RevenueSnapshot {
+  id              String   @id @default(cuid())
+  userId          String
+  revenue30d      Int      @default(0)
+  revenuePrev30d  Int      @default(0)
+  everCustomers   Int      @default(0)
+  activeCustomers Int      @default(0)
+  churnRate       Int      @default(0)
+  repeatRate      Int      @default(0)
+  avgLtv          Int      @default(0)
+  revenueHealth   Int      @default(0)
+  revenueScore    Int      @default(0)
+  forecastNext30d Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
