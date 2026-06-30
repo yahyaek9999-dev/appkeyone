@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
   Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
-  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug,
+  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database,
 } from "lucide-react";
 
 type AdminLink = { href: string; label: string; icon: typeof LayoutDashboard; core?: boolean };
@@ -59,6 +59,8 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     { href: "/admin/metrics", label: "المقاييس والاستخدام", icon: BarChart3 },
     { href: "/admin/tenant-costs", label: "التكلفة والأداء لكل تاجر", icon: Coins },
     { href: "/admin/ai-logs", label: "سجل الذكاء الاصطناعي", icon: Brain },
+    { href: "/admin/ai-control", label: "مركز التحكم بالذكاء", icon: Cpu, core: true },
+    { href: "/admin/embeddings", label: "التضمين والفهرسة", icon: Database },
     { href: "/admin/knowledge-brain", label: "العقل المعرفي", icon: Brain },
     { href: "/admin/brain", label: "مركز الدماغ", icon: Brain },
     { href: "/admin/brain/global", label: "الدماغ العالمي", icon: Brain },

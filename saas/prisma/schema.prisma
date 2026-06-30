@@ -66,6 +66,9 @@ model User {
   upgradeRequests  UpgradeRequest[]
   wallet           Wallet?
   shipments        Shipment[]
+  promptVersions   PromptVersion[]
+  aiAuditRuns      AiAuditRun[]
+  knowledgeConflicts KnowledgeConflict[]
 
   // ---- Meta Enterprise Platform (additive, new tables only) ----
   metaTenant        MetaTenant?
@@ -550,6 +553,8 @@ model Document {
   lastSuggestedAt DateTime?
 
   createdAt DateTime @default(now())
+
+  chunks DocumentChunk[]
 
   @@index([userId])
   @@index([userId, priorityScore])
@@ -2937,3 +2942,183 @@ model Shipment {
   @@index([userId, createdAt])
   @@index([orderId])
 }
+
+// ===== Prompts + AI Control (recovered from pedantic-feynman; additive) =====
+model PromptVersion {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String    @default("نسخة")
+  body        String
+  status      String    @default("draft") // draft | published | archived
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, version])
+}
+
+model PromptTest {
+  id              String   @id @default(cuid())
+  userId          String
+  promptVersionId String   @default("")
+  promptLabel     String
+  message         String
+  confidence      Int      @default(0)   // 0-100 retrieval confidence
+  sourceCount     Int      @default(0)
+  groundingScore  Int      @default(0)   // 0-100 (can the brain ground an answer)
+  topSource       String   @default("")
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, promptVersionId])
+}
+
+model PromptBenchmark {
+  id                  String   @id @default(cuid())
+  userId              String
+  aLabel              String   @default("")
+  aScore              Int      @default(0)
+  bLabel              String   @default("")
+  bScore              Int      @default(0)
+  cLabel              String   @default("")
+  cScore              Int      @default(0)
+  winner              String   @default("")
+  knowledgeCoverage   Int      @default(0)
+  confidence          Int      @default(0)
+  resolution          Int      @default(0)
+  hallucinationRisk   Int      @default(0)
+  arenaScore          Int      @default(0)
+  brainScore          Int      @default(0)
+  conversationQuality Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AiAuditRun {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score     Int      @default(0)   // 0-100
+  critical  Int      @default(0)
+  high      Int      @default(0)
+  medium    Int      @default(0)
+  low       Int      @default(0)
+  total     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+
+// ===== Embeddings + Knowledge Graph (recovered from pedantic-feynman) =====
+model EmbeddingProvider {
+  id            String    @id @default(cuid())
+  type          String    @unique          // local | openai | gemini
+  name          String
+  enabled       Boolean   @default(true)
+  priority      Int       @default(100)    // lower = tried first
+  model         String    @default("")
+  status        String    @default("unknown") // unknown | healthy | failed
+  lastError     String    @default("")
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model EmbeddingUsage {
+  id             String   @id @default(cuid())
+  provider       String
+  operation      String                     // embed_query | embed_chunk | test
+  day            String                     // YYYY-MM-DD (UTC)
+  count          Int      @default(0)
+  tokens         Int      @default(0)
+  totalLatencyMs Int      @default(0)
+  failures       Int      @default(0)
+
+  @@unique([provider, operation, day])
+  @@index([provider, day])
+}
+
+model EmbeddingJob {
+  id         String    @id @default(cuid())
+  userId     String
+  kind       String    @default("reindex")
+  status     String    @default("done")   // running | done | failed
+  documents  Int       @default(0)
+  chunks     Int       @default(0)
+  provider   String    @default("local")
+  error      String    @default("")
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([userId, createdAt])
+}
+
+model KnowledgeGraphNode {
+  id        String   @id @default(cuid())
+  userId    String
+  refType   String                  // product | document | faq
+  refId     String                  // source row id
+  label     String
+  degree    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, refType, refId])
+  @@index([userId])
+}
+
+model KnowledgeGraphEdge {
+  id        String   @id @default(cuid())
+  userId    String
+  sourceId  String                  // KnowledgeGraphNode.id
+  targetId  String
+  type      String   @default("related_to") // related_to | mentions
+  weight    Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, type])
+}
+
+model KnowledgeConflict {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity       String                      // the product/entity in conflict
+  conflictType String   @default("price")  // price | number | policy
+  sourceALabel String
+  sourceAValue String
+  sourceBLabel String
+  sourceBValue String
+  suggestion   String   @default("")
+  severity     String   @default("high")   // high | medium | low
+  signature    String                      // dedupe key (stable across rescans)
+  resolved     Boolean  @default(false)
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, signature])
+  @@index([userId, resolved])
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  userId     String
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  position   Int      @default(0)
+  content    String
+  vec        String                  // JSON: { term: tf } sparse vector
+  norm       Float    @default(0)    // precomputed L2 norm
+  tokens     Int      @default(0)
+  provider   String   @default("local")
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([documentId])
+}
+

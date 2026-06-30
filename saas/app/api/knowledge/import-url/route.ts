@@ -15,7 +15,11 @@ export async function POST(req: Request) {
     const user = await requirePermission("settings");
 
     // Abuse/SSRF guard: external URL fetch — rate-limit per workspace.
-    const limited = enforceRateLimit(req, { name: "knowledge-import-url", identifier: user.id, ...RATE_LIMITS.api });
+    const limited = enforceRateLimit(req, {
+      name: "knowledge-import-url",
+      identifier: user.id,
+      ...RATE_LIMITS.api,
+    });
     if (limited) return limited;
 
     const { url } = await req.json();
@@ -41,11 +45,15 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message },
-      { status: e.message === "UNAUTHORIZED" ? 401 : 500 }
+      { status: e.message === "UNAUTHORIZED" ? 401 : 500 },
     );
   }
 }
 
 function tryHostname(u: string): string {
-  try { return new URL(u).hostname; } catch { return ""; }
+  try {
+    return new URL(u).hostname;
+  } catch {
+    return "";
+  }
 }

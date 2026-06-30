@@ -16,7 +16,11 @@ export async function POST(req: Request) {
   if (gate.response) return gate.response;
   try {
     const user = await requirePermission("settings");
-    const limited = enforceRateLimit(req, { name: "import-products", identifier: user.id, ...RATE_LIMITS.api });
+    const limited = enforceRateLimit(req, {
+      name: "import-products",
+      identifier: user.id,
+      ...RATE_LIMITS.api,
+    });
     if (limited) return limited;
     const body = await req.json().catch(() => null);
     const text = typeof body?.text === "string" ? body.text : "";

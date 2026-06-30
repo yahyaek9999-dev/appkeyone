@@ -50,17 +50,51 @@ const PILLARS: { key: PillarKey; label: string; keywords: string[] }[] = [
   {
     key: "policy",
     label: "السياسات والشروط",
-    keywords: ["سياسة", "السياسة", "الشروط", "استرجاع", "استبدال", "ضمان", "خصوصية", "policy", "terms", "refund", "return", "warranty"],
+    keywords: [
+      "سياسة",
+      "السياسة",
+      "الشروط",
+      "استرجاع",
+      "استبدال",
+      "ضمان",
+      "خصوصية",
+      "policy",
+      "terms",
+      "refund",
+      "return",
+      "warranty",
+    ],
   },
   {
     key: "faq",
     label: "الأسئلة الشائعة",
-    keywords: ["سؤال", "الأسئلة", "أسئلة شائعة", "كيف", "هل", "faq", "question", "how do", "how can"],
+    keywords: [
+      "سؤال",
+      "الأسئلة",
+      "أسئلة شائعة",
+      "كيف",
+      "هل",
+      "faq",
+      "question",
+      "how do",
+      "how can",
+    ],
   },
   {
     key: "product",
     label: "المنتجات والخدمات",
-    keywords: ["منتج", "منتجات", "المنتج", "خدمة", "خدمات", "صنف", "موديل", "product", "service", "item"],
+    keywords: [
+      "منتج",
+      "منتجات",
+      "المنتج",
+      "خدمة",
+      "خدمات",
+      "صنف",
+      "موديل",
+      "product",
+      "service",
+      "item",
+    ],
   },
 ];
 
@@ -89,7 +123,8 @@ export async function computeKnowledgeHealth(uid: string): Promise<KnowledgeHeal
     const content = d.content ?? "";
     totalChars += content.length;
     parts.push(`${d.title ?? ""}\n${content}`);
-    const ts = d.createdAt instanceof Date ? d.createdAt.getTime() : new Date(d.createdAt).getTime();
+    const ts =
+      d.createdAt instanceof Date ? d.createdAt.getTime() : new Date(d.createdAt).getTime();
     if (ts > lastTs) {
       lastTs = ts;
       lastUpdatedAt = new Date(ts).toISOString();

@@ -29,8 +29,10 @@ function declaredZipUncompressedBytes(buf: Buffer): number {
     while (offset + 30 <= len) {
       // local file header signature PK\x03\x04
       if (
-        buf[offset] === 0x50 && buf[offset + 1] === 0x4b &&
-        buf[offset + 2] === 0x03 && buf[offset + 3] === 0x04
+        buf[offset] === 0x50 &&
+        buf[offset + 1] === 0x4b &&
+        buf[offset + 2] === 0x03 &&
+        buf[offset + 3] === 0x04
       ) {
         const uncompressed = buf.readUInt32LE(offset + 22);
         const compressed = buf.readUInt32LE(offset + 18);
@@ -57,7 +59,11 @@ export async function POST(req: Request) {
     const user = await requirePermission("settings");
 
     // Throttle this CPU/heap-intensive endpoint per tenant (parsing PDF/DOCX).
-    const limited = enforceRateLimit(req, { name: "knowledge-import-file", identifier: user.id, ...RATE_LIMITS.api });
+    const limited = enforceRateLimit(req, {
+      name: "knowledge-import-file",
+      identifier: user.id,
+      ...RATE_LIMITS.api,
+    });
     if (limited) return limited;
 
     // Fast-fail on an oversized Content-Length before buffering the whole body.
@@ -84,7 +90,9 @@ export async function POST(req: Request) {
     if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
       const r = await parsePdf(buf);
       if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
-      text = r.text; title = r.title; kind = "pdf";
+      text = r.text;
+      title = r.title;
+      kind = "pdf";
     } else if (lowerName.endsWith(".docx") || file.type.includes("wordprocessingml")) {
       // Reject DOCX zip bombs (compressed < 10 MB but inflate to GBs) before
       // handing the buffer to mammoth/jszip, which inflate with no size cap.
@@ -93,20 +101,26 @@ export async function POST(req: Request) {
       }
       const r = await parseDocx(buf);
       if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
-      text = r.text; kind = "docx";
+      text = r.text;
+      kind = "docx";
     } else if (lowerName.endsWith(".txt") || file.type === "text/plain") {
       const raw = buf.toString("utf8").replace(/\r\n/g, "\n").trim();
       if (!raw || raw.length < 2) {
         return NextResponse.json({ error: "الملف فارغ" }, { status: 400 });
       }
-      text = raw.slice(0, 60_000); kind = "txt";
+      text = raw.slice(0, 60_000);
+      kind = "txt";
     } else {
-      return NextResponse.json({ error: "نوع الملف غير مدعوم. ندعم PDF و Word و TXT فقط." }, { status: 400 });
+      return NextResponse.json(
+        { error: "نوع الملف غير مدعوم. ندعم PDF و Word و TXT فقط." },
+        { status: 400 },
+      );
     }
 
-    const finalTitle = (title && title.trim())
-      ? title.trim().slice(0, 200)
-      : file.name.replace(/\.[^.]+$/, "").slice(0, 200);
+    const finalTitle =
+      title && title.trim()
+        ? title.trim().slice(0, 200)
+        : file.name.replace(/\.[^.]+$/, "").slice(0, 200);
 
     const doc = await prisma.document.create({
       data: {
@@ -121,7 +135,7 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message },
-      { status: e.message === "UNAUTHORIZED" ? 401 : 500 }
+      { status: e.message === "UNAUTHORIZED" ? 401 : 500 },
     );
   }
 }
