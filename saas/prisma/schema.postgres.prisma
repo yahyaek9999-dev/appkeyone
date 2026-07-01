@@ -33,6 +33,7 @@ model User {
   suspended       Boolean  @default(false)
   suspendedAt     DateTime?
   suspendedReason String?
+  deletedAt       DateTime?
 
   // ---- Knowledge Brain: paid add-on gate (Phase 5) ----
   // OFF by default; a platform admin enables it per tenant. Additive, nullable
