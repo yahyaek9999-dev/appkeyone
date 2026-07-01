@@ -10,8 +10,12 @@ import { formatCustomerPhone } from "@/lib/phone";
 
 function toOrderStatus(s: string): OrderStatus {
   if (s === "canceled") return "cancelled";
-  if (s === "pending" || s === "confirmed" || s === "shipped" || s === "delivered" || s === "refunded") return s;
-  return "pending";
+  // Recognise every status the order-actions dropdown can set (was: only 5).
+  const known = [
+    "pending", "confirmed", "preparing", "packed", "shipped",
+    "out_for_delivery", "delivered", "returned", "refunded", "cancelled",
+  ];
+  return known.includes(s) ? (s as OrderStatus) : "pending";
 }
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {

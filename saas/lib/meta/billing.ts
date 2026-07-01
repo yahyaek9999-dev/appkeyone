@@ -214,7 +214,7 @@ export async function settlePendingConversations(userId: string, limit = 500) {
 export async function grantMetaCredit(
   userId: string,
   amountUsd: number,
-  opts: { actorId?: string | null; note?: string | null; kind?: "credit" | "adjustment" } = {},
+  opts: { actorId?: string | null; note?: string | null; kind?: "credit" | "adjustment"; idempotencyKey?: string | null } = {},
 ) {
   if (!Number.isFinite(amountUsd) || amountUsd === 0) {
     return { ok: false as const, reason: "invalid_amount" };
@@ -227,7 +227,9 @@ export async function grantMetaCredit(
     amountUsd,
     source: "admin",
     reason: opts.note ?? "meta_grant",
-    idempotencyKey: `meta:grant:${userId}:${Date.now()}`,
+    // Idempotency: client key if supplied, else collapse identical grants in a
+    // 30s window so a retry / double-click cannot double-credit.
+    idempotencyKey: `meta:grant:${(opts.idempotencyKey && String(opts.idempotencyKey).slice(0, 120)) || `${userId}:${amountUsd}:${opts.note ?? ""}:${Math.floor(Date.now() / 30000)}`}`,
     actorId: opts.actorId ?? null,
   });
   if (!r.ok && !r.replay) return { ok: false as const, reason: r.reason ?? "wallet_failed" };

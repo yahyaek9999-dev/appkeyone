@@ -37,8 +37,8 @@ export default async function UsagePage() {
         metaPhoneNumberId: true,
         metaQualityRating: true,
         metaVerifiedAt: true,
-      } as any,
-    }) as any,
+      },
+    }),
     getCustomerCapState(user.id).catch(() => null),
   ]);
 

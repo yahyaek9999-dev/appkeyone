@@ -1,7 +1,7 @@
 import { getAuthContext } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/rbac";
-import { CreditCard, Mail, User, Phone, Sparkles, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug } from "lucide-react";
+import { CreditCard, Mail, User, Phone, Sparkles, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { FadeInView } from "@/components/ui/stagger-reveal";
@@ -126,6 +126,9 @@ export default async function SettingsPage() {
         <SettingLink href="/dashboard/settings/meta-cloud" icon={<MessageSquare className="h-5 w-5 text-emerald-300" />}
           title="واتساب — وضع الاتصال"
           desc="اختر QR Code أو Meta Cloud API الرسمي. يضمن استقرار طويل المدى والامتثال لسياسة Meta." />
+        <SettingLink href="/dashboard/settings/orders" icon={<ShoppingBag className="h-5 w-5 text-orange-300" />}
+          title="إعدادات الطلبات"
+          desc="اضبط كيف يجمع البوت الطلبات من العملاء: الحقول المطلوبة، التأكيد، والرسائل التلقائية." />
         <SettingLink href="/dashboard/compliance" icon={<ShieldCheck className="h-5 w-5 text-amber-300" />}
           title="صحة الإرسال والامتثال"
           desc="تتبع حالة التسليم، جودة الرقم، الـ webhooks، والقوالب المعتمدة — كله من بيانات حقيقية." />

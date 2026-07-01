@@ -24,7 +24,7 @@ type PublicNavProps = {
 };
 
 const LINKS = (locale: Locale) => [
-  { href: "/#features", label: locale === "ar" ? "المميزات" : "Features" },
+  { href: "/features", label: locale === "ar" ? "المميزات" : "Features" },
   { href: "/#how", label: locale === "ar" ? "طريقة العمل" : "How it works" },
   { href: "/projects", label: locale === "ar" ? "مشاريعنا" : "Case studies" },
   { href: "/pricing", label: locale === "ar" ? "الأسعار" : "Pricing" },

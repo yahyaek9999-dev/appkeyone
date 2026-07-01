@@ -17,6 +17,7 @@
 import { prisma } from "@/lib/db";
 import { normalizeConnectionMode } from "./mode";
 import { getTier } from "@/lib/pricing/catalog";
+import { isActiveSubscription } from "@/lib/membership/plan";
 
 /** Global kill switch — set to "1" in production env to allow Meta routing. */
 export function metaCloudGloballyEnabled(): boolean {
@@ -85,7 +86,7 @@ export async function metaCloudAllowedForUser(userId: string): Promise<MetaEligi
     }) as any,
     prisma.subscription.findUnique({
       where: { userId },
-      select: { status: true, plan: { select: { slug: true } } },
+      select: { status: true, expiresAt: true, plan: { select: { slug: true } } },
     }),
   ]);
 
@@ -93,7 +94,7 @@ export async function metaCloudAllowedForUser(userId: string): Promise<MetaEligi
     return { allowed: false, reason: "mode_not_meta", access: "none" };
   }
 
-  const planSlug = sub?.status === "active" ? sub.plan?.slug : null;
+  const planSlug = isActiveSubscription(sub) ? sub?.plan?.slug : null;
   const access = planMetaAccess(planSlug);
   if (access === "none") {
     return { allowed: false, reason: "plan_blocked", access };

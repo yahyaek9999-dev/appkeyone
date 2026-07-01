@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage() {
   const [users, plans] = await Promise.all([
     prisma.user.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: { subscription: { include: { plan: true } } },
     }),

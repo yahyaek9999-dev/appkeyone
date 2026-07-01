@@ -76,9 +76,7 @@ import {
 import { evaluateInboundProtection } from "@/lib/protection";
 import { evaluateAutomations, fireOrderValueAutomation } from "@/lib/automations/engine";
 import { recordCartInterest } from "@/lib/commerce/abandoned-cart";
-
-const SECRET =
-  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 // whatsapp-web.js can emit old/unread history after session restore. Keep it
 // visible in the inbox, but never let it activate billing/safety/send logic.
@@ -97,8 +95,7 @@ function isHistoricalRuntimeInbound(value: unknown): boolean {
 }
 
 export async function POST(req: Request) {
-  const provided = req.headers.get("x-internal-secret");
-  if (provided !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -231,7 +228,10 @@ export async function POST(req: Request) {
         reply: null,
         blocked: "no_subscription",
       });
-    if (sub.status !== "active")
+    // Active OR an unexpired trial is entitled to AI replies; the expiry check
+    // below still re-locks an expired trial. (Entitlement gate only — the send
+    // mechanics/queue/retry are untouched.)
+    if (sub.status !== "active" && sub.status !== "trial")
       return NextResponse.json({
         ok: true,
         reply: null,

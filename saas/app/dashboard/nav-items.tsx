@@ -150,12 +150,15 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/intel", label: "الرصد الذكي", icon: Activity, perm: "analytics" },
       { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "analytics" },
       { href: "/dashboard/testing-arena", label: "ساحة الاختبار", icon: Beaker, perm: "settings" },
-      { href: "/dashboard/arena", label: "ساحة الاختبار ٢", icon: Beaker, perm: "settings" },
+      // CONSOLIDATED (duplicate nav): same feature as /dashboard/testing-arena — page still reachable by URL.
+      // { href: "/dashboard/arena", label: "ساحة الاختبار ٢", icon: Beaker, perm: "settings" },
       { href: "/dashboard/ai-audit", label: "تدقيق الذكاء", icon: ShieldCheck, perm: "settings" },
-      { href: "/dashboard/revenue-pro", label: "مساعد الإيرادات Pro", icon: TrendingUp, perm: "analytics" },
+      // CONSOLIDATED (duplicate nav): overlaps /dashboard/revenue-copilot ("مساعد الإيرادات") — page still reachable by URL.
+      // { href: "/dashboard/revenue-pro", label: "مساعد الإيرادات Pro", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/playground", label: "تجربة المحادثة", icon: FlaskConical, perm: "settings" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
-      { href: "/dashboard/brain", label: "مركز الدماغ", icon: Brain, perm: "settings" },
+      // CONSOLIDATED (duplicate nav): same `smart_assistant` capability as /dashboard/knowledge-brain — page still reachable by URL.
+      // { href: "/dashboard/brain", label: "مركز الدماغ", icon: Brain, perm: "settings" },
       // HIDDEN (final-polish): not production-ready — re-enable when the workflow is complete
       // { href: "/dashboard/agents", label: "نظام الوكلاء", icon: Users, perm: "settings" },
     ],
@@ -190,7 +193,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/whatsapp-health", label: "صحة جلسة واتساب", icon: Phone, perm: "settings", mode: "qr" },
       { href: "/dashboard/meta-health", label: "صحة اتصال Meta", icon: ShieldCheck, perm: "settings", mode: "meta" },
       { href: "/dashboard/meta", label: "مركز Meta والفوترة", icon: ShieldCheck, perm: "settings", mode: "meta" },
-      { href: "/dashboard/monitoring", label: "الرصد الذكي Pro", icon: Activity, perm: "analytics" },
+      // CONSOLIDATED (duplicate nav): synonym of /dashboard/intel ("الرصد الذكي") — page still reachable by URL.
+      // { href: "/dashboard/monitoring", label: "الرصد الذكي Pro", icon: Activity, perm: "analytics" },
       { href: "/dashboard/ai-operations", label: "عمليات الذكاء", icon: Brain, perm: "settings" },
       { href: "/dashboard/qr-queue", label: "حجز جلسات QR", icon: CalendarClock, perm: "broadcasts" },
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
@@ -223,7 +227,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
       // HIDDEN (final-polish): not production-ready — branding not yet applied at runtime
-      // { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
+      { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },
       { href: "/dashboard/plan", label: "لوحة الباقة", icon: Gauge, perm: "analytics" },
       { href: "/dashboard/billing", label: "الاشتراك والدفع", icon: Wallet, perm: "billing" },

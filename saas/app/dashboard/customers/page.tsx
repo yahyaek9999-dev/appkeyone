@@ -9,24 +9,42 @@ import { formatCustomerPhone } from "@/lib/phone";
 import InsightStrip from "@/components/insight-strip";
 import { FadeInView } from "@/components/ui/stagger-reveal";
 
-export default async function CustomersPage() {
+const PAGE_SIZE = 30;
+
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams?: { q?: string; page?: string };
+}) {
   const { user } = await requirePagePermission("customers");
-  const customers = await prisma.customer.findMany({
-    where: { userId: user.id },
-    orderBy: { lastSeenAt: "desc" },
-    include: {
-      conversation: {
-        include: {
-          messages: { orderBy: { createdAt: "desc" }, take: 1 },
-          _count: { select: { messages: true } },
+  const q = (searchParams?.q || "").trim();
+  const page = Math.max(1, parseInt(searchParams?.page || "1", 10) || 1);
+  const where: any = { userId: user.id };
+  if (q) where.OR = [{ name: { contains: q } }, { phone: { contains: q } }];
+
+  const [customers, total, active7d] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      orderBy: { lastSeenAt: "desc" },
+      include: {
+        conversation: {
+          include: {
+            messages: { orderBy: { createdAt: "desc" }, take: 1 },
+            _count: { select: { messages: true } },
+          },
         },
       },
-    },
-  });
-
-  const active7d = customers.filter(
-    (c) => c.lastSeenAt && Date.now() - new Date(c.lastSeenAt).getTime() < 7 * 86400000,
-  ).length;
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
+    }),
+    prisma.customer.count({ where }),
+    prisma.customer.count({
+      where: { userId: user.id, lastSeenAt: { gte: new Date(Date.now() - 7 * 86400000) } },
+    }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageHref = (p: number) =>
+    `/dashboard/customers?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`;
 
   return (
     <div className="space-y-5">
@@ -35,13 +53,25 @@ export default async function CustomersPage() {
         <div>
           <h1 className="page-title">العملاء</h1>
           <p className="page-desc mt-1">
-            {customers.length.toLocaleString("ar-EG")} سجل · {active7d.toLocaleString("ar-EG")} نشط هذا الأسبوع
+            {total.toLocaleString("ar-EG")} سجل · {active7d.toLocaleString("ar-EG")} نشط هذا الأسبوع
           </p>
         </div>
-        <Link href="/dashboard/inbox" className="btn-ghost h-9 text-[13px]">
-          <MessageSquare className="h-4 w-4" />
-          صندوق المحادثات
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action="/dashboard/customers" method="get" className="flex items-center gap-2">
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="بحث بالاسم أو الهاتف…"
+              className="h-9 w-44 rounded-lg border border-white/10 bg-white/5 px-3 text-[13px] text-white placeholder-slate-500 outline-none focus:border-brand-400/60"
+            />
+            <button type="submit" className="btn-ghost h-9 text-[13px]">بحث</button>
+          </form>
+          <Link href="/dashboard/customers/import" className="btn-ghost h-9 text-[13px]">استيراد</Link>
+          <Link href="/dashboard/inbox" className="btn-ghost h-9 text-[13px]">
+            <MessageSquare className="h-4 w-4" />
+            صندوق المحادثات
+          </Link>
+        </div>
       </div>
 
       <InsightStrip context="customers" />
@@ -51,14 +81,18 @@ export default async function CustomersPage() {
         <div className="card">
           <EmptyState
             icon={<Users className="h-full w-full" />}
-            title="لسه ما فيش عملاء"
-            description="هيظهروا هنا تلقائياً لما يبعتوا رسائل لبوتك على واتساب."
+            title={q ? "لا نتائج مطابقة" : "لسه ما فيش عملاء"}
+            description={q ? `لا يوجد عميل يطابق «${q}». جرّب بحثاً آخر.` : "هيظهروا هنا تلقائياً لما يبعتوا رسائل لبوتك على واتساب."}
             size="lg"
             action={
-              <Link href="/dashboard/playground" className="btn-primary inline-flex">
-                <MessageSquare className="h-4 w-4" />
-                جرّب البوت بنفسك
-              </Link>
+              q ? (
+                <Link href="/dashboard/customers" className="btn-primary inline-flex">مسح البحث</Link>
+              ) : (
+                <Link href="/dashboard/playground" className="btn-primary inline-flex">
+                  <MessageSquare className="h-4 w-4" />
+                  جرّب البوت بنفسك
+                </Link>
+              )
             }
           />
         </div>
@@ -130,6 +164,23 @@ export default async function CustomersPage() {
               );
             })}
           </div>
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-[13px]">
+          {page > 1 ? (
+            <Link href={pageHref(page - 1)} className="btn-ghost h-8">السابق</Link>
+          ) : (
+            <span className="h-8" />
+          )}
+          <span className="text-slate-400">
+            صفحة {page.toLocaleString("ar-EG")} من {totalPages.toLocaleString("ar-EG")}
+          </span>
+          {page < totalPages ? (
+            <Link href={pageHref(page + 1)} className="btn-ghost h-8">التالي</Link>
+          ) : (
+            <span className="h-8" />
+          )}
         </div>
       )}
       </FadeInView>

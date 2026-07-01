@@ -71,6 +71,7 @@ const Body = z.discriminatedUnion("action", [
     action: z.literal("credit"),
     amountUsd: z.number(),
     note: z.string().max(300).optional(),
+    idempotencyKey: z.string().max(120).optional(),
   }),
   z.object({ action: z.literal("settle") }),
   z.object({
@@ -126,6 +127,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     const res = await grantMetaCredit(userId, body.amountUsd, {
       actorId: actor.email,
       note: body.note,
+      idempotencyKey: body.idempotencyKey,
     });
     if (!res.ok) return NextResponse.json({ error: res.reason }, { status: 400 });
     return NextResponse.json(res);

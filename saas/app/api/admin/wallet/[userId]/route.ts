@@ -55,8 +55,13 @@ export async function POST(req: Request, { params }: { params: { userId: string 
   const adminEmail = admin?.email || "admin";
   const adminId = admin?.id || null;
   const reason = body.reason ? String(body.reason).slice(0, 300) : "";
-  // A unique idempotency key per admin click (admin actions are not replayed).
-  const stamp = `${adminId || "admin"}:${userId}:${Date.now()}:${Math.round(Math.random() * 1e9)}`;
+  // Idempotency: prefer a client-supplied key (one UUID per admin click, resent
+  // on retry); otherwise collapse identical requests within a 30s window so a
+  // network retry / double-click cannot double-credit or double-debit.
+  const clientKey = String(body.idempotencyKey || "").slice(0, 120);
+  const idemBase =
+    clientKey ||
+    `${adminId || "admin"}:${userId}:${roundUsd(Number(body.amountUsd) || 0)}:${reason}:${Math.floor(Date.now() / 30000)}`;
 
   try {
     if (action === "credit" || action === "debit") {
@@ -66,7 +71,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
       const res = await fn({
         userId, kind: action === "credit" ? "adjustment" : "adjustment", amountUsd,
         source: "admin", reason: reason || `admin_${action}`,
-        idempotencyKey: `admin:${action}:${stamp}`, actorId: adminId, actorEmail: adminEmail,
+        idempotencyKey: `admin:${action}:${idemBase}`, actorId: adminId, actorEmail: adminEmail,
       });
       await audit({ userId, action: action === "credit" ? "wallet.admin_credit" : "wallet.admin_debit", actorId: adminId, actorEmail: adminEmail, actorRole: "admin", targetType: "wallet", targetId: userId, metadata: { amountUsd, reason, result: res.reason || "ok" }, req });
       if (!res.ok && res.reason === "insufficient_funds") return NextResponse.json({ ok: false, error: "insufficient_funds", shortfall: res.shortfall, balanceAfter: res.balanceAfter }, { status: 409 });
@@ -76,7 +81,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     if (action === "adjust") {
       const signed = roundUsd(Number(body.amountUsd) || 0);
       if (signed === 0) return NextResponse.json({ error: "invalid_amount" }, { status: 400 });
-      const res = await adjust({ userId, amountUsd: signed, source: "admin", reason: reason || "admin_adjustment", idempotencyKey: `admin:adjust:${stamp}`, actorId: adminId, actorEmail: adminEmail });
+      const res = await adjust({ userId, amountUsd: signed, source: "admin", reason: reason || "admin_adjustment", idempotencyKey: `admin:adjust:${idemBase}`, actorId: adminId, actorEmail: adminEmail });
       await audit({ userId, action: "wallet.admin_adjusted", actorId: adminId, actorEmail: adminEmail, actorRole: "admin", targetType: "wallet", targetId: userId, metadata: { amountUsd: signed, reason }, req });
       if (!res.ok && res.reason === "insufficient_funds") return NextResponse.json({ ok: false, error: "insufficient_funds", shortfall: res.shortfall }, { status: 409 });
       return NextResponse.json({ ok: res.ok, result: res });

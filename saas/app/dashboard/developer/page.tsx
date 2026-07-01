@@ -31,9 +31,14 @@ export default async function DeveloperPage() {
           </p>
         </div>
         {g.allowed ? (
-          <Link href="/dashboard/developer/docs" className="btn-secondary inline-flex items-center gap-2 text-sm whitespace-nowrap">
-            <BookOpen className="h-4 w-4" /> مركز التوثيق الكامل
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard/developer/docs" className="btn-secondary inline-flex items-center gap-2 text-sm whitespace-nowrap">
+              <BookOpen className="h-4 w-4" /> مركز التوثيق الكامل
+            </Link>
+            <Link href="/dashboard/developer/sdk" className="btn-secondary inline-flex items-center gap-2 text-sm whitespace-nowrap">
+              <Code2 className="h-4 w-4" /> مكتبات SDK
+            </Link>
+          </div>
         ) : null}
       </div>
 

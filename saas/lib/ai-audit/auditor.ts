@@ -123,8 +123,8 @@ export async function computeAudit(userId: string): Promise<AuditResult> {
       severity: "high",
       title: "تعارضات معرفة غير محلولة",
       detail: `${conflicts} تعارض في الأسعار بين الكتالوج والمصادر.`,
-      fix: "راجع وحُلّ التعارضات من صفحة تعارضات المعرفة.",
-      href: "/dashboard/knowledge/conflicts",
+      fix: "راجع وحُلّ التعارضات من صفحة المعرفة.",
+      href: "/dashboard/knowledge",
     });
   }
   if (gaps > 5) {
@@ -172,7 +172,7 @@ export async function computeAudit(userId: string): Promise<AuditResult> {
       title: "ملف النشاط غير مكتمل",
       detail: "بيانات النشاط ناقصة، ما يضعف جودة ردود المساعد.",
       fix: "أكمل ملف النشاط من الإعدادات.",
-      href: "/dashboard/settings/business-profile",
+      href: "/dashboard/settings",
     });
   }
 
