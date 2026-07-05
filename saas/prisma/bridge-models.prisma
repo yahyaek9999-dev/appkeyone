@@ -1,0 +1,76 @@
+// KEYONE Bridge — additive Cloud data model (Phase 1).
+//
+// MERGE these models into BOTH prisma/schema.postgres.prisma (the live one) and
+// prisma/schema.prisma (dev) during the Phase 1 migration, and add the
+// back-relation `bridges Bridge[]` to the existing `model User`. All additive:
+// no existing table/column changes. `Bot.connectionMode` (already a free String)
+// simply gains the new value "bridge" — no schema change there.
+//
+// The Cloud stores ONLY telemetry + a token HASH. It never stores WhatsApp auth,
+// sessions, cookies, or QR. Transport-agnostic: one Bridge can host many
+// providers (whatsapp, telegram, …) via BridgeTransport rows.
+
+model Bridge {
+  id              String   @id @default(cuid())
+  userId          String                          // workspace scope (existing model)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String?                          // "Office PC", "prod-server-1"
+  os              String?
+  arch            String?
+  version         String?                          // Bridge build version
+  capabilities    String?                          // JSON, negotiated at hello
+  status          String   @default("offline")     // online | offline
+  isPrimary       Boolean  @default(false)         // customer-selected primary (multi-bridge)
+  lastHeartbeatAt DateTime?
+  tokenHash       String                           // hash of the Bridge refresh token (NEVER the token)
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transports BridgeTransport[]
+
+  @@index([userId, status])
+  @@index([userId, isPrimary])
+}
+
+model BridgeTransport {
+  id        String   @id @default(cuid())
+  bridgeId  String
+  bridge    Bridge   @relation(fields: [bridgeId], references: [id], onDelete: Cascade)
+  provider  String                                 // "whatsapp" | "telegram" | ...
+  state     String   @default("disconnected")      // linking | connecting | connected | disconnected | logged_out
+  identity  String?                                // connected phone/handle (display only)
+  updatedAt DateTime @updatedAt
+
+  @@unique([bridgeId, provider])
+  @@index([bridgeId])
+}
+
+// OAuth 2.0 Device Authorization Grant (RFC 8628) code — short-lived, one-time.
+model BridgeAuthCode {
+  id            String   @id @default(cuid())
+  deviceCode    String   @unique                   // polled by the Bridge
+  userCodeHash  String                             // hash of the short user code shown in the browser
+  userId        String?                            // set once the customer approves
+  bridgeName    String?
+  codeChallenge String                             // PKCE (S256)
+  approved      Boolean  @default(false)
+  consumed      Boolean  @default(false)
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+// Long-lived, rotating, reuse-detecting Bridge refresh token record (hash only).
+model BridgeToken {
+  id         String   @id @default(cuid())
+  bridgeId   String
+  tokenHash  String   @unique
+  prevHash   String?                                // rotation chain (reuse detection)
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+
+  @@index([bridgeId])
+}
