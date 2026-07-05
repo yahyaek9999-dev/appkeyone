@@ -119,3 +119,6 @@ saas-backup-*/
 *.png
 !public/**/*.png
 !saas/public/**/*.png
+
+# KEYONE Bridge lives in its own repo
+keyone-bridge/
