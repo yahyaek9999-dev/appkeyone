@@ -214,8 +214,14 @@ function drainLogs() {
 }
 
 async function cmdStart() {
-  const cfg = loadCfg();
-  if (!cfg.token || !cfg.bridgeId) { console.error("not linked — run `keyone-wa-bridge login` first"); process.exit(1); }
+  let cfg = loadCfg();
+  // A service may be started before `login`. Idle-wait for the link instead of
+  // exiting (KeepAlive would otherwise crash-loop the daemon on a fresh install).
+  if (!cfg.token || !cfg.bridgeId) {
+    log("warn", "not linked yet — run `keyone-wa-bridge login`. Waiting for link…");
+    while (!cfg.token || !cfg.bridgeId) { await sleep(5000); cfg = loadCfg(); }
+    log("info", "link detected");
+  }
   log("info", `keyone-wa-bridge ${VERSION} starting (bridge=${cfg.bridgeId}, transport=whatsapp-web.js)`);
   connect(cfg);
   process.on("SIGINT", () => process.exit(0));

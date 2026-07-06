@@ -1,0 +1,8 @@
+node_modules
+*.log
+config.json
+wweb
+.wwebjs_auth
+.gitignore
+Dockerfile
+packaging

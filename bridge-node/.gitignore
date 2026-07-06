@@ -3,3 +3,5 @@ node_modules/
 config.json
 wweb/
 .wwebjs_auth/
+packaging/dist/
+packaging/.nodecache/
