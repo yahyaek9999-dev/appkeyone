@@ -20,11 +20,12 @@ export function DownloadCards({ base }: { base: string }) {
     else setDetected("linux");
   }, []);
 
-  const dockerfile = `FROM debian:stable-slim
-ADD ${origin}${base}/linux/keyone-bridge_linux_amd64 /usr/local/bin/keyone-bridge
-RUN chmod +x /usr/local/bin/keyone-bridge
-ENV KEYONE_BRIDGE_HOME=/data
-ENTRYPOINT ["keyone-bridge","start"]`;
+  const dockerfile = `FROM node:20-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends chromium ca-certificates fonts-liberation && rm -rf /var/lib/apt/lists/*
+ENV KEYONE_CHROME=/usr/bin/chromium KEYONE_BRIDGE_HOME=/data
+WORKDIR /app
+ADD ${origin}${base}/app.tar.gz /app/
+ENTRYPOINT ["node","/app/keyone-wa-bridge.js","start"]`;
 
   const cards: {
     os: OS; name: string; icon: string; note: string;
@@ -32,24 +33,22 @@ ENTRYPOINT ["keyone-bridge","start"]`;
     links: { label: string; href: string }[];
   }[] = [
     {
-      os: "windows", name: "Windows", icon: "🪟", note: "ويندوز 10/11 — يعمل في الخلفية تلقائياً.",
-      primary: { label: "تنزيل لـ Windows", href: `${base}/windows/latest.exe` },
+      os: "windows", name: "Windows", icon: "🪟", note: "ويندوز 10/11 — فُكّ الضغط ثم شغّل install.ps1 (يعمل تلقائياً عند تسجيل الدخول).",
+      primary: { label: "تنزيل لـ Windows (.zip)", href: `${base}/windows/keyone-wa-bridge-win-x64.zip` },
       links: [],
     },
     {
       os: "mac", name: "macOS", icon: "", note: "Apple Silicon و Intel — يُثبَّت كـ LaunchAgent.",
-      primary: { label: "تنزيل المُثبِّت (.pkg)", href: `${base}/macos/latest.pkg` },
+      primary: { label: "تنزيل المُثبِّت (Apple Silicon)", href: `${base}/macos/latest.pkg` },
       links: [
-        { label: "Apple Silicon (arm64)", href: `${base}/macos/keyone-bridge_darwin_arm64` },
-        { label: "Intel (x64)", href: `${base}/macos/keyone-bridge_darwin_amd64` },
+        { label: "Intel (x64) .pkg", href: `${base}/macos/keyone-wa-bridge-darwin-x64.pkg` },
       ],
     },
     {
       os: "linux", name: "Linux", icon: "🐧", note: "Ubuntu / Debian وغيرها — خدمة systemd.",
-      primary: { label: "تنزيل (.deb)", href: `${base}/linux/latest.deb` },
+      primary: { label: "تنزيل (.deb) x64", href: `${base}/linux/latest.deb` },
       links: [
-        { label: "الملف الثنائي (x64)", href: `${base}/linux/keyone-bridge_linux_amd64` },
-        { label: "الملف الثنائي (arm64)", href: `${base}/linux/keyone-bridge_linux_arm64` },
+        { label: "arm64 (.deb)", href: `${base}/linux/keyone-wa-bridge_arm64.deb` },
       ],
     },
     {

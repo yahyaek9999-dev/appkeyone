@@ -51,6 +51,49 @@ function log(level, msg) {
 function loadCfg() { try { return JSON.parse(fs.readFileSync(CFG, "utf8")); } catch { return {}; } }
 function saveCfg(c) { fs.writeFileSync(CFG, JSON.stringify(c, null, 2), { mode: 0o600 }); }
 
+// ------------------------------------------------------ auto-update (from store) --
+const DL_BASE = process.env.KEYONE_BRIDGE_DOWNLOAD_BASE || `${CLOUD_API}/downloads/keyone-bridge`;
+function getURL(url, depth = 0) {
+  return new Promise((resolve, reject) => {
+    if (depth > 5) return reject(new Error("too many redirects"));
+    https.get(url, (r) => {
+      if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location)
+        return getURL(new URL(r.headers.location, url).toString(), depth + 1).then(resolve, reject);
+      if (r.statusCode !== 200) return reject(new Error("HTTP " + r.statusCode));
+      const ch = []; r.on("data", (d) => ch.push(d)); r.on("end", () => resolve(Buffer.concat(ch)));
+    }).on("error", reject);
+  });
+}
+function isNewer(cur, latest) {
+  const p = (s) => String(s).replace(/[^0-9.].*$/, "").split(".").map((n) => Number(n) || 0);
+  const a = p(cur), b = p(latest);
+  for (let i = 0; i < 3; i++) { if ((b[i] || 0) > (a[i] || 0)) return true; if ((b[i] || 0) < (a[i] || 0)) return false; }
+  return false;
+}
+// `update`: platform-agnostic self-update of the app/ dir (keyone-wa-bridge.js +
+// node_modules) from the KEYONE store, keeping the bundled node. Restart to apply.
+async function cmdUpdate() {
+  const APPDIR = __dirname;                 // <bundle>/app
+  const ROOT = path.dirname(APPDIR);        // <bundle>
+  const bundled = fs.existsSync(path.join(ROOT, "node")) || fs.existsSync(path.join(ROOT, "node.exe"));
+  if (!bundled) { console.log("update: not an installed bundle (run the installer to update)."); return; }
+  const man = JSON.parse((await getURL(DL_BASE + "/version.json")).toString());
+  if (!man.app || !man.app.file) { console.log("update: manifest has no app package."); return; }
+  if (!isNewer(VERSION, man.version)) { console.log("already up to date (" + VERSION + ")"); return; }
+  console.log("updating " + VERSION + " → " + man.version + " …");
+  const buf = await getURL(DL_BASE + "/" + man.app.file);
+  const sum = crypto.createHash("sha256").update(buf).digest("hex");
+  if (man.app.sha256 && sum !== man.app.sha256) throw new Error("checksum mismatch — aborting update");
+  const stage = path.join(ROOT, "app.new");
+  fs.rmSync(stage, { recursive: true, force: true }); fs.mkdirSync(stage, { recursive: true });
+  const tgz = path.join(ROOT, "app.tgz"); fs.writeFileSync(tgz, buf);
+  require("child_process").execFileSync("tar", ["xzf", tgz, "-C", stage]);
+  fs.rmSync(tgz, { force: true });
+  const old = path.join(ROOT, "app.old"); fs.rmSync(old, { recursive: true, force: true });
+  fs.renameSync(APPDIR, old); fs.renameSync(stage, APPDIR);
+  console.log("updated to " + man.version + " — restart the service to apply.");
+}
+
 // ---------------------------------------------------------------- http (JSON) --
 function postJSON(url, body) {
   return new Promise((resolve, reject) => {
@@ -234,7 +277,8 @@ async function cmdStart() {
   try {
     if (cmd === "login") await cmdLogin(process.argv.slice(3).join(" "));
     else if (cmd === "start" || cmd === "run") await cmdStart();
+    else if (cmd === "update") await cmdUpdate();
     else if (cmd === "version" || cmd === "-v") console.log("keyone-wa-bridge", VERSION);
-    else { console.error("usage: keyone-wa-bridge <login|start|version>"); process.exit(2); }
+    else { console.error("usage: keyone-wa-bridge <login|start|update|version>"); process.exit(2); }
   } catch (e) { console.error("error:", e.message); process.exit(1); }
 })();
