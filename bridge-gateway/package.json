@@ -1,0 +1,17 @@
+{
+  "name": "keyone-bridge-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KEYONE Bridge Gateway — Phase 1 WebSocket handshake stub (Bridge⇄Cloud). Not the full relay.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.5",
+    "ws": "^8.17.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

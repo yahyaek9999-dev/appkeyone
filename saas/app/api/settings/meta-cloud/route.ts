@@ -17,10 +17,15 @@ import { decryptSecret, encryptSecret, maskSecret } from "@/lib/crypto-util";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { metaCloudAllowedForUser, metaCloudGloballyEnabled } from "@/lib/messaging/feature-flags";
+import { bridgeEnabled } from "@/lib/bridge/flags";
 
 export const dynamic = "force-dynamic";
 
-const ModeEnum = z.enum(["qr", "meta_cloud"]);
+// "bridge" is an additive, flag-gated transport. It is only accepted as a save
+// value when BRIDGE_ENABLED is on (guarded again below); with the flag off the
+// enum still lists it so old clients get a clean 400 instead of a 500, but the
+// runtime guard rejects it — qr/meta_cloud behaviour is untouched either way.
+const ModeEnum = z.enum(["qr", "meta_cloud", "bridge"]);
 const PutBody = z.object({
   mode:                 ModeEnum,
   phoneNumberId:        z.string().max(64).optional(),
@@ -79,6 +84,18 @@ export async function PUT(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = PutBody.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "bad_body", detail: parsed.error.message }, { status: 400 });
+
+  // KEYONE Bridge is flag-gated. With BRIDGE_ENABLED off, reject the value so a
+  // stray client can never flip a bot into "bridge" mode. qr/meta_cloud paths
+  // are unaffected. Bridge needs no Meta credentials — it only sets the mode;
+  // linking a bridge happens via the device-authorization flow, not this route.
+  if (parsed.data.mode === "bridge") {
+    if (!bridgeEnabled()) {
+      return NextResponse.json({ error: "bridge_disabled", message: "KEYONE Bridge غير مُفعّل." }, { status: 400 });
+    }
+    await prisma.bot.update({ where: { userId: user.id }, data: { connectionMode: "bridge" } as any });
+    return NextResponse.json({ ok: true });
+  }
 
   // Switching to Meta Cloud REQUIRES an app secret (now or already saved) — it is
   // used to validate inbound webhook signatures; without it every webhook is

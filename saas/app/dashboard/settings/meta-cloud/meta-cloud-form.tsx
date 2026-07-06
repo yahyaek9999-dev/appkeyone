@@ -18,9 +18,11 @@ const MESSAGING_LIMIT_LABEL: Record<string, string> = {
   TIER_UNLIMITED: "غير محدود",
 };
 
+type Mode = "qr" | "meta_cloud" | "bridge";
+
 interface MaskedSecret { mask: string; hasValue: boolean }
 interface InitialState {
-  mode: "qr" | "meta_cloud";
+  mode: Mode;
   phoneNumberId: string;
   businessAccountId: string;
   webhookVerifyToken: string;
@@ -30,12 +32,13 @@ interface InitialState {
   messagingLimit: string | null;
   verifiedAt: string | null;
   planAccess: "none" | "limited" | "full";
+  bridgeEnabled: boolean;
 }
 
 export function MetaCloudForm({ initial }: { initial: InitialState }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [mode, setMode] = useState<"qr" | "meta_cloud">(initial.mode);
+  const [mode, setMode] = useState<Mode>(initial.mode);
   const [phoneNumberId, setPhoneNumberId] = useState(initial.phoneNumberId);
   const [businessAccountId, setBusinessAccountId] = useState(initial.businessAccountId);
   const [webhookVerifyToken, setWebhookVerifyToken] = useState(initial.webhookVerifyToken);
@@ -121,7 +124,28 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
             <div className="text-xs text-slate-400 mt-1">اتصال مباشر عبر Meta. أكثر استقراراً على المدى الطويل. يتطلب موافقة Meta وقوالب رسائل معتمدة.</div>
           </div>
         </label>
+
+        {/* KEYONE Bridge — additive, flag-gated transport. Only shown when the
+            master switch is on; qr / meta_cloud are untouched when it is off. */}
+        {initial.bridgeEnabled && (
+          <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border ${mode === "bridge" ? "bg-sky-500/10 border-sky-500/30" : "bg-white/5 border-white/10"}`}>
+            <input type="radio" name="mode" checked={mode === "bridge"} onChange={() => setMode("bridge")} className="mt-1 w-4 h-4 accent-sky-500" />
+            <div className="flex-1">
+              <div className="text-sm font-bold">🖥️ KEYONE Bridge <span className="text-xs font-normal text-sky-300 mr-1">(جديد)</span></div>
+              <div className="text-xs text-slate-400 mt-1">موصّل تستضيفه بنفسك على جهازك أو خادمك، يربط واتساب بمساحة عملك عبر KEYONE بأمان. مثالي لتشغيل عدة أرقام أو أجهزة.</div>
+            </div>
+          </label>
+        )}
       </div>
+
+      {/* Bridge management lives on its own panel (status, devices, actions). */}
+      {mode === "bridge" && (
+        <div className="card p-4 bg-sky-500/10 border-sky-500/30 text-sm text-slate-200 space-y-2">
+          <b className="text-sky-300">أنت الآن على وضع KEYONE Bridge.</b>
+          <p className="text-slate-300">احفظ التغيير ثم أدر أجهزة الـ Bridge (الحالة، الأرقام المرتبطة، الأوامر) من لوحة الـ Bridge المخصصة.</p>
+          <a href="/dashboard/settings/bridge" className="inline-block text-sky-300 underline">فتح لوحة KEYONE Bridge ←</a>
+        </div>
+      )}
 
       {/* Status panel — only relevant when Meta is active */}
       {mode === "meta_cloud" && initial.verifiedAt && (

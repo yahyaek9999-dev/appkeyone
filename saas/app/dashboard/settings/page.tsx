@@ -1,10 +1,11 @@
 import { getAuthContext } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/rbac";
-import { CreditCard, Mail, User, Phone, Sparkles, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug, ShoppingBag, Building2 } from "lucide-react";
+import { CreditCard, Mail, User, Phone, Sparkles, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug, ShoppingBag, Building2, Server } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { FadeInView } from "@/components/ui/stagger-reveal";
+import { bridgeEnabled } from "@/lib/bridge/flags";
 
 export default async function SettingsPage() {
   const ctx = await getAuthContext();
@@ -129,6 +130,12 @@ export default async function SettingsPage() {
         <SettingLink href="/dashboard/settings/meta-cloud" icon={<MessageSquare className="h-5 w-5 text-emerald-300" />}
           title="واتساب — وضع الاتصال"
           desc="اختر QR Code أو Meta Cloud API الرسمي. يضمن استقرار طويل المدى والامتثال لسياسة Meta." />
+        {/* KEYONE Bridge — additive, flag-gated. Only appears when BRIDGE_ENABLED is on. */}
+        {bridgeEnabled() && (
+          <SettingLink href="/dashboard/settings/bridge" icon={<Server className="h-5 w-5 text-sky-300" />}
+            title="KEYONE Bridge"
+            desc="أدر موصّلات النقل المستضافة ذاتياً: حالة الأجهزة، الأرقام المرتبطة، والجهاز الأساسي." />
+        )}
         <SettingLink href="/dashboard/settings/orders" icon={<ShoppingBag className="h-5 w-5 text-orange-300" />}
           title="إعدادات الطلبات"
           desc="اضبط كيف يجمع البوت الطلبات من العملاء: الحقول المطلوبة، التأكيد، والرسائل التلقائية." />

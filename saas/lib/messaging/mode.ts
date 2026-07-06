@@ -2,15 +2,17 @@
  * Connection-mode normalizer for the hybrid WhatsApp architecture.
  *
  * The database stores `Bot.connectionMode` as a free string for forward
- * compatibility, but we want exactly two runtime modes:
+ * compatibility, but we want exactly three runtime modes:
  *   - "qr"          → whatsapp-web.js gateway (legacy)
  *   - "meta_cloud"  → Meta Cloud API (new)
+ *   - "bridge"      → KEYONE Bridge transport (customer-hosted connector, new)
  *
  * To keep production safe we accept legacy values too. Anything we don't
- * recognise falls back to "qr" — never to Meta, which is the riskier path.
+ * recognise falls back to "qr" — never to Meta or Bridge, which are the
+ * riskier / gated paths.
  */
 
-export type ConnectionMode = "qr" | "meta_cloud";
+export type ConnectionMode = "qr" | "meta_cloud" | "bridge";
 
 const LEGACY_MAP: Record<string, ConnectionMode> = {
   qr: "qr",
@@ -21,6 +23,9 @@ const LEGACY_MAP: Record<string, ConnectionMode> = {
   meta: "meta_cloud",
   cloud: "meta_cloud",
   official: "meta_cloud",
+  bridge: "bridge",
+  keyone_bridge: "bridge",
+  connector: "bridge",
 };
 
 /**
@@ -41,4 +46,14 @@ export function normalizeConnectionMode(raw: string | null | undefined): Connect
 export function isMetaConfigured(bot: { connectionMode?: string | null; metaAccessTokenEnc?: string | null }): boolean {
   return normalizeConnectionMode(bot.connectionMode) === "meta_cloud"
     && !!(bot.metaAccessTokenEnc && bot.metaAccessTokenEnc.trim());
+}
+
+/**
+ * True when the bot is configured for the KEYONE Bridge transport, IGNORING
+ * global flags or tier limits. Useful for showing UI hints. Routing decisions
+ * must additionally check `bridgeEnabled()` from lib/bridge/flags.ts — Bridge
+ * is a NEW, flag-gated path and MUST NOT route unless the master switch is on.
+ */
+export function isBridgeMode(bot: { connectionMode?: string | null }): boolean {
+  return normalizeConnectionMode(bot.connectionMode) === "bridge";
 }

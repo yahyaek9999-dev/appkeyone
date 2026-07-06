@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { decryptSecret, maskSecret } from "@/lib/crypto-util";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { getEffectivePlan } from "@/lib/membership/plan";
+import { bridgeEnabled } from "@/lib/bridge/flags";
 import { MetaCloudForm } from "./meta-cloud-form";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ export default async function MetaCloudPage() {
     messagingLimit: bot.metaMessagingLimit || null,
     verifiedAt: bot.metaVerifiedAt ? new Date(bot.metaVerifiedAt).toISOString() : null,
     planAccess,
+    bridgeEnabled: bridgeEnabled(),
   };
 
   return (
