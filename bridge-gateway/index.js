@@ -166,23 +166,30 @@ const server = http.createServer((req, res) => {
 
 // ---- WS server -------------------------------------------------------------
 
-const wss = new WebSocketServer({ server });
+// Authenticate DURING the HTTP upgrade (before 'connection' fires). This avoids a
+// race where the client's first frame (hello) arrives before the async token
+// check finishes and the 'message' listener is attached — which would drop hello.
+const wss = new WebSocketServer({
+  server,
+  verifyClient: (info, cb) => {
+    const token = extractToken(info.req);
+    verifyToken(token)
+      .then((bridgeId) => {
+        if (bridgeId) {
+          info.req._bridgeId = bridgeId; // stashed for the connection handler
+          cb(true);
+        } else {
+          cb(false, 401, "unauthorized"); // reject the upgrade
+        }
+      })
+      .catch(() => cb(false, 401, "unauthorized"));
+  },
+});
 
-wss.on("connection", async (ws, req) => {
-  const token = extractToken(req);
-  const bridgeId = await verifyToken(token);
-
-  if (!bridgeId) {
-    // 4401 = application-level "unauthorized" close code.
-    try {
-      ws.close(4401, "unauthorized");
-    } catch {
-      /* ignore */
-    }
-    return;
-  }
-
-  ws.bridgeId = bridgeId;
+wss.on("connection", (ws, req) => {
+  // Token already verified in verifyClient; the message listener below is
+  // attached synchronously, so no frame can be missed.
+  ws.bridgeId = req._bridgeId;
   ws.isAlive = true;
 
   ws.on("message", async (raw) => {
