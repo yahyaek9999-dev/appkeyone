@@ -44,6 +44,7 @@ type Provider struct {
 	events chan transport.Event
 
 	mu        sync.Mutex
+	linkMu    sync.Mutex // serialises StartLink so re-clicks can't race the QR channel
 	container *sqlstore.Container
 	client    *whatsmeow.Client
 	state     transport.ConnectionState
@@ -111,6 +112,10 @@ func (p *Provider) Start(ctx context.Context) error {
 // StartLink begins QR linking: generate the QR locally, stream each code to the
 // Cloud as a link artifact. The QR itself is rendered by the Dashboard.
 func (p *Provider) StartLink(ctx context.Context) error {
+	// Serialise: a customer re-clicking "Start QR" must not race the QR channel.
+	p.linkMu.Lock()
+	defer p.linkMu.Unlock()
+
 	p.mu.Lock()
 	client := p.client
 	linkCtx := p.ctx
@@ -123,6 +128,16 @@ func (p *Provider) StartLink(ctx context.Context) error {
 	}
 	if linkCtx == nil {
 		linkCtx = context.Background()
+	}
+
+	// whatsmeow requires GetQRChannel to be called BEFORE Connect. If a link is
+	// already in flight (re-click, or a prior sequence still connected), tear the
+	// old socket down first so we hand back a FRESH, live code — otherwise
+	// GetQRChannel returns "must be called before connecting" and the customer is
+	// left staring at a dead QR.
+	if client.IsConnected() {
+		client.Disconnect()
+		p.log.Infof("whatsapp: restarting QR linking with a fresh code")
 	}
 
 	qrChan, err := client.GetQRChannel(linkCtx)

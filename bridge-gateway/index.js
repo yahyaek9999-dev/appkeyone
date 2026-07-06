@@ -241,16 +241,21 @@ async function markOnlineWithMeta(bridgeId, meta) {
   }
 }
 
-/** Persist the latest streamed QR string for a provider (Dashboard display). */
-async function persistQr(bridgeId, provider, qr) {
+/** Persist the latest streamed QR string for a provider (Dashboard display).
+ *  Also stores the code's REAL expiry (from whatsmeow, ms epoch) so the Dashboard
+ *  shows a QR only while it is actually live — never a rotated/dead code, which is
+ *  exactly what makes WhatsApp reply "Check your connection and try again". */
+async function persistQr(bridgeId, provider, qr, expiresAt) {
   if (!pool || !bridgeId || !provider) return;
+  const exp = Number(expiresAt) > 0 ? new Date(Number(expiresAt)) : null;
   try {
     await pool.query(
-      `INSERT INTO "BridgeTransport" ("id","bridgeId","provider","state","lastQr","lastQrAt","updatedAt")
-       VALUES ($1,$2,$3,'linking',$4, now(), now())
+      `INSERT INTO "BridgeTransport" ("id","bridgeId","provider","state","lastQr","lastQrAt","lastQrExpiresAt","updatedAt")
+       VALUES ($1,$2,$3,'linking',$4, now(), $5, now())
        ON CONFLICT ("bridgeId","provider")
-       DO UPDATE SET "lastQr" = EXCLUDED."lastQr", "lastQrAt" = now(), "updatedAt" = now()`,
-      [crypto.randomUUID(), bridgeId, provider, String(qr || "").slice(0, 8192)],
+       DO UPDATE SET "lastQr" = EXCLUDED."lastQr", "lastQrAt" = now(),
+                     "lastQrExpiresAt" = EXCLUDED."lastQrExpiresAt", "updatedAt" = now()`,
+      [crypto.randomUUID(), bridgeId, provider, String(qr || "").slice(0, 8192), exp],
     );
   } catch (err) {
     console.error("[bridge-gateway] persistQr db error:", err.message);
@@ -614,7 +619,8 @@ wss.on("connection", (ws, req) => {
           receivedAt: Date.now(),
         });
         // Persist so the Dashboard can render the QR (DB-backed, survives restart).
-        await persistQr(ws.bridgeId, provider, data);
+        // Pass the code's REAL expiry so the Dashboard never shows a dead code.
+        await persistQr(ws.bridgeId, provider, data, p.expiresAt);
         send(ws, envelope("link_artifact_ack", { ok: true }, frame.id));
         break;
       }

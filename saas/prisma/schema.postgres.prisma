@@ -3494,10 +3494,11 @@ model BridgeTransport {
   provider  String                                 // "whatsapp" | "telegram" | ...
   state     String   @default("disconnected")      // linking | connecting | connected | disconnected | logged_out
   identity  String?                                // connected phone/handle (display only)
-  lastQr    String?                                // latest streamed QR string (for Dashboard display; rotates)
-  lastQrAt  DateTime?                               // when the QR was last streamed
-  lastError String?                                // last provider-level error (display)
-  updatedAt DateTime @updatedAt
+  lastQr          String?                          // latest streamed QR string (for Dashboard display; rotates)
+  lastQrAt        DateTime?                         // when the QR was last streamed
+  lastQrExpiresAt DateTime?                         // the code's REAL expiry (from whatsmeow); Dashboard shows a QR only while live
+  lastError       String?                          // last provider-level error (display)
+  updatedAt       DateTime @updatedAt
 
   @@unique([bridgeId, provider])
   @@index([bridgeId])

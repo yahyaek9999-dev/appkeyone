@@ -140,7 +140,15 @@ function BridgeCard({
             <span className="text-2xl">✅</span>
           </div>
         ) : wa?.hasQr && wa.qr ? (
-          <QrPanel qr={wa.qr} ageMs={wa.qrAgeMs ?? 0} onRefresh={() => control("start_qr")} busy={busy === "start_qr"} />
+          <QrPanel qr={wa.qr} remainingMs={wa.qrRemainingMs} onRefresh={() => control("start_qr")} busy={busy === "start_qr"} />
+        ) : wa?.state === "linking" ? (
+          // Session is live but this instant is between whatsmeow's ~20s code
+          // rotations — the next live code arrives on the next poll. Never show a
+          // dead code (that is what caused "Check your connection and try again").
+          <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-4 text-sm text-slate-300">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400" />
+            جارٍ توليد رمز QR جديد… أبقِ هذه الصفحة مفتوحة.
+          </div>
         ) : (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
             <p className="text-sm text-slate-300">
@@ -211,9 +219,11 @@ function BridgeCard({
 
 // ---- QR panel with expiration countdown -----------------------------------
 
-function QrPanel({ qr, ageMs, onRefresh, busy }: { qr: string; ageMs: number; onRefresh: () => void; busy: boolean }) {
-  const [remaining, setRemaining] = useState(Math.max(0, 60 - Math.floor(ageMs / 1000)));
-  useEffect(() => { setRemaining(Math.max(0, 60 - Math.floor(ageMs / 1000))); }, [ageMs, qr]);
+function QrPanel({ qr, remainingMs, onRefresh, busy }: { qr: string; remainingMs: number; onRefresh: () => void; busy: boolean }) {
+  // Count down from the code's REAL remaining lifetime (whatsmeow expiry), not a
+  // fixed 60s. A new live code replaces this one via polling before it dies.
+  const [remaining, setRemaining] = useState(Math.max(0, Math.round(remainingMs / 1000)));
+  useEffect(() => { setRemaining(Math.max(0, Math.round(remainingMs / 1000))); }, [remainingMs, qr]);
   useEffect(() => {
     const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
     return () => clearInterval(id);

@@ -48,7 +48,7 @@ func main() {
 
 	dir, err := config.DataDir()
 	must(err)
-	log := logging.New(dir, logging.LevelInfo)
+	log := logging.New(dir, logLevelFromEnv())
 	defer log.Close()
 
 	switch cmd {
@@ -75,6 +75,23 @@ func main() {
 	default:
 		usage()
 		os.Exit(2)
+	}
+}
+
+// logLevelFromEnv lets support temporarily raise verbosity — e.g. to capture the
+// full whatsmeow pairing handshake in the Dashboard logs — without a code change
+// or new build:  KEYONE_BRIDGE_LOG_LEVEL=debug keyone-bridge start
+// Default (unset/anything else) is the normal info level.
+func logLevelFromEnv() logging.Level {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("KEYONE_BRIDGE_LOG_LEVEL"))) {
+	case "debug":
+		return logging.LevelDebug
+	case "warn":
+		return logging.LevelWarn
+	case "error":
+		return logging.LevelError
+	default:
+		return logging.LevelInfo
 	}
 }
 

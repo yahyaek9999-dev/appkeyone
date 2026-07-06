@@ -18,6 +18,8 @@ export type TransportView = {
   hasQr: boolean;
   qr: string | null; // raw QR string (rendered to an image client-side)
   qrAgeMs: number | null;
+  qrExpiresAt: string | null; // the code's REAL expiry (ISO), streamed from whatsmeow
+  qrRemainingMs: number; // ms until this exact code dies (0 once dead)
   lastError: string | null;
 };
 
@@ -50,11 +52,20 @@ export type BridgeOverview = {
   releaseUrl: string | null;
 };
 
-const QR_TTL_MS = 60_000;
+// If an older Bridge streams a QR without a real expiry, assume ~one whatsmeow
+// rotation (~20s) — NEVER the old fixed 60s, which showed dead codes and caused
+// "Check your connection and try again" on scan.
+const QR_FALLBACK_TTL_MS = 22_000;
 
 function transportView(t: any): TransportView {
-  const qrAgeMs = t.lastQrAt ? Date.now() - new Date(t.lastQrAt).getTime() : null;
-  const fresh = qrAgeMs !== null && qrAgeMs < QR_TTL_MS;
+  const now = Date.now();
+  const qrAt = t.lastQrAt ? new Date(t.lastQrAt).getTime() : null;
+  const qrExp = t.lastQrExpiresAt ? new Date(t.lastQrExpiresAt).getTime() : null;
+  const qrAgeMs = qrAt !== null ? now - qrAt : null;
+  // A code is "live" only until its REAL expiry (from whatsmeow). Show a QR only
+  // while it is genuinely scannable — a rotated/dead code fails WhatsApp pairing.
+  const liveUntil = qrExp ?? (qrAt !== null ? qrAt + QR_FALLBACK_TTL_MS : null);
+  const fresh = liveUntil !== null && now < liveUntil;
   return {
     provider: t.provider,
     state: t.state,
@@ -62,6 +73,8 @@ function transportView(t: any): TransportView {
     hasQr: !!(t.lastQr && fresh),
     qr: t.lastQr && fresh ? t.lastQr : null,
     qrAgeMs,
+    qrExpiresAt: qrExp ? new Date(qrExp).toISOString() : null,
+    qrRemainingMs: fresh && liveUntil !== null ? liveUntil - now : 0,
     lastError: t.lastError ?? null,
   };
 }
@@ -104,7 +117,7 @@ export async function getBridgeOverview(userId: string): Promise<BridgeOverview>
       transports: {
         select: {
           provider: true, state: true, identity: true,
-          lastQr: true, lastQrAt: true, lastError: true,
+          lastQr: true, lastQrAt: true, lastQrExpiresAt: true, lastError: true,
         },
         orderBy: { provider: "asc" },
       },
