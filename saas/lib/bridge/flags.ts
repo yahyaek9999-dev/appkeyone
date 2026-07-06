@@ -15,3 +15,22 @@ export function bridgeEnabled(): boolean {
 
 /** The Cloud WS ingress URL the Dashboard hands to a linking Bridge (Phase 2). */
 export const BRIDGE_WS_URL = process.env.BRIDGE_WS_URL || "";
+
+/**
+ * Internal HTTP base for the co-located bridge-gateway process (Phase 2 outbound).
+ * The Cloud (Next.js) posts outbound messages here; the gateway pushes them over
+ * the live WebSocket to the customer's Bridge. Localhost by default — the gateway
+ * and the Cloud run on the same box. Never exposed publicly (guarded by the
+ * internal secret; Caddy only proxies the /bridge WS path, not /internal/*).
+ */
+export const BRIDGE_GATEWAY_INTERNAL_URL =
+  process.env.BRIDGE_GATEWAY_INTERNAL_URL || "http://127.0.0.1:3002";
+
+/**
+ * A Bridge is considered stale/offline if no heartbeat has been seen for this
+ * long. The gateway flips status→offline on socket close immediately; this
+ * threshold covers crash-without-close (no FIN) cases via the staleness sweep.
+ */
+export const BRIDGE_HEARTBEAT_TIMEOUT_MS = Number(
+  process.env.BRIDGE_HEARTBEAT_TIMEOUT_MS || 90_000,
+);

@@ -1,22 +1,38 @@
-// KEYONE Bridge Gateway — Phase 1 handshake stub.
+// KEYONE Bridge Gateway — Phase 2 relay.
 //
-// A tiny standalone WS ingress that proves the Bridge⇄Cloud handshake end to end.
-// It is NOT the full relay (Phase 2). It only:
-//   1. authenticates a connecting Bridge by its token (sha256(token) must match a
-//      live, non-revoked BridgeToken row in the Cloud Postgres);
-//   2. answers the protocol v1 `hello` frame with `hello_ack` and marks the
-//      owning Bridge online (Bridge.status='online', lastHeartbeatAt=now);
-//   3. answers `heartbeat` with `heartbeat_ack`.
+// A standalone WS ingress that carries a customer-hosted Bridge's transport
+// traffic to/from the Cloud. It holds NO WhatsApp auth and NEVER touches the
+// send pipeline code; it is pure relay + auth. Everything here only runs when a
+// Bridge deliberately connects and a bridge-mode tenant deliberately routes
+// through it (both gated by BRIDGE_ENABLED on the Cloud side).
 //
-// It stores NO WhatsApp auth and never touches the send pipeline. Everything here
-// is additive and only runs when a Bridge deliberately connects to this process.
+// What it does (Phase 2):
+//   AUTH   — a connecting Bridge is authenticated at WS-upgrade time by its
+//            token (sha256(token) must match a live, non-revoked BridgeToken).
+//   HELLO  — answers `hello`; marks the owning Bridge online.
+//   BEAT   — answers `heartbeat`; touches lastHeartbeatAt; ws ping keepalive.
+//   INBOUND— a Bridge `inbound` frame is relayed 1:1 to the SAME Cloud endpoint
+//            the whatsapp-web.js gateway uses (POST /api/whatsapp/incoming with
+//            x-internal-secret). The synchronous `{reply}` from that endpoint is
+//            pushed straight back to the Bridge as an `outbound` frame — exactly
+//            mirroring what the wa-service does with the HTTP response.
+//   OUTBOUND (async) — the Cloud posts to POST /internal/outbound (localhost,
+//            x-internal-secret). The gateway pushes an `outbound` frame to the
+//            tenant's primary online Bridge and waits for `outbound_ack`.
+//   STATE  — a Bridge `state` frame updates the BridgeTransport row.
+//   LINK   — a Bridge `link_artifact` frame (e.g. a QR string) is stashed in
+//            memory per bridge for the Dashboard to render (Phase 3 wires the UI).
+//   OFFLINE— socket close flips the Bridge offline immediately; a periodic sweep
+//            covers crash-without-close (no FIN) by staleness.
 //
-// Protocol v1 envelope (matches keyone-bridge/internal/protocol/envelope.go):
-//   { v:1, id, type, ts, corr?, ack?, payload? }
+// Protocol v1 envelope: { v:1, id, type, ts, corr?, ack?, payload? }
 //
 // Env:
-//   POSTGRES_URL          Cloud Postgres connection string (required for token verify)
-//   BRIDGE_GATEWAY_PORT   listen port (default 3002)
+//   POSTGRES_URL / DATABASE_URL   Cloud Postgres (token verify + status writes)
+//   SAAS_INTERNAL_SECRET          shared secret for Cloud <-> gateway internal HTTP
+//   CLOUD_INCOMING_URL            inbound target (default http://127.0.0.1:3000/api/whatsapp/incoming)
+//   BRIDGE_GATEWAY_PORT           listen port (default 3002)
+//   BRIDGE_HEARTBEAT_TIMEOUT_MS   offline-staleness threshold (default 90000)
 
 const http = require("http");
 const crypto = require("crypto");
@@ -26,6 +42,18 @@ const { Pool } = require("pg");
 const PROTOCOL = 1;
 const PORT = Number(process.env.BRIDGE_GATEWAY_PORT || 3002);
 const POSTGRES_URL = process.env.POSTGRES_URL || process.env.DATABASE_URL || "";
+const INTERNAL_SECRET = process.env.SAAS_INTERNAL_SECRET || "";
+const CLOUD_INCOMING_URL =
+  process.env.CLOUD_INCOMING_URL ||
+  "http://127.0.0.1:3000/api/whatsapp/incoming";
+const HEARTBEAT_TIMEOUT_MS = Number(
+  process.env.BRIDGE_HEARTBEAT_TIMEOUT_MS || 90_000,
+);
+const OUTBOUND_ACK_TIMEOUT_MS = Number(
+  process.env.BRIDGE_OUTBOUND_ACK_TIMEOUT_MS || 30_000,
+);
+const PING_INTERVAL_MS = 30_000;
+const SWEEP_INTERVAL_MS = 60_000;
 
 // A single shared pool. If no URL is configured, token verification always fails
 // closed (safer than accepting unverified Bridges).
@@ -35,13 +63,37 @@ const pool = POSTGRES_URL
 
 if (!pool) {
   console.warn(
-    "[bridge-gateway] POSTGRES_URL not set — every connection will be rejected (fail-closed)."
+    "[bridge-gateway] POSTGRES_URL not set — every connection will be rejected (fail-closed).",
   );
 }
+if (!INTERNAL_SECRET) {
+  console.warn(
+    "[bridge-gateway] SAAS_INTERNAL_SECRET not set — inbound relay and /internal/* will fail closed.",
+  );
+}
+
+// ---- registries ------------------------------------------------------------
+// bridgeId -> ws (the live socket for that bridge)
+const bridgesById = new Map();
+// userId -> Set<ws> (a workspace may run multiple bridges; we pick the primary)
+const socketsByUser = new Map();
+// latest link artifact (e.g. QR) per bridgeId, for the Dashboard to render
+const lastLinkArtifact = new Map();
+// pending outbound sends awaiting ack: frameId -> { resolve, timer }
+const pendingAcks = new Map();
 
 /** sha256 hex — the exact hash the Cloud stores in BridgeToken.tokenHash. */
 function sha256(input) {
   return crypto.createHash("sha256").update(input, "utf8").digest("hex");
+}
+
+/** Constant-time string compare for the internal secret. */
+function secretMatches(provided) {
+  if (!INTERNAL_SECRET || !provided) return false;
+  const a = Buffer.from(INTERNAL_SECRET, "utf8");
+  const b = Buffer.from(String(provided), "utf8");
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 /** Extract the Bridge token from the Authorization: Bearer header or ?token=. */
@@ -61,30 +113,24 @@ function extractToken(req) {
 }
 
 /**
- * Verify a Bridge token against the Cloud. Returns the owning bridgeId on success,
- * or null on any failure. Fails closed on missing config / db error.
+ * Verify a Bridge token against the Cloud. Returns { bridgeId, userId, isPrimary }
+ * on success, or null on any failure. Fails closed on missing config / db error.
  */
 async function verifyToken(token) {
   if (!token || !pool) return null;
   const tokenHash = sha256(token);
   try {
     const { rows } = await pool.query(
-      `SELECT "bridgeId"
-         FROM "BridgeToken"
-        WHERE "tokenHash" = $1
-          AND "revokedAt" IS NULL
+      `SELECT t."bridgeId", b."userId", b."isPrimary"
+         FROM "BridgeToken" t
+         JOIN "Bridge" b ON b."id" = t."bridgeId"
+        WHERE t."tokenHash" = $1
+          AND t."revokedAt" IS NULL
+          AND b."revokedAt" IS NULL
         LIMIT 1`,
-      [tokenHash]
+      [tokenHash],
     );
     if (rows.length === 0) return null;
-    const bridgeId = rows[0].bridgeId;
-
-    // Make sure the owning Bridge itself is not revoked.
-    const bridge = await pool.query(
-      `SELECT "id" FROM "Bridge" WHERE "id" = $1 AND "revokedAt" IS NULL LIMIT 1`,
-      [bridgeId]
-    );
-    if (bridge.rows.length === 0) return null;
 
     // Best-effort touch — never fatal.
     pool
@@ -93,7 +139,11 @@ async function verifyToken(token) {
       ])
       .catch(() => {});
 
-    return bridgeId;
+    return {
+      bridgeId: rows[0].bridgeId,
+      userId: rows[0].userId,
+      isPrimary: !!rows[0].isPrimary,
+    };
   } catch (err) {
     console.error("[bridge-gateway] token verify db error:", err.message);
     return null;
@@ -108,10 +158,23 @@ async function markOnline(bridgeId) {
       `UPDATE "Bridge"
           SET "status" = 'online', "lastHeartbeatAt" = now(), "updatedAt" = now()
         WHERE "id" = $1`,
-      [bridgeId]
+      [bridgeId],
     );
   } catch (err) {
     console.error("[bridge-gateway] markOnline db error:", err.message);
+  }
+}
+
+/** Mark a Bridge offline. Best-effort. */
+async function markOffline(bridgeId) {
+  if (!pool || !bridgeId) return;
+  try {
+    await pool.query(
+      `UPDATE "Bridge" SET "status" = 'offline', "updatedAt" = now() WHERE "id" = $1`,
+      [bridgeId],
+    );
+  } catch (err) {
+    console.error("[bridge-gateway] markOffline db error:", err.message);
   }
 }
 
@@ -121,10 +184,28 @@ async function touchHeartbeat(bridgeId) {
   try {
     await pool.query(
       `UPDATE "Bridge" SET "lastHeartbeatAt" = now(), "updatedAt" = now() WHERE "id" = $1`,
-      [bridgeId]
+      [bridgeId],
     );
   } catch (err) {
     console.error("[bridge-gateway] touchHeartbeat db error:", err.message);
+  }
+}
+
+/** Upsert a BridgeTransport state row (provider connection state / identity). */
+async function upsertTransportState(bridgeId, provider, state, identity) {
+  if (!pool || !bridgeId || !provider) return;
+  try {
+    await pool.query(
+      `INSERT INTO "BridgeTransport" ("id","bridgeId","provider","state","identity","updatedAt")
+       VALUES ($1,$2,$3,$4,$5, now())
+       ON CONFLICT ("bridgeId","provider")
+       DO UPDATE SET "state" = EXCLUDED."state",
+                     "identity" = COALESCE(EXCLUDED."identity", "BridgeTransport"."identity"),
+                     "updatedAt" = now()`,
+      [crypto.randomUUID(), bridgeId, provider, String(state || "disconnected"), identity || null],
+    );
+  } catch (err) {
+    console.error("[bridge-gateway] upsertTransportState db error:", err.message);
   }
 }
 
@@ -150,16 +231,150 @@ function send(ws, env) {
   }
 }
 
-// ---- HTTP server (health) --------------------------------------------------
+/** Pick the socket to deliver a user's outbound to: the primary, else any online. */
+function pickUserSocket(userId) {
+  const set = socketsByUser.get(userId);
+  if (!set || set.size === 0) return null;
+  let fallback = null;
+  for (const ws of set) {
+    if (ws.readyState !== ws.OPEN) continue;
+    if (ws.isPrimary) return ws;
+    if (!fallback) fallback = ws;
+  }
+  return fallback;
+}
+
+/**
+ * Push an `outbound` frame to a Bridge and await its ack.
+ * Resolves { ok, providerMessageId? } / { ok:false, error }.
+ */
+function pushOutbound(ws, provider, to, text) {
+  return new Promise((resolve) => {
+    if (!ws || ws.readyState !== ws.OPEN) {
+      resolve({ ok: false, error: "bridge_socket_closed" });
+      return;
+    }
+    const frame = envelope("outbound", { provider: provider || "whatsapp", to, text });
+    const timer = setTimeout(() => {
+      pendingAcks.delete(frame.id);
+      resolve({ ok: false, error: "ack_timeout" });
+    }, OUTBOUND_ACK_TIMEOUT_MS);
+    pendingAcks.set(frame.id, { resolve, timer });
+    send(ws, frame);
+  });
+}
+
+/** Relay one inbound message to the Cloud; return the {reply} (or null). */
+async function relayInbound(userId, payload) {
+  if (!INTERNAL_SECRET) return null;
+  const body = {
+    event: "incoming",
+    userId,
+    from: payload.from || { phone: payload.fromPhone, name: payload.fromName },
+    mediaType: payload.mediaType || "text",
+    text: payload.text || "",
+    mediaBase64: payload.mediaBase64,
+    mimetype: payload.mimetype,
+    providerMessageId: payload.providerMessageId || null,
+    providerTimestamp: payload.providerTimestamp || null,
+  };
+  try {
+    const res = await fetch(CLOUD_INCOMING_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error("[bridge-gateway] cloud incoming responded", res.status);
+      return null;
+    }
+    return await res.json().catch(() => null);
+  } catch (e) {
+    console.error("[bridge-gateway] cloud incoming unreachable:", e.message);
+    return null;
+  }
+}
+
+// ---- HTTP server (health + internal outbound) ------------------------------
 
 const server = http.createServer((req, res) => {
-  if (req.method === "GET" && req.url && req.url.split("?")[0] === "/health") {
+  const path = (req.url || "").split("?")[0];
+
+  if (req.method === "GET" && path === "/health") {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(
-      JSON.stringify({ ok: true, service: "bridge-gateway", protocol: PROTOCOL })
+      JSON.stringify({
+        ok: true,
+        service: "bridge-gateway",
+        protocol: PROTOCOL,
+        bridges: bridgesById.size,
+      }),
     );
     return;
   }
+
+  // Internal: Cloud -> gateway outbound push. Localhost + secret only.
+  if (req.method === "POST" && path === "/internal/outbound") {
+    if (!secretMatches(req.headers["x-internal-secret"])) {
+      res.writeHead(401, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "unauthorized" }));
+      return;
+    }
+    let raw = "";
+    req.on("data", (c) => {
+      raw += c;
+      if (raw.length > 1_000_000) req.destroy(); // 1MB guard
+    });
+    req.on("end", async () => {
+      let msg;
+      try {
+        msg = JSON.parse(raw || "{}");
+      } catch {
+        res.writeHead(400, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "bad_json" }));
+        return;
+      }
+      const { userId, provider, to, text } = msg || {};
+      if (!userId || !to) {
+        res.writeHead(400, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "userId and to required" }));
+        return;
+      }
+      const ws = pickUserSocket(userId);
+      if (!ws) {
+        res.writeHead(409, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "no_bridge_online" }));
+        return;
+      }
+      const result = await pushOutbound(ws, provider, to, text);
+      res.writeHead(result.ok ? 200 : 502, { "content-type": "application/json" });
+      res.end(JSON.stringify(result));
+    });
+    return;
+  }
+
+  // Internal: Cloud -> gateway latest link artifact (QR) for a bridge.
+  if (req.method === "GET" && path === "/internal/qr") {
+    if (!secretMatches(req.headers["x-internal-secret"])) {
+      res.writeHead(401, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "unauthorized" }));
+      return;
+    }
+    let bridgeId = "";
+    try {
+      bridgeId = new URL(req.url, "http://localhost").searchParams.get("bridgeId") || "";
+    } catch {
+      /* ignore */
+    }
+    const artifact = lastLinkArtifact.get(bridgeId) || null;
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true, artifact }));
+    return;
+  }
+
   res.writeHead(404, { "content-type": "application/json" });
   res.end(JSON.stringify({ ok: false, error: "not_found" }));
 });
@@ -169,28 +384,56 @@ const server = http.createServer((req, res) => {
 // Authenticate DURING the HTTP upgrade (before 'connection' fires). This avoids a
 // race where the client's first frame (hello) arrives before the async token
 // check finishes and the 'message' listener is attached — which would drop hello.
+// NOTE: no `path` restriction — Phase 1's verified handshake accepted WS on any
+// path (the gateway is localhost-only; Caddy will later reverse_proxy /bridge to
+// it, preserving the path, at Phase-2 go-live). Auth is by token, not by path.
 const wss = new WebSocketServer({
   server,
   verifyClient: (info, cb) => {
     const token = extractToken(info.req);
     verifyToken(token)
-      .then((bridgeId) => {
-        if (bridgeId) {
-          info.req._bridgeId = bridgeId; // stashed for the connection handler
+      .then((ident) => {
+        if (ident) {
+          info.req._bridge = ident; // { bridgeId, userId, isPrimary }
           cb(true);
         } else {
-          cb(false, 401, "unauthorized"); // reject the upgrade
+          cb(false, 401, "unauthorized");
         }
       })
       .catch(() => cb(false, 401, "unauthorized"));
   },
 });
 
+function register(ws) {
+  bridgesById.set(ws.bridgeId, ws);
+  let set = socketsByUser.get(ws.userId);
+  if (!set) {
+    set = new Set();
+    socketsByUser.set(ws.userId, set);
+  }
+  set.add(ws);
+}
+
+function deregister(ws) {
+  if (bridgesById.get(ws.bridgeId) === ws) bridgesById.delete(ws.bridgeId);
+  const set = socketsByUser.get(ws.userId);
+  if (set) {
+    set.delete(ws);
+    if (set.size === 0) socketsByUser.delete(ws.userId);
+  }
+}
+
 wss.on("connection", (ws, req) => {
-  // Token already verified in verifyClient; the message listener below is
-  // attached synchronously, so no frame can be missed.
-  ws.bridgeId = req._bridgeId;
+  const ident = req._bridge || {};
+  ws.bridgeId = ident.bridgeId;
+  ws.userId = ident.userId;
+  ws.isPrimary = !!ident.isPrimary;
   ws.isAlive = true;
+  register(ws);
+
+  ws.on("pong", () => {
+    ws.isAlive = true;
+  });
 
   ws.on("message", async (raw) => {
     let frame;
@@ -200,19 +443,16 @@ wss.on("connection", (ws, req) => {
       send(ws, envelope("error", { code: "bad_json", message: "invalid frame" }));
       return;
     }
-
     if (!frame || typeof frame !== "object" || frame.type === undefined) {
       send(ws, envelope("error", { code: "bad_frame", message: "missing type" }));
       return;
     }
+    const p = frame.payload || {};
 
     switch (frame.type) {
       case "hello": {
         await markOnline(ws.bridgeId);
-        send(
-          ws,
-          envelope("hello_ack", { ok: true, ts: Date.now() }, frame.id)
-        );
+        send(ws, envelope("hello_ack", { ok: true, ts: Date.now() }, frame.id));
         break;
       }
       case "heartbeat": {
@@ -221,23 +461,75 @@ wss.on("connection", (ws, req) => {
         send(ws, envelope("heartbeat_ack", { ok: true, ts: Date.now() }, frame.id));
         break;
       }
+      case "inbound": {
+        // Relay 1:1 to the Cloud; push the synchronous reply back as `outbound`.
+        // Ack the inbound immediately so the Bridge can free its buffer.
+        send(ws, envelope("inbound_ack", { ok: true }, frame.id));
+        const result = await relayInbound(ws.userId, p);
+        if (result && result.reply) {
+          // Fire-and-forget the reply (the Bridge acks it via outbound_ack).
+          pushOutbound(ws, p.provider || "whatsapp", p.from?.phone || p.fromPhone, result.reply);
+        }
+        break;
+      }
+      case "state": {
+        await upsertTransportState(ws.bridgeId, p.provider || "whatsapp", p.state, p.identity);
+        send(ws, envelope("state_ack", { ok: true }, frame.id));
+        break;
+      }
+      case "link_artifact": {
+        // e.g. a QR string generated locally on the Bridge. Stash for the Dashboard.
+        // Cap the payload — a QR string is well under 1KB; anything larger is bogus.
+        const data = typeof p.data === "string" ? p.data.slice(0, 8192) : "";
+        lastLinkArtifact.set(ws.bridgeId, {
+          provider: p.provider || "whatsapp",
+          kind: p.kind || "qr",
+          data,
+          expiresAt: p.expiresAt || null,
+          receivedAt: Date.now(),
+        });
+        send(ws, envelope("link_artifact_ack", { ok: true }, frame.id));
+        break;
+      }
+      case "outbound_ack": {
+        const pend = pendingAcks.get(frame.corr);
+        if (pend) {
+          clearTimeout(pend.timer);
+          pendingAcks.delete(frame.corr);
+          pend.resolve({ ok: true, providerMessageId: p.providerMessageId || null });
+        }
+        break;
+      }
+      case "outbound_nack": {
+        const pend = pendingAcks.get(frame.corr);
+        if (pend) {
+          clearTimeout(pend.timer);
+          pendingAcks.delete(frame.corr);
+          pend.resolve({ ok: false, error: p.error || "bridge_send_failed" });
+        }
+        break;
+      }
       default: {
-        // Phase 1 stub: any other frame is acknowledged as unsupported, not fatal.
         send(
           ws,
           envelope(
             "error",
-            { code: "unsupported", message: `type '${frame.type}' not handled in phase 1` },
-            frame.id
-          )
+            { code: "unsupported", message: `type '${frame.type}' not handled` },
+            frame.id,
+          ),
         );
       }
     }
   });
 
   ws.on("close", () => {
-    // Phase 1 stub does not flip status back to offline here; the Cloud's
-    // heartbeat-staleness sweep owns offline transitions (Phase 2). Kept simple.
+    deregister(ws);
+    // If this bridge has no other live socket, flip it offline immediately and
+    // drop its cached link artifact (a reconnecting bridge re-streams a fresh one).
+    if (!bridgesById.has(ws.bridgeId)) {
+      markOffline(ws.bridgeId);
+      lastLinkArtifact.delete(ws.bridgeId);
+    }
   });
 
   ws.on("error", () => {
@@ -245,20 +537,56 @@ wss.on("connection", (ws, req) => {
   });
 });
 
+// ---- keepalive: terminate sockets that stop responding to pings ------------
+const pingTimer = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) {
+      ws.terminate(); // triggers 'close' -> deregister + markOffline
+      continue;
+    }
+    ws.isAlive = false;
+    try {
+      ws.ping();
+    } catch {
+      /* ignore */
+    }
+  }
+}, PING_INTERVAL_MS);
+pingTimer.unref();
+
+// ---- staleness sweep: covers crash-without-close (no FIN) ------------------
+const sweepTimer = setInterval(async () => {
+  if (!pool) return;
+  try {
+    await pool.query(
+      `UPDATE "Bridge"
+          SET "status" = 'offline', "updatedAt" = now()
+        WHERE "status" = 'online'
+          AND ("lastHeartbeatAt" IS NULL
+               OR "lastHeartbeatAt" < now() - ($1::int || ' milliseconds')::interval)`,
+      [HEARTBEAT_TIMEOUT_MS],
+    );
+  } catch (err) {
+    console.error("[bridge-gateway] staleness sweep db error:", err.message);
+  }
+}, SWEEP_INTERVAL_MS);
+sweepTimer.unref();
+
 server.listen(PORT, () => {
   console.log(
-    `[bridge-gateway] listening on :${PORT} (protocol v${PROTOCOL}) — health at /health`
+    `[bridge-gateway] listening on :${PORT} (protocol v${PROTOCOL}) — WS /bridge, health /health`,
   );
 });
 
 function shutdown() {
   console.log("[bridge-gateway] shutting down…");
+  clearInterval(pingTimer);
+  clearInterval(sweepTimer);
   wss.close();
   server.close(() => {
     if (pool) pool.end().finally(() => process.exit(0));
     else process.exit(0);
   });
-  // Hard exit fallback.
   setTimeout(() => process.exit(0), 3000).unref();
 }
 

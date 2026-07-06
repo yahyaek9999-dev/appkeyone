@@ -1,4 +1,6 @@
 // Helpers to talk to the whatsapp-web.js microservice from Next.js
+import { bridgeEnabled } from "@/lib/bridge/flags";
+
 const BASE = process.env.WHATSAPP_SERVICE_URL || "http://127.0.0.1:3001";
 const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 const SMART_QUEUE_ENABLED = process.env.WA_SMART_QUEUE_ENABLED !== "0";
@@ -22,6 +24,24 @@ async function call(path: string, init?: RequestInit) {
 }
 
 async function sendNow(userId: string, to: string, text: string) {
+  // ---- KEYONE Bridge (Phase 2): additive, flag-gated outbound routing --------
+  // With BRIDGE_ENABLED off, this block is skipped entirely and the send path
+  // below is byte-identical to before. When on, a bridge-mode tenant's outbound
+  // is delivered through its customer-hosted Bridge (via the co-located
+  // gateway); every other tenant still falls through to the whatsapp-web.js
+  // gateway call unchanged. The transport-router module (and Prisma) is only
+  // imported inside this gate, so the default path pays zero cost.
+  if (bridgeEnabled()) {
+    try {
+      const { maybeRouteBridgeSend } = await import("@/lib/bridge/transport-router");
+      const routed = await maybeRouteBridgeSend(userId, to, text);
+      if (routed) return routed; // bridge-mode tenant — handled by the Bridge
+    } catch {
+      // A failure to even decide routing must never break normal sends: fall
+      // through to the default gateway (only reached for non-bridge tenants
+      // anyway, since maybeRouteBridgeSend returns null for them).
+    }
+  }
   return call(`/sessions/${userId}/send`, {
     method: "POST",
     body: JSON.stringify({ to, text }),
