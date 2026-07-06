@@ -18,13 +18,11 @@
     "verify:commerce": "node scripts/verify/run.js commerce",
     "verify:email": "node scripts/verify/run.js email",
     "verify:mobile": "node scripts/verify/run.js mobile",
-    "verify:baileys": "node scripts/verify/run.js baileys",
     "verify:reliability": "node scripts/verify/run.js reliability",
     "verify:schema-parity": "node scripts/verify/schema-parity.js",
     "verify:rbac": "node scripts/verify/rbac-coverage.js",
     "verify:wallet": "node scripts/verify/wallet.js",
     "verify:all": "node scripts/verify/run.js all",
-    "worker:baileys": "node workers/baileys.worker.js",
     "worker:start": "node dist/workers/index.js"
   },
   "dependencies": {
@@ -33,7 +31,6 @@
     "@types/qrcode": "^1.5.6",
     "@types/three": "^0.184.1",
     "@upstash/redis": "^1.38.0",
-    "@whiskeysockets/baileys": "^7.0.0-rc11",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.76.10",
     "cheerio": "^1.0.0",

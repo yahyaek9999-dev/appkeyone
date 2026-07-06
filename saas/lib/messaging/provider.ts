@@ -14,7 +14,8 @@
  *   - MetaCloudProvider (stub — every method returns NOT_IMPLEMENTED)
  *
  * Phase 2 fills in the Meta provider.
- * Phase 3 will add an experimental Baileys provider behind ENABLE_BAILEYS=1.
+ * (The experimental Baileys provider was removed 2026-07-06 — WhatsApp runs
+ *  exclusively on whatsapp-web.js via the QR service + the Bridge.)
  */
 
 /** Universal response shape for every provider method. */
@@ -67,7 +68,7 @@ export interface ProviderStatus {
 
 /** What every provider must implement. */
 export interface MessagingProvider {
-  readonly name: "qr" | "meta_cloud" | "baileys";
+  readonly name: "qr" | "meta_cloud";
 
   sendMessage(args: SendTextArgs): Promise<ProviderResult>;
   sendMedia(args: SendMediaArgs): Promise<ProviderResult>;

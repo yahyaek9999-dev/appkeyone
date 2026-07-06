@@ -726,6 +726,12 @@ async function verifyMobile() {
 }
 
 async function verifyBaileys() {
+  // Baileys transport REMOVED (2026-07-06): WhatsApp runs exclusively on
+  // whatsapp-web.js (the QR service + the Bridge). Kept as a no-op so any stale
+  // invocation reports the removal instead of failing on the deleted files.
+  skip("baileys:removed", "Baileys transport removed — WhatsApp is whatsapp-web.js only (QR + Bridge).");
+  return;
+  // eslint-disable-next-line no-unreachable
   const worker = path.join(ROOT, "workers/baileys.worker.js");
   const flags = path.join(ROOT, "lib/messaging/baileys-flags.ts");
   const provider = path.join(ROOT, "lib/messaging/baileys-provider.ts");
