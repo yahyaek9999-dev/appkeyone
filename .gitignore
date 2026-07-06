@@ -120,5 +120,8 @@ saas-backup-*/
 !public/**/*.png
 !saas/public/**/*.png
 
-# KEYONE Bridge lives in its own repo
-keyone-bridge/
+# KEYONE Bridge (Go module) is vendored into this monorepo so it is versioned,
+# pushed, and released alongside the Cloud. Ignore only its build artifacts +
+# local runtime state (keyone-bridge/.gitignore covers the rest).
+keyone-bridge/bin/
+keyone-bridge/dist/

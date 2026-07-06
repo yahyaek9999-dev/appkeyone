@@ -1,0 +1,9 @@
+/bin/
+/dist/
+*.exe
+*.db
+*.db-*
+*.log
+vault.enc
+vault.key
+config.json
