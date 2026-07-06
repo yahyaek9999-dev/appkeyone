@@ -2,13 +2,21 @@
 
 **Date:** 2026-07-05  **Status:** APPROVED to build Phase 1. Supersedes the open runtime/GUI/media questions in `KEYONE_BRIDGE_ARCHITECTURE_2026-07-05.md` (which remains the detailed appendix for auth/WS/packaging/cloud).
 
+> **⚠️ SCOPE UPDATE (2026-07-06): KEYONE Bridge v1 is WhatsApp-ONLY.**
+> The transport-agnostic `Provider` interface and architecture are **retained
+> internally** for future extensibility, but **Telegram, Messenger, and Instagram
+> are REMOVED from the roadmap** and out of scope until a later version. No other
+> provider is built or shipped; there is **no multi-transport UI and no transport
+> selection**. Everything below that names those transports is illustrative of the
+> interface's extensibility only — not a v1 deliverable.
+
 This document folds in the customer's locked decisions. Read it first; the big doc is the reference.
 
 ---
 
 ## 0. What changed from the first draft (locked decisions)
 
-1. **It is a Transport Bridge, not a WhatsApp Bridge.** The core knows *nothing* about WhatsApp or business logic. WhatsApp is **Provider #1** behind a generic **Transport Provider interface**. Telegram / Messenger / Instagram / future providers implement the *same* interface and load as **plugins** — added without modifying the core.
+1. **Internally transport-agnostic, but v1 ships WhatsApp only.** The core knows *nothing* about WhatsApp or business logic. WhatsApp is **the only provider** behind a generic **Transport Provider interface**. The interface exists so a *future* provider could implement the *same* contract and load as a **plugin** without modifying the core — but no such provider is in scope for v1 (see the SCOPE UPDATE banner above).
 2. **Headless-only v1. No desktop app, no GUI, no system tray.** The Dashboard is the only UI. The Bridge exposes a minimal CLI: `login · start · stop · status · logs · update · logout`. Everything is designed so an optional GUI/tray can be added later **without changing the Bridge architecture or APIs**.
 3. **QR is generated on the Bridge but rendered in the Dashboard.** The Bridge never renders UI. Flow: Dashboard → *Connect Bridge* → secure channel → user clicks *Start QR* → Bridge asks the provider to generate the QR locally → Bridge **streams the QR to the Cloud** → Dashboard renders it.
 4. **Zero business logic in the Bridge.** No CRM / AI / orders / customers / reports / analytics / workflows / settings (except connection). It behaves like **GitHub Actions Runner / Cloudflare Tunnel / Tailscale connector** — a lightweight connector maintaining a secure link.
@@ -63,7 +71,7 @@ This document folds in the customer's locked decisions. Read it first; the big d
 
 ## 2. Transport Provider interface (the plugin contract) — the centerpiece
 
-Every transport implements this. The core supervises providers only through it. Adding Telegram later = a new package implementing `Provider` + a registry entry; **no core change**.
+Every transport implements this. The core supervises providers only through it. Adding a provider in a *future* version = a new package implementing `Provider` + a registry entry; **no core change**. (v1 ships only the WhatsApp provider.)
 
 ```go
 // package transport — the ONLY contract the core knows. Providers are plugins.

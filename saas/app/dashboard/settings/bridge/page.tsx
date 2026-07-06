@@ -18,9 +18,11 @@ import { BridgeActions } from "./bridge-actions";
 
 export const dynamic = "force-dynamic";
 
+// KEYONE Bridge v1 is WhatsApp-only. This stays a map (not a constant) so a
+// future provider can be added without a UI change, but only WhatsApp is
+// surfaced today — no transport selection is exposed.
 const PROVIDER_LABEL: Record<string, string> = {
   whatsapp: "واتساب",
-  telegram: "تيليجرام",
 };
 
 const STATE_LABEL: Record<string, { text: string; cls: string }> = {

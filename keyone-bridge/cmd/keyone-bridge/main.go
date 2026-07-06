@@ -30,9 +30,11 @@ import (
 	"github.com/keyone/keyone-bridge/internal/transport"
 	"github.com/keyone/keyone-bridge/internal/updater"
 
-	// Providers self-register via their package init(). Adding a provider here is
-	// the ONLY core touch-point — the supervisor stays transport-agnostic.
-	_ "github.com/keyone/keyone-bridge/internal/transport/fake"
+	// v1 registers ONLY WhatsApp. The production binary knows no other provider,
+	// so no transport selection is possible. Adding one later is a single blank
+	// import here — the supervisor stays transport-agnostic. (The `fake` provider
+	// exists solely for tests, which import it directly; it is deliberately NOT
+	// registered in the shipped binary.)
 	_ "github.com/keyone/keyone-bridge/internal/transport/whatsapp"
 )
 

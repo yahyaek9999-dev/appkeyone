@@ -1,12 +1,16 @@
 // Package transport is the ONLY contract the Bridge core knows about a messaging
-// provider. Providers (WhatsApp, Telegram, Messenger, Instagram, …) are plugins
-// that implement Provider and self-register; the core supervises them purely
-// through this interface, so a new provider is added WITHOUT changing the core.
+// provider. A provider implements Provider and self-registers; the core
+// supervises it purely through this interface, so a new provider can be added
+// WITHOUT changing the core.
+//
+// SCOPE (v1): WhatsApp is the ONLY production provider. This abstraction is kept
+// deliberately so additional transports can be added in a later version, but no
+// other provider is built or shipped in v1.
 package transport
 
 import "context"
 
-// ProviderName identifies a transport, e.g. "whatsapp", "telegram".
+// ProviderName identifies a transport. v1 ships only "whatsapp".
 type ProviderName string
 
 // LinkMethod is how a provider links an account.

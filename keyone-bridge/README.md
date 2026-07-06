@@ -1,11 +1,15 @@
 # KEYONE Bridge
 
-A **headless, transport-agnostic** connector that moves the messaging transport
-(WhatsApp today; Telegram/Messenger/Instagram tomorrow) **off** the KEYONE Cloud
-and onto a machine you control. It behaves like a Cloudflare Tunnel / Tailscale /
-GitHub Actions runner: a small daemon that maintains a secure link to the Cloud
-and relays messages. **The Dashboard is the only UI** — the Bridge renders
-nothing and stores no business data.
+A **headless** connector that moves the WhatsApp transport **off** the KEYONE
+Cloud and onto a machine you control. It behaves like a Cloudflare Tunnel /
+Tailscale / GitHub Actions runner: a small daemon that maintains a secure link to
+the Cloud and relays messages. **The Dashboard is the only UI** — the Bridge
+renders nothing and stores no business data.
+
+> **Scope (v1): WhatsApp only.** The internal design keeps a transport-agnostic
+> `Provider` interface so more transports can be added in a later version, but
+> **no other provider is built or shipped in v1** — no multi-transport UI, no
+> transport selection.
 
 ## Why
 
@@ -22,9 +26,9 @@ CLI (login/start/stop/status/logs/update/logout)
         │                          Offline queue (durable, bounded)
         │                          Secret store (OS keychain + AES-GCM fallback)
         └── Provider registry ──── Provider interface (the ONLY contract the core knows)
-              ├── whatsapp (whatsmeow)   ← Provider #1
-              ├── telegram (later)        ← plugs in without touching the core
-              └── …
+              └── whatsapp (whatsmeow)   ← the ONLY provider shipped in v1
+              ·  (the interface allows a future provider to plug in without a
+              ·   core change — but none is built in v1)
 ```
 
 Adding a provider = a new package that implements `transport.Provider` and calls

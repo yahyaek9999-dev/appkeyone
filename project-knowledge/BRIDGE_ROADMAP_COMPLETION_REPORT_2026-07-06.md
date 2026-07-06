@@ -65,12 +65,12 @@ Pre-campaign baseline was `main @ 93e2985` (Phase 1, already deployed). All comm
 ## 8. What was built (roadmap)
 
 - **Phase 2 — gateway relay:** inbound 1:1 → untouched `/api/whatsapp/incoming` (reply pushed back), outbound via `POST /internal/outbound` with ack correlation, `state`/`link_artifact`, close→offline + staleness sweep, ws keepalive. One additive, double-gated `wa.sendNow` touch.
-- **Phase 3 — Go core:** `transport.Provider` interface + registry (transport-agnostic — Telegram/Messenger/Instagram plug in without core changes), whatsmeow WhatsApp provider (local QR streamed, encrypted local session, cgo-free), device-code+PKCE linking, resilient WS client (heartbeat, capped-backoff reconnect), keychain+AES-GCM secret store, durable offline queue, supervisor, CLI.
+- **Phase 3 — Go core:** `transport.Provider` interface + registry (kept extensible for future providers; **v1 registers WhatsApp only**), whatsmeow WhatsApp provider (local QR streamed, encrypted local session, cgo-free), device-code+PKCE linking, resilient WS client (heartbeat, capped-backoff reconnect), keychain+AES-GCM secret store, durable offline queue, supervisor, CLI.
 - **Phase 4 — packaging:** systemd (system+user), macOS LaunchAgent, Windows Service; install/uninstall per OS; `.deb`/AppImage/`.pkg`/MSI builders; `make dist` (cgo-free cross-compile + checksums).
 - **Phase 5 — hardening:** secure token rotation (+reuse-detection handling), `doctor` diagnostics, verified atomic-swap auto-update + `--rollback`, crash recovery via service managers, security + performance review.
 - **Phase 6 — docs + verification:** architecture spec, gateway/bridge/packaging READMEs, ops runbook, this report.
 
-Capabilities delivered: Device-Code auth, PKCE, secure token rotation, workspace isolation, multi-workspace, multi-bridge, auto-recovery/reconnect, heartbeats, offline queue, encrypted local storage, cross-platform services (Windows/macOS/Linux/Ubuntu), auto-updater, crash recovery, installer generation, logging, monitoring/diagnostics, recovery tools — all transport-agnostic (WhatsApp today; Telegram/Messenger/Instagram/future via the Provider interface, no API/architecture break).
+Capabilities delivered (**all WhatsApp-targeted**): Device-Code auth, PKCE, secure token rotation, workspace isolation, multi-workspace, multi-bridge, auto-recovery/reconnect, heartbeats, offline queue, encrypted local storage, cross-platform services (Windows/macOS/Linux/Ubuntu), auto-updater, crash recovery, installer generation, logging, monitoring/diagnostics, recovery tools. **Scope: WhatsApp only in v1.** The `Provider` interface is retained internally so a future transport can be added without an API/architecture break — but Telegram/Messenger/Instagram are **removed from the roadmap** and out of scope for v1 (no other provider is built, no multi-transport UI, no transport selection).
 
 ## 9. Remaining TODOs (external / go-live — not code defects)
 
