@@ -39,8 +39,9 @@ dist: clean
 	@$(MAKE) checksums
 
 # SHA-256 manifest consumed by the auto-updater's signature/integrity check.
+# Hash only the binaries (never checksums.txt itself).
 checksums:
-	@cd $(DIST) && { command -v sha256sum >/dev/null && sha256sum * || shasum -a 256 *; } > checksums.txt && \
+	@cd $(DIST) && { command -v sha256sum >/dev/null && sha256sum $(BINARY)_* || shasum -a 256 $(BINARY)_*; } > checksums.txt && \
 		echo "  wrote $(DIST)/checksums.txt"
 
 clean:

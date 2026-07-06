@@ -1,0 +1,15 @@
+[Unit]
+# KEYONE Bridge — user service (desktop Linux). Runs in the user's session so it
+# can use the login keychain (libsecret) for the token. Install with:
+#   systemctl --user enable --now keyone-bridge
+Description=KEYONE Bridge (transport connector, user service)
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/keyone-bridge start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Load the LaunchAgent for the currently logged-in GUI user (best effort). The
+# user still runs `keyone-bridge login` once to link before it can connect.
+set -e
+CONSOLE_USER="$(stat -f%Su /dev/console 2>/dev/null || echo root)"
+CONSOLE_UID="$(id -u "$CONSOLE_USER" 2>/dev/null || echo 0)"
+if [ "$CONSOLE_USER" != "root" ] && [ -n "$CONSOLE_UID" ]; then
+  launchctl bootstrap "gui/$CONSOLE_UID" /Library/LaunchAgents/com.keyone.bridge.plist 2>/dev/null || \
+    launchctl load -w /Library/LaunchAgents/com.keyone.bridge.plist 2>/dev/null || true
+fi
+echo "KEYONE Bridge installed. Run 'keyone-bridge login' to link this Mac."
+exit 0

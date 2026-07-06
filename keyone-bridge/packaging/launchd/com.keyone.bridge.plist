@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- KEYONE Bridge — macOS LaunchAgent (per-user). Runs in the user's login
+     session so it can reach the login Keychain for the token. Install to
+     ~/Library/LaunchAgents/com.keyone.bridge.plist and `launchctl load` it. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.keyone.bridge</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/keyone-bridge</string>
+        <string>start</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>5</integer>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/keyone-bridge.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/keyone-bridge.err.log</string>
+</dict>
+</plist>

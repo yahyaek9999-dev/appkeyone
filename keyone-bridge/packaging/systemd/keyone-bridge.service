@@ -1,0 +1,32 @@
+[Unit]
+# KEYONE Bridge — headless connector (system service, for servers/always-on hosts).
+# Runs as a dedicated unprivileged user with a file-backed secret store (no
+# desktop keychain on a headless box).
+Description=KEYONE Bridge (transport connector)
+Documentation=https://w.keyone1.com
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=keyone-bridge
+Group=keyone-bridge
+Environment=KEYONE_BRIDGE_HOME=/var/lib/keyone-bridge
+Environment=KEYONE_BRIDGE_SECRET_FILE=1
+ExecStart=/usr/local/bin/keyone-bridge start
+Restart=on-failure
+RestartSec=5
+# Crash-loop backoff: give up transient restarts gracefully.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/keyone-bridge
+StateDirectory=keyone-bridge
+
+[Install]
+WantedBy=multi-user.target

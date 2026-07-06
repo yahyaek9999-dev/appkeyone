@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=KEYONE Bridge
+Comment=Headless transport connector for KEYONE
+Exec=keyone-bridge
+Icon=keyone-bridge
+Type=Application
+Categories=Network;Utility;
+Terminal=true

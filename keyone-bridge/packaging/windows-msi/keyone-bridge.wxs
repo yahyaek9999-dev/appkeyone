@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WiX v3 source for the KEYONE Bridge MSI. Installs the binary + a Windows
+     Service (LocalSystem) with a machine-wide file-encrypted secret store.
+     Build with packaging/windows-msi/build.ps1 (needs the WiX Toolset). -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="KEYONE Bridge" Language="1033"
+           Version="$(var.Version)" Manufacturer="KEYONE"
+           UpgradeCode="8F3E2A1C-4B5D-4E6F-9A7B-1C2D3E4F5A6B">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"
+             Description="KEYONE Bridge transport connector" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of KEYONE Bridge is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="KEYONE Bridge" />
+      </Directory>
+    </Directory>
+
+    <ComponentGroup Id="Components" Directory="INSTALLFOLDER">
+      <Component Id="BridgeExe" Guid="A1B2C3D4-1111-2222-3333-444455556666">
+        <File Id="BridgeExe" Name="keyone-bridge.exe" Source="$(var.BinPath)" KeyPath="yes" />
+        <!-- LocalSystem service; env below feeds the file-encrypted secret store. -->
+        <ServiceInstall Id="Svc" Name="KeyoneBridge" DisplayName="KEYONE Bridge"
+                        Description="KEYONE Bridge transport connector"
+                        Type="ownProcess" Start="auto" ErrorControl="normal"
+                        Account="LocalSystem" Arguments="start" />
+        <ServiceControl Id="SvcCtl" Name="KeyoneBridge"
+                        Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+        <Environment Id="EnvHome" Name="KEYONE_BRIDGE_HOME" System="yes"
+                     Action="set" Part="all" Value="[CommonAppDataFolder]KEYONE Bridge" />
+        <Environment Id="EnvSecretFile" Name="KEYONE_BRIDGE_SECRET_FILE" System="yes"
+                     Action="set" Part="all" Value="1" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="Main" Title="KEYONE Bridge" Level="1">
+      <ComponentGroupRef Id="Components" />
+    </Feature>
+  </Product>
+</Wix>
