@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Build a portable Linux AppImage. Requires appimagetool on PATH
-# (https://github.com/AppImage/AppImageKit/releases).
+# Build a portable Linux AppImage. Requires appimagetool on PATH (from the AppImageKit project)
+#.
 # Usage: ./build-appimage.sh <linux-binary> <version> [x86_64|aarch64]
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BIN="${1:?usage: build-appimage.sh <binary> <version> [arch]}"

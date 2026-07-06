@@ -290,9 +290,9 @@ func cmdDoctor(dir string, log *logging.Logger) error {
 		info("cloud WS", "unreachable ("+p.Detail+") — normal if the gateway isn't public yet")
 	}
 	if rel, _ := updater.CheckLatest(ctx); rel != nil {
-		info("update", "latest "+rel.TagName+" (running "+supervisor.Version+")")
+		info("update", "latest "+rel.Version+" (running "+supervisor.Version+")")
 	} else {
-		info("update channel", "no releases published yet")
+		info("update channel", "KEYONE update channel unreachable")
 	}
 
 	if !ok {

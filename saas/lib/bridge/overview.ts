@@ -140,35 +140,36 @@ export async function getBridgeOverview(userId: string): Promise<BridgeOverview>
     };
   });
 
-  const latest = await latestRelease();
-  return { bridges, latestVersion: latest?.tag ?? null, releaseUrl: latest?.url ?? null };
+  const latest = await latestVersionFromKeyone();
+  // "releaseUrl" points at the KEYONE download page (not a repository).
+  return { bridges, latestVersion: latest, releaseUrl: latest ? "/dashboard/settings/bridge/download" : null };
 }
 
-// --- latest release (GitHub), cached best-effort so the dashboard never blocks ---
-let relCache: { at: number; tag: string | null; url: string | null } | null = null;
+// --- latest version from the KEYONE download server (version.json), cached ---
+// best-effort so the dashboard never blocks. NO GitHub dependency.
+let verCache: { at: number; tag: string | null } | null = null;
 
-async function latestRelease(): Promise<{ tag: string; url: string } | null> {
-  if (relCache && Date.now() - relCache.at < 10 * 60_000) {
-    return relCache.tag ? { tag: relCache.tag, url: relCache.url! } : null;
+async function latestVersionFromKeyone(): Promise<string | null> {
+  if (verCache && Date.now() - verCache.at < 10 * 60_000) {
+    return verCache.tag;
   }
-  const repo = process.env.BRIDGE_RELEASE_REPO || "yahyaek9999-dev/keyone-bridge";
+  const origin = process.env.NEXT_PUBLIC_BASE_URL || "https://w.keyone1.com";
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 3000);
-    const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-      headers: { Accept: "application/vnd.github+json" },
+    const res = await fetch(`${origin}/downloads/keyone-bridge/version.json`, {
       signal: ctrl.signal,
       cache: "no-store",
     });
     clearTimeout(t);
     if (res.ok) {
       const j = await res.json();
-      relCache = { at: Date.now(), tag: j.tag_name || null, url: j.html_url || null };
-      return relCache.tag ? { tag: relCache.tag, url: relCache.url! } : null;
+      verCache = { at: Date.now(), tag: j?.version || null };
+      return verCache.tag;
     }
   } catch {
-    /* network/none — dashboard shows "current only" */
+    /* store not populated / unreachable — dashboard shows "current only" */
   }
-  relCache = { at: Date.now(), tag: null, url: null };
+  verCache = { at: Date.now(), tag: null };
   return null;
 }

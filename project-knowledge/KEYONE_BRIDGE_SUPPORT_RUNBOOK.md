@@ -191,6 +191,6 @@ logs if available.
 
 - WhatsApp only in v1 (the transport interface is kept for future providers).
 - `BRIDGE_ENABLED` is global (no per-tenant gate yet).
-- Auto-update needs published GitHub Release assets + code-signing before GA;
+- Auto-update fetches from the KEYONE download store (version.json + SHA-256); code-signing of installers remains a pre-GA item;
   until then installers are unsigned (integrity via SHA-256 `checksums.txt`).
 - Media/group flows are relayed generically; full media pipeline is post-v1.

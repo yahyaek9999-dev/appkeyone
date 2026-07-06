@@ -61,16 +61,16 @@ func (s *Supervisor) runUpdate(ctx context.Context) {
 		s.log.Errorf("update check failed: %v", err)
 		return
 	}
-	if rel == nil || !updater.IsNewer(Version, rel.TagName) {
+	if rel == nil || !updater.IsNewer(Version, rel.Version) {
 		s.log.Infof("already up to date (%s)", Version)
 		return
 	}
-	s.log.Infof("updating %s → %s…", Version, rel.TagName)
+	s.log.Infof("updating %s → %s…", Version, rel.Version)
 	if err := updater.Apply(ctx, rel); err != nil {
 		s.log.Errorf("update failed: %v", err)
 		return
 	}
-	s.log.Infof("update to %s applied — restart the service to run it", rel.TagName)
+	s.log.Infof("update to %s applied — restart the service to run it", rel.Version)
 }
 
 // shipLogs streams recent Bridge log lines to the Cloud so the customer reads

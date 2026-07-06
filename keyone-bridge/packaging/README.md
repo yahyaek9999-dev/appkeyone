@@ -54,8 +54,12 @@ Until certs are provisioned, users may see OS "unidentified developer"
 warnings. The integrity chain (SHA-256 in `checksums.txt`, verified by the
 updater) is enforced today; OS-level signatures are the remaining gate.
 
-## 5. Releasing
+## 5. Releasing (KEYONE-hosted — no GitHub)
 
-Tag a release, attach `dist/*` + `checksums.txt` as GitHub Release assets on the
-repo named by `KEYONE_BRIDGE_REPO` (default `yahyaek9999-dev/keyone-bridge`). The
-Bridge's `update` command then finds, verifies, and atomically applies it.
+Publish binaries + installers to the **KEYONE download store**, served by Caddy at
+`https://w.keyone1.com/downloads/keyone-bridge/`. Run `deploy/publish-downloads.sh`
+from the repo root: it builds `dist/*`, builds the `.deb` on the server and the
+`.pkg` on macOS, uploads them, arranges `windows/ macos/ linux/` + `latest.*`, and
+writes `version.json` + `checksums.txt`. Customers download only from KEYONE, and
+the Bridge's `update` command reads `version.json`, verifies SHA-256, and applies
+the swap. **No GitHub Releases dependency.**

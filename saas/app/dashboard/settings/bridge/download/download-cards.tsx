@@ -1,22 +1,30 @@
 "use client";
 
-// Auto-detects the customer's OS and highlights the right download, with the
-// other platforms + Docker available. Links resolve to the latest published
-// release assets (stable per-OS binary names) or the releases page for installers.
+// Auto-detects the customer's OS and highlights the right download. ALL links
+// point to KEYONE infrastructure (served by Caddy from the KEYONE download
+// store) — no GitHub, no external repository, no registry links.
 
 import { useEffect, useState } from "react";
 
 type OS = "windows" | "mac" | "linux" | "docker";
 
-export function DownloadCards({ base, releasesPage }: { base: string; releasesPage: string }) {
+export function DownloadCards({ base }: { base: string }) {
   const [detected, setDetected] = useState<OS>("linux");
+  const [origin, setOrigin] = useState("https://w.keyone1.com");
 
   useEffect(() => {
+    setOrigin(window.location.origin);
     const ua = (navigator.userAgent || "") + " " + ((navigator as any).platform || "");
     if (/Win/i.test(ua)) setDetected("windows");
     else if (/Mac|iPhone|iPad/i.test(ua)) setDetected("mac");
     else setDetected("linux");
   }, []);
+
+  const dockerfile = `FROM debian:stable-slim
+ADD ${origin}${base}/linux/keyone-bridge_linux_amd64 /usr/local/bin/keyone-bridge
+RUN chmod +x /usr/local/bin/keyone-bridge
+ENV KEYONE_BRIDGE_HOME=/data
+ENTRYPOINT ["keyone-bridge","start"]`;
 
   const cards: {
     os: OS; name: string; icon: string; note: string;
@@ -24,28 +32,28 @@ export function DownloadCards({ base, releasesPage }: { base: string; releasesPa
     links: { label: string; href: string }[];
   }[] = [
     {
-      os: "windows", name: "Windows", icon: "🪟", note: "ويندوز 10/11 — يُثبَّت كخدمة تعمل تلقائياً.",
-      primary: { label: "تنزيل المُثبِّت (.msi)", href: releasesPage },
-      links: [{ label: "الملف التنفيذي (x64)", href: `${base}/keyone-bridge_windows_amd64.exe` }],
+      os: "windows", name: "Windows", icon: "🪟", note: "ويندوز 10/11 — يعمل في الخلفية تلقائياً.",
+      primary: { label: "تنزيل لـ Windows", href: `${base}/windows/latest.exe` },
+      links: [],
     },
     {
       os: "mac", name: "macOS", icon: "", note: "Apple Silicon و Intel — يُثبَّت كـ LaunchAgent.",
-      primary: { label: "تنزيل المُثبِّت (.pkg)", href: releasesPage },
+      primary: { label: "تنزيل المُثبِّت (.pkg)", href: `${base}/macos/latest.pkg` },
       links: [
-        { label: "Apple Silicon (arm64)", href: `${base}/keyone-bridge_darwin_arm64` },
-        { label: "Intel (x64)", href: `${base}/keyone-bridge_darwin_amd64` },
+        { label: "Apple Silicon (arm64)", href: `${base}/macos/keyone-bridge_darwin_arm64` },
+        { label: "Intel (x64)", href: `${base}/macos/keyone-bridge_darwin_amd64` },
       ],
     },
     {
       os: "linux", name: "Linux", icon: "🐧", note: "Ubuntu / Debian وغيرها — خدمة systemd.",
-      primary: { label: "تنزيل (.deb / AppImage)", href: releasesPage },
+      primary: { label: "تنزيل (.deb)", href: `${base}/linux/latest.deb` },
       links: [
-        { label: "الملف الثنائي (x64)", href: `${base}/keyone-bridge_linux_amd64` },
-        { label: "الملف الثنائي (arm64)", href: `${base}/keyone-bridge_linux_arm64` },
+        { label: "الملف الثنائي (x64)", href: `${base}/linux/keyone-bridge_linux_amd64` },
+        { label: "الملف الثنائي (arm64)", href: `${base}/linux/keyone-bridge_linux_arm64` },
       ],
     },
     {
-      os: "docker", name: "Docker", icon: "🐳", note: "شغّله في حاوية على أي خادم.",
+      os: "docker", name: "Docker", icon: "🐳", note: "شغّله في حاوية على أي خادم (يُنزّل من خوادم KEYONE).",
       links: [],
     },
   ];
@@ -68,20 +76,15 @@ export function DownloadCards({ base, releasesPage }: { base: string; releasesPa
             <p className="text-sm text-slate-400">{c.note}</p>
 
             {c.os === "docker" ? (
-              <pre dir="ltr" className="overflow-x-auto rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-left font-mono text-xs text-sky-200">
-{`docker run -d --name keyone-bridge \\
-  -v keyone-bridge:/data \\
-  -e KEYONE_BRIDGE_HOME=/data \\
-  ghcr.io/${releasesPage.split("/").slice(3, 5).join("/")}:latest`}
-              </pre>
+              <pre dir="ltr" className="overflow-x-auto rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-left font-mono text-xs text-sky-200">{dockerfile}</pre>
             ) : (
               <div className="space-y-2">
                 {c.primary && (
-                  <a href={c.primary.href} className="btn-primary inline-block w-full text-center">{c.primary.label}</a>
+                  <a href={c.primary.href} download className="btn-primary inline-block w-full text-center">{c.primary.label}</a>
                 )}
                 <div className="flex flex-wrap gap-2">
                   {c.links.map((l) => (
-                    <a key={l.label} href={l.href}
+                    <a key={l.label} href={l.href} download
                       className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-white/10">
                       {l.label}
                     </a>
@@ -101,7 +104,10 @@ export function DownloadCards({ base, releasesPage }: { base: string; releasesPa
           <li>ارجع للوحة التحكم واضغط «بدء الربط» لمسح رمز QR بواتساب.</li>
         </ol>
         <p className="text-xs text-slate-500">
-          إن لم تُنشَر الإصدارات بعد، ستجد الملفات على <a href={releasesPage} target="_blank" rel="noreferrer" className="text-sky-300 underline">صفحة الإصدارات</a>.
+          كل الملفات مستضافة على خوادم KEYONE. للتحقق من السلامة:
+          <a href={`${base}/checksums.txt`} className="ms-1 text-sky-300 underline">بصمات SHA-256</a>
+          <span className="mx-1">·</span>
+          <a href={`${base}/version.json`} className="text-sky-300 underline">الإصدار</a>
         </p>
       </div>
     </div>

@@ -1,7 +1,6 @@
 package updater
 
 import (
-	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -10,39 +9,20 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
-// assetName is the release asset for this platform, e.g.
-// "keyone-bridge_linux_amd64" or "keyone-bridge_windows_amd64.exe".
-func assetName() string {
-	n := fmt.Sprintf("keyone-bridge_%s_%s", runtime.GOOS, runtime.GOARCH)
-	if runtime.GOOS == "windows" {
-		n += ".exe"
-	}
-	return n
-}
-
-// Apply downloads the platform asset for rel, verifies its SHA-256 against the
-// release's checksums.txt, and atomically swaps the running executable. The
-// previous binary is kept as <exe>.old for rollback.
+// Apply downloads this platform's binary named in rel from the KEYONE download
+// server, verifies its SHA-256 against version.json, and atomically swaps the
+// running executable. The previous binary is kept as <exe>.old for rollback.
 func Apply(ctx context.Context, rel *Release) error {
-	want := assetName()
-	var bin *Asset
-	var sums *Asset
-	for i := range rel.Assets {
-		switch rel.Assets[i].Name {
-		case want:
-			bin = &rel.Assets[i]
-		case "checksums.txt", "SHA256SUMS":
-			sums = &rel.Assets[i]
-		}
+	key := platformKey()
+	asset, ok := rel.Platforms[key]
+	if !ok {
+		return fmt.Errorf("no KEYONE build for %s in release %s", key, rel.Version)
 	}
-	if bin == nil {
-		return fmt.Errorf("no asset %q in release %s", want, rel.TagName)
-	}
+	url := DownloadBase() + "/" + strings.TrimLeft(asset.File, "/")
 
 	exe, err := os.Executable()
 	if err != nil {
@@ -51,29 +31,24 @@ func Apply(ctx context.Context, rel *Release) error {
 	exe, _ = filepath.EvalSymlinks(exe)
 	dir := filepath.Dir(exe)
 
-	// Download the new binary to a temp file next to the current one.
 	tmp := filepath.Join(dir, ".keyone-bridge.new")
-	if err := download(ctx, bin.BrowserDownloadURL, tmp); err != nil {
+	if err := download(ctx, url, tmp); err != nil {
 		return fmt.Errorf("download: %w", err)
 	}
 	defer os.Remove(tmp)
 
-	// Verify checksum. Refuse the update if checksums are published but don't
-	// match; warn (and require an override) if none are published.
-	if sums != nil {
-		expected, err := fetchChecksum(ctx, sums.BrowserDownloadURL, want)
-		if err != nil {
-			return fmt.Errorf("checksum lookup: %w", err)
-		}
+	// Integrity: SHA-256 must match version.json. Refuse otherwise (this is the
+	// customer's protection now that installers are KEYONE-hosted, not signed).
+	if asset.SHA256 != "" {
 		got, err := sha256File(tmp)
 		if err != nil {
 			return err
 		}
-		if !strings.EqualFold(expected, got) {
-			return fmt.Errorf("checksum mismatch: refusing update (want %s got %s)", expected, got)
+		if !strings.EqualFold(asset.SHA256, got) {
+			return fmt.Errorf("checksum mismatch: refusing update (want %s got %s)", asset.SHA256, got)
 		}
 	} else if os.Getenv("KEYONE_BRIDGE_ALLOW_UNVERIFIED") != "1" {
-		return fmt.Errorf("release has no checksums.txt — refusing (set KEYONE_BRIDGE_ALLOW_UNVERIFIED=1 to override)")
+		return fmt.Errorf("version.json has no sha256 for %s — refusing (set KEYONE_BRIDGE_ALLOW_UNVERIFIED=1 to override)", key)
 	}
 
 	if err := os.Chmod(tmp, 0o755); err != nil {
@@ -87,16 +62,15 @@ func Apply(ctx context.Context, rel *Release) error {
 		return fmt.Errorf("stage old binary: %w", err)
 	}
 	if err := os.Rename(tmp, exe); err != nil {
-		// rollback
-		_ = os.Rename(old, exe)
+		_ = os.Rename(old, exe) // undo
 		return fmt.Errorf("swap failed, rolled back: %w", err)
 	}
-	fmt.Printf("✓ Updated to %s. Previous binary kept at %s. Restart the service to run it.\n", rel.TagName, old)
+	fmt.Printf("✓ Updated to %s. Previous binary kept at %s. Restart the service to run it.\n", rel.Version, old)
 	return nil
 }
 
-// Rollback restores the previous binary (<exe>.old) that Apply staged, in case a
-// new build misbehaves. The bad binary is kept as <exe>.failed for inspection.
+// Rollback restores the previous binary (<exe>.old) that Apply staged. The bad
+// binary is kept as <exe>.failed for inspection.
 func Rollback() error {
 	exe, err := os.Executable()
 	if err != nil {
@@ -113,7 +87,7 @@ func Rollback() error {
 		return err
 	}
 	if err := os.Rename(old, exe); err != nil {
-		_ = os.Rename(failed, exe) // undo
+		_ = os.Rename(failed, exe)
 		return err
 	}
 	_ = os.Remove(failed)
@@ -126,8 +100,7 @@ func download(ctx context.Context, url, dst string) error {
 	if err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 5 * time.Minute}
-	resp, err := client.Do(req)
+	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
 	if err != nil {
 		return err
 	}
@@ -142,27 +115,6 @@ func download(ctx context.Context, url, dst string) error {
 	defer f.Close()
 	_, err = io.Copy(f, resp.Body)
 	return err
-}
-
-func fetchChecksum(ctx context.Context, url, name string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	sc := bufio.NewScanner(resp.Body)
-	for sc.Scan() {
-		// format: "<sha256>  <filename>"
-		fields := strings.Fields(sc.Text())
-		if len(fields) >= 2 && filepath.Base(fields[len(fields)-1]) == name {
-			return fields[0], nil
-		}
-	}
-	return "", fmt.Errorf("no checksum for %q", name)
 }
 
 func sha256File(path string) (string, error) {

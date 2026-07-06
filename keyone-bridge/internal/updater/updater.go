@@ -1,6 +1,12 @@
-// Package updater checks GitHub Releases for a newer Bridge and (Phase 5) applies
-// it via a signed, atomic swap with rollback. This file provides the check +
-// the CLI entry point; apply.go performs the download/verify/swap.
+// Package updater checks the KEYONE download server for a newer Bridge and
+// applies it via a verified, atomic swap with rollback. Updates come ONLY from
+// KEYONE infrastructure — there is no GitHub dependency.
+//
+// Contract (served by KEYONE, default https://w.keyone1.com/downloads/keyone-bridge):
+//
+//	GET version.json  →  { "version": "0.5.0", "released": "...", "platforms": {
+//	     "linux_amd64": { "file": "linux/keyone-bridge_linux_amd64", "sha256": "…", "size": N }, … } }
+//	GET <base>/<file> →  the binary/installer for a platform (resumable, SHA-256 verified)
 package updater
 
 import (
@@ -9,72 +15,68 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 )
 
-// Repo is the GitHub "owner/name" that publishes Bridge releases. Overridable via
-// KEYONE_BRIDGE_REPO so a self-hosted fork can point elsewhere.
-func Repo() string {
-	if r := os.Getenv("KEYONE_BRIDGE_REPO"); r != "" {
-		return r
+// DownloadBase is the KEYONE download root. Overridable via
+// KEYONE_BRIDGE_DOWNLOAD_BASE for a self-hosted/staging mirror (and for tests).
+func DownloadBase() string {
+	if b := os.Getenv("KEYONE_BRIDGE_DOWNLOAD_BASE"); b != "" {
+		return strings.TrimRight(b, "/")
 	}
-	return "yahyaek9999-dev/keyone-bridge"
+	return "https://w.keyone1.com/downloads/keyone-bridge"
 }
 
-// Release is the subset of the GitHub release API we consume.
+// PlatformAsset is one platform's downloadable in version.json.
+type PlatformAsset struct {
+	File   string `json:"file"`   // path relative to the download base
+	SHA256 string `json:"sha256"` // lower-case hex
+	Size   int64  `json:"size"`
+}
+
+// Release is the KEYONE version manifest.
 type Release struct {
-	TagName string  `json:"tag_name"`
-	HTMLURL string  `json:"html_url"`
-	Assets  []Asset `json:"assets"`
+	Version    string                   `json:"version"`
+	ReleasedAt string                   `json:"released"`
+	Platforms  map[string]PlatformAsset `json:"platforms"`
 }
 
-// Asset is a downloadable release artifact.
-type Asset struct {
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
-	Size               int64  `json:"size"`
-}
+// platformKey is the current os_arch key, e.g. "linux_amd64", "windows_amd64".
+func platformKey() string { return runtime.GOOS + "_" + runtime.GOARCH }
 
-// apiBase is the GitHub-compatible API root. Overridable via
-// KEYONE_BRIDGE_API_BASE for a self-hosted release mirror (and for tests).
-func apiBase() string {
-	if b := os.Getenv("KEYONE_BRIDGE_API_BASE"); b != "" {
-		return b
-	}
-	return "https://api.github.com"
-}
-
-// CheckLatest returns the latest published release, or (nil,nil) if the channel
-// is unreachable/empty (never an error the CLI must treat as fatal).
+// CheckLatest fetches the KEYONE version manifest. Returns (nil,nil) if the
+// channel is unreachable/absent — never an error the CLI must treat as fatal.
 func CheckLatest(ctx context.Context) (*Release, error) {
-	url := fmt.Sprintf("%s/repos/%s/releases/latest", apiBase(), Repo())
+	url := DownloadBase() + "/version.json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil // no releases yet
+		return nil, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("release check status %d", resp.StatusCode)
+		return nil, fmt.Errorf("version check status %d", resp.StatusCode)
 	}
 	var rel Release
 	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
 		return nil, err
 	}
+	if rel.Version == "" {
+		return nil, nil
+	}
 	return &rel, nil
 }
 
 // IsNewer reports whether tag is a newer version than current (naive semver-ish
-// string compare after normalising a leading "v").
+// compare after normalising a leading "v").
 func IsNewer(current, tag string) bool {
 	return norm(tag) != "" && norm(tag) != norm(current) && norm(tag) > norm(current)
 }
@@ -82,7 +84,7 @@ func IsNewer(current, tag string) bool {
 func norm(v string) string { return strings.TrimPrefix(strings.TrimSpace(v), "v") }
 
 // RunCLI implements `keyone-bridge update [--rollback]`: roll back to the prior
-// binary, or check and (if newer) apply an update. Safe when no channel is set.
+// binary, or check KEYONE and (if newer) apply. Safe when no channel is set.
 func RunCLI(current string, args []string) error {
 	for _, a := range args {
 		if a == "--rollback" || a == "rollback" {
@@ -96,17 +98,17 @@ func RunCLI(current string, args []string) error {
 		return fmt.Errorf("update check failed: %w", err)
 	}
 	if rel == nil {
-		fmt.Printf("No releases published yet for %s. Current: %s\n", Repo(), current)
+		fmt.Printf("No update available from KEYONE. Current: %s\n", current)
 		return nil
 	}
-	if !IsNewer(current, rel.TagName) {
-		fmt.Printf("Up to date (%s). Latest published: %s\n", current, rel.TagName)
+	if !IsNewer(current, rel.Version) {
+		fmt.Printf("Up to date (%s). Latest on KEYONE: %s\n", current, rel.Version)
 		return nil
 	}
-	fmt.Printf("Update available: %s → %s\n  %s\n", current, rel.TagName, rel.HTMLURL)
+	fmt.Printf("Update available: %s → %s (from KEYONE)\n", current, rel.Version)
 	if os.Getenv("KEYONE_BRIDGE_AUTO_APPLY") == "1" {
 		return Apply(ctx, rel)
 	}
-	fmt.Println("Run with KEYONE_BRIDGE_AUTO_APPLY=1 to download + apply (atomic swap + rollback).")
+	fmt.Println("Run with KEYONE_BRIDGE_AUTO_APPLY=1 to download + apply (SHA-256 verified, atomic swap + rollback).")
 	return nil
 }

@@ -1,5 +1,5 @@
 # KEYONE PRODUCTION Caddyfile — the live config on the AWS box (/etc/caddy/Caddyfile).
-# Includes the KEYONE Bridge WebSocket ingress (go-live 2026-07-06).
+# Includes the Bridge WebSocket ingress + the KEYONE self-hosted download store.
 # Apply:
 #   sudo cp deploy/Caddyfile.production /etc/caddy/Caddyfile
 #   sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
@@ -7,11 +7,23 @@
 w.keyone1.com {
     encode gzip zstd
 
-    # KEYONE Bridge WebSocket ingress → co-located bridge-gateway (:3002).
-    # Auth is by per-Bridge token at the gateway; Caddy just proxies the upgrade.
+    # ---- KEYONE Bridge downloads (self-hosted; NO GitHub) --------------------
+    # Static file store at /var/www/keyone-downloads, served with Range support
+    # (resumable), correct MIME, and download filenames for the installers.
+    handle_path /downloads/* {
+        root * /var/www/keyone-downloads
+        # Force a download (attachment) for installers; the browser uses the
+        # request filename (latest.exe/.pkg/.deb). Binaries are octet-stream, so
+        # the site-level `encode` skips them and Range/resumable stays correct.
+        @installer path *.exe *.pkg *.deb
+        header @installer Content-Disposition "attachment"
+        file_server
+    }
+
+    # ---- KEYONE Bridge WebSocket ingress → bridge-gateway (:3002) ------------
     @bridge path /bridge /bridge/*
     reverse_proxy @bridge localhost:3002
 
-    # Everything else → the Next.js app.
+    # ---- Everything else → the Next.js app ----------------------------------
     reverse_proxy localhost:3000
 }
