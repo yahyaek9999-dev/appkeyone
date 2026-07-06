@@ -36,10 +36,19 @@ type Asset struct {
 	Size               int64  `json:"size"`
 }
 
+// apiBase is the GitHub-compatible API root. Overridable via
+// KEYONE_BRIDGE_API_BASE for a self-hosted release mirror (and for tests).
+func apiBase() string {
+	if b := os.Getenv("KEYONE_BRIDGE_API_BASE"); b != "" {
+		return b
+	}
+	return "https://api.github.com"
+}
+
 // CheckLatest returns the latest published release, or (nil,nil) if the channel
 // is unreachable/empty (never an error the CLI must treat as fatal).
 func CheckLatest(ctx context.Context) (*Release, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", Repo())
+	url := fmt.Sprintf("%s/repos/%s/releases/latest", apiBase(), Repo())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
