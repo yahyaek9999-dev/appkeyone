@@ -95,6 +95,32 @@ func Apply(ctx context.Context, rel *Release) error {
 	return nil
 }
 
+// Rollback restores the previous binary (<exe>.old) that Apply staged, in case a
+// new build misbehaves. The bad binary is kept as <exe>.failed for inspection.
+func Rollback() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	exe, _ = filepath.EvalSymlinks(exe)
+	old := exe + ".old"
+	if _, err := os.Stat(old); err != nil {
+		return fmt.Errorf("no previous binary to roll back to (%s)", old)
+	}
+	failed := exe + ".failed"
+	_ = os.Remove(failed)
+	if err := os.Rename(exe, failed); err != nil {
+		return err
+	}
+	if err := os.Rename(old, exe); err != nil {
+		_ = os.Rename(failed, exe) // undo
+		return err
+	}
+	_ = os.Remove(failed)
+	fmt.Println("✓ Rolled back to the previous binary. Restart the service to run it.")
+	return nil
+}
+
 func download(ctx context.Context, url, dst string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

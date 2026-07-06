@@ -70,6 +70,8 @@ func (s *Supervisor) Run(ctx context.Context) error {
 
 	// Periodic queue drain (covers provider-reconnect without a Cloud reconnect).
 	go s.drainLoop(ctx)
+	// Periodic secure token rotation.
+	go s.rotateLoop(ctx)
 
 	s.client.Run(ctx) // blocks until ctx cancelled
 	return s.shutdown()

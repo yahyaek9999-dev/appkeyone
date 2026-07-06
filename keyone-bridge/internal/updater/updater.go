@@ -72,9 +72,14 @@ func IsNewer(current, tag string) bool {
 
 func norm(v string) string { return strings.TrimPrefix(strings.TrimSpace(v), "v") }
 
-// RunCLI implements `keyone-bridge update`: check, and if a newer release exists,
-// apply it (Phase 5 atomic swap). Safe to run when no channel is configured.
-func RunCLI(current string) error {
+// RunCLI implements `keyone-bridge update [--rollback]`: roll back to the prior
+// binary, or check and (if newer) apply an update. Safe when no channel is set.
+func RunCLI(current string, args []string) error {
+	for _, a := range args {
+		if a == "--rollback" || a == "rollback" {
+			return Rollback()
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	rel, err := CheckLatest(ctx)

@@ -61,7 +61,11 @@ func main() {
 	case "logs":
 		must(cmdLogs(dir, args))
 	case "update":
-		must(cmdUpdate())
+		must(cmdUpdate(args))
+	case "rotate":
+		must(cmdRotate(dir))
+	case "doctor":
+		must(cmdDoctor(dir, log))
 	case "logout":
 		must(cmdLogout(dir, log))
 	case "version", "-v", "--version":
@@ -73,7 +77,10 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: keyone-bridge <login|start|stop|status|logs|update|logout|version>")
+	fmt.Fprintln(os.Stderr, "usage: keyone-bridge <login|start|stop|status|logs|update|rotate|doctor|logout|version>")
+	fmt.Fprintln(os.Stderr, "  update [--rollback]   check/apply an update, or roll back the last one")
+	fmt.Fprintln(os.Stderr, "  rotate                rotate the Bridge token now")
+	fmt.Fprintln(os.Stderr, "  doctor                run connectivity + config diagnostics")
 }
 
 // ---- commands --------------------------------------------------------------
@@ -207,8 +214,90 @@ func cmdLogs(dir string, args []string) error {
 	return tailFile(filepath.Join(dir, "logs", "bridge.log"), n)
 }
 
-func cmdUpdate() error {
-	return updater.RunCLI(supervisor.Version)
+func cmdUpdate(args []string) error {
+	return updater.RunCLI(supervisor.Version, args)
+}
+
+func cmdRotate(dir string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	if !cfg.Linked() {
+		return fmt.Errorf("not linked — nothing to rotate")
+	}
+	store := secret.New(dir)
+	cur, err := store.Get(supervisor.TokenKey)
+	if err != nil {
+		return fmt.Errorf("no bridge token: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	newTok, err := cloud.RotateToken(ctx, cfg.CloudAPIBase, cur)
+	if err != nil {
+		return err
+	}
+	if err := store.Set(supervisor.TokenKey, newTok); err != nil {
+		return fmt.Errorf("persist rotated token: %w", err)
+	}
+	fmt.Println("✓ Bridge token rotated.")
+	return nil
+}
+
+func cmdDoctor(dir string, log *logging.Logger) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	store := secret.New(dir)
+	ok := true
+	check := func(name string, pass bool, detail string) {
+		mark := "✓"
+		if !pass {
+			mark = "✗"
+			ok = false
+		}
+		fmt.Printf("  %s %-26s %s\n", mark, name, detail)
+	}
+	info := func(name, detail string) { fmt.Printf("  • %-26s %s\n", name, detail) }
+
+	fmt.Println("KEYONE Bridge doctor")
+	check("config loads", true, cfg.CloudAPIBase)
+	check("linked", cfg.Linked(), "bridge="+orDash(cfg.BridgeID))
+	tok, terr := store.Get(supervisor.TokenKey)
+	check("token in secret store", terr == nil, "")
+
+	probePath := filepath.Join(dir, ".doctor-write-probe")
+	werr := os.WriteFile(probePath, []byte("x"), 0o600)
+	_ = os.Remove(probePath)
+	check("data dir writable", werr == nil, dir)
+
+	_, perr := buildProviders(cfg, log)
+	check("providers constructable", perr == nil, fmt.Sprintf("%v", cfg.Providers))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	p := cloud.Probe(ctx, cfg.CloudAPIBase, cfg.CloudWSURL, tok)
+	check("cloud API reachable", p.APIReachable, cfg.CloudAPIBase)
+	switch {
+	case p.WSReachable && p.WSAuthorized:
+		info("cloud WS", "reachable + authorized")
+	case p.WSReachable:
+		info("cloud WS", "reachable, token rejected (Bridge disabled/off, or re-link needed)")
+	default:
+		info("cloud WS", "unreachable ("+p.Detail+") — normal if the gateway isn't public yet")
+	}
+	if rel, _ := updater.CheckLatest(ctx); rel != nil {
+		info("update", "latest "+rel.TagName+" (running "+supervisor.Version+")")
+	} else {
+		info("update channel", "no releases published yet")
+	}
+
+	if !ok {
+		return fmt.Errorf("doctor found problems (see ✗ above)")
+	}
+	fmt.Println("All critical checks passed.")
+	return nil
 }
 
 func cmdLogout(dir string, log *logging.Logger) error {
