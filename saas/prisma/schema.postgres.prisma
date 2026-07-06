@@ -3471,6 +3471,8 @@ model Bridge {
   version         String?                          // Bridge build version
   capabilities    String?                          // JSON, negotiated at hello
   status          String   @default("offline")     // online | offline
+  updating        Boolean  @default(false)         // true while the Bridge is self-updating (dashboard state)
+  lastError       String?                           // last error surfaced to the dashboard (nullable)
   isPrimary       Boolean  @default(false)         // customer-selected primary (multi-bridge)
   lastHeartbeatAt DateTime?
   tokenHash       String                           // hash of the Bridge refresh token (NEVER the token)
@@ -3479,6 +3481,7 @@ model Bridge {
   updatedAt       DateTime @updatedAt
 
   transports BridgeTransport[]
+  logs       BridgeLogLine[]
 
   @@index([userId, status])
   @@index([userId, isPrimary])
@@ -3491,10 +3494,23 @@ model BridgeTransport {
   provider  String                                 // "whatsapp" | "telegram" | ...
   state     String   @default("disconnected")      // linking | connecting | connected | disconnected | logged_out
   identity  String?                                // connected phone/handle (display only)
+  lastQr    String?                                // latest streamed QR string (for Dashboard display; rotates)
+  lastQrAt  DateTime?                               // when the QR was last streamed
+  lastError String?                                // last provider-level error (display)
   updatedAt DateTime @updatedAt
 
   @@unique([bridgeId, provider])
   @@index([bridgeId])
+}
+
+model BridgeLogLine {
+  id       String   @id @default(cuid())
+  bridgeId String
+  bridge   Bridge   @relation(fields: [bridgeId], references: [id], onDelete: Cascade)
+  at       DateTime @default(now())
+  level    String   @default("info")               // debug | info | warn | error
+  message  String
+  @@index([bridgeId, at])
 }
 
 // OAuth 2.0 Device Authorization Grant (RFC 8628) code — short-lived, one-time.

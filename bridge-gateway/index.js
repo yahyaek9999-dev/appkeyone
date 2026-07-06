@@ -209,6 +209,79 @@ async function upsertTransportState(bridgeId, provider, state, identity) {
   }
 }
 
+/**
+ * Mark a Bridge online AND persist the device metadata it announced at hello
+ * (os/arch/version/name/capabilities). Also clears any prior updating/error flag
+ * — a Bridge that just said hello is up and running (e.g. after a self-update).
+ */
+async function markOnlineWithMeta(bridgeId, meta) {
+  if (!pool || !bridgeId) return;
+  try {
+    await pool.query(
+      `UPDATE "Bridge"
+          SET "status" = 'online', "lastHeartbeatAt" = now(), "updatedAt" = now(),
+              "updating" = false, "lastError" = NULL,
+              "os" = COALESCE($2, "os"),
+              "arch" = COALESCE($3, "arch"),
+              "version" = COALESCE($4, "version"),
+              "name" = COALESCE("name", $5),
+              "capabilities" = COALESCE($6, "capabilities")
+        WHERE "id" = $1`,
+      [
+        bridgeId,
+        meta.os || null,
+        meta.arch || null,
+        meta.version || null,
+        meta.name || null,
+        meta.capabilities ? JSON.stringify(meta.capabilities) : null,
+      ],
+    );
+  } catch (err) {
+    console.error("[bridge-gateway] markOnlineWithMeta db error:", err.message);
+  }
+}
+
+/** Persist the latest streamed QR string for a provider (Dashboard display). */
+async function persistQr(bridgeId, provider, qr) {
+  if (!pool || !bridgeId || !provider) return;
+  try {
+    await pool.query(
+      `INSERT INTO "BridgeTransport" ("id","bridgeId","provider","state","lastQr","lastQrAt","updatedAt")
+       VALUES ($1,$2,$3,'linking',$4, now(), now())
+       ON CONFLICT ("bridgeId","provider")
+       DO UPDATE SET "lastQr" = EXCLUDED."lastQr", "lastQrAt" = now(), "updatedAt" = now()`,
+      [crypto.randomUUID(), bridgeId, provider, String(qr || "").slice(0, 8192)],
+    );
+  } catch (err) {
+    console.error("[bridge-gateway] persistQr db error:", err.message);
+  }
+}
+
+/** Append a streamed log line, trimming the per-bridge ring to ~500 lines. */
+async function insertLog(bridgeId, level, message) {
+  if (!pool || !bridgeId || !message) return;
+  try {
+    await pool.query(
+      `INSERT INTO "BridgeLogLine" ("id","bridgeId","at","level","message")
+       VALUES ($1,$2, now(), $3, $4)`,
+      [crypto.randomUUID(), bridgeId, String(level || "info").slice(0, 12), String(message).slice(0, 2000)],
+    );
+    // Best-effort ring trim (keep newest 500).
+    pool
+      .query(
+        `DELETE FROM "BridgeLogLine"
+          WHERE "bridgeId" = $1
+            AND "id" NOT IN (
+              SELECT "id" FROM "BridgeLogLine" WHERE "bridgeId" = $1 ORDER BY "at" DESC LIMIT 500
+            )`,
+        [bridgeId],
+      )
+      .catch(() => {});
+  } catch (err) {
+    console.error("[bridge-gateway] insertLog db error:", err.message);
+  }
+}
+
 /** Build a protocol v1 envelope. */
 function envelope(type, payload, corr) {
   const env = {
@@ -375,6 +448,49 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Internal: Cloud -> gateway control push (Dashboard drives the Bridge).
+  // Pushes a `control` frame (start_qr | reconnect | restart | update |
+  // disconnect) to the user's primary online Bridge.
+  if (req.method === "POST" && path === "/internal/control") {
+    if (!secretMatches(req.headers["x-internal-secret"])) {
+      res.writeHead(401, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "unauthorized" }));
+      return;
+    }
+    let raw = "";
+    req.on("data", (c) => {
+      raw += c;
+      if (raw.length > 100_000) req.destroy();
+    });
+    req.on("end", () => {
+      let msg;
+      try {
+        msg = JSON.parse(raw || "{}");
+      } catch {
+        res.writeHead(400, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "bad_json" }));
+        return;
+      }
+      const { userId, action, provider } = msg || {};
+      const ALLOWED = ["start_qr", "reconnect", "restart", "update", "disconnect"];
+      if (!userId || !ALLOWED.includes(action)) {
+        res.writeHead(400, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "userId and valid action required" }));
+        return;
+      }
+      const ws = pickUserSocket(userId);
+      if (!ws) {
+        res.writeHead(409, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "no_bridge_online" }));
+        return;
+      }
+      send(ws, envelope("control", { action, provider: provider || "whatsapp" }));
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, action }));
+    });
+    return;
+  }
+
   res.writeHead(404, { "content-type": "application/json" });
   res.end(JSON.stringify({ ok: false, error: "not_found" }));
 });
@@ -451,7 +567,15 @@ wss.on("connection", (ws, req) => {
 
     switch (frame.type) {
       case "hello": {
-        await markOnline(ws.bridgeId);
+        // Persist the device metadata the Bridge announced (os/arch/version/…)
+        // so the Dashboard's "Connected Device" card has real data.
+        await markOnlineWithMeta(ws.bridgeId, {
+          os: p.os,
+          arch: p.arch,
+          version: p.version,
+          name: p.name,
+          capabilities: p.capabilities,
+        });
         send(ws, envelope("hello_ack", { ok: true, ts: Date.now() }, frame.id));
         break;
       }
@@ -481,14 +605,24 @@ wss.on("connection", (ws, req) => {
         // e.g. a QR string generated locally on the Bridge. Stash for the Dashboard.
         // Cap the payload — a QR string is well under 1KB; anything larger is bogus.
         const data = typeof p.data === "string" ? p.data.slice(0, 8192) : "";
+        const provider = p.provider || "whatsapp";
         lastLinkArtifact.set(ws.bridgeId, {
-          provider: p.provider || "whatsapp",
+          provider,
           kind: p.kind || "qr",
           data,
           expiresAt: p.expiresAt || null,
           receivedAt: Date.now(),
         });
+        // Persist so the Dashboard can render the QR (DB-backed, survives restart).
+        await persistQr(ws.bridgeId, provider, data);
         send(ws, envelope("link_artifact_ack", { ok: true }, frame.id));
+        break;
+      }
+      case "log": {
+        // The Bridge streams recent log lines so the customer reads them in the
+        // Dashboard without opening the Bridge app.
+        await insertLog(ws.bridgeId, p.level, p.message);
+        send(ws, envelope("log_ack", { ok: true }, frame.id));
         break;
       }
       case "outbound_ack": {

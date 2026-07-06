@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -36,6 +37,13 @@ func (l Level) String() string {
 	}
 }
 
+// Record is one buffered log line (for streaming to the Cloud Dashboard).
+type Record struct {
+	At      time.Time
+	Level   string
+	Message string
+}
+
 // Logger is a leveled, concurrency-safe logger.
 type Logger struct {
 	mu    sync.Mutex
@@ -45,6 +53,7 @@ type Logger struct {
 	path  string
 	size  int64
 	max   int64
+	ring  []Record // pending lines to ship to the Cloud (drained by the supervisor)
 }
 
 // New returns a logger writing to stderr and to <dir>/logs/bridge.log (rotated
@@ -76,9 +85,15 @@ func (l *Logger) logf(level Level, format string, args ...any) {
 	if level < l.level {
 		return
 	}
-	line := fmt.Sprintf("%s %-5s %s\n", time.Now().UTC().Format(time.RFC3339), level.String(), fmt.Sprintf(format, args...))
+	msg := fmt.Sprintf(format, args...)
+	line := fmt.Sprintf("%s %-5s %s\n", time.Now().UTC().Format(time.RFC3339), level.String(), msg)
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	// Buffer for Cloud streaming (bounded — drop oldest past 500 pending).
+	l.ring = append(l.ring, Record{At: time.Now().UTC(), Level: strings.ToLower(level.String()), Message: msg})
+	if len(l.ring) > 500 {
+		l.ring = l.ring[len(l.ring)-500:]
+	}
 	_, _ = io.WriteString(l.out, line)
 	if l.file != nil {
 		n, _ := io.WriteString(l.file, line)
@@ -100,6 +115,18 @@ func (l *Logger) rotate() {
 		l.file = f
 		l.size = 0
 	}
+}
+
+// Drain returns and clears the pending log records (for Cloud streaming).
+func (l *Logger) Drain() []Record {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if len(l.ring) == 0 {
+		return nil
+	}
+	out := l.ring
+	l.ring = nil
+	return out
 }
 
 // Close flushes and closes the log file.

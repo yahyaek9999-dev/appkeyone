@@ -57,6 +57,7 @@ func (s *Supervisor) Run(ctx context.Context) error {
 	s.client = cloud.NewClient(s.cfg.CloudWSURL, s.tokenProvider, hello, s.log, cloud.Handlers{
 		OnOutbound:  s.onOutbound,
 		OnStartLink: s.onStartLink,
+		OnControl:   s.onControl,
 		OnConnected: func() { go s.drainQueue(ctx) },
 	})
 
@@ -72,6 +73,8 @@ func (s *Supervisor) Run(ctx context.Context) error {
 	go s.drainLoop(ctx)
 	// Periodic secure token rotation.
 	go s.rotateLoop(ctx)
+	// Stream logs to the Cloud for the Dashboard log viewer.
+	go s.shipLogs(ctx)
 
 	s.client.Run(ctx) // blocks until ctx cancelled
 	return s.shutdown()

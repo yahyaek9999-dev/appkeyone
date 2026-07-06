@@ -22,6 +22,9 @@ type Handlers struct {
 	OnOutbound func(protocol.OutboundPayload) protocol.OutboundAckPayload
 	// OnStartLink is called for a `start_link` control frame.
 	OnStartLink func(provider string)
+	// OnControl is called for a Dashboard `control` frame
+	// (start_qr | reconnect | restart | update | disconnect).
+	OnControl func(action, provider string)
 	// OnConnected fires after a successful hello/hello_ack.
 	OnConnected func()
 	// OnDisconnected fires when the socket drops.
@@ -180,6 +183,12 @@ func (c *Client) dispatch(f *protocol.Frame) {
 		if c.h.OnStartLink != nil {
 			c.h.OnStartLink(p.Provider)
 		}
+	case protocol.TypeControl:
+		var p protocol.ControlPayload
+		_ = f.Decode(&p)
+		if c.h.OnControl != nil {
+			c.h.OnControl(p.Action, p.Provider)
+		}
 	case protocol.TypeError:
 		c.log.Warnf("cloud error frame: %s", string(f.Payload))
 	}
@@ -200,6 +209,11 @@ func (c *Client) SendState(p protocol.StatePayload) error {
 // SendLinkArtifact streams a link artifact (e.g. QR) to the Cloud.
 func (c *Client) SendLinkArtifact(p protocol.LinkArtifactPayload) error {
 	return c.sendFrame(protocol.TypeLinkArtifact, p)
+}
+
+// SendLog streams one log line to the Cloud for the Dashboard log viewer.
+func (c *Client) SendLog(p protocol.LogPayload) error {
+	return c.sendFrame(protocol.TypeLog, p)
 }
 
 func (c *Client) sendFrame(typ string, payload any) error {

@@ -30,7 +30,10 @@ const (
 	TypeStateAck        = "state_ack"
 	TypeLinkArtifact    = "link_artifact"
 	TypeLinkArtifactAck = "link_artifact_ack"
-	TypeStartLink       = "start_link" // Cloud -> Bridge control (Phase 3+)
+	TypeStartLink       = "start_link" // Cloud -> Bridge control (legacy)
+	TypeControl         = "control"    // Cloud -> Bridge control (Dashboard-driven)
+	TypeLog             = "log"        // Bridge -> Cloud log line (Dashboard viewer)
+	TypeLogAck          = "log_ack"
 	TypeError           = "error"
 )
 
@@ -134,6 +137,18 @@ type LinkArtifactPayload struct {
 	Kind      string `json:"kind"` // "qr" | "pairing_code"
 	Data      string `json:"data"`
 	ExpiresAt int64  `json:"expiresAt,omitempty"`
+}
+
+// ControlPayload is a Dashboard-issued command the Cloud pushes to the Bridge.
+type ControlPayload struct {
+	Action   string `json:"action"` // start_qr | reconnect | restart | update | disconnect
+	Provider string `json:"provider"`
+}
+
+// LogPayload is one log line the Bridge streams to the Cloud for the Dashboard.
+type LogPayload struct {
+	Level   string `json:"level"` // debug | info | warn | error
+	Message string `json:"message"`
 }
 
 func newID() string {
