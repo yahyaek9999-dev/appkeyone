@@ -20,7 +20,6 @@ Phase 2 foundation: production-safe verification commands for KEYONE runtime con
 - `npm run verify:commerce`
 - `npm run verify:email`
 - `npm run verify:mobile`
-- `npm run verify:baileys`
 - `npm run verify:all`
 
 Append `-- --json` to any command for structured JSON output.

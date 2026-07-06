@@ -50,11 +50,11 @@ export async function POST(_req: Request, ctx: { params: { id: string } }) {
   try {
     if (platform === "shopify") {
       if (!storeUrl || !cfg.accessToken) throw new Error("missing_credentials: storeUrl + accessToken");
-      assertPublicHttpUrl(storeUrl);
+      await assertPublicHttpUrl(storeUrl);
       res = await ping(`${storeUrl}/admin/api/2024-01/shop.json`, { "X-Shopify-Access-Token": String(cfg.accessToken) });
     } else if (platform === "woocommerce") {
       if (!storeUrl || !cfg.consumerKey || !cfg.consumerSecret) throw new Error("missing_credentials: storeUrl + consumerKey + consumerSecret");
-      assertPublicHttpUrl(storeUrl);
+      await assertPublicHttpUrl(storeUrl);
       const auth = Buffer.from(`${cfg.consumerKey}:${cfg.consumerSecret}`).toString("base64");
       res = await ping(`${storeUrl}/wp-json/wc/v3/products?per_page=1`, { Authorization: `Basic ${auth}` });
     } else if (platform === "salla") {

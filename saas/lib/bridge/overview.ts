@@ -52,7 +52,7 @@ export type BridgeOverview = {
   releaseUrl: string | null;
 };
 
-// If an older Bridge streams a QR without a real expiry, assume ~one whatsmeow
+// If an older Bridge streams a QR without a real expiry, assume ~one WhatsApp Web
 // rotation (~20s) — NEVER the old fixed 60s, which showed dead codes and caused
 // "Check your connection and try again" on scan.
 const QR_FALLBACK_TTL_MS = 22_000;

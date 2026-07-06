@@ -5,7 +5,7 @@
 // cluster. This module ONLY changes the text-generation source — the prompt,
 // persona, knowledge, sales, realism, humanize, memory and cache layers all run
 // upstream in the caller and are untouched, as is the WhatsApp send pipeline
-// (the route returns the reply string; whatsapp-service does the Baileys send).
+// (the route returns the reply string; whatsapp-service does the whatsapp-web.js send).
 //
 // Fallback order (KeyOne is the FINAL layer, never the first):
 //   vault#1 → vault#2 → vault#3 → … → legacy Bot.aiProvider → KeyOne in-house

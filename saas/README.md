@@ -9,7 +9,7 @@
        │
        ├─> [Prisma + SQLite/Postgres] (users, conversations, knowledge)
        │
-       └─> [Baileys microservice] (Phase 2 — WhatsApp send/receive/voice/image)
+       └─> [whatsapp-web.js service] (WhatsApp send/receive/voice/image) + KEYONE Bridge (customer-hosted)
 ```
 
 ## التشغيل المحلي

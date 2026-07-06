@@ -229,14 +229,6 @@ async function verifySystem() {
 }
 
 async function verifyWhatsapp() {
-  const baileysFlag = process.env.ENABLE_BAILEYS || "0";
-  pass(
-    "whatsapp:baileys-flag",
-    baileysFlag === "1"
-      ? "ENABLE_BAILEYS=1 is allowed only for isolated experimental worker mode; production routing remains QR/Meta"
-      : "ENABLE_BAILEYS is disabled; current QR/Meta routing remains primary",
-    { ENABLE_BAILEYS: baileysFlag, routingActive: false },
-  );
 
   await safe("whatsapp:db-status", async () => {
     const rows = await prisma.bot.groupBy({
@@ -725,105 +717,6 @@ async function verifyMobile() {
   );
 }
 
-async function verifyBaileys() {
-  // Baileys transport REMOVED (2026-07-06): WhatsApp runs exclusively on
-  // whatsapp-web.js (the QR service + the Bridge). Kept as a no-op so any stale
-  // invocation reports the removal instead of failing on the deleted files.
-  skip("baileys:removed", "Baileys transport removed — WhatsApp is whatsapp-web.js only (QR + Bridge).");
-  return;
-  // eslint-disable-next-line no-unreachable
-  const worker = path.join(ROOT, "workers/baileys.worker.js");
-  const flags = path.join(ROOT, "lib/messaging/baileys-flags.ts");
-  const provider = path.join(ROOT, "lib/messaging/baileys-provider.ts");
-  const pkgFile = path.join(ROOT, "package.json");
-
-  for (const [name, file] of [
-    ["worker", worker],
-    ["flags", flags],
-    ["provider", provider],
-  ]) {
-    if (fs.existsSync(file))
-      pass(`baileys:file:${name}`, "Baileys experimental component exists", {
-        file: path.relative(ROOT, file),
-      });
-    else
-      fail(
-        `baileys:file:${name}`,
-        "Baileys experimental component is missing",
-        { file: path.relative(ROOT, file) },
-      );
-  }
-
-  await safe("baileys:node-syntax", async () => {
-    const { spawnSync } = require("child_process");
-    const r = spawnSync(process.execPath, ["--check", worker], {
-      encoding: "utf8",
-    });
-    if (r.status === 0)
-      pass("baileys:node-syntax", "Baileys worker JavaScript syntax is valid");
-    else
-      fail("baileys:node-syntax", "Baileys worker syntax check failed", {
-        stdout: r.stdout,
-        stderr: r.stderr,
-      });
-  });
-
-  await safe("baileys:dependencies", async () => {
-    const pkg = JSON.parse(fs.readFileSync(pkgFile, "utf8"));
-    const deps = pkg.dependencies || {};
-    const missing = ["@whiskeysockets/baileys", "pino"].filter((d) => !deps[d]);
-    if (missing.length)
-      fail("baileys:dependencies", "Missing Baileys worker dependencies", {
-        missing,
-      });
-    else
-      pass("baileys:dependencies", "Baileys worker dependencies are declared", {
-        baileys: deps["@whiskeysockets/baileys"],
-        pino: deps.pino,
-      });
-  });
-
-  const flag = process.env.ENABLE_BAILEYS || "0";
-  pass(
-    "baileys:flag",
-    "Baileys flag inspected; provider routing remains inactive",
-    { ENABLE_BAILEYS: flag, routingActive: false },
-  );
-
-  const url = process.env.BAILEYS_WORKER_URL;
-  if (!url) {
-    skip(
-      "baileys:worker-health",
-      "Set BAILEYS_WORKER_URL=http://127.0.0.1:3025 to verify the isolated worker health endpoint",
-    );
-    return;
-  }
-
-  await safe("baileys:worker-health", async () => {
-    const r = await fetchJson(new URL("/health", url).toString());
-    if (
-      r.ok &&
-      r.body?.provider === "baileys" &&
-      r.body.routingActive === false
-    ) {
-      pass(
-        "baileys:worker-health",
-        "Baileys worker is reachable and isolated",
-        {
-          enabled: r.body.enabled,
-          sessions: r.body.sessions?.length || 0,
-          process: r.body.process,
-        },
-      );
-    } else {
-      fail(
-        "baileys:worker-health",
-        `Unexpected Baileys worker health response status=${r.status}`,
-        r.body,
-      );
-    }
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Reliability scope (Agent 3): readiness, queue visibility, WhatsApp health,
@@ -1033,7 +926,6 @@ async function run() {
   if (["commerce", "all"].includes(scope)) await verifyCommerce();
   if (["email", "all"].includes(scope)) await verifyEmail();
   if (["mobile", "all"].includes(scope)) await verifyMobile();
-  if (["baileys", "all"].includes(scope)) await verifyBaileys();
   if (["reliability", "all"].includes(scope)) await verifyReliability();
   if (
     ![
@@ -1044,7 +936,6 @@ async function run() {
       "commerce",
       "email",
       "mobile",
-      "baileys",
       "reliability",
       "all",
     ].includes(scope)
