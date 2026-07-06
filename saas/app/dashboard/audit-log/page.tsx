@@ -29,10 +29,21 @@ const ACTION_LABELS: Record<string, string> = {
   "integration.key_rotated": "تدوير مفتاح",
   "settings.ai_provider_changed": "تغيير مزود الذكاء",
   "settings.meta_cloud_changed": "تغيير Meta Cloud",
+  "settings.meta_cloud_verified": "تحقّق اتصال Meta",
   "settings.bot_updated": "تعديل إعدادات البوت",
   "whatsapp.connected": "ربط واتساب",
   "whatsapp.disconnected": "فصل واتساب",
   "safety.kill_switch_cleared": "إلغاء مفتاح الإيقاف",
+  "admin.subscription_changed": "تغيير اشتراك",
+  "admin.settings_changed": "تغيير إعدادات المنصّة",
+  "admin.plan_changed": "تعديل باقة",
+  "admin.plan_archived": "أرشفة باقة",
+  "admin.plan_restored": "استعادة باقة",
+  "admin.payment_account_changed": "تغيير حساب استلام",
+  "admin.payment_method_changed": "تغيير طريقة دفع",
+  "admin.payment_approved": "اعتماد دفعة",
+  "admin.payment_rejected": "رفض دفعة",
+  "admin.payment_refunded": "استرداد دفعة",
 };
 
 const FILTER_TABS: { key?: string; label: string }[] = [
@@ -50,6 +61,9 @@ function badgeColor(action: string): string {
   if (action.startsWith("broadcast.")) return "bg-amber-500/15 text-amber-300";
   if (action.startsWith("integration.")) return "bg-sky-500/15 text-sky-300";
   if (action.startsWith("safety.")) return "bg-rose-500/15 text-rose-300";
+  // Money + plan lifecycle actions — highest-sensitivity, distinct color.
+  if (action.includes("plan") || action.includes("payment") || action.includes("subscription")) return "bg-purple-500/15 text-purple-300";
+  if (action.startsWith("settings.") || action.startsWith("admin.")) return "bg-sky-500/15 text-sky-300";
   return "bg-slate-500/15 text-slate-300";
 }
 
@@ -86,7 +100,7 @@ export default async function AuditLogPage({
           <ScrollText className="h-5 w-5 text-white" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold">سجل النشاط</h1>
+          <h1 className="page-title">سجل النشاط</h1>
           <p className="text-sm text-slate-400">
             سجل غير قابل للتعديل لكل الإجراءات الحساسة داخل مساحة العمل — من فعل ماذا ومتى.
           </p>

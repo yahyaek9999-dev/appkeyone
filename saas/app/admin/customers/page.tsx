@@ -26,8 +26,8 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">عملاء المنصة</h1>
-        <p className="text-slate-400">إجمالي: {total} عميل</p>
+        <h1 className="page-title mb-1">عملاء المنصة</h1>
+        <p className="page-desc">إجمالي: {total} عميل</p>
       </div>
 
       <form className="flex gap-2" method="GET">

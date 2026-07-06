@@ -13,9 +13,13 @@ const Body = z.object({
   password: z.string().min(8).max(200),
 });
 
-/** When SIGNUP_AUTO_APPROVE=1, new accounts activate immediately (no waitlist). */
+/**
+ * Self-serve signup: new accounts activate immediately so a visitor becomes a
+ * usable customer without an admin gate (they still pay before using paid limits).
+ * Set SIGNUP_AUTO_APPROVE=0 to switch back to manual approval / waitlist.
+ */
 function autoApprove(): boolean {
-  return process.env.SIGNUP_AUTO_APPROVE === "1";
+  return process.env.SIGNUP_AUTO_APPROVE !== "0";
 }
 
 export async function POST(req: Request) {

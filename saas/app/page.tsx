@@ -14,7 +14,7 @@ import RoiSection from "@/components/ui/roi-section";
 import HeroSection from "@/components/hero/hero-section";
 import {
   ArrowLeft, ArrowRight, BarChart3, Bell, Database, CheckCircle2, Users,
-  Phone, Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
+  Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { BentoFeatures } from "@/components/ui/bento-features";
@@ -26,7 +26,12 @@ export const dynamic = "force-dynamic";
 
 async function getPlans() {
   try {
-    return await prisma.plan.findMany({ orderBy: { sortOrder: "asc" } });
+    // Only the live public catalog — never the archived legacy plans (which carry
+    // stale names/prices/limits). Mirrors /pricing and /dashboard/billing.
+    return await prisma.plan.findMany({
+      where: { status: { not: "archived" } },
+      orderBy: { sortOrder: "asc" },
+    });
   } catch {
     return [];
   }
@@ -146,18 +151,11 @@ export default async function LandingPage({
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
   const [plans, cfg] = await Promise.all([getPlans(), getSiteConfig()]);
-  const brandName = cfg.brandName || "WKEYONE";
-  const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
-  const waHref = waNum
-    ? "https://wa.me/" +
-      waNum +
-      "?text=" +
-      encodeURIComponent(
-        locale === "ar"
-          ? "أريد طلب حساب جديد في " + brandName
-          : "I'd like to subscribe to " + brandName,
-      )
-    : "";
+  const brandName = cfg.brandName || "KEYONE";
+  // Self-serve signup is the primary conversion path (the WhatsApp-to-founder
+  // handoff is gone). Logged-out visitors land on /signup; Enterprise still has
+  // a "contact sales" WhatsApp CTA on /pricing.
+  const signupHref = `/signup${locale === "en" ? "?lang=en" : ""}`;
 
   const previewPlans: PricingPlan[] = plans.map((p: any) => ({
     slug: p.slug,
@@ -202,49 +200,6 @@ export default async function LandingPage({
       {/* ───────── Stats strip ───────── */}
       <AnimatedStatsSection stats={m.stats} />
 
-      {/* ───────── Outcomes ───────── */}
-      <section className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
-        <div className="mx-auto max-w-5xl">
-          <FadeInView className="text-center mb-10">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
-              {isRtl ? "نتائج حقيقية" : "Real outcomes"}
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              {isRtl ? "الشركات التي تستخدم KEYONE تشاهد فرقاً في أول شهر" : "Businesses using KEYONE see measurable results in the first month"}
-            </p>
-          </FadeInView>
-
-          <StaggerReveal className="grid gap-4 sm:grid-cols-3" stagger={0.1}>
-            {[
-              { value: isRtl ? "15 دقيقة" : "15 min/day", label: isRtl ? "إدارة العمليات اليومية" : "daily operations management", accent: false },
-              { value: isRtl ? "5 ثوانٍ" : "5 seconds", label: isRtl ? "متوسط وقت الرد على العملاء" : "average customer reply time", accent: true },
-              { value: isRtl ? "~3×" : "~3×", label: isRtl ? "زيادة في تحويل المبيعات" : "increase in sales conversion", accent: false },
-            ].map((item, i) => (
-              <StaggerItem key={i}>
-                <div className="surface p-6 text-center">
-                  <div className={`text-3xl font-semibold tabular-nums sm:text-4xl ${item.accent ? "text-brand-300" : "text-white"}`}>
-                    {item.value}
-                  </div>
-                  <div className="mt-1.5 text-sm text-slate-500">{item.label}</div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerReveal>
-
-          <FadeInView delay={0.3} className="mt-6 surface p-5 sm:p-6">
-            <p className="text-sm leading-relaxed text-slate-300">
-              {isRtl
-                ? `"قبل ${brandName}، كنا بنضيع ساعات يومياً على الردود اليدوية. دلوقتي كل حاجة بتشتغل تلقائياً — الردود، تتبع الطلبات، والتقارير. الفرق في الشهر الأول كان واضح."`
-                : `"Before ${brandName}, we were losing hours on manual replies every day. Now everything runs automatically — replies, order tracking, and reports. The difference was clear in the first month."`
-              }
-            </p>
-            <div className="mt-3 text-xs text-slate-500">
-              {isRtl ? "— صاحب متجر إلكتروني، مستخدم منذ 6 أشهر" : "— E-commerce store owner, user for 6 months"}
-            </div>
-          </FadeInView>
-        </div>
-      </section>
-
       {/* ───────── Features — bento grid (21st.dev features-8) ───────── */}
       <section id="features" className="px-5 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
@@ -269,7 +224,7 @@ export default async function LandingPage({
       <RoiSection
         locale={locale}
         dir={m.dir}
-        ctaHref={waHref || `/pricing${locale === "en" ? "?lang=en" : ""}`}
+        ctaHref={signupHref}
         ctaLabel={locale === "ar" ? "ابدأ وحوّل رسائلك لمبيعات" : "Turn messages into sales"}
       />
 
@@ -354,15 +309,9 @@ export default async function LandingPage({
               <h2 className="display-heading relative text-3xl sm:text-4xl">{m.cta.heading}</h2>
               <p className="relative mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-slate-400">{m.cta.subheading}</p>
               <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                {waNum ? (
-                  <a href={waHref} target="_blank" rel="noopener noreferrer" className="btn-premium h-11 px-5 text-sm">
-                    <Phone className="h-4 w-4" /> {m.cta.primary}
-                  </a>
-                ) : (
-                  <Link href="/pricing" className="btn-premium h-11 px-5 text-sm">
-                    {m.cta.primary} <Arrow className="h-4 w-4" />
-                  </Link>
-                )}
+                <Link href={signupHref} className="btn-premium h-11 px-5 text-sm">
+                  {m.cta.primary} <Arrow className="h-4 w-4" />
+                </Link>
                 <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 text-sm">
                   {m.cta.secondary}
                 </Link>

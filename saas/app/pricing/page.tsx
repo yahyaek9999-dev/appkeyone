@@ -49,16 +49,13 @@ export default async function PricingPage({
   // DB price overrides (admin-editable) keyed by slug.
   const dbBySlug = new Map(plans.map((p: any) => [p.slug, p]));
 
-  function waLink(planName: string, price: number | string, yearly = false) {
-    const cycleText = yearly
-      ? locale === "ar" ? "سنوي" : "yearly"
-      : locale === "ar" ? "شهري" : "monthly";
-    const text = encodeURIComponent(
-      locale === "ar"
-        ? `مرحباً ${cfg.brandName} 👋\nأريد الاشتراك في باقة *${planName}* (${cycleText}) — ${price}\nأرجو إرشادي بطريقة الدفع وتفعيل الاشتراك.`
-        : `Hello ${cfg.brandName} 👋\nI'd like to subscribe to the *${planName}* plan (${cycleText}) — ${price}\nPlease guide me on payment and activation.`,
-    );
-    return waNum ? `https://wa.me/${waNum}?text=${text}` : "#";
+  // Self-serve purchase. The CTA takes the customer into signup → /dashboard/billing,
+  // where they see the REAL receiving account, pay, upload the receipt, and track it —
+  // instead of the old "WhatsApp the founder to ask for a payment account" handoff.
+  function signupLink(slug: string, yearly = false) {
+    const cycle = yearly ? "yearly" : "monthly";
+    const lang = locale === "en" ? "&lang=en" : "";
+    return `/signup?plan=${encodeURIComponent(slug)}&cycle=${cycle}${lang}`;
   }
 
   function contactLink(planName: string) {
@@ -116,7 +113,12 @@ export default async function PricingPage({
     return out;
   }
 
-  const tiers: PricingTierVM[] = TIERS.map((tier) => {
+  const tiers: PricingTierVM[] = TIERS
+    // Hide plans an owner archived in /admin/plans. Default "active" → no change
+    // until explicitly archived. Existing subscribers are unaffected (entitlement
+    // resolves by planId, not by this list).
+    .filter((tier) => ((dbBySlug.get(tier.slug) as any)?.status ?? "active") !== "archived")
+    .map((tier) => {
     const db: any = dbBySlug.get(tier.slug);
     const priceMonthly = tier.contactSales
       ? null
@@ -139,8 +141,8 @@ export default async function PricingPage({
       popular: Boolean(tier.popular),
       recommended: Boolean(tier.recommended),
       features: bullets(tier),
-      hrefMonthly: waLink(tier.name.en, `$${priceMonthly}`),
-      hrefYearly: waLink(tier.name.en, `$${priceYearly}`, true),
+      hrefMonthly: signupLink(tier.slug),
+      hrefYearly: signupLink(tier.slug, true),
       contactHref: contactLink(tier.name.en),
       savings,
     };

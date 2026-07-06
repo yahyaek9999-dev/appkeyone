@@ -86,7 +86,16 @@ export function decideNextBestAction(i: NbaInputs): NbaResult {
   }
 
   // 6) Just bought (recent buyer, fresh) → upsell a complement.
-  if (i.orderCount >= 1 && i.daysSinceLastInbound <= 7 && i.churnRiskScore < 40 && intent !== "complaint") {
+  // Product-framed advice: only when the tenant sells products. When products
+  // is OFF (Software/Services vertical) fall through to the next branch. Guard
+  // is backward-compatible — undefined productsEnabled means ON (Store default).
+  if (
+    i.productsEnabled !== false &&
+    i.orderCount >= 1 &&
+    i.daysSinceLastInbound <= 7 &&
+    i.churnRiskScore < 40 &&
+    intent !== "complaint"
+  ) {
     return finalize(i, {
       action: "upsell",
       confidence: 64,

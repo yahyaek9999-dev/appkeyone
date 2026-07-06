@@ -36,8 +36,8 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">إدارة الطلبات</h1>
-        <p className="text-slate-400">إجمالي: {total} طلب</p>
+        <h1 className="page-title mb-1">إدارة الطلبات</h1>
+        <p className="page-desc">إجمالي: {total} طلب</p>
       </div>
 
       <form className="flex gap-2" method="GET">

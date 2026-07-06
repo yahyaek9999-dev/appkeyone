@@ -43,6 +43,15 @@ export type AuditAction =
   | "admin.user_password_reset"
   | "admin.subscription_changed"
   | "admin.settings_changed"
+  | "admin.plan_changed"
+  | "admin.plan_archived"
+  | "admin.plan_restored"
+  | "admin.payment_account_changed"
+  | "admin.payment_method_changed"
+  | "admin.payment_approved"
+  | "admin.payment_rejected"
+  | "admin.payment_refunded"
+  | "settings.meta_cloud_verified"
   | (string & {});
 
 export interface AuditInput {

@@ -27,7 +27,18 @@ export default function SignupPage() {
       return;
     }
     if (data.status === "approved") {
-      r.push(data.redirectTo || "/onboarding");
+      // If the customer came from a pricing CTA (?plan=...&cycle=...), take them
+      // straight to billing with that plan pre-selected to finish the purchase.
+      let dest = data.redirectTo || "/onboarding";
+      if (typeof window !== "undefined") {
+        const sp = new URLSearchParams(window.location.search);
+        const plan = sp.get("plan");
+        if (plan) {
+          const cycle = sp.get("cycle") === "yearly" ? "yearly" : "monthly";
+          dest = `/dashboard/billing?plan=${encodeURIComponent(plan)}&cycle=${cycle}`;
+        }
+      }
+      r.push(dest);
       r.refresh();
     } else {
       setPending(data.message || "تم استلام طلبك! سيتم تفعيل الحساب قريباً.");

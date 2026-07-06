@@ -145,17 +145,17 @@ export async function aggregateForUser(
       // WHERE cu.userId = $1 AND m.role = 'user'
       //   AND m.createdAt >= $2 AND m.createdAt < $3
       // GROUP BY h ORDER BY n DESC LIMIT 1
-      `SELECT CAST(strftime('%H', m.createdAt) AS INTEGER) AS h, COUNT(*) AS n
-       FROM Message m
-       JOIN Conversation c ON c.id = m.conversationId
-       JOIN Customer cu    ON cu.id = c.customerId
-       WHERE cu.userId = ? AND m.role = 'user'
-         AND m.createdAt >= ? AND m.createdAt < ?
+      `SELECT EXTRACT(HOUR FROM m."createdAt")::int AS h, COUNT(*) AS n
+       FROM "Message" m
+       JOIN "Conversation" c ON c.id = m."conversationId"
+       JOIN "Customer" cu    ON cu.id = c."customerId"
+       WHERE cu."userId" = $1 AND m.role = 'user'
+         AND m."createdAt" >= $2 AND m."createdAt" < $3
        GROUP BY h ORDER BY n DESC LIMIT 1`,
       userId,
       dayStart,
       now,
-    ),
+    ).catch(() => [] as { h: number; n: number }[]),
   ]);
 
   const ordersRevenueMinor = sum(yOrders.map((o) => o.total || 0));

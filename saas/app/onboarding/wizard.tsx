@@ -1,15 +1,28 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import {
+  Sparkles, ArrowLeft, ArrowRight, Check, Loader2,
+  ShoppingBag, UtensilsCrossed, Megaphone, Code2, Stethoscope,
+  GraduationCap, Briefcase, Building2, Factory, Shapes,
+  type LucideIcon,
+} from "lucide-react";
 import { BUSINESS_TYPES, TONES } from "@/lib/persona-packs";
+import { VERTICALS, DEFAULT_VERTICAL, type Vertical } from "@/lib/modules";
 
 type Step = number;
+
+// Maps the lucide icon NAME stored in VERTICALS to the imported component.
+const VERTICAL_ICONS: Record<string, LucideIcon> = {
+  ShoppingBag, UtensilsCrossed, Megaphone, Code2, Stethoscope,
+  GraduationCap, Briefcase, Building2, Factory, Shapes,
+};
 
 export default function OnboardingWizard({ userName }: { userName: string }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(0);
   const [brand, setBrand] = useState("");
+  const [vertical, setVertical] = useState<Vertical>(DEFAULT_VERTICAL);
   const [businessType, setBusinessType] = useState<string>("general");
   const [tone, setTone] = useState<string>("warm");
   const [notifyPhone, setNotifyPhone] = useState("");
@@ -18,15 +31,16 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
 
-  const next = () => setStep((s) => Math.min(4, s + 1));
+  const next = () => setStep((s) => Math.min(5, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
 
   const canAdvance =
     (step === 0 && brand.trim().length >= 2) ||
-    (step === 1 && !!businessType) ||
-    (step === 2 && !!tone) ||
-    (step === 3) ||
-    step === 4;
+    (step === 1 && !!vertical) ||
+    (step === 2 && !!businessType) ||
+    (step === 3 && !!tone) ||
+    (step === 4) ||
+    step === 5;
 
   async function submit() {
     setError(null);
@@ -35,7 +49,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
       const r = await fetch("/api/onboarding/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brand, businessType, tone, notifyPhone, importedText }),
+        body: JSON.stringify({ brand, vertical, businessType, tone, notifyPhone, importedText }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || "request_failed");
@@ -58,7 +72,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
         </div>
         <h1 className="ai-heading mt-3 text-3xl">أهلاً {userName.split("@")[0]} 👋</h1>
         <p className="text-slate-400 mt-2 text-sm">
-          خمسة أسئلة بسّ عشان نخلّص إعداد بوت الواتس اب بتاعك. تقدر تغيّر أي حاجة لاحقاً من لوحة التحكم.
+          كام سؤال بسيط عشان نخلّص إعداد بوت الواتس اب بتاعك. تقدر تغيّر أي حاجة لاحقاً من لوحة التحكم.
         </p>
       </header>
 
@@ -100,6 +114,34 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
         {step === 1 && (
           <StepShell
             stepNum={2}
+            title="نوع النشاط"
+            subtitle="اختر نوع نشاطك عشان نظبّط لك مساحة العمل — بنفعّل بس الأقسام اللي تخصّك ونخفي اللي مالوش لازمة. تقدر تعدّلها بعدين."
+          >
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {VERTICALS.map((v) => {
+                const Icon = VERTICAL_ICONS[v.icon] || Shapes;
+                return (
+                  <button
+                    key={v.key}
+                    onClick={() => setVertical(v.key)}
+                    className={`p-4 rounded-2xl border text-right transition ${
+                      vertical === v.key
+                        ? "bg-brand-500/15 border-brand-500/40 ring-1 ring-brand-500/40"
+                        : "bg-slate-900/30 border-white/5 hover:border-white/15"
+                    }`}
+                  >
+                    <Icon className="w-6 h-6 text-brand-300" />
+                    <div className="mt-1 font-medium text-sm">{v.label}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </StepShell>
+        )}
+
+        {step === 2 && (
+          <StepShell
+            stepNum={3}
             title="نوع البزنس"
             subtitle="بناء عليه بنجهّز لغة الرّدّ وأسئلة شايعة جاهزة تناسبك. لو مش متأكّد، اختر الأقرب."
           >
@@ -122,9 +164,9 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
           </StepShell>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <StepShell
-            stepNum={3}
+            stepNum={4}
             title="أسلوب الرد"
             subtitle="لهجة البوت مع العملاء. أي خيار تقدر تغيّره بعد الإعداد."
           >
@@ -147,9 +189,9 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
           </StepShell>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <StepShell
-            stepNum={4}
+            stepNum={5}
             title="إلصق معلومات بزنسك (اختياري)"
             subtitle="جّب أي نص فيه منتجات، أسعار، أسئلة شائعة، بيو إنستجرام — إحنا بنفهمه وبنحوّله لردود جاهزة. لو عندك فايل PDF أو Word، تقدر ترفعه لاحقاً من صفحة قاعدة المعرفة."
           >
@@ -181,14 +223,15 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
           </StepShell>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <StepShell
-            stepNum={5}
+            stepNum={6}
             title="جاهز للإطلاق"
             subtitle="راجع الإعدادات. بعد ما تدوس 'تفعيل البوت'، هنوديك لصفحة ربط الواتس اب بـQR."
           >
             <ReviewCard
               brand={brand}
+              vertical={vertical}
               businessType={businessType}
               tone={tone}
               hasImport={importedText.length > 0}
@@ -228,7 +271,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
           <ArrowRight className="w-4 h-4" />
           السابق
         </button>
-        {step < 4 ? (
+        {step < 5 ? (
           <button
             onClick={next}
             disabled={!canAdvance}
@@ -253,7 +296,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
 }
 
 function ProgressBar({ step }: { step: number }) {
-  const total = 5;
+  const total = 6;
   return (
     <div className="flex items-center gap-2" dir="ltr">
       {Array.from({ length: total }).map((_, i) => (
@@ -280,7 +323,7 @@ function StepShell({
     <div className="space-y-4">
       <div>
         {stepNum && (
-          <div className="text-xs text-brand-300 font-bold mb-1">خطوة {stepNum} من 5</div>
+          <div className="text-xs text-brand-300 font-bold mb-1">خطوة {stepNum} من 6</div>
         )}
         <h2 className="text-xl font-semibold">{title}</h2>
         <p className="text-sm text-slate-400 mt-1 leading-relaxed">{subtitle}</p>
@@ -290,12 +333,14 @@ function StepShell({
   );
 }
 
-function ReviewCard({ brand, businessType, tone, hasImport }: { brand: string; businessType: string; tone: string; hasImport: boolean }) {
+function ReviewCard({ brand, vertical, businessType, tone, hasImport }: { brand: string; vertical: Vertical; businessType: string; tone: string; hasImport: boolean }) {
   const bt = BUSINESS_TYPES.find((b) => b.value === businessType);
   const tn = TONES.find((t) => t.value === tone);
+  const vt = VERTICALS.find((v) => v.key === vertical);
   return (
     <div className="ai-card space-y-3 rounded-2xl p-4">
       <Row label="اسم المتجر" value={brand} />
+      <Row label="نوع النشاط" value={vt ? vt.label : vertical} />
       <Row label="نوع البزنس" value={bt ? `${bt.icon} ${bt.label}` : businessType} />
       <Row label="الأسلوب" value={tn ? tn.label : tone} />
       <Row label="استيراد معلومات" value={hasImport ? "نعم" : "لا"} />

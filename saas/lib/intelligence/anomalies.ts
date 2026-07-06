@@ -18,6 +18,7 @@ import { computeForecast, type ForecastResult } from "@/lib/analytics/forecast";
 import { getOrderRollup, type OrderRollup } from "@/lib/analytics/order-rollup";
 import { detectLostCustomers } from "@/lib/intel/lost-customers";
 import { buildRevenueCopilot, type RevenueCopilotResult } from "@/lib/intelligence/revenue-opportunity";
+import { resolveBusinessContext } from "@/lib/business-context";
 
 export type AnomalyKind =
   | "revenue_spike"
@@ -79,12 +80,17 @@ function meanStd(values: number[]): { mean: number; std: number } {
 export async function detectAnomalies(userId: string, now: Date = new Date()): Promise<AnomalyReport> {
   // Compose the existing intel — each independently guarded so a single
   // failure never takes the whole feed down.
-  const [forecast, rollup, lost, copilot] = await Promise.all([
+  const [forecast, rollup, lost, copilot, ctx] = await Promise.all([
     computeForecast(userId).catch(() => null as ForecastResult | null),
     getOrderRollup(userId, { now }).catch(() => null as OrderRollup | null),
     detectLostCustomers(userId, now).catch(() => [] as Awaited<ReturnType<typeof detectLostCustomers>>),
     buildRevenueCopilot(userId, { now }).catch(() => null as RevenueCopilotResult | null),
+    resolveBusinessContext(userId).catch(() => null),
   ]);
+
+  // Module gates for phrasing. Fail-safe: null ctx (or resolution error) → every
+  // module ON, so Store tenants keep byte-identical copy.
+  const inventoryEnabled = ctx ? ctx.modules.inventory : true;
 
   const anomalies: Anomaly[] = [];
 
@@ -115,7 +121,11 @@ export async function detectAnomalies(userId: string, now: Date = new Date()): P
           title: "قفزة في الإيراد",
           detail: `إيراد آخر يوم مكتمل (${EGP(yesterdayRev)}) أعلى بوضوح من متوسط الأسبوع (${EGP(mean)}).`,
           metric: `+${Math.round(pct)}%`,
-          expectedImpact: "زخم بيع قوي — استثمره بمخزون كافٍ ومتابعة سريعة قبل أن يبرد.",
+          // Inventory-framed advice only when the tenant tracks inventory.
+          // Otherwise drop the "stock" clause (Software/Services vertical).
+          expectedImpact: inventoryEnabled
+            ? "زخم بيع قوي — استثمره بمخزون كافٍ ومتابعة سريعة قبل أن يبرد."
+            : "زخم بيع قوي — استثمره بمتابعة سريعة قبل أن يبرد.",
           actionLabel: "افتح التوقّعات",
           actionHref: "/dashboard/revenue-forecast",
         });

@@ -18,9 +18,11 @@ export type OrderStatus =
   | "pending"
   | "confirmed"
   | "preparing"
+  | "packed"
   | "shipped"
   | "out_for_delivery"
   | "delivered"
+  | "returned"
   | "canceled"
   | "cancelled"
   | "refunded";
@@ -44,6 +46,11 @@ const STATUS_MAP: Record<
     icon: <Clock className="size-3" />,
     classes: "bg-blue-500/10 text-blue-300 ring-blue-500/20",
   },
+  packed: {
+    label: "تم التغليف",
+    icon: <PackageCheck className="size-3" />,
+    classes: "bg-indigo-500/10 text-indigo-300 ring-indigo-500/20",
+  },
   shipped: {
     label: "تم الشحن",
     icon: <Truck className="size-3" />,
@@ -58,6 +65,11 @@ const STATUS_MAP: Record<
     label: "تم التسليم",
     icon: <PackageCheck className="size-3" />,
     classes: "bg-emerald-500/10 text-emerald-300 ring-emerald-500/20",
+  },
+  returned: {
+    label: "مرتجع",
+    icon: <RefreshCcw className="size-3" />,
+    classes: "bg-rose-500/10 text-rose-300 ring-rose-500/20",
   },
   canceled: {
     label: "ملغي",

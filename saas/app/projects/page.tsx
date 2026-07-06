@@ -5,23 +5,22 @@ import { PublicFooter } from "@/components/ui/public-footer";
 import { AmbientBackdrop } from "@/components/ui/marketing";
 import { SectionReveal, StaggerItem } from "@/components/ui/section-reveal";
 import {
-  Star, Quote,
   ArrowLeft, ArrowRight, CheckCircle2, Phone,
 } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = {
-  title: "مشاريعنا ونتائج العملاء",
-  description: "قصص نجاح حقيقية من أعمال تستخدم KEYONE يومياً — نتائج مقيسة، أرقام واضحة، لا وعود تسويقية.",
+  title: "أمثلة على استخدام KEYONE",
+  description: "حالات استخدام نموذجية توضّح كيف تعمل KEYONE في قطاعات مختلفة — أمثلة توضيحية لآلية العمل والقيمة، وليست نتائج عملاء مُسمّين.",
   openGraph: {
-    title: "مشاريعنا ونتائج العملاء | KEYONE",
-    description: "3× تحويلات، 5 ثوانٍ رد، صفر رسائل مفقودة — قصص نجاح حقيقية من أعمال تستخدم KEYONE.",
+    title: "أمثلة على استخدام KEYONE | KEYONE",
+    description: "حالات استخدام نموذجية توضّح كيف تعمل KEYONE في قطاعات مختلفة على واتساب.",
     type: "website" as const,
   },
   twitter: {
     card: "summary_large_image" as const,
-    title: "مشاريعنا ونتائج العملاء | KEYONE",
-    description: "قصص نجاح حقيقية وأرقام مقيسة من أعمال تستخدم KEYONE على واتساب.",
+    title: "أمثلة على استخدام KEYONE | KEYONE",
+    description: "حالات استخدام نموذجية توضّح كيف تعمل KEYONE على واتساب.",
   },
 };
 
@@ -295,7 +294,7 @@ function CaseCard({ cs, isRtl }: { cs: CaseStudy; isRtl: boolean }) {
         {/* Right column: before/after results */}
         <div className="px-6 py-5 sm:px-8">
           <div className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-            {isRtl ? "قبل وبعد" : "Before & After"}
+            {isRtl ? "مثال توضيحي (قبل/بعد)" : "Illustrative (before/after)"}
           </div>
           <div>
             {cs.results.map((r) => (
@@ -316,27 +315,6 @@ function CaseCard({ cs, isRtl }: { cs: CaseStudy; isRtl: boolean }) {
         </div>
       </div>
 
-      {/* Testimonial */}
-      <div className="border-t border-white/[0.06] px-6 py-5 sm:px-8">
-        <Quote className="mb-2 h-4 w-4 text-brand-400/50" aria-hidden="true" />
-        <div className="flex gap-0.5 mb-3" aria-hidden="true">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} className="h-3 w-3 fill-gold-400 text-gold-400" />
-          ))}
-        </div>
-        <blockquote className="text-sm leading-relaxed text-slate-300 italic">
-          &ldquo;{cs.quote}&rdquo;
-        </blockquote>
-        <figcaption className="mt-3 flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-500/25 bg-brand-500/10 text-sm font-bold text-brand-300">
-            {cs.quoteName.charAt(0)}
-          </span>
-          <span>
-            <span className="block text-sm font-semibold text-white">{cs.quoteName}</span>
-            <span className="block text-xs text-slate-500">{cs.quoteRole}</span>
-          </span>
-        </figcaption>
-      </div>
     </article>
   );
 }
@@ -368,11 +346,11 @@ export default async function ProjectsPage({
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
   const hero = {
-    eyebrow: isRtl ? "قصص نجاح حقيقية" : "Real success stories",
-    h1: isRtl ? "نتائج قابلة للقياس لكل أعمال جربت KEYONE" : "Measurable results for every business that tried KEYONE",
+    eyebrow: isRtl ? "حالات استخدام نموذجية" : "Illustrative use cases",
+    h1: isRtl ? "كيف تعمل KEYONE في أعمال مختلفة" : "How KEYONE works across different businesses",
     sub: isRtl
-      ? "أرقام حقيقية من عملاء يستخدمون KEYONE يومياً — لا وعود تسويقية."
-      : "Real numbers from customers who use KEYONE every day — no marketing promises.",
+      ? "أمثلة توضيحية لقطاعات شائعة تبيّن آلية العمل والقيمة — وليست نتائج عملاء مُسمّين."
+      : "Illustrative scenarios for common sectors showing how it works and the value — not named-customer results.",
   };
 
   const overallMetrics = isRtl
@@ -418,6 +396,11 @@ export default async function ProjectsPage({
             <h1 className="display-heading text-4xl sm:text-5xl">{hero.h1}</h1>
             <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
               {hero.sub}
+            </p>
+            <p className="mx-auto mt-5 max-w-lg rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-xs leading-relaxed text-slate-500">
+              {isRtl
+                ? "ملاحظة: الأرقام في الأمثلة أدناه توضيحية لتقريب الفكرة، وليست نتائج مقيسة لعملاء بعينهم."
+                : "Note: the figures in the examples below are illustrative, not measured results from specific customers."}
             </p>
           </SectionReveal>
         </div>

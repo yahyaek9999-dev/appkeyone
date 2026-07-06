@@ -157,6 +157,7 @@ export default function IntegrationsUi() {
   const [name, setName] = useState("Website orders");
   const [platform, setPlatform] = useState("custom");
   const [storeUrl, setStoreUrl] = useState("");
+  const [creds, setCreds] = useState<Record<string, string>>({});
   const [secret, setSecret] = useState<{
     apiKey: string;
     webhookSecret: string;
@@ -208,14 +209,36 @@ export default function IntegrationsUi() {
       });
       const json = await res.json();
       if (!res.ok) { showError(json.error || "فشل إنشاء التكامل"); return; }
+      // Persist store URL + credentials (encrypted at rest) on the new integration.
+      const cleanCreds = Object.fromEntries(Object.entries(creds).filter(([, v]) => String(v).trim()));
+      if (json.integration?.id && (storeUrl.trim() || Object.keys(cleanCreds).length)) {
+        await fetch(`/api/commerce/integrations/${json.integration.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storeUrl: storeUrl.trim() || undefined, configJson: cleanCreds }),
+        }).catch(() => {});
+      }
       setSecret({ apiKey: json.credentials.apiKey, webhookSecret: json.credentials.webhookSecret, webhookUrl: json.integration.webhookUrl });
       setName("Website orders");
       setPlatform("custom");
       setStoreUrl("");
+      setCreds({});
       setWizardPlatform(null);
-      showSuccess("تم إنشاء التكامل بنجاح!");
+      showSuccess("تم إنشاء التكامل وحفظ بيانات الاعتماد. اضغط «فحص الاتصال» للتأكد.");
       await load(false);
     } finally { setCreating(false); }
+  }
+
+  async function verify(item: Integration) {
+    setBusyId(item.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/commerce/integrations/${item.id}/verify`, { method: "POST" });
+      const json = await res.json();
+      if (res.ok && json.ok) showSuccess("✅ تم الاتصال بالمتجر بنجاح!");
+      else showError(`فشل الاتصال: ${json.detail || json.message || json.error || "تحقّق من البيانات"}`);
+      await load(false);
+    } finally { setBusyId(null); }
   }
 
   async function toggle(item: Integration) {
@@ -365,6 +388,8 @@ export default function IntegrationsUi() {
           platform={wizardPlatform}
           storeUrl={storeUrl}
           setStoreUrl={setStoreUrl}
+          creds={creds}
+          setCreds={setCreds}
           onBack={() => setWizardPlatform(null)}
           onContinue={createIntegration}
           creating={creating}
@@ -451,11 +476,16 @@ export default function IntegrationsUi() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <button onClick={() => test(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="اختبار الاتصال">
-                  {busyId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} اختبار
+                {["shopify", "woocommerce", "salla", "zid"].includes((item.platform || "").toLowerCase()) && (
+                  <button onClick={() => verify(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-brand-500/15 border border-brand-500/30 text-brand-200 hover:bg-brand-500/25 text-xs inline-flex items-center gap-1" title="فحص الاتصال بالمتجر">
+                    {busyId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plug className="w-3 h-3" />} فحص الاتصال
+                  </button>
+                )}
+                <button onClick={() => syncNow(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="مزامنة المنتجات من المتجر">
+                  <RefreshCw className={`w-3 h-3 ${busyId === item.id ? "animate-spin" : ""}`} /> مزامنة
                 </button>
-                <button onClick={() => syncNow(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="عرض آخر الأحداث">
-                  <RefreshCw className={`w-3 h-3 ${busyId === item.id ? "animate-spin" : ""}`} /> آخر الأحداث
+                <button onClick={() => test(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="إرسال حدث تجريبي">
+                  {busyId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} اختبار حدث
                 </button>
                 <button onClick={() => rotate(item)} disabled={busyId === item.id} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs inline-flex items-center gap-1" title="تدوير المفاتيح">
                   <RotateCcw className="w-3 h-3" /> تدوير
@@ -525,10 +555,24 @@ export default function IntegrationsUi() {
   );
 }
 
+function CredField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div>
+      <label className="text-xs text-slate-400 mb-1 block">{label}</label>
+      <input
+        type="password" autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder} dir="ltr"
+        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-400"
+      />
+    </div>
+  );
+}
+
 function WizardView({
-  platform, storeUrl, setStoreUrl, onBack, onContinue, creating, name, setName,
+  platform, storeUrl, setStoreUrl, creds, setCreds, onBack, onContinue, creating, name, setName,
 }: {
   platform: string; storeUrl: string; setStoreUrl: (v: string) => void;
+  creds: Record<string, string>; setCreds: (v: Record<string, string>) => void;
   onBack: () => void; onContinue: () => void; creating: boolean;
   name: string; setName: (v: string) => void;
 }) {
@@ -586,6 +630,32 @@ function WizardView({
             className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-400"
           />
           <p className="text-xs text-slate-500 mt-1">أدخل رابط متجرك ليساعدنا في تهيئة الاتصال بشكل أسرع.</p>
+        </div>
+      )}
+
+      {platform !== "custom" && (
+        <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <KeyRound className="w-4 h-4 text-brand-400" /> بيانات الاعتماد (Credentials)
+          </div>
+          {(platform === "shopify" || platform === "salla" || platform === "zid") && (
+            <CredField
+              label={platform === "shopify" ? "Admin API access token" : "Access Token"}
+              value={creds.accessToken || ""}
+              onChange={(v) => setCreds({ ...creds, accessToken: v })}
+              placeholder={platform === "shopify" ? "shpat_..." : "Bearer token"}
+            />
+          )}
+          {platform === "woocommerce" && (
+            <>
+              <CredField label="Consumer Key" value={creds.consumerKey || ""} onChange={(v) => setCreds({ ...creds, consumerKey: v })} placeholder="ck_..." />
+              <CredField label="Consumer Secret" value={creds.consumerSecret || ""} onChange={(v) => setCreds({ ...creds, consumerSecret: v })} placeholder="cs_..." />
+            </>
+          )}
+          {platform === "zid" && (
+            <CredField label="Store ID" value={creds.storeId || ""} onChange={(v) => setCreds({ ...creds, storeId: v })} placeholder="store id" />
+          )}
+          <p className="text-xs text-slate-500">تُحفظ بياناتك مشفّرة (AES-256). بعد الربط اضغط «فحص الاتصال» للتأكد.</p>
         </div>
       )}
 

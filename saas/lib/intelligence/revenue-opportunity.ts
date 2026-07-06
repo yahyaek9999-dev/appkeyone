@@ -14,6 +14,7 @@
 import { prisma } from "@/lib/db";
 import { getOrderRollup } from "@/lib/analytics/order-rollup";
 import { readNegotiation } from "@/lib/sales-engine";
+import { resolveBusinessContext } from "@/lib/business-context";
 import { decideNextBestAction } from "./next-best-action";
 import { classifyValueTier, valueTierWeight } from "./value-tier";
 import { computeChurnProbability } from "./churn";
@@ -45,6 +46,16 @@ export async function buildRevenueCopilot(
   // and analytics use. Bounded internally.
   const rollup = await getOrderRollup(userId, { now });
   const aov = rollup.totals.aov || 0;
+
+  // Business-type module gate (once). Only used to suppress product-framed NBA
+  // (the "upsell a complement" branch). Fail-safe: any error → products ON so
+  // existing Store tenants keep byte-identical output.
+  let productsEnabled = true;
+  try {
+    productsEnabled = (await resolveBusinessContext(userId)).modules.products;
+  } catch {
+    productsEnabled = true;
+  }
 
   // Active-ish customers in the last 60d OR any customer with intelligence
   // signal. Bounded to keep this fast for big accounts.
@@ -172,6 +183,7 @@ export async function buildRevenueCopilot(
       valueTier,
       objections,
       discountAsks,
+      productsEnabled,
     });
 
     // Skip non-actionable items from the worklist (but they still counted in

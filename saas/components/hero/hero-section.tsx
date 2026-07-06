@@ -4,7 +4,6 @@ import { useRef, useCallback, useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import HeroVideo from "./hero-video";
 import ParticleField from "./particle-field";
-import { WhatsAppIcon } from "@/components/ui/marketing";
 import { FrameButton } from "@/components/ui/frame-button";
 import { cn } from "@/lib/utils";
 
@@ -172,59 +171,47 @@ export default function HeroSection({
   const { contentRef, handleMouseMove } = useMouseParallax();
   const revealRef = useRevealAnimation();
 
-  const waNum = (supportWhatsapp || "").replace(/[^\d]/g, "");
-  const waHref = waNum
-    ? `https://wa.me/${waNum}?text=${encodeURIComponent(
-        isRtl
-          ? `أريد طلب حساب جديد في ${brandName}`
-          : `I'd like to subscribe to ${brandName}`,
-      )}`
-    : "";
+  const headline = isRtl
+    ? "أتمتة واتساب وذكاء الأعمال لمتجرك"
+    : "WhatsApp automation & business intelligence for your store";
+  const subhead = isRtl
+    ? "ردّ تلقائي على عملائك خلال ثوانٍ، يرصد كل طلب، ويرسل تقاريرك — مباشرةً داخل واتساب."
+    : "Reply to customers in seconds, capture every order, and get instant reports — right inside WhatsApp.";
 
   return (
     <>
+      {/* ── Cinematic logo video — clean, no text overlaid on it ── */}
       <section
-        className="relative flex h-[100svh] min-h-[560px] flex-col overflow-hidden bg-black"
+        className="relative flex h-[70svh] min-h-[420px] flex-col overflow-hidden bg-black"
         onMouseMove={handleMouseMove}
       >
-        {/* Accessible/SEO headline — the visible headline lives in the approved
-            hero video, so expose a real H1 to screen readers + crawlers without
-            altering the visual composition. */}
-        <h1 className="sr-only">
-          {isRtl
-            ? `${brandName} — منصة أتمتة واتساب وذكاء الأعمال للمتاجر والشركات`
-            : `${brandName} — WhatsApp automation & business intelligence for stores and businesses`}
-        </h1>
-
-        {/* ── Background Layers ── */}
         <HeroVideo src={videoSrc} mobileSrc={mobileVideoSrc} />
         <AmbientGlows />
         <CinematicGrid />
         <LightSweep />
         <ParticleField />
-
-        {/* ── Bottom fade ── */}
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-32 bg-gradient-to-t from-black to-transparent" />
       </section>
 
-      {/* ── CTA Buttons below video ── */}
-      <div className="flex flex-col items-center justify-center gap-4 bg-black px-6 pb-16 pt-10 sm:flex-row sm:pb-20">
-        {waNum ? (
-          <FrameButton href={waHref} variant="solid" external>
-            <WhatsAppIcon className="h-4 w-4" />
-            {ctaPrimary}
-          </FrameButton>
-        ) : (
-          <FrameButton href="/pricing" variant="solid">
+      {/* ── Value proposition + CTAs BELOW the video so a first-time owner reads
+            what KEYONE does + a CTA, with nothing overlapping the logo ── */}
+      <div ref={revealRef} className="bg-black px-6 pb-16 pt-4 text-center sm:pb-20">
+        <h1 data-reveal className="mx-auto max-w-2xl text-balance text-3xl font-bold leading-tight tracking-[-0.02em] text-white sm:text-4xl">
+          {headline}
+        </h1>
+        <p data-reveal className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
+          {subhead}
+        </p>
+        <div data-reveal className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {/* Self-serve: create an account in minutes. */}
+          <FrameButton href={`/signup${isRtl ? "" : "?lang=en"}`} variant="solid">
             {ctaPrimary}
             <Arrow />
           </FrameButton>
-        )}
-
-        <FrameButton href="/pricing" variant="outline">
-          {ctaSecondary}
-          {!waNum && <Arrow />}
-        </FrameButton>
+          <FrameButton href={`/pricing${isRtl ? "" : "?lang=en"}`} variant="outline">
+            {ctaSecondary}
+          </FrameButton>
+        </div>
       </div>
     </>
   );

@@ -18,15 +18,12 @@ import { LimelightTabs } from "@/components/ui/limelight-tabs";
 
 function toOrderStatus(s: string): OrderStatus {
   if (s === "canceled") return "cancelled";
-  if (
-    s === "pending" ||
-    s === "confirmed" ||
-    s === "shipped" ||
-    s === "delivered" ||
-    s === "refunded"
-  )
-    return s;
-  return "pending";
+  // Recognise every status the order-actions dropdown can set (was: only 5).
+  const known = [
+    "pending", "confirmed", "preparing", "packed", "shipped",
+    "out_for_delivery", "delivered", "returned", "refunded", "cancelled",
+  ];
+  return known.includes(s) ? (s as OrderStatus) : "pending";
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -40,20 +37,23 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams?: { status?: string };
+  searchParams?: { status?: string; page?: string };
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const PAGE_SIZE = 100;
   const status = searchParams?.status;
+  const page = Math.max(1, parseInt(searchParams?.page || "1", 10) || 1);
   const where: any = { userId: user.id };
   if (status) where.status = status;
 
-  const [orders, counts, revenueAgg] = await Promise.all([
+  const [orders, counts, revenueAgg, filteredCount] = await Promise.all([
     (prisma as any).order.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
       include: { items: true },
     }),
     (prisma as any).order.groupBy({
@@ -68,7 +68,10 @@ export default async function OrdersPage({
       },
       _sum: { total: true },
     }),
+    (prisma as any).order.count({ where }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(filteredCount / PAGE_SIZE));
+  const pageHref = (p: number) => `/dashboard/orders?${status ? `status=${status}&` : ""}page=${p}`;
 
   const countByStatus: Record<string, number> = {};
   for (const row of counts) countByStatus[row.status] = row._count._all;
@@ -225,6 +228,21 @@ export default async function OrdersPage({
           )}
         </div>
       </div>
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-[13px]">
+          {page > 1 ? (
+            <Link href={pageHref(page - 1)} className="btn-ghost h-8">السابق</Link>
+          ) : (
+            <span className="h-8" />
+          )}
+          <span className="text-slate-400">صفحة {page.toLocaleString("ar-EG")} من {totalPages.toLocaleString("ar-EG")}</span>
+          {page < totalPages ? (
+            <Link href={pageHref(page + 1)} className="btn-ghost h-8">التالي</Link>
+          ) : (
+            <span className="h-8" />
+          )}
+        </div>
+      )}
       </FadeInView>
     </div>
   );

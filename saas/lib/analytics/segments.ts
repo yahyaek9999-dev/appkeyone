@@ -8,6 +8,7 @@
 
 import { prisma } from "@/lib/db";
 import { getOrderRollup, type CustomerOrderStats } from "./order-rollup";
+import { resolveBusinessContext } from "@/lib/business-context";
 
 const DAY = 86_400_000;
 const MAX_CUSTOMERS = 50_000;
@@ -117,6 +118,15 @@ async function load(userId: string): Promise<{ customers: ScoredCustomer[]; roll
   return { customers, rollup };
 }
 
+// Product-framed suggestedAction copy is meaningless for tenants that don't
+// sell products (products module OFF — Software/Services verticals). Only the
+// two segments whose default action names a "منتج" get a product-free
+// rewording; segment membership/counts are unchanged. Keyed by segment key.
+const NON_PRODUCT_ACTION: Record<string, string> = {
+  repeat_buyers: "كافئ ولاءهم بعرض أو خدمة مميّزة على طلبهم القادم.",
+  likely_again: "ذكّرهم بالخدمة وحفّزهم على الطلب مجددًا.",
+};
+
 export interface SegmentsResult {
   generatedAt: string;
   totalCustomers: number;
@@ -126,6 +136,15 @@ export interface SegmentsResult {
 export async function computeSegments(userId: string): Promise<SegmentsResult> {
   const now = Date.now();
   const { customers, rollup } = await load(userId);
+
+  // Module gate for suggestedAction phrasing. Fail-safe: any error → products
+  // ON, so Store tenants get byte-identical copy.
+  let productsEnabled = true;
+  try {
+    productsEnabled = (await resolveBusinessContext(userId)).modules.products;
+  } catch {
+    productsEnabled = true;
+  }
 
   const agg = new Map<string, { count: number; revenue: number; orders: number; withOrder: number; lastActivity: number }>();
   for (const m of SEGMENT_META) agg.set(m.key, { count: 0, revenue: 0, orders: 0, withOrder: 0, lastActivity: 0 });
@@ -155,7 +174,7 @@ export async function computeSegments(userId: string): Promise<SegmentsResult> {
       aov: a.orders > 0 ? Math.round(a.revenue / a.orders) : 0,
       lastActivity: a.lastActivity > 0 ? new Date(a.lastActivity).toISOString() : null,
       conversionPct: a.count > 0 ? Math.round((a.withOrder / a.count) * 1000) / 10 : 0,
-      suggestedAction: m.action,
+      suggestedAction: !productsEnabled && NON_PRODUCT_ACTION[m.key] ? NON_PRODUCT_ACTION[m.key] : m.action,
     };
   });
 

@@ -15,6 +15,7 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getUsageSnapshot } from "@/lib/membership/limits";
+import { getCustomerCapState } from "@/lib/membership/customer-cap";
 import { tierBadge } from "@/lib/membership/plan";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { AlertTriangle, MessageSquare, Sparkles, Megaphone, Crown, ShieldAlert } from "lucide-react";
@@ -25,7 +26,7 @@ export const dynamic = "force-dynamic";
 
 export default async function UsagePage() {
   const user = await requireUser();
-  const [snapshot, bot] = await Promise.all([
+  const [snapshot, bot, cap] = await Promise.all([
     getUsageSnapshot(user.id),
     prisma.bot.findUnique({
       where: { userId: user.id },
@@ -36,8 +37,9 @@ export default async function UsagePage() {
         metaPhoneNumberId: true,
         metaQualityRating: true,
         metaVerifiedAt: true,
-      } as any,
-    }) as any,
+      },
+    }),
+    getCustomerCapState(user.id).catch(() => null),
   ]);
 
   const { plan, counters, resetAt } = snapshot;
@@ -85,6 +87,41 @@ export default async function UsagePage() {
           <Pill label="أولوية الإرسال" value={priorityLabel(plan.queuePriority)} />
         </div>
       </div>
+
+      {/* Customer cap (CRM records) */}
+      {cap && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="font-bold">حدّ العملاء (سجلات CRM)</div>
+            <span className="text-xs text-slate-400">
+              {cap.unlimited ? "غير محدود" : `${cap.current.toLocaleString()} / ${cap.effectiveCap.toLocaleString()}`}
+            </span>
+          </div>
+          {cap.unlimited ? (
+            <div className="text-sm text-emerald-300">باقتك تسمح بعدد غير محدود من العملاء.</div>
+          ) : (
+            <>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+                <div
+                  className={`h-full rounded-full ${cap.usagePct >= 90 ? "bg-rose-500" : cap.usagePct >= 70 ? "bg-amber-500" : "bg-brand-500"}`}
+                  style={{ width: `${Math.min(100, cap.usagePct)}%` }}
+                />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                <CapStat label="الحاليون" value={cap.current.toLocaleString()} />
+                <CapStat label="حدّ الباقة" value={cap.planLimit ? cap.planLimit.toLocaleString() : "∞"} />
+                <CapStat label="الحدّ التعاقدي" value={cap.contracted != null ? cap.contracted.toLocaleString() : "—"} />
+                <CapStat label="المتبقّي" value={cap.remaining != null ? cap.remaining.toLocaleString() : "∞"} />
+              </div>
+              {cap.overCap && (
+                <div className="mt-3 text-xs text-amber-300">
+                  تجاوزت حدّ باقتك — عملاؤك الحاليون آمنون (لن يُحذف أحد). للتوسّع رقِّ باقتك.
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Self-serve upgrade request */}
       <UpgradeRequestPanel locale="ar" />
@@ -213,6 +250,15 @@ function Pill({ label, value, tone }: { label: string; value: string; tone?: "ok
   return (
     <div className={`px-3 py-1 rounded ${cls}`}>
       <span className="opacity-70">{label}: </span><b>{value}</b>
+    </div>
+  );
+}
+
+function CapStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white/5 p-3">
+      <div className="text-xs text-slate-400">{label}</div>
+      <div className="text-lg font-bold">{value}</div>
     </div>
   );
 }

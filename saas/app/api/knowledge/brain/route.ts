@@ -10,16 +10,21 @@
 // never touches the WhatsApp send pipeline.
 
 import { NextResponse } from "next/server";
-import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { apiGate } from "@/lib/membership/gate";
 import { knowledgeBrainEnabled } from "@/lib/knowledge-brain/flags";
 import { computeKnowledgeHealth } from "@/lib/knowledge-brain/health";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const uid = await getUserId();
-  if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  // Plan-capability gate (k_pro+): 401 unauth / 402 not entitled — consistent
+  // with the page (pageGate) and the sibling /brain/search route. Closes the
+  // isolation gap where this read endpoint enforced only the per-tenant enable
+  // flag and not the plan capability.
+  const gate = await apiGate("knowledge_base");
+  if (gate.response) return gate.response;
+  const uid = gate.uid!;
 
   // Paid gate: OFF by default, admin-enabled per tenant.
   if (!(await knowledgeBrainEnabled(uid))) {

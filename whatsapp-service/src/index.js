@@ -19,9 +19,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function restoreSessions() {
   try {
     const entries = await fs.readdir(SESSIONS_DIR).catch(() => []);
-    const userIds = entries
+    let userIds = entries
       .filter((d) => d.startsWith('session-'))
       .map((d) => d.replace(/^session-/, ''));
+    // NEVER restore temporary (ephemeral) sessions. A leftover `.ephemeral`
+    // marker means a job crashed mid-flight — wipe it so no QR transport revives.
+    const persistent = [];
+    for (const id of userIds) {
+      const dir = path.join(SESSIONS_DIR, `session-${id}`);
+      try {
+        await fs.access(path.join(dir, '.ephemeral'));
+        console.log(`[wa-service] wiping ephemeral session ${id} — temporary QR never auto-restores`);
+        await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+      } catch {
+        persistent.push(id);
+      }
+    }
+    userIds = persistent;
     if (userIds.length === 0) {
       console.log('[wa-service] no saved sessions to restore');
       return;
@@ -150,14 +164,23 @@ app.get('/sessions/stats', (_req, res) => {
   res.json({ ok: true, ...manager.stats(), sessions: manager.list() });
 });
 
-// Start a session (creates folder, returns immediately; QR polled separately)
+// Start a session (creates folder, returns immediately; QR polled separately).
+// Pass { ephemeral: true } for temporary (import/campaign) sessions that must
+// auto-terminate and never reconnect/restore.
 app.post('/sessions/:userId/start', async (req, res) => {
   try {
-    const s = await manager.start(req.params.userId);
-    res.json({ ok: true, status: s.status });
+    const s = await manager.start(req.params.userId, { ephemeral: !!(req.body && req.body.ephemeral) });
+    res.json({ ok: true, status: s.status, ephemeral: !!s.ephemeral });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Mark a running session EPHEMERAL (temporary) — import/campaign call this so
+// the QR transport auto-terminates and never reconnects or restores.
+app.post('/sessions/:userId/ephemeral', (req, res) => {
+  const marked = manager.markEphemeral(req.params.userId);
+  res.json({ ok: marked, marked });
 });
 
 // Poll status + QR
@@ -211,6 +234,63 @@ app.post('/send', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Export contacts + recent chats for the one-time CRM import (read-only).
+// Requires a CONNECTED session; returns 409 otherwise so the caller can retry.
+app.get('/sessions/:userId/export', async (req, res) => {
+  try {
+    const s = manager.get(req.params.userId);
+    if (!s || !s.client || s.status !== 'connected') {
+      return res.status(409).json({ ok: false, error: 'not_connected', status: (s && s.status) || 'none' });
+    }
+    const chatLimit = Math.min(1000, Number(req.query.chatLimit) || 500);
+    const msgLimit = Math.min(200, Number(req.query.msgLimit) || 50);
+    const client = s.client;
+    let contacts = [];
+    try {
+      const cs = await client.getContacts();
+      contacts = (cs || [])
+        .filter((c) => c && c.isWAContact && !c.isGroup && !c.isMe)
+        .map((c) => ({ phone: String(c.number || (c.id && c.id.user) || '').replace(/\D/g, ''), name: c.name || c.pushname || null }))
+        .filter((c) => c.phone && c.phone.length >= 6);
+    } catch (e) { /* contacts best-effort */ }
+    let chats = [];
+    try {
+      const cs = await client.getChats();
+      // BUG1 + BUG2: export ONLY real 1:1 customer conversations that CONTAIN
+      // messages. A private user chat has id.server === 'c.us'. This deliberately
+      // excludes:
+      //   - groups            (isGroup / server 'g.us')
+      //   - WhatsApp Status / stories / broadcast lists (server 'broadcast', e.g.
+      //     status@broadcast)
+      //   - channels / newsletters (server 'newsletter')
+      // and empty conversations (saved numbers you never chatted with) are dropped
+      // below because they yield 0 fetched messages.
+      const isCustomerChat = (c) => {
+        if (!c || !c.id || c.isGroup) return false;
+        const server = c.id.server || (c.id._serialized || '').split('@')[1] || '';
+        if (server !== 'c.us') return false; // drop broadcast/newsletter/status/groups
+        if ((c.id._serialized || '').includes('status@broadcast')) return false;
+        return true;
+      };
+      for (const ch of (cs || []).filter(isCustomerChat).slice(0, chatLimit)) {
+        let messages = [];
+        try {
+          const msgs = await ch.fetchMessages({ limit: msgLimit });
+          messages = (msgs || [])
+            .filter((m) => m && !m.isStatus && !m.broadcast)
+            .map((m) => ({ fromMe: !!m.fromMe, body: String(m.body || '').slice(0, 4000), ts: m.timestamp || 0 }));
+        } catch (e) { /* per-chat best-effort */ }
+        // Skip empty conversations — a saved number with no real messages is NOT a customer.
+        if (messages.length === 0) continue;
+        chats.push({ phone: String((ch.id && ch.id.user) || '').replace(/\D/g, ''), name: ch.name || null, messages });
+      }
+    } catch (e) { /* chats best-effort */ }
+    return res.json({ ok: true, contacts, chats });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String((e && e.message) || e).slice(0, 200) });
   }
 });
 

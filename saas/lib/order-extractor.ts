@@ -29,8 +29,9 @@ export interface OrderDraft {
   discount: number;
   total: number;
   currency: string;
-  notes: string;       // short Arabic merchant-facing note
-  confidence: number;  // 0-100
+  notes: string;         // short Arabic merchant-facing note
+  confidence: number;    // 0-100
+  hasRealProduct: boolean; // true only when a real product was detected (not the "منتج" placeholder)
 }
 
 // ---------------------------------------------------------------------------
@@ -252,7 +253,7 @@ function detectName(text: string): string | undefined {
 
 function detectProductName(text: string): string | undefined {
   // Heuristic: tokens around order verbs — supports Egyptian + Gulf + MSA.
-  const m = text.match(/(?:هاخد(?:ه|ها)?|عاوز(?:ه|ها)?|عايز(?:ه|ها)?|ابعتلي|ارسلي|أرسل|ارسل|اطلب|أطلب|ابي|أبي|ابغى|أبغى|بغيت|اريد|أريد|احجز|اشتري|آخذ|اخذ|اشتراك|i want|i'll take|buy|order)\s+([\u0600-\u06FFA-Za-z0-9][\u0600-\u06FFA-Za-z0-9\s\-_/]{2,80})/i);
+  const m = text.match(/(?:هاخد(?:ه|ها)?|عاوز(?:ه|ها)?|عايز(?:ه|ها)?|ابعتلي|ارسلي|أرسل|ارسل|اطلب|أطلب|ابي|أبي|ابغى|أبغى|بغيت|اريد|أريد|احجزلي|احجزله|احجزها|احجز|هحجز|اشتري|هشتري|هاشتري|هطلب|هاطلب|آخذ|اخذ|اشتراك|i want|i'll take|buy|order)\s+([\u0600-\u06FFA-Za-z0-9][\u0600-\u06FFA-Za-z0-9\s\-_/]{2,80})/i);
   if (m) {
     return m[1]
       .replace(/(?:توصيل|على|الى|إلى|في|العنوان|عنوان|بكام|السعر|سعرها|سعره|كاش|تحويل|فيزا|مدى|cod|cash|price).*$/i, "")
@@ -354,8 +355,13 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
   const unitPrice = priceFromAsst || priceFromUser || 0;
 
   let items: OrderDraftItem[];
+  // BUG3: track whether a REAL product was detected. The "منتج" fallback name
+  // must NOT count as a product — otherwise every message scores the +30 product
+  // points and media/inquiries slip past the confidence gate as bogus orders.
+  let hasRealProduct = false;
   if (multiProducts.length > 1) {
     // Multiple products found — create one item per product
+    hasRealProduct = true;
     items = multiProducts.map((p, i) => ({
       name: p.name,
       size: i === 0 ? size : undefined,
@@ -365,7 +371,9 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
       lineTotal: unitPrice * Math.max(1, p.quantity),
     }));
   } else {
-    const productName = detectProductName(customerText) || detectProductName(assistantText) || "منتج";
+    const realProductName = detectProductName(customerText) || detectProductName(assistantText);
+    hasRealProduct = !!realProductName;
+    const productName = realProductName || "منتج";
     const quantity = detectQuantity(customerText);
     const lineTotal = unitPrice * Math.max(1, quantity);
     items = [{
@@ -405,6 +413,7 @@ export function extractOrderFast(input: ExtractInput): OrderDraft {
     currency,
     notes: "",
     confidence: 0,
+    hasRealProduct,
   };
   draft.confidence = scoreConfidence(draft);
 

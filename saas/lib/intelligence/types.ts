@@ -53,6 +53,12 @@ export interface NbaInputs {
   // objection + negotiation context (from CustomerMemory.factsJson)
   objections?: { price?: boolean; trust?: boolean; shipping?: boolean; quality?: boolean };
   discountAsks?: number;
+
+  // Business-type module gates (from resolveBusinessContext). Optional and
+  // backward-compatible: when undefined, every module is treated as ON so
+  // existing callers (and Store tenants) behave exactly as before. Only used to
+  // suppress module-specific advice (e.g. no product-upsell when products OFF).
+  productsEnabled?: boolean;
 }
 
 export interface NbaFactor {

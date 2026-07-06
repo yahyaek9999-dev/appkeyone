@@ -16,6 +16,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Circle, ChevronLeft, X, Sparkles, ArrowLeft } from "lucide-react";
 import type { MilestoneStatus, ActivationMilestone } from "@/lib/activation/track";
+import type { Vertical, ModuleKey } from "@/lib/modules";
+import { verticalSteps } from "@/lib/readiness/verticals";
 
 interface ChecklistStep {
   key: ActivationMilestone;
@@ -26,7 +28,7 @@ interface ChecklistStep {
   required: boolean;
 }
 
-const STEPS: ChecklistStep[] = [
+const BASE_STEPS: ChecklistStep[] = [
   {
     key: "signed_up",
     title: "إنشاء الحساب",
@@ -81,9 +83,18 @@ const DISMISS_KEY = "keyone_activation_checklist_dismissed";
 
 export default function ActivationChecklist({
   milestones,
+  vertical,
+  modules,
 }: {
   milestones: MilestoneStatus;
+  /** Optional Business Type — filters/relabels steps. Omit → today's Store behavior. */
+  vertical?: Vertical;
+  /** Optional live module map — a step whose module is OFF is dropped. */
+  modules?: Partial<Record<ModuleKey, boolean>> | null;
 }) {
+  // Business-Type-aware step list. No prop → full commerce list (unchanged).
+  const STEPS = verticalSteps(BASE_STEPS, "activation", vertical, modules);
+
   const requiredDone = STEPS.filter((s) => s.required).every(
     (s) => milestones.reached[s.key],
   );

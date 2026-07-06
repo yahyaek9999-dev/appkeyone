@@ -75,7 +75,11 @@ function getUrls(): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
   if (multi.length > 0) return multi;
-  return [process.env.LLM_API_URL || "http://127.0.0.1:7788"];
+  // In-house mse_ai_api engine REMOVED — no 127.0.0.1:7788 fallback. Only an
+  // explicitly-set LLM_API_URL is honored; otherwise there is NO in-house URL
+  // and the platform relies solely on per-tenant third-party providers.
+  const single = (process.env.LLM_API_URL || "").trim();
+  return single ? [single] : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -411,6 +415,14 @@ async function runChatOnce(
   await acquire();
   const t0 = Date.now();
   try {
+    // mse_ai_api engine removed: with no LLM_API_URL(S) configured there is no
+    // in-house cluster to call. Fail fast with a clear message instead of
+    // hanging on a dead localhost:7788.
+    if (getUrls().length === 0) {
+      throw new Error(
+        "لا يوجد مزوّد ذكاء اصطناعي مهيّأ لهذا الحساب — أضف مفتاح مزوّد (OpenRouter/OpenAI/Gemini/Claude).",
+      );
+    }
     let lastErr: any = null;
     for (let attempt = 0; attempt <= retries; attempt++) {
       const urlsThisAttempt = pickUrls();

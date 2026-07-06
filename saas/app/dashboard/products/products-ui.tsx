@@ -13,6 +13,8 @@ type Product = {
   id: string;
   name: string;
   imageUrl: string | null;
+  imagesJson?: string | null;
+  images?: string[];
   price: number;
   compareAtPrice: number | null;
   stock: number;
@@ -22,6 +24,16 @@ type Product = {
   active: boolean;
 };
 
+/** Parse a product's stored gallery (imagesJson) into an array, falling back to imageUrl. */
+function galleryOf(p: Partial<Product>): string[] {
+  if (Array.isArray(p.images)) return p.images;
+  try {
+    const arr = JSON.parse(p.imagesJson || "[]");
+    if (Array.isArray(arr) && arr.length) return arr;
+  } catch { /* ignore */ }
+  return p.imageUrl ? [p.imageUrl] : [];
+}
+
 const EMPTY: Partial<Product> = { name: "", price: 0, stock: 0, active: true };
 
 export default function ProductsUi() {
@@ -29,8 +41,44 @@ export default function ProductsUi() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imgBusy, setImgBusy] = useState(false);
   const { error: toastError } = useToast();
   const confirm = useConfirm();
+
+  // Device upload (drag&drop or pick) — multiple images → gated internal paths. No URL input.
+  async function addImages(files: FileList | File[] | null) {
+    const list = files ? Array.from(files) : [];
+    if (!list.length) return;
+    setImgBusy(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of list.slice(0, 8)) {
+        const fd = new FormData();
+        fd.set("image", file);
+        const r = await fetch("/api/products/image", { method: "POST", body: fd });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.path) uploaded.push(j.path);
+        else toastError(j.message || j.error || "تعذّر رفع الصورة");
+      }
+      if (uploaded.length) {
+        setEditing((e) => {
+          if (!e) return e;
+          const next = [...galleryOf(e), ...uploaded].slice(0, 8);
+          return { ...e, images: next, imageUrl: next[0] || null };
+        });
+      }
+    } finally {
+      setImgBusy(false);
+    }
+  }
+
+  function removeImage(idx: number) {
+    setEditing((e) => {
+      if (!e) return e;
+      const next = galleryOf(e).filter((_, i) => i !== idx);
+      return { ...e, images: next, imageUrl: next[0] || null };
+    });
+  }
 
   async function load() {
     try {
@@ -178,8 +226,25 @@ export default function ProductsUi() {
               <Field label="الاسم *">
                 <input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className="input px-3 py-2 text-sm" placeholder="اسم المنتج" />
               </Field>
-              <Field label="رابط الصورة" icon={<ImageIcon className="h-3.5 w-3.5" />}>
-                <input value={editing.imageUrl || ""} onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })} dir="ltr" className="input px-3 py-2 text-sm" placeholder="https://..." />
+              <Field label={`صور المنتج (${galleryOf(editing).length}/8)`} icon={<ImageIcon className="h-3.5 w-3.5" />}>
+                {galleryOf(editing).length > 0 && (
+                  <div className="mb-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                    {galleryOf(editing).map((src, i) => (
+                      <div key={src + i} className="group relative aspect-square overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt={`صورة ${i + 1}`} className="h-full w-full object-cover" />
+                        {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-brand-500/80 text-center text-[9px] text-white">الرئيسية</span>}
+                        <button type="button" onClick={() => removeImage(i)} title="حذف" className="absolute top-0.5 left-0.5 rounded bg-rose-600/90 px-1 text-[10px] text-white opacity-0 transition group-hover:opacity-100">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {galleryOf(editing).length < 8 && (
+                  <label className="block cursor-pointer rounded-xl border-2 border-dashed border-white/15 bg-white/[0.03] px-4 py-4 text-center text-sm text-slate-300 transition-colors hover:border-brand-400/50 hover:bg-white/[0.05]">
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addImages(e.target.files); e.currentTarget.value = ""; }} />
+                    {imgBusy ? "جارٍ الرفع…" : "⬆️ اسحب صورًا هنا أو اضغط للاختيار من جهازك (تدعم عدة صور)"}
+                  </label>
+                )}
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="السعر (ج.م)">

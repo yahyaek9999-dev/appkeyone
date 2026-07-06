@@ -21,6 +21,19 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     return NextResponse.json({ error: "cannot_delete_self" }, { status: 400 });
   }
 
-  await prisma.user.delete({ where: { id: userId } });
-  return NextResponse.json({ ok: true });
+  // Soft-delete: never hard-delete a tenant — the User row cascades to 50+
+  // tables and would irreversibly wipe the financial ledger, invoices, usage
+  // records and audit trail (the append-only "truth" tables). Mark the account
+  // deleted + suspended (suspension already blocks all access in getAuthContext);
+  // every financial/audit record is preserved and the row leaves the active list.
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      deletedAt: new Date(),
+      suspended: true,
+      suspendedAt: new Date(),
+      suspendedReason: "deleted_by_admin",
+    },
+  });
+  return NextResponse.json({ ok: true, softDeleted: true });
 }

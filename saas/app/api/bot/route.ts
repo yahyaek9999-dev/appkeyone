@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requirePermission, getAuthContext } from "@/lib/auth";
 import { auditCtx } from "@/lib/audit/log";
+import { recordMilestone } from "@/lib/activation/track";
 
 const Body = z.object({
   name: z.string().min(1).max(100),
@@ -40,6 +41,10 @@ export async function POST(req: Request) {
       update: parsed.data as any,
       create: { userId: user.id, ...parsed.data } as any,
     });
+    // Saving the bot (name is required) completes the "إعداد البوت" onboarding
+    // step. Emit the milestone here so the activation checklist advances when the
+    // customer does what it sent them to do. Fire-and-forget; never blocks save.
+    recordMilestone(user.id, "onboarding_completed", { via: "bot_settings" }).catch(() => {});
     void auditCtx(await getAuthContext(), "settings.bot_updated", {
       userId: user.id,
       targetType: "bot",

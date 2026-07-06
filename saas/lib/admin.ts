@@ -1,6 +1,10 @@
 import { getAuthContext } from "./auth";
 import { prisma } from "./db";
 
+/** Platform roles an admin may assign from the UI (user | finance | admin). */
+export const ASSIGNABLE_PLATFORM_ROLES = ["user", "finance", "admin"] as const;
+export type AssignablePlatformRole = (typeof ASSIGNABLE_PLATFORM_ROLES)[number];
+
 /**
  * Throws if the request is not made by a platform admin.
  * SECURITY: requires an OWNER session whose User.role is "admin". A team member
@@ -10,6 +14,18 @@ export async function requireAdmin() {
   const ctx = await getAuthContext();
   if (!ctx) throw new Error("UNAUTHORIZED");
   if (!ctx.isOwner || (ctx.user as any).role !== "admin") throw new Error("FORBIDDEN");
+  return ctx.user;
+}
+
+/**
+ * Throws unless the requester is a platform admin OR a finance-role owner.
+ * Used for money operations (Meta credit/settle, payment reviews).
+ */
+export async function requireFinanceAccess() {
+  const ctx = await getAuthContext();
+  if (!ctx) throw new Error("UNAUTHORIZED");
+  const role = (ctx.user as any).role;
+  if (!ctx.isOwner || (role !== "admin" && role !== "finance")) throw new Error("FORBIDDEN");
   return ctx.user;
 }
 

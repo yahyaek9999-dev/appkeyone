@@ -167,6 +167,10 @@ function getChromiumArgs() {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Temporary (ephemeral) QR sessions — import / campaign / recovery — MUST
+// auto-terminate. They never auto-reconnect, are never restored on boot, and
+// self-destruct after this TTL if the owning job never releases them.
+const EPHEMERAL_TTL_MS = Math.max(60_000, Number(process.env.WA_EPHEMERAL_TTL_MIN || 15) * 60_000);
 
 function sendBackoffMs(attempt) {
   const base = Math.min(10_000, 750 * 2 ** Math.max(0, attempt - 1));
@@ -318,6 +322,14 @@ class SessionManager {
 
       const live = this.sessions.get(userId);
       if (!live || live !== session || live.status !== "connected") continue;
+      this._healthFailures.delete(userId);
+      // A stale EPHEMERAL session must be destroyed, NEVER reconnected.
+      if (live.ephemeral) {
+        console.warn(`[wa] [${userId}] stale EPHEMERAL session — destroying (no reconnect)`);
+        notifySaas({ event: "disconnected", userId, reason: "ephemeral_stale" }).catch(() => {});
+        await this.logout(userId).catch(() => {});
+        continue;
+      }
       console.warn(`[wa] [${userId}] health probe marked session stale — reconnecting`);
       live.status = "disconnected";
       notifySaas({ event: "disconnected", userId, reason: "health_probe_stale" }).catch(() => {});
@@ -325,7 +337,6 @@ class SessionManager {
         await live.client.destroy();
       } catch {}
       live.client = null;
-      this._healthFailures.delete(userId);
       this._scheduleReconnect(userId);
     }
   }
@@ -513,6 +524,12 @@ class SessionManager {
    * After 8 failures (auth likely dead), pauses for 30min then resets.
    */
   _scheduleReconnect(userId) {
+    // Ephemeral (temporary) sessions must NEVER auto-reconnect.
+    const _es = this.sessions.get(userId);
+    if (_es && _es.ephemeral) {
+      console.log(`[wa] [${userId}] reconnect suppressed — ephemeral session`);
+      return;
+    }
     // Cancel any existing timer first
     if (this._reconnectTimers.has(userId)) {
       clearTimeout(this._reconnectTimers.get(userId));
@@ -663,7 +680,7 @@ class SessionManager {
     return base;
   }
 
-  async start(userId) {
+  async start(userId, opts = {}) {
     const existing = this.sessions.get(userId);
     if (
       existing &&
@@ -717,8 +734,11 @@ class SessionManager {
       hadAuthAtStart,
       qrRestoreRetries: existing?.qrRestoreRetries || 0,
       qrTimer: null,
+      ephemeral: !!opts.ephemeral || !!existing?.ephemeral,
+      ephemeralTimer: null,
     };
     this.sessions.set(userId, session);
+    if (session.ephemeral) this._armEphemeral(userId, session);
 
     client.on("qr", async (qrStr) => {
       try {
@@ -829,8 +849,10 @@ class SessionManager {
         reason: String(reason),
       }).catch(() => {});
 
-      if (isLogout) {
-        // Intentional device unlink — wipe auth, permanently remove session.
+      if (isLogout || session.ephemeral) {
+        // Intentional device unlink OR a temporary (ephemeral) session ending —
+        // wipe auth, clear all timers, permanently remove. NEVER auto-reconnect.
+        if (session.ephemeralTimer) { clearTimeout(session.ephemeralTimer); session.ephemeralTimer = null; }
         this.sessions.delete(userId);
         this._reconnectAttempts.delete(userId);
         if (this._reconnectTimers.has(userId)) {
@@ -1184,8 +1206,38 @@ class SessionManager {
     }
   }
 
+  /**
+   * Mark a session EPHEMERAL (temporary: import / campaign / recovery). Ephemeral
+   * sessions never auto-reconnect, are never restored on boot (a `.ephemeral`
+   * marker makes restoreSessions skip + wipe them), and self-destruct after
+   * EPHEMERAL_TTL_MS as a safety net if the owning job never releases them.
+   */
+  _armEphemeral(userId, session) {
+    session.ephemeral = true;
+    const folder = path.join(SESSIONS_DIR, `session-${userId}`);
+    fs.mkdir(folder, { recursive: true })
+      .then(() => fs.writeFile(path.join(folder, ".ephemeral"), String(Date.now())))
+      .catch(() => {});
+    if (session.ephemeralTimer) clearTimeout(session.ephemeralTimer);
+    session.ephemeralTimer = setTimeout(() => {
+      console.warn(`[wa] [${userId}] ephemeral TTL reached — auto-destroying temporary QR session`);
+      this.logout(userId).catch(() => {});
+    }, EPHEMERAL_TTL_MS);
+    if (typeof session.ephemeralTimer.unref === "function") session.ephemeralTimer.unref();
+    console.log(`[wa] [${userId}] session marked EPHEMERAL (no reconnect, no restore, auto-terminates)`);
+  }
+
+  /** Public: flag an already-running session ephemeral (import/campaign call this). */
+  markEphemeral(userId) {
+    const s = this.sessions.get(userId);
+    if (!s) return false;
+    this._armEphemeral(userId, s);
+    return true;
+  }
+
   async logout(userId) {
     const s = this.sessions.get(userId);
+    if (s?.ephemeralTimer) { clearTimeout(s.ephemeralTimer); s.ephemeralTimer = null; }
     if (s?.client) {
       try {
         await s.client.logout();

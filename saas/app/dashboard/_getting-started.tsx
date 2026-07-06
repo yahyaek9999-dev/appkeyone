@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Circle, ChevronLeft, X, Play } from "lucide-react";
+import type { Vertical, ModuleKey } from "@/lib/modules";
+import { verticalSteps } from "@/lib/readiness/verticals";
 
 export interface GettingStartedSteps {
   whatsapp: boolean;
@@ -21,7 +23,7 @@ interface StepDef {
   optional?: boolean;
 }
 
-const STEPS: StepDef[] = [
+const BASE_STEPS: StepDef[] = [
   { key: "whatsapp", title: "اربط واتساب", desc: "امسح كود QR لتفعيل البوت على رقمك.", href: "/dashboard/whatsapp", cta: "ربط" },
   { key: "aiBot", title: "اضبط الإعدادات", desc: "اسم المتجر والأسلوب ورسالة الترحيب.", href: "/dashboard/bot", cta: "ضبط" },
   { key: "knowledge", title: "أضف منتجاتك", desc: "المنتجات، الأسعار، والأسئلة الشائعة.", href: "/dashboard/knowledge", cta: "إضافة" },
@@ -31,7 +33,20 @@ const STEPS: StepDef[] = [
 
 const STORAGE_KEY = "keyone_getting_started_dismissed";
 
-export function GettingStarted({ steps }: { steps: GettingStartedSteps }) {
+export function GettingStarted({
+  steps,
+  vertical,
+  modules,
+}: {
+  steps: GettingStartedSteps;
+  /** Optional Business Type — filters/relabels steps. Omit → today's Store behavior. */
+  vertical?: Vertical;
+  /** Optional live module map — a step whose module is OFF is dropped. */
+  modules?: Partial<Record<ModuleKey, boolean>> | null;
+}) {
+  // Business-Type-aware step list. No prop → full commerce list (unchanged).
+  const STEPS = verticalSteps(BASE_STEPS, "gettingStarted", vertical, modules);
+
   const requiredKeys = STEPS.filter((s) => !s.optional).map((s) => s.key);
   const allRequiredDone = requiredKeys.every((k) => steps[k]);
 

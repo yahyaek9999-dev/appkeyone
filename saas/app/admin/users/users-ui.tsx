@@ -142,6 +142,27 @@ export default function UsersUi({
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [resetUsageTarget, setResetUsageTarget] = useState<string | null>(null);
 
+  // Suspend / reactivate a customer via the existing endpoint (POST=suspend,
+  // DELETE=reactivate). Suspension blocks login in getAuthContext.
+  async function toggleSuspend(u: User) {
+    const suspend = !u.suspended;
+    if (!confirm(suspend ? "تعليق هذا الحساب؟ لن يستطيع العميل تسجيل الدخول." : "إلغاء تعليق هذا الحساب؟")) return;
+    try {
+      const r = await fetch(`/api/admin/users/${u.id}/suspend`, {
+        method: suspend ? "POST" : "DELETE",
+        headers: suspend ? { "Content-Type": "application/json" } : undefined,
+        body: suspend ? JSON.stringify({ reason: "admin_manual" }) : undefined,
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.error || "فشل تنفيذ العملية");
+      }
+      window.location.reload();
+    } catch (e: any) {
+      alert(e?.message || "فشل تنفيذ العملية");
+    }
+  }
+
   const filtered = useMemo(() => {
     return users.filter((u) => {
       if (u.role === "admin") return false;
@@ -307,6 +328,15 @@ export default function UsersUi({
                         >
                           <KeyRound className="w-3.5 h-3.5" />
                         </button>
+                        {u.role !== "admin" && (
+                          <button
+                            onClick={() => toggleSuspend(u)}
+                            title={u.suspended ? "إلغاء التعليق" : "تعليق الحساب"}
+                            className={`px-2 py-1.5 rounded-lg text-xs inline-flex items-center border ${u.suspended ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-200" : "bg-orange-500/15 hover:bg-orange-500/25 border-orange-500/30 text-orange-200"}`}
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setDeleteTarget(u.id)}
                           title="حذف العميل"
@@ -528,6 +558,7 @@ function CreateUserModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [planSlug, setPlanSlug] = useState<string>("");
+  const [role, setRole] = useState<"user" | "finance" | "admin">("user");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
     "monthly",
   );
@@ -557,6 +588,7 @@ function CreateUserModal({
           phone: phone.trim() || null,
           planSlug: planSlug || null,
           billingCycle,
+          role,
         }),
       });
       const j = await r.json();
@@ -604,6 +636,7 @@ function CreateUserModal({
     setEmail("");
     setPhone("");
     setPlanSlug("");
+    setRole("user");
     setBillingCycle("monthly");
     setResult(null);
     setErr("");
@@ -771,6 +804,28 @@ function CreateUserModal({
               </select>
             </div>
 
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">
+                صلاحية الحساب
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as "user" | "finance" | "admin")}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-brand-400"
+              >
+                <option value="user" className="bg-slate-900">عميل عادي (Customer)</option>
+                <option value="finance" className="bg-slate-900">موظّف مالية — مراجعة المدفوعات (Finance)</option>
+                <option value="admin" className="bg-slate-900">مدير منصة كامل (Admin)</option>
+              </select>
+              {role !== "user" && (
+                <p className="text-xs text-amber-300/80 mt-1">
+                  {role === "finance"
+                    ? "سيتمكّن من الدخول ومراجعة/اعتماد إيصالات الدفع دون صلاحيات الإدارة الكاملة."
+                    : "صلاحيات إدارة كاملة للمنصة — امنحها بحذر."}
+                </p>
+              )}
+            </div>
+
             {planSlug && (
               <div>
                 <label className="text-sm text-slate-400 mb-1 block">
@@ -859,6 +914,7 @@ function SubscriptionModal({
   const [adminNote, setAdminNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [roleSel, setRoleSel] = useState<string>((user as any).role || "user");
 
   async function activate() {
     setLoading(true);
@@ -895,6 +951,61 @@ function SubscriptionModal({
         body: JSON.stringify({ userId: user.id, action: "cancel" }),
       });
       if (!r.ok) throw new Error("فشل الإلغاء");
+      window.location.reload();
+    } catch (e: any) {
+      setErr(e.message);
+      setLoading(false);
+    }
+  }
+
+  // Grant a free trial (Area 3). Uses the plan selected above; the trial API
+  // approves the account + sets status="trial" for the window, which the
+  // entitlements + nav layer now honour (isActiveSubscription).
+  async function grantTrial(hours: number) {
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await fetch(`/api/admin/users/${user.id}/trial`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hours, planSlug }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "فشل منح التجربة");
+      window.location.reload();
+    } catch (e: any) {
+      setErr(e.message);
+      setLoading(false);
+    }
+  }
+
+  async function revokeTrial() {
+    if (!confirm("إنهاء التجربة الآن؟")) return;
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await fetch(`/api/admin/users/${user.id}/trial`, { method: "DELETE" });
+      if (!r.ok) throw new Error("فشل إنهاء التجربة");
+      window.location.reload();
+    } catch (e: any) {
+      setErr(e.message);
+      setLoading(false);
+    }
+  }
+
+  // Set the platform role (user | finance | admin). The API guards the last
+  // admin + audits; this wires the previously-orphaned role endpoint to the UI.
+  async function saveRole() {
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await fetch(`/api/admin/users/${user.id}/role`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: roleSel }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.message || j.error || "فشل تغيير الدور");
       window.location.reload();
     } catch (e: any) {
       setErr(e.message);
@@ -993,6 +1104,61 @@ function SubscriptionModal({
               placeholder="ملاحظة الإدارة"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none"
             />
+          </div>
+
+          <div className="pt-3 border-t border-white/10">
+            <label className="text-sm text-slate-400 mb-1.5 block">تجربة مجانية</label>
+            <div className="grid grid-cols-4 gap-2">
+              {([[6, "6 ساعات"], [24, "24 ساعة"], [72, "3 أيام"], [168, "7 أيام"]] as const).map(
+                ([h, label]) => (
+                  <button
+                    key={h}
+                    onClick={() => grantTrial(h)}
+                    disabled={loading}
+                    className="px-2 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-xs text-slate-200"
+                  >
+                    {label}
+                  </button>
+                ),
+              )}
+            </div>
+            {user.subscription?.status === "trial" && (
+              <button
+                onClick={revokeTrial}
+                disabled={loading}
+                className="mt-2 text-xs text-rose-300 hover:text-rose-200"
+              >
+                إنهاء التجربة الحالية الآن
+              </button>
+            )}
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              تمنح التجربة الباقة المختارة أعلاه لكامل المدة وتُفعّل الحساب للدخول.
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-white/10">
+            <label className="text-sm text-slate-400 mb-1.5 block">الدور على المنصة</label>
+            <div className="flex gap-2">
+              <select
+                value={roleSel}
+                onChange={(e) => setRoleSel(e.target.value)}
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none"
+              >
+                <option value="user" className="bg-slate-900">عميل (user)</option>
+                <option value="finance" className="bg-slate-900">مالية (finance)</option>
+                <option value="admin" className="bg-slate-900">مدير (admin)</option>
+              </select>
+              <button
+                onClick={saveRole}
+                disabled={loading || roleSel === (user as any).role}
+                className="px-4 bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 rounded-xl py-2 text-sm"
+              >
+                حفظ الدور
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              مالية = مراجعة المدفوعات · مدير = صلاحية كاملة للوحة الإدارة.
+            </p>
           </div>
         </div>
 

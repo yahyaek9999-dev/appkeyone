@@ -5,6 +5,8 @@ import { chat as llmChat } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { appendExtras } from "@/lib/broadcasts/extras";
 import { checkInternalSecret } from "@/lib/internal-auth";
+import { evaluateOutbound } from "@/lib/messaging/compliance";
+import { metaCloudAllowedForUser } from "@/lib/messaging/feature-flags";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -78,6 +80,12 @@ export async function POST(req: Request) {
   const bot = await prisma.bot.findUnique({ where: { userId: bc.userId } });
   const provider = botProviderOverride(bot);
 
+  // WhatsApp transport mode for compliance: Meta Cloud enforces the 24h window +
+  // approved-template rule; QR is soft-allowed (anti-ban governs it). Resolved
+  // once per broadcast (same merchant for every recipient).
+  const waElig = await metaCloudAllowedForUser(bc.userId).catch(() => ({ allowed: false } as any));
+  const waMode: "qr" | "meta_cloud" = waElig.allowed ? "meta_cloud" : "qr";
+
   if (items.length === 0) {
     await prisma.broadcast.update({
       where: { id: bc.id },
@@ -88,6 +96,7 @@ export async function POST(req: Request) {
 
   let sent = 0, failed = 0;
   let skippedClaim = 0;
+  let skippedCompliance = 0;
 
   for (const it of items) {
     // Bail early if user canceled the broadcast
@@ -113,6 +122,27 @@ export async function POST(req: Request) {
     if (claim.count === 0) {
       // Another concurrent tick already grabbed this item.
       skippedClaim++;
+      continue;
+    }
+
+    // ---- Meta compliance gate -----------------------------------------------
+    // Never blast a customer who opted out or revoked consent (HARD, both modes).
+    // Meta Cloud additionally enforces the 24h window + approved-template rule;
+    // QR is soft-allowed by the engine (anti-ban governs throughput). Broadcasts
+    // are free-form merchant text (not a Meta-approved template) → isTemplate=false.
+    const optedOut = await prisma.customer
+      .findFirst({ where: { userId: bc.userId, phone: it.phone, optedOutAt: { not: null } }, select: { id: true } })
+      .then((c) => !!c)
+      .catch(() => false);
+    const decision = optedOut
+      ? { allowed: false as const, reason: "opted_out" }
+      : await evaluateOutbound({ userId: bc.userId, customerPhone: it.phone, provider: waMode, isTemplate: false });
+    if (!decision.allowed) {
+      await prisma.broadcastItem.update({
+        where: { id: it.id },
+        data: { status: "skipped", error: `compliance:${decision.reason}` },
+      });
+      skippedCompliance++;
       continue;
     }
 
@@ -237,7 +267,7 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true, broadcastId: bc.id, sent, failed, skippedClaim });
+  return NextResponse.json({ ok: true, broadcastId: bc.id, sent, failed, skippedClaim, skippedCompliance, waMode });
 }
 
 function sleep(ms: number) {

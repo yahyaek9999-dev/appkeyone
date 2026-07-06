@@ -107,6 +107,22 @@ const FALLBACK: Omit<EffectivePlan, "blocked" | "reason"> = {
   featureFlags: {},
 };
 
+/**
+ * A subscription unlocks paid features when it is active OR inside an unexpired
+ * trial window. Shared by getEffectivePlan (entitlements) and the dashboard
+ * activation gate (nav visibility) so both treat a granted trial identically —
+ * previously a `status:"trial"` sub was inert everywhere (unlocked nothing and
+ * removed the nav), which made the whole trial subsystem broken.
+ */
+export function isActiveSubscription(
+  sub: { status?: string | null; expiresAt?: Date | string | null } | null | undefined,
+): boolean {
+  if (!sub) return false;
+  if (sub.status !== "active" && sub.status !== "trial") return false;
+  if (!sub.expiresAt) return sub.status === "active";
+  return new Date(sub.expiresAt) >= new Date();
+}
+
 export async function getEffectivePlan(userId: string): Promise<EffectivePlan> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -127,7 +143,7 @@ export async function getEffectivePlan(userId: string): Promise<EffectivePlan> {
   }
 
   const sub = user.subscription;
-  if (!sub || sub.status !== "active" || sub.expiresAt < new Date()) {
+  if (!isActiveSubscription(sub)) {
     return { ...FALLBACK, blocked: false, reason: sub ? `inactive:${sub.status}` : "no_subscription" };
   }
 

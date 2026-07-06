@@ -22,47 +22,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const urls = getLlmUrls();
-  const key = process.env.LLM_API_KEY || "change-secret-key-2026";
-  const model = process.env.LLM_MODEL || "gpt-4o-mini";
-
-  const body = JSON.stringify({
-    model,
-    messages: [{ role: "user", content: "ping" }],
-    max_tokens: 4,
-  });
-
-  const results = await Promise.all(
-    urls.map(async (url) => {
-      const t0 = Date.now();
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 45000);
-      try {
-        const res = await fetch(url + "/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + key,
-          },
-          body,
-          cache: "no-store",
-          signal: ctrl.signal,
-        });
-        const ms = Date.now() - t0;
-        return { url, ok: res.ok, status: res.status, ms };
-      } catch (e: any) {
-        return { url, ok: false, status: 0, ms: Date.now() - t0, error: String(e?.message || e).slice(0, 200) };
-      } finally {
-        clearTimeout(timer);
-      }
-    })
-  );
-
+  // In-house mse_ai_api engine REMOVED — there is no LLM cluster to pre-warm.
+  // Kept as a 200 no-op so any still-scheduled task doesn't start erroring.
   return NextResponse.json({
     ok: true,
-    pinged: results.length,
-    healthy: results.filter((r) => r.ok).length,
-    results,
+    pinged: 0,
+    healthy: 0,
+    results: [],
+    note: "in-house LLM engine removed; nothing to pre-warm",
   });
 }
 

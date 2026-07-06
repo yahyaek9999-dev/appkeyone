@@ -13,7 +13,7 @@
  */
 
 import { prisma } from "@/lib/db";
-import { getEffectivePlan, type EffectivePlan } from "./plan";
+import { getEffectivePlan, isActiveSubscription, type EffectivePlan } from "./plan";
 
 export type LimitKind = "messages" | "ai" | "broadcast";
 
@@ -145,10 +145,8 @@ export async function checkLimit(
     });
   }
 
-  if (
-    sub.status !== "active" ||
-    (sub.expiresAt && sub.expiresAt < new Date())
-  ) {
+  // Active OR an unexpired trial keeps the plan's caps; anything else is expired.
+  if (!isActiveSubscription(sub)) {
     return baseDecision({ reason: "expired", resetAt });
   }
 

@@ -75,10 +75,10 @@ export async function revenueIntelligence(
     prisma.$queryRawUnsafe<{ name: string; qty: number; revenue: number }[]>(
       `SELECT oi.name AS name,
               SUM(oi.quantity) AS qty,
-              SUM(oi.lineTotal) AS revenue
-       FROM OrderItem oi
-       JOIN "Order" o ON o.id = oi.orderId
-       WHERE o.userId = ? AND o.createdAt >= ?
+              SUM(oi."lineTotal") AS revenue
+       FROM "OrderItem" oi
+       JOIN "Order" o ON o.id = oi."orderId"
+       WHERE o."userId" = $1 AND o."createdAt" >= $2
        GROUP BY oi.name
        ORDER BY qty DESC
        LIMIT 8`,

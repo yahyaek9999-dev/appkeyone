@@ -30,8 +30,10 @@ export async function pageGate(capKey: string): Promise<PageGate> {
   let allowed = true;
   try {
     allowed = await hasCapability(uid, capKey);
-  } catch {
-    allowed = true; // fail-open
+  } catch (e) {
+    // fail-closed: deny on error rather than leak a paid capability.
+    console.error("[gate] pageGate capability check failed — denying:", capKey, e);
+    allowed = false;
   }
   return { uid, allowed, recommendedTier: tierUnlocking(capKey) };
 }
@@ -67,8 +69,13 @@ export async function apiGate(
         ),
       };
     }
-  } catch {
-    // fail-open on gating bugs — never block on our own error.
+  } catch (e) {
+    // fail-closed: deny on gating error rather than leak a paid capability.
+    console.error("[gate] apiGate capability check failed — denying:", capKey, e);
+    return {
+      uid,
+      response: NextResponse.json({ error: "capability_check_failed" }, { status: 402 }),
+    };
   }
   return { uid, response: null };
 }

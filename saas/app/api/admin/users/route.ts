@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin, ASSIGNABLE_PLATFORM_ROLES } from "@/lib/admin";
+import { audit } from "@/lib/audit/log";
 
 export async function GET() {
   try {
@@ -66,8 +67,9 @@ function generatePassword(): string {
 }
 
 export async function POST(req: Request) {
+  let actor: any;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -84,6 +86,11 @@ export async function POST(req: Request) {
   const phone = String(body.phone || "").trim() || null;
   const planSlug = String(body.planSlug || "").trim() || null;
   const billingCycle = body.billingCycle === "yearly" ? "yearly" : "monthly";
+  // Optional platform role at creation — lets the owner provision a finance
+  // operator (or co-admin) directly, no developer/DB edit needed.
+  const role = (ASSIGNABLE_PLATFORM_ROLES as readonly string[]).includes(String(body.role))
+    ? String(body.role)
+    : "user";
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "بريد إلكتروني غير صالح" }, { status: 400 });
@@ -103,14 +110,25 @@ export async function POST(req: Request) {
       name,
       phone,
       passwordHash,
-      role: "user",
+      role,
       bot: { create: {} },
     } as any,
   });
 
+  if (role !== "user") {
+    void audit({
+      userId: user.id, action: "admin.user_role_set", actorId: actor?.id || null, actorEmail: actor?.email || null, actorRole: "admin",
+      targetType: "user", targetId: user.id, metadata: { email, role, at: "create" }, req,
+    });
+  }
+
   let subscriptionInfo: any = null;
   if (planSlug) {
     const plan = await prisma.plan.findUnique({ where: { slug: planSlug } });
+    // Never assign an archived/legacy plan — only current plans are sellable.
+    if (plan && (plan as any).status === "archived") {
+      return NextResponse.json({ error: "plan_archived", message: "هذه الباقة مؤرشفة ولا يمكن إسنادها — اختر باقة حالية." }, { status: 400 });
+    }
     if (plan) {
       const days = billingCycle === "yearly" ? 365 : 30;
       const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);

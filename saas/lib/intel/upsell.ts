@@ -17,10 +17,22 @@
 import { prisma } from "@/lib/db";
 import { IntelItem } from "./types";
 import { topComplementForCustomer } from "@/lib/commerce/affinity";
+import { resolveBusinessContext } from "@/lib/business-context";
 
 const DAY = 24 * 60 * 60 * 1000;
 
 export async function detectUpsell(userId: string, now: Date = new Date()): Promise<IntelItem[]> {
+  // Upsell is entirely product/cross-sell framed advice ("منتج مكمّل"). If the
+  // tenant sells no products (e.g. Software/Services vertical with products
+  // module OFF), emit nothing. Fail-safe: any context error → treat as ON so
+  // existing Store tenants (businessType null) keep byte-identical output.
+  try {
+    const ctx = await resolveBusinessContext(userId);
+    if (!ctx.modules.products) return [];
+  } catch {
+    /* never block the read path on context resolution */
+  }
+
   const since = new Date(now.getTime() - 14 * DAY);
   const recentCutoff = new Date(now.getTime() - 7 * DAY);
 

@@ -67,9 +67,8 @@ export async function GET(req: Request) {
   const qVec = tfVector(qTokens);
   const results: BrainResult[] = blocks.map((b) => {
     const tks = tokenize(b.text);
-    const score = qTokens.length >= 2
-      ? 0.7 * cosine(qVec, tfVector(tks)) + 0.3 * jaccard(qTokens, tks)
-      : 0;
+    const score =
+      qTokens.length >= 2 ? 0.7 * cosine(qVec, tfVector(tks)) + 0.3 * jaccard(qTokens, tks) : 0;
     return { docTitle: b.docTitle, text: b.text, score: Math.round(score * 1000) / 1000 };
   });
 

@@ -1,15 +1,10 @@
-import { requireUser } from "@/lib/auth";
-import WhatsappUI from "./whatsapp-ui";
+// OLD QR connect page — REMOVED per owner request (superseded by the QR-queue
+// flow; official selling now runs on Meta Cloud API). Kept as a redirect so the
+// URL never shows the old unofficial QR-linking UI again.
+import { redirect } from "next/navigation";
 
-export default async function WhatsappPage() {
-  const user = await requireUser();
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="page-title mb-1">ربط واتساب</h1>
-        <p className="page-desc">امسح QR code من هاتفك لربط رقم واتساب البوت</p>
-      </div>
-      <WhatsappUI initial={JSON.parse(JSON.stringify(user.bot))} />
-    </div>
-  );
+export const dynamic = "force-dynamic";
+
+export default function WhatsappPageRemoved() {
+  redirect("/dashboard/qr-queue");
 }

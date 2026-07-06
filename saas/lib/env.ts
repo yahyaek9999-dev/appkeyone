@@ -160,6 +160,14 @@ export function validateEnv(): void {
     warnings.push(`[env] META_CLOUD_ENABLED=1 but META_APP_SECRET is not set. Webhook signature verification will fail.`);
   }
 
+  // Premium feature enforcement is INERT until FREE_TIER_ENFORCEMENT=1. With it
+  // off in production, any no-subscription / expired / legacy user gets every paid
+  // capability for free (the fail-open path). Make that loud so it is a conscious
+  // go-live decision, not a silent revenue leak.
+  if (IS_PROD && getEnv("FREE_TIER_ENFORCEMENT") !== "1") {
+    warnings.push(`[env] FREE_TIER_ENFORCEMENT is not "1" in production — premium feature gating is INERT for non-k_* / no-subscription users (they get all paid features free). Set FREE_TIER_ENFORCEMENT=1 after confirming every paying customer has an active subscription.`);
+  }
+
   // ---- Emit warnings ----
   for (const w of warnings) {
     console.warn(w);
@@ -241,14 +249,15 @@ export const env = {
 
   // ---- LLM ----
   get llmApiUrl(): string {
-    return getEnv("LLM_API_URL") || "http://127.0.0.1:7788";
+    // mse_ai_api removed — no localhost fallback; empty unless explicitly set.
+    return getEnv("LLM_API_URL") || "";
   },
   get llmApiUrls(): string[] {
     const multi = (getEnv("LLM_API_URLS") || "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    return multi.length > 0 ? multi : [env.llmApiUrl];
+    return multi.length > 0 ? multi : env.llmApiUrl ? [env.llmApiUrl] : [];
   },
   get llmApiKey(): string {
     return getEnv("LLM_API_KEY") || "change-secret-key-2026";

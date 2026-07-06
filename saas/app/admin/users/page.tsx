@@ -6,17 +6,20 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage() {
   const [users, plans] = await Promise.all([
     prisma.user.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: { subscription: { include: { plan: true } } },
     }),
-    prisma.plan.findMany({ orderBy: { sortOrder: "asc" } }),
+    // Only CURRENT plans are assignable — archived/legacy plans must never be
+    // offered when activating or changing a customer's subscription.
+    prisma.plan.findMany({ where: { status: { not: "archived" } }, orderBy: { sortOrder: "asc" } }),
   ]);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">العملاء والاشتراكات</h1>
-        <p className="text-slate-400">إدارة كاملة لاشتراكات العملاء.</p>
+        <h1 className="page-title mb-1">العملاء والاشتراكات</h1>
+        <p className="page-desc">إدارة كاملة لاشتراكات العملاء.</p>
       </div>
       <UsersUi
         users={users.map((u: any) => ({

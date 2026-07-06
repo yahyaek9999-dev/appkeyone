@@ -69,8 +69,9 @@ export default function SuggestionsUi() {
   async function addAnswer() {
     if (!answering || !answer.trim()) return;
     setSaving(true);
+    setError(null);
     try {
-      await fetch(`/api/knowledge-gaps/${answering.id}`, {
+      const r = await fetch(`/api/knowledge-gaps/${answering.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,9 +79,15 @@ export default function SuggestionsUi() {
           answer: answer.trim(),
         }),
       });
+      const j = await r.json().catch(() => ({}));
+      // Do NOT close the modal on failure — surface the error instead of a
+      // silent success.
+      if (!r.ok || j?.error) throw new Error(j?.error || "فشل حفظ الإجابة");
       setAnswering(null);
       setAnswer("");
       load();
+    } catch (e: any) {
+      setError(e?.message || "فشل حفظ الإجابة");
     } finally {
       setSaving(false);
     }
@@ -267,6 +274,9 @@ export default function SuggestionsUi() {
               className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-brand-500 resize-none"
               placeholder="اكتب الإجابة الكاملة هنا..."
             />
+            {error && (
+              <div className="mt-2 rounded-lg bg-rose-500/10 border border-rose-500/25 px-3 py-2 text-sm text-rose-200">{error}</div>
+            )}
             <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={() => setAnswering(null)}

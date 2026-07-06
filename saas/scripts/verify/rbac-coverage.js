@@ -32,6 +32,8 @@ const WAIVED = new Set([
   "api/ready/route.ts",
   "api/commerce/webhooks/route.ts",
   "api/whatsapp/meta-webhook/route.ts",
+  "api/payments/webhook/paymob/route.ts",
+  "api/payments/webhook/stripe/route.ts",
   "api/whatsapp/incoming/route.ts",
   "api/whatsapp/status/route.ts",
   "api/cron/broadcasts/route.ts",
@@ -42,13 +44,14 @@ const WAIVED = new Set([
   "api/cron/meta-template-sync/route.ts",
   "api/cron/meta-webhook-processor/route.ts",
   "api/cron/outgoing-messages/route.ts",
+  "api/cron/payments-reconcile/route.ts",
   "api/internal/metrics/route.ts",
   "api/internal/queue-health/route.ts",
   "api/internal/wa-health/route.ts",
 ]);
 
 const GATE_RE =
-  /\b(requirePermission|getUserIdForPermission|getUserForPermission|requireAdmin|apiGate)\b/;
+  /\b(requirePermission|getUserIdForPermission|getUserForPermission|requireAdmin|requireFinanceOrAdmin|apiGate)\b/;
 const MUTATING_RE = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/g;
 // Routes guard the internal secret either inline (the literal header/env name)
 // or via the shared lib/internal-auth.ts helper (checkInternalSecret).

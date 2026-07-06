@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { wa } from "@/lib/wa";
+import { enforceWalletForSend, blockedSendMessage } from "@/lib/wallet/enforce";
 
 export async function POST(
   req: Request,
@@ -24,6 +25,23 @@ export async function POST(
   });
   if (!customer)
     return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  // ---- Wallet balance gate (additive, flag-gated WALLET_ENFORCE_SENDS) -------
+  // Block the reply at the boundary when the prepaid wallet is empty/suspended.
+  // The existing conversation stays visible; only the new send is refused. The
+  // protected send pipeline is untouched. Default OFF → no-op until opted in.
+  const walletGate = await enforceWalletForSend(uid, "inbox_reply", { recipients: 1 });
+  if (!walletGate.allowed) {
+    return NextResponse.json(
+      {
+        error: blockedSendMessage(walletGate.reason, walletGate.balance),
+        reason: walletGate.reason,
+        balance: walletGate.balance,
+        code: "insufficient_balance",
+      },
+      { status: 402 },
+    );
+  }
 
   // Human inbox replies must reflect real send success/failure immediately.
   // Do NOT treat "queued" as delivered here, otherwise the UI/logs can show

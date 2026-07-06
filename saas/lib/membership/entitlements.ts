@@ -44,6 +44,7 @@ export interface Entitlements {
     broadcasts: number;
     ai: number;
     messages: number;
+    customers: number;
   };
 }
 
@@ -128,6 +129,7 @@ export async function getEntitlements(userId: string): Promise<Entitlements> {
       broadcasts: plan.broadcastsMonthly,
       ai: plan.aiRequestsMonthly,
       messages: plan.monthlyMsgs,
+      customers: numFlag(flags, "customers", 0),
     },
   };
 }

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { COMMERCE_PLATFORMS } from "@/lib/commerce/types";
 import { publicIntegration } from "@/lib/commerce/integrations";
+import { encryptSecret } from "@/lib/crypto-util";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ const PatchBody = z.object({
   platform: z.enum(COMMERCE_PLATFORMS).optional(),
   enabled: z.boolean().optional(),
   configJson: z.record(z.unknown()).optional(),
+  storeUrl: z.string().max(300).optional(),
 });
 
 export async function GET(req: Request, ctx: { params: { id: string } }) {
@@ -51,7 +53,16 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   if (parsed.data.name !== undefined) data.name = parsed.data.name.trim();
   if (parsed.data.platform !== undefined) data.platform = parsed.data.platform;
   if (parsed.data.enabled !== undefined) data.enabled = parsed.data.enabled;
-  if (parsed.data.configJson !== undefined) data.configJson = JSON.stringify(parsed.data.configJson).slice(0, 10000);
+  if (parsed.data.storeUrl !== undefined) {
+    data.storeUrl = parsed.data.storeUrl.trim().replace(/\/$/, "") || null;
+    data.connectionStatus = "untested";
+  }
+  if (parsed.data.configJson !== undefined) {
+    // Store store credentials (accessToken / consumerKey+Secret / storeId) AES-256-GCM
+    // encrypted at rest — read back via readIntegrationConfig() in the sync engine.
+    data.configJson = encryptSecret(JSON.stringify(parsed.data.configJson).slice(0, 10000));
+    data.connectionStatus = "untested";
+  }
 
   const updated = await (prisma as any).commerceIntegration.update({ where: { id: ctx.params.id }, data });
   return NextResponse.json({ ok: true, integration: publicIntegration(updated, new URL(req.url).origin) });

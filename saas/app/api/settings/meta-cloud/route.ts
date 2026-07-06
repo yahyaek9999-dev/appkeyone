@@ -80,6 +80,23 @@ export async function PUT(req: Request) {
   const parsed = PutBody.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "bad_body", detail: parsed.error.message }, { status: 400 });
 
+  // Switching to Meta Cloud REQUIRES an app secret (now or already saved) — it is
+  // used to validate inbound webhook signatures; without it every webhook is
+  // rejected and the merchant silently receives nothing. Block the broken state
+  // at the source instead of letting them "look connected" but be deaf.
+  if (parsed.data.mode === "meta_cloud") {
+    const providedSecret = !!(parsed.data.appSecret && parsed.data.appSecret.trim());
+    if (!providedSecret) {
+      const existing = await prisma.bot.findUnique({ where: { userId: user.id }, select: { metaAppSecretEnc: true } as any }) as any;
+      if (!existing?.metaAppSecretEnc) {
+        return NextResponse.json(
+          { error: "app_secret_required", message: "أدخل App Secret لتفعيل واتساب الرسمي (Meta) — بدونه لن تصل الرسائل الواردة." },
+          { status: 400 },
+        );
+      }
+    }
+  }
+
   const data: any = { connectionMode: parsed.data.mode };
 
   if (parsed.data.phoneNumberId !== undefined)      data.metaPhoneNumberId = parsed.data.phoneNumberId.trim() || null;

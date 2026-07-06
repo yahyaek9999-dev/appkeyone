@@ -8,6 +8,7 @@ interface WL {
   enabled: boolean;
   brandName: string;
   logoUrl: string | null;
+  faviconUrl: string | null;
   primaryColor: string;
   accentColor: string;
   supportEmail: string | null;
@@ -104,6 +105,10 @@ export default function WhiteLabelUi() {
           <div>
             <div className="label mb-1">رابط الشعار</div>
             <input value={cfg.logoUrl || ""} onChange={(e) => set({ logoUrl: e.target.value })} placeholder="https://..." className={inp} />
+          </div>
+          <div>
+            <div className="label mb-1">رابط الأيقونة (Favicon)</div>
+            <input value={cfg.faviconUrl || ""} onChange={(e) => set({ faviconUrl: e.target.value })} placeholder="https://.../favicon.ico" className={inp} />
           </div>
           <div>
             <div className="label mb-1">اللون الأساسي</div>

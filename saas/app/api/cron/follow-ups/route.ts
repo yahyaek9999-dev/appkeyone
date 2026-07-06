@@ -6,8 +6,21 @@ import { wa } from "@/lib/wa";
 import { processFollowUpTask } from "@/lib/follow-ups";
 import { recordUsage, usageIdempotencyKey } from "@/lib/usage-ledger";
 import { checkInternalSecret } from "@/lib/internal-auth";
+import { evaluateOutbound } from "@/lib/messaging/compliance";
+import { metaCloudAllowedForUser } from "@/lib/messaging/feature-flags";
 
 export const dynamic = "force-dynamic";
+
+// Cache the WhatsApp transport mode per merchant for this cron run.
+const _modeCache = new Map<string, "qr" | "meta_cloud">();
+async function waModeFor(userId: string): Promise<"qr" | "meta_cloud"> {
+  const hit = _modeCache.get(userId);
+  if (hit) return hit;
+  const e = await metaCloudAllowedForUser(userId).catch(() => ({ allowed: false } as any));
+  const m: "qr" | "meta_cloud" = e.allowed ? "meta_cloud" : "qr";
+  _modeCache.set(userId, m);
+  return m;
+}
 
 /**
  * Triggered by a scheduled task on the VPS (every 30 minutes).
@@ -135,6 +148,16 @@ export async function POST(req: Request) {
       if (!text) {
         await markSent(c.id);
         failed++;
+        continue;
+      }
+
+      // Meta compliance: recovery follow-ups must obey the 24h window + template
+      // rule on Meta Cloud (opt-out + revoked consent already enforced above). QR
+      // is soft-allowed by the engine. Non-compliant recipients are skipped.
+      const decision = await evaluateOutbound({ userId: c.userId, customerPhone: c.phone, provider: await waModeFor(c.userId), isTemplate: false });
+      if (!decision.allowed) {
+        await markSent(c.id);
+        skipped++;
         continue;
       }
 

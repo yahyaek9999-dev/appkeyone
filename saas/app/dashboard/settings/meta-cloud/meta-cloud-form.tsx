@@ -42,8 +42,32 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
   const [accessToken, setAccessToken] = useState("");
   const [appSecret, setAppSecret] = useState("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyRes, setVerifyRes] = useState<{ ok: boolean; text: string } | null>(null);
 
   const planBlocked = initial.planAccess === "none";
+
+  async function verifyNow() {
+    setVerifyRes(null);
+    setVerifying(true);
+    try {
+      const r = await fetch("/api/settings/meta-cloud/verify", { method: "POST" });
+      const j = await r.json().catch(() => ({} as any));
+      if (j?.ok) {
+        const q = j.quality ? (QUALITY_LABEL[j.quality] ?? j.quality) : "—";
+        const t = j.tier ? (MESSAGING_LIMIT_LABEL[j.tier] ?? j.tier) : "—";
+        setVerifyRes({ ok: true, text: `✓ الاتصال بـ Meta يعمل — جودة الرقم: ${q} · الحد: ${t}${j.displayPhone ? " · " + j.displayPhone : ""}` });
+        router.refresh();
+      } else {
+        const detail = j?.detail ? ` — ${typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail)}` : "";
+        setVerifyRes({ ok: false, text: (j?.message || "فشل التحقّق") + detail });
+      }
+    } catch {
+      setVerifyRes({ ok: false, text: "تعذّر الاتصال بالخادم — حاول مجدداً." });
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   function save() {
     setMsg(null);
@@ -123,17 +147,36 @@ export function MetaCloudForm({ initial }: { initial: InitialState }) {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={save}
-          disabled={pending}
-          className="px-5 py-2 rounded-lg bg-brand-500 hover:bg-brand-400 text-white font-bold disabled:opacity-50"
-        >
-          {pending ? "جاري الحفظ..." : "حفظ التغييرات"}
-        </button>
-        {msg && (
-          <span className={msg.kind === "ok" ? "text-emerald-300 text-sm" : "text-rose-300 text-sm"}>{msg.text}</span>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending}
+            className="px-5 py-2 rounded-lg bg-brand-500 hover:bg-brand-400 text-white font-bold disabled:opacity-50"
+          >
+            {pending ? "جاري الحفظ..." : "حفظ التغييرات"}
+          </button>
+          {mode === "meta_cloud" && (
+            <button
+              type="button"
+              onClick={verifyNow}
+              disabled={verifying || !initial.accessToken.hasValue || !phoneNumberId.trim()}
+              title={!initial.accessToken.hasValue ? "احفظ رمز الوصول أولاً، ثم اضغط تحقّق" : "يختبر الاتصال بـ Meta فوراً"}
+              className="px-5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-bold disabled:opacity-50"
+            >
+              {verifying ? "جاري التحقّق..." : "🔌 تحقّق الآن"}
+            </button>
+          )}
+          {msg && (
+            <span className={msg.kind === "ok" ? "text-emerald-300 text-sm" : "text-rose-300 text-sm"}>{msg.text}</span>
+          )}
+        </div>
+        {mode === "meta_cloud" && !initial.accessToken.hasValue && (
+          <p className="text-xs text-slate-500">احفظ بيانات الاعتماد أولاً، ثم اضغط «تحقّق الآن» لاختبار الاتصال بـ Meta فوراً بدل انتظار الفحص التلقائي.</p>
+        )}
+        {verifyRes && (
+          <p className={verifyRes.ok ? "text-emerald-300 text-sm" : "text-rose-300 text-sm"}>{verifyRes.text}</p>
         )}
       </div>
     </div>

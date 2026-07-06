@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { httpUrlOrNull } from "@/lib/url-safe";
+import { isInternalProductImage } from "@/lib/media/product-image";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   } catch {}
   const data: any = {};
   if (b.name != null) data.name = String(b.name).trim().slice(0, 200);
-  if (b.imageUrl !== undefined) data.imageUrl = httpUrlOrNull(b.imageUrl);
+  if (Array.isArray(b.images)) {
+    const gallery = (b.images.map((x: any) => (isInternalProductImage(x) ? String(x) : httpUrlOrNull(x))).filter(Boolean) as string[]).slice(0, 8);
+    data.imagesJson = gallery.length ? JSON.stringify(gallery) : null;
+    data.imageUrl = gallery[0] || null;
+  } else if (b.imageUrl !== undefined) {
+    data.imageUrl = isInternalProductImage(b.imageUrl) ? String(b.imageUrl) : httpUrlOrNull(b.imageUrl);
+  }
   if (b.price != null) data.price = clampInt(b.price);
   if (b.compareAtPrice !== undefined) data.compareAtPrice = b.compareAtPrice === "" || b.compareAtPrice == null ? null : clampInt(b.compareAtPrice);
   if (b.stock != null) data.stock = clampInt(b.stock);

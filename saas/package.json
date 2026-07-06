@@ -22,8 +22,10 @@
     "verify:reliability": "node scripts/verify/run.js reliability",
     "verify:schema-parity": "node scripts/verify/schema-parity.js",
     "verify:rbac": "node scripts/verify/rbac-coverage.js",
+    "verify:wallet": "node scripts/verify/wallet.js",
     "verify:all": "node scripts/verify/run.js all",
-    "worker:baileys": "node workers/baileys.worker.js"
+    "worker:baileys": "node workers/baileys.worker.js",
+    "worker:start": "node dist/workers/index.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -63,5 +65,8 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3"
+  },
+  "prisma": {
+    "schema": "prisma/schema.postgres.prisma"
   }
 }

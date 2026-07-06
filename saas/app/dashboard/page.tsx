@@ -16,6 +16,8 @@ import { LiveOpsStrip } from "./live-ops-strip";
 import { GettingStarted } from "./_getting-started";
 import ActivationChecklist from "./_activation-checklist";
 import { syncUserMilestones } from "@/lib/activation/track";
+import { resolveBusinessContext } from "@/lib/business-context";
+import { DEFAULT_VERTICAL, moduleMap } from "@/lib/modules";
 import InsightStrip from "@/components/insight-strip";
 import { FadeInView } from "@/components/ui/stagger-reveal";
 import { GlowCard } from "@/components/ui/glow-card";
@@ -61,6 +63,8 @@ export default async function DashboardOverview() {
     recentOrders,
     // AI usage
     aiCalls7d,
+    // Business Type + module map (never throws; null → Store, all modules on)
+    businessContext,
   ] = await Promise.all([
     prisma.customer.count({ where: { userId: user.id } }),
     prisma.message.count({ where: { conversation: { customer: { userId: user.id } } } }),
@@ -101,7 +105,13 @@ export default async function DashboardOverview() {
     prisma.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 4, select: { id: true, customerName: true, customerPhone: true, total: true, currency: true, status: true, createdAt: true } }).catch(() => []),
     // AI calls
     prisma.providerUsage.aggregate({ where: { userId: user.id, day: { gte: start7.toISOString().slice(0, 10) } }, _sum: { calls: true } }).catch(() => ({ _sum: { calls: null } })),
+    resolveBusinessContext(user.id).catch(() => null),
   ]);
+
+  // Business Type + module map. Fail-safe: null → Store vertical, all modules ON,
+  // so existing tenants (and any DB hiccup) render exactly as before.
+  const vertical = businessContext?.vertical ?? DEFAULT_VERTICAL;
+  const modules = businessContext?.modules ?? moduleMap(DEFAULT_VERTICAL, null);
 
   const gettingStartedSteps = {
     whatsapp: bot.whatsappStatus === "connected",
@@ -159,7 +169,7 @@ export default async function DashboardOverview() {
     attention.push({ label: "واتساب غير متصل — اربطه لاستقبال الرسائل", href: "/dashboard/whatsapp", tone: "rose" });
   if (!sub.active)
     attention.push({ label: "الاشتراك غير نشط — فعّل أو رقّي باقتك", href: "/pricing", tone: "amber" });
-  if ((pendingOrderCount as number) > 0)
+  if (modules.orders && (pendingOrderCount as number) > 0)
     attention.push({ label: "طلبات بانتظار المراجعة", href: "/dashboard/orders", tone: "amber", count: pendingOrderCount as number });
   if (flaggedCount > 0)
     attention.push({ label: "رسائل تحتاج متابعة", href: "/dashboard/inbox", tone: "amber", count: flaggedCount });
@@ -229,12 +239,14 @@ export default async function DashboardOverview() {
         </section>
       )}
 
-      {milestones && !Object.values(milestones.reached).every(Boolean) && <ActivationChecklist milestones={milestones} />}
+      {milestones && !Object.values(milestones.reached).every(Boolean) && <ActivationChecklist milestones={milestones} vertical={vertical} modules={modules} />}
 
       {/* What to do now — one AI-surfaced recommendation + action */}
       <InsightStrip context="dashboard" />
 
       {/* ── What makes money — revenue-led band, not a row of equal KPIs ──── */}
+      {/* Commerce-only: hidden for verticals/tenants with the Orders module off. */}
+      {modules.orders && (
       <FadeInView>
       <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.018]">
         <div className="grid gap-px bg-white/[0.05] sm:grid-cols-2 lg:grid-cols-4">
@@ -262,6 +274,7 @@ export default async function DashboardOverview() {
         </div>
       </section>
       </FadeInView>
+      )}
 
       {/* ── What happened — activity + drivers ─────────────────────────────── */}
       <FadeInView delay={0.05}>
@@ -292,7 +305,7 @@ export default async function DashboardOverview() {
           <h2 className="section-title mb-3">المحركات</h2>
           <div className="space-y-3">
             <DriverRow label="العملاء" value={customerCount.toLocaleString("ar-EG")} sub={`${topCustomers.length} نشط هذا الأسبوع`} href="/dashboard/customers" />
-            <DriverRow label="الطلبات" value={orders7d.toLocaleString("ar-EG")} sub={`${pendingOrderCount} معلّق`} href="/dashboard/orders" delta={ordersDelta} />
+            {modules.orders && <DriverRow label="الطلبات" value={orders7d.toLocaleString("ar-EG")} sub={`${pendingOrderCount} معلّق`} href="/dashboard/orders" delta={ordersDelta} />}
             <DriverRow label="محادثات الذكاء" value={aiCalls.toLocaleString("ar-EG")} sub="استدعاء هذا الأسبوع" href="/dashboard/analytics" />
             <DriverRow label="المعرفة" value={docCount.toLocaleString("ar-EG")} sub="مستند" href="/dashboard/knowledge" />
           </div>
@@ -302,8 +315,9 @@ export default async function DashboardOverview() {
 
       {/* ── What should I do next — orders + messages ──────────────────────── */}
       <FadeInView delay={0.1}>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Recent orders */}
+      <div className={`grid gap-4 ${modules.orders ? "lg:grid-cols-2" : "grid-cols-1"}`}>
+        {/* Recent orders — commerce-only. */}
+        {modules.orders && (
         <div className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="section-title">آخر الطلبات</h2>
@@ -341,6 +355,7 @@ export default async function DashboardOverview() {
             </div>
           )}
         </div>
+        )}
 
         {/* Recent messages + plan usage */}
         <div className="card p-4">
@@ -392,8 +407,9 @@ export default async function DashboardOverview() {
       </FadeInView>
 
       {/* ── Why — trend insights ───────────────────────────────────────────── */}
+      {/* Messages always shown; orders/revenue/conversion are commerce-only. */}
       <FadeInView delay={0.15}>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className={`grid gap-4 ${modules.orders ? "sm:grid-cols-4" : "sm:grid-cols-2"}`}>
         <InsightCard
           icon={<MessageSquare className="h-3.5 w-3.5" />}
           label="حركة الرسائل"
@@ -401,6 +417,7 @@ export default async function DashboardOverview() {
           delta={msgs7dDelta}
           period="مقارنة بالأسبوع السابق"
         />
+        {modules.orders && (
         <InsightCard
           icon={<ShoppingBag className="h-3.5 w-3.5" />}
           label="الطلبات"
@@ -408,6 +425,8 @@ export default async function DashboardOverview() {
           delta={ordersDelta}
           period="مقارنة بالأسبوع السابق"
         />
+        )}
+        {modules.orders && (
         <InsightCard
           icon={<DollarSign className="h-3.5 w-3.5" />}
           label="الإيرادات"
@@ -415,12 +434,15 @@ export default async function DashboardOverview() {
           delta={revDelta}
           period="آخر 7 أيام"
         />
+        )}
+        {modules.orders && (
         <InsightCard
           icon={<TrendingUp className="h-3.5 w-3.5" />}
           label="معدل التحويل"
           value={conversionPct !== null ? `${conversionPct}%` : "—"}
           period="العملاء → طلبات"
         />
+        )}
       </div>
       </FadeInView>
     </div>

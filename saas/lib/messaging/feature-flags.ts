@@ -16,6 +16,8 @@
 
 import { prisma } from "@/lib/db";
 import { normalizeConnectionMode } from "./mode";
+import { getTier } from "@/lib/pricing/catalog";
+import { isActiveSubscription } from "@/lib/membership/plan";
 
 /** Global kill switch — set to "1" in production env to allow Meta routing. */
 export function metaCloudGloballyEnabled(): boolean {
@@ -46,6 +48,12 @@ const PLAN_META_ACCESS: Record<string, MetaAccessLevel> = {
 
 export function planMetaAccess(planSlug: string | null | undefined): MetaAccessLevel {
   if (!planSlug) return "none";
+  // The public pricing catalog (k_* tiers) is the SOURCE OF TRUTH for advertised
+  // Meta access — k_pro/k_business = limited, k_scale/k_enterprise = full. Without
+  // this, k_* slugs fell through to "none" and Meta was silently blocked for every
+  // paying plan that advertises it. Legacy slugs keep their historical mapping.
+  const tier = getTier(planSlug);
+  if (tier) return tier.metaAccess;
   return PLAN_META_ACCESS[planSlug.toLowerCase()] ?? "none";
 }
 
@@ -55,7 +63,7 @@ export function planMetaAccess(planSlug: string | null | undefined): MetaAccessL
  */
 export interface MetaEligibility {
   allowed: boolean;
-  reason: "ok" | "global_disabled" | "plan_blocked" | "mode_not_meta" | "missing_token";
+  reason: "ok" | "global_disabled" | "plan_blocked" | "mode_not_meta" | "missing_token" | "missing_app_secret";
   access: MetaAccessLevel;
 }
 
@@ -72,11 +80,13 @@ export async function metaCloudAllowedForUser(userId: string): Promise<MetaEligi
         connectionMode: true,
         // @ts-ignore — added in Phase 1 schema
         metaAccessTokenEnc: true,
+        // @ts-ignore — required for inbound webhook signature validation
+        metaAppSecretEnc: true,
       } as any,
     }) as any,
     prisma.subscription.findUnique({
       where: { userId },
-      select: { status: true, plan: { select: { slug: true } } },
+      select: { status: true, expiresAt: true, plan: { select: { slug: true } } },
     }),
   ]);
 
@@ -84,7 +94,7 @@ export async function metaCloudAllowedForUser(userId: string): Promise<MetaEligi
     return { allowed: false, reason: "mode_not_meta", access: "none" };
   }
 
-  const planSlug = sub?.status === "active" ? sub.plan?.slug : null;
+  const planSlug = isActiveSubscription(sub) ? sub?.plan?.slug : null;
   const access = planMetaAccess(planSlug);
   if (access === "none") {
     return { allowed: false, reason: "plan_blocked", access };
@@ -97,6 +107,14 @@ export async function metaCloudAllowedForUser(userId: string): Promise<MetaEligi
 
   if (!bot.metaAccessTokenEnc) {
     return { allowed: false, reason: "missing_token", access };
+  }
+
+  // The app secret is REQUIRED to validate inbound webhook signatures. Without it
+  // every real Meta webhook is rejected as signature_invalid and silently dropped,
+  // so a merchant who saved Meta without a secret would look "connected" yet
+  // receive nothing. Treat it like a missing token: fail safe back to QR.
+  if (!bot.metaAppSecretEnc) {
+    return { allowed: false, reason: "missing_app_secret", access };
   }
 
   return { allowed: true, reason: "ok", access };

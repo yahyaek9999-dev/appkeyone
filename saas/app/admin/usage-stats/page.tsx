@@ -3,14 +3,18 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function AdminUsageStatsPage() {
+  const safe = async <T,>(run: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await run();
+    } catch {
+      return fallback;
+    }
+  };
   const [snapshots, totalMessages, totalAi, totalBroadcasts] = await Promise.all([
-    (prisma as any).usageDailySnapshot.findMany({
-      orderBy: { day: "desc" },
-      take: 30,
-    }) || Promise.resolve([]),
-    (prisma as any).usageLedger.count({ where: { kind: "messages" } }) || Promise.resolve(0),
-    (prisma as any).usageLedger.count({ where: { kind: "ai" } }) || Promise.resolve(0),
-    (prisma as any).usageLedger.count({ where: { kind: "broadcast" } }) || Promise.resolve(0),
+    safe(() => (prisma as any).usageDailySnapshot.findMany({ orderBy: { day: "desc" }, take: 30 }), [] as any[]),
+    safe(() => (prisma as any).usageLedger.count({ where: { kind: "messages" } }), 0),
+    safe(() => (prisma as any).usageLedger.count({ where: { kind: "ai" } }), 0),
+    safe(() => (prisma as any).usageLedger.count({ where: { kind: "broadcast" } }), 0),
   ]);
 
   const latestSnapshot = (snapshots || [])[0];
@@ -19,8 +23,8 @@ export default async function AdminUsageStatsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">إحصائيات الاستخدام</h1>
-        <p className="text-slate-400">إجمالي الاستخدام المسجل على المنصة.</p>
+        <h1 className="page-title mb-1">إحصائيات الاستخدام</h1>
+        <p className="page-desc">إجمالي الاستخدام المسجل على المنصة.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

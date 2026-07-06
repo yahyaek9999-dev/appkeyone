@@ -3,6 +3,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { httpUrlOrNull } from "@/lib/url-safe";
+import { isInternalProductImage } from "@/lib/media/product-image";
+
+/** Accept a device-uploaded internal image path; keep legacy http for back-compat. */
+function productImage(v: any): string | null {
+  return isInternalProductImage(v) ? String(v) : httpUrlOrNull(v);
+}
+
+/** Normalize a gallery of device-uploaded image paths (max 8). */
+function productImages(v: any): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => (isInternalProductImage(x) ? String(x) : httpUrlOrNull(x))).filter(Boolean).slice(0, 8) as string[];
+}
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +49,10 @@ export async function POST(req: Request) {
     data: {
       userId: uid,
       name,
-      imageUrl: httpUrlOrNull(b.imageUrl),
+      ...(() => {
+        const gallery = productImages(b.images);
+        return { imagesJson: gallery.length ? JSON.stringify(gallery) : null, imageUrl: gallery[0] || productImage(b.imageUrl) };
+      })(),
       price: clampInt(b.price),
       compareAtPrice: b.compareAtPrice != null && b.compareAtPrice !== "" ? clampInt(b.compareAtPrice) : null,
       stock: clampInt(b.stock),

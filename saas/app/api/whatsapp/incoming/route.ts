@@ -50,7 +50,7 @@ import {
   recordReconnect,
 } from "@/lib/safety/engine";
 import { onInbound } from "@/lib/safety/trust";
-import { extractOrderFast } from "@/lib/order-extractor";
+import { decideOrder } from "@/lib/order-gate";
 import { computePriority } from "@/lib/fast-path";
 import { loadKnowledgeBaseCached, retrieveRelevantKb } from "@/lib/kb-cache";
 import { applyRealism } from "@/lib/human-realism";
@@ -76,9 +76,7 @@ import {
 import { evaluateInboundProtection } from "@/lib/protection";
 import { evaluateAutomations, fireOrderValueAutomation } from "@/lib/automations/engine";
 import { recordCartInterest } from "@/lib/commerce/abandoned-cart";
-
-const SECRET =
-  process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
+import { checkInternalSecret } from "@/lib/internal-auth";
 
 // whatsapp-web.js can emit old/unread history after session restore. Keep it
 // visible in the inbox, but never let it activate billing/safety/send logic.
@@ -97,8 +95,7 @@ function isHistoricalRuntimeInbound(value: unknown): boolean {
 }
 
 export async function POST(req: Request) {
-  const provided = req.headers.get("x-internal-secret");
-  if (provided !== SECRET) {
+  if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -231,7 +228,10 @@ export async function POST(req: Request) {
         reply: null,
         blocked: "no_subscription",
       });
-    if (sub.status !== "active")
+    // Active OR an unexpired trial is entitled to AI replies; the expiry check
+    // below still re-locks an expired trial. (Entitlement gate only — the send
+    // mechanics/queue/retry are untouched.)
+    if (sub.status !== "active" && sub.status !== "trial")
       return NextResponse.json({
         ok: true,
         reply: null,
@@ -1077,6 +1077,10 @@ export async function POST(req: Request) {
     { role: "user", content: messageText },
     { role: "assistant", content: reply },
   ];
+  // BUG3: for the ORDER gate the payment/order-keyword signal must come from the
+  // customer's TYPED text — never an AI media description — so a receipt image on
+  // its own can't be keyword-flagged into an order.
+  const orderFlagged = detectOrderIntent(mediaType === "text" ? messageText : (rawText || ""), bot.orderKeywords);
   extractAndStoreOrder({
     userId,
     customerId: customer.id,
@@ -1084,7 +1088,9 @@ export async function POST(req: Request) {
     customerName: customer.name || null,
     customerPhone: customer.phone,
     historyTail: orderHistory,
-    flagged,
+    flagged: orderFlagged,
+    mediaType,
+    rawText: rawText || "",
     orderSettings: {
       enabled: bot.orderExtractionEnabled !== false,
       confidenceThreshold: bot.orderConfidenceThreshold ?? 50,
@@ -1540,6 +1546,8 @@ async function extractAndStoreOrder(args: {
   customerPhone: string;
   historyTail: { role: string; content: string }[];
   flagged?: boolean;
+  mediaType?: string;
+  rawText?: string;
   orderSettings?: {
     enabled: boolean;
     confidenceThreshold: number;
@@ -1556,18 +1564,26 @@ async function extractAndStoreOrder(args: {
     // Respect the merchant's extraction toggle
     if (!settings.enabled) return;
 
-    const draft = extractOrderFast({
-      messages: args.historyTail,
-      fallbackCustomerName: args.customerName,
-      fallbackCustomerPhone: args.customerPhone,
+    // ---- BUG3: single authoritative gate (lib/order-gate.ts). Media sent
+    // alone, price/availability/location questions, greetings, and
+    // placeholder-only extractions never become orders — they remain leads.
+    // A real order needs genuine purchase intent OR a payment/order keyword,
+    // a REAL product, and confidence over the merchant's threshold.
+    const gate = decideOrder({
+      historyTail: args.historyTail,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      flaggedKeyword: !!args.flagged,
+      mediaType: args.mediaType,
+      rawText: args.rawText,
+      typedText: args.mediaType && args.mediaType !== "text"
+        ? (args.rawText || "")
+        : (args.historyTail.filter((m) => m.role === "user").slice(-1)[0]?.content || ""),
+      confidenceThreshold: settings.confidenceThreshold,
+      requireProduct: settings.requireProduct,
     });
-
-    // Configurable confidence threshold (default 50, merchant can raise to 70+ to reduce false positives)
-    const threshold = args.flagged ? Math.min(settings.confidenceThreshold, 30) : settings.confidenceThreshold;
-    if (draft.confidence < threshold) return;
-
-    // If requireProduct is on, reject extractions with no product name
-    if (settings.requireProduct && (!draft.items?.length || !draft.items[0]?.name)) return;
+    if (!gate.create) return;
+    const draft = gate.draft;
 
     // If requireConfirmation is on, only extract when the last customer message
     // contains an affirmative confirmation keyword

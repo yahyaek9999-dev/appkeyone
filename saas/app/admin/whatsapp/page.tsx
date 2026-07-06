@@ -27,8 +27,8 @@ export default async function AdminWhatsappPage({ searchParams }: { searchParams
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">حالة واتساب</h1>
-        <p className="text-slate-400">حالة اتصال واتساب لكل تاجر وإعادة الإرسال.</p>
+        <h1 className="page-title mb-1">حالة واتساب</h1>
+        <p className="page-desc">حالة اتصال واتساب لكل تاجر وإعادة الإرسال.</p>
       </div>
 
       <form className="flex gap-2" method="GET">
@@ -66,13 +66,10 @@ export default async function AdminWhatsappPage({ searchParams }: { searchParams
                     <td className="p-3 text-xs">{bot?.connectionMode || "qr"}</td>
                     <td className="p-3">
                       <div className="flex gap-2">
+                        {/* Reconnect = resend a fresh QR (ResendQrButton); the old
+                            ?reconnect= link was a no-op and is removed. */}
                         <ResendQrButton userId={u.id} />
                         <DisconnectWaButton userId={u.id} />
-                        {waStatus !== "connected" && (
-                          <Link href={`/admin/whatsapp?reconnect=${u.id}`} className="px-2 py-1 rounded bg-amber-500/15 text-amber-200 text-xs hover:bg-amber-500/25 border border-amber-500/30">
-                            إعادة ربط
-                          </Link>
-                        )}
                       </div>
                     </td>
                   </tr>

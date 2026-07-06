@@ -60,7 +60,7 @@ export function PublicFooter({
           </div>
           <ul className="space-y-2.5 text-sm text-slate-500">
             <li>
-              <a href="/#features" className="transition hover:text-slate-200">
+              <a href="/features" className="transition hover:text-slate-200">
                 {m.features}
               </a>
             </li>

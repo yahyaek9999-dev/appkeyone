@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, CornerDownLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { can, type Role } from "@/lib/rbac";
-import { NAV_ITEMS } from "./nav-items";
+import { type Role } from "@/lib/rbac";
+import type { ModuleKey } from "@/lib/modules";
+import { visibleNavItems, type NavMode } from "./nav-items";
 
 /**
  * ⌘K / Ctrl+K command palette — the primary navigation surface for power users
@@ -13,7 +14,7 @@ import { NAV_ITEMS } from "./nav-items";
  * current role can reach. RTL-aware (uses logical properties + dir inherited
  * from <html dir="rtl">). No external dependency — plain React + lucide.
  */
-export default function CommandPalette({ role = "owner" }: { role?: Role }) {
+export default function CommandPalette({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>> }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -21,7 +22,8 @@ export default function CommandPalette({ role = "owner" }: { role?: Role }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const items = useMemo(() => NAV_ITEMS.filter((n) => can(role, n.perm)), [role]);
+  // Same visibility rules as the sidebar: role + activation + Meta/QR mode + plan caps.
+  const items = useMemo(() => visibleNavItems(role, { activated, metaMode, enforce, caps, modules }), [role, activated, metaMode, enforce, caps, modules]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

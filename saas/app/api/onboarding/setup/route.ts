@@ -6,6 +6,7 @@ import { buildPersonaPack, type BusinessType, type ToneKey } from "@/lib/persona
 import { importKnowledge } from "@/lib/knowledge-importer";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
 import { recordMilestone } from "@/lib/activation/track";
+import { resolveVertical } from "@/lib/modules";
 
 const VALID_BUSINESS: BusinessType[] = ["fashion","beauty","electronics","food","services","general"];
 const VALID_TONE: ToneKey[] = ["warm","professional","playful","premium"];
@@ -21,6 +22,8 @@ export async function POST(req: Request) {
 
   const brand        = String(body.brand || "").trim().slice(0, 60);
   const businessType = VALID_BUSINESS.includes(body.businessType) ? body.businessType : "general";
+  // Workspace vertical (Store/Restaurant/Software/…). Tolerant → defaults to Store.
+  const vertical     = resolveVertical(body.vertical);
   const tone         = VALID_TONE.includes(body.tone) ? body.tone : "warm";
   const notifyPhone  = typeof body.notifyPhone === "string" ? body.notifyPhone.trim().slice(0, 30) : "";
   const importedText = typeof body.importedText === "string" ? body.importedText : "";
@@ -63,6 +66,15 @@ export async function POST(req: Request) {
       dynamicEmojis: pack.defaults.dynamicEmojis,
       replyVariations: pack.defaults.replyVariations,
     },
+  });
+
+  // 3b) Persist the chosen workspace vertical to BusinessProfile (additive).
+  //     Drives the module map (sidebar/KPIs/readiness/AI) in lib/modules.ts.
+  //     A missing businessType still resolves to Store at read time.
+  await prisma.businessProfile.upsert({
+    where: { userId: user.id },
+    update: { businessType: vertical },
+    create: { userId: user.id, businessType: vertical },
   });
 
   // 4) Seed Documents (persona pack first, then imported)
