@@ -7,3 +7,7 @@
 vault.enc
 vault.key
 config.json
+*.pkg
+*.deb
+*.msi
+*.AppImage
