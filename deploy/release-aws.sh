@@ -76,7 +76,13 @@ echo "  · prisma generate"; ./node_modules/.bin/prisma generate --schema prisma
 # --accept-data-loss), so an accidental drop aborts the deploy instead of
 # destroying data. Additive tables/columns apply cleanly.
 echo "  · prisma db push (additive)"; ./node_modules/.bin/prisma db push --schema prisma/schema.postgres.prisma --skip-generate >>/tmp/deploy-prisma.log 2>&1
-echo "  · next build"; npm run build >/tmp/deploy-build.log 2>&1
+echo "  · next build (previous .next backed up; restored on failure)"
+rm -rf .next.deploybak; cp -r .next .next.deploybak 2>/dev/null || true
+if ! npm run build >/tmp/deploy-build.log 2>&1; then
+  echo "  ✗ build FAILED — restoring previous .next, NOT restarting"; rm -rf .next; mv .next.deploybak .next 2>/dev/null || true
+  tail -25 /tmp/deploy-build.log; exit 1
+fi
+rm -rf .next.deploybak
 echo "  · gateway deps"; ( cd ~/bridge-gateway && npm install --omit=dev --no-audit --no-fund --silent >/tmp/deploy-gw.log 2>&1 )
 echo "  · restart services"; sudo systemctl restart keyone.service keyone-bridge-gateway.service
 sleep 2
