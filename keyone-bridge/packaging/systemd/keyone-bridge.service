@@ -6,6 +6,9 @@ Description=KEYONE Bridge (transport connector)
 Documentation=https://w.keyone1.com
 After=network-online.target
 Wants=network-online.target
+# Crash-loop backoff (these are [Unit] keys, not [Service]).
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -16,9 +19,6 @@ Environment=KEYONE_BRIDGE_SECRET_FILE=1
 ExecStart=/usr/local/bin/keyone-bridge start
 Restart=on-failure
 RestartSec=5
-# Crash-loop backoff: give up transient restarts gracefully.
-StartLimitIntervalSec=60
-StartLimitBurst=5
 
 # Hardening.
 NoNewPrivileges=true
