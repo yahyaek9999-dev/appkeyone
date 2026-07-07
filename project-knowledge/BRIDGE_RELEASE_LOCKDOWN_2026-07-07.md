@@ -1,8 +1,10 @@
 # KEYONE Bridge — FINAL RELEASE LOCKDOWN Report
 
 **Date:** 2026-07-07
-**Release:** Bridge **v1.0.2** (store) · SaaS `3f9bda8` (HEAD == origin/main == DEPLOYED)
+**Release:** Bridge **v1.0.2** (store) · SaaS `715f8aa` (HEAD == origin/main == DEPLOYED)
 **Verdict:** ✅ **READY FOR CUSTOMER RELEASE** — 0 known BLOCKER/HIGH. Remaining items are external-only (installer signing, one human phone scan, live Windows/Intel-Mac runtime).
+
+**Self-review (adversarial, after the main audit): 4 raw → 1 confirmed HIGH, fixed.** The update/rollback app-swap (`renameSync(app,backup); renameSync(src,app)`) could leave `app/` MISSING if the 2nd rename threw mid-swap (Windows lock/AV, TOCTOU) → service can't start. Both swap paths now restore `app/` from the backup on failure (a failed update/rollback self-heals). Verified present in the shipped `.deb`. The other 3 self-review findings were REFUTED.
 
 ---
 
