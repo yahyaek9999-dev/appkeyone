@@ -96,12 +96,41 @@ export async function POST(req: Request) {
       return null; // lost the race — treat as already-exchanged
     }
 
+    // Supersede this MACHINE's previous registration(s): a fresh login for the
+    // same host replaces its old bridge so the Dashboard shows exactly ONE active
+    // bridge per machine (no accumulating ghost rows, no "device disappears"
+    // churn). Different machines (different names) are untouched. Their tokens are
+    // revoked too so a stale daemon can no longer reconnect.
+    const supersedeName: string | null = code.bridgeName || null;
+    const stale = await (tx as any).bridge.findMany({
+      where: { userId, revokedAt: null, name: supersedeName },
+      select: { id: true },
+    });
+    if (stale.length) {
+      const ids = stale.map((s: { id: string }) => s.id);
+      await (tx as any).bridge.updateMany({
+        where: { id: { in: ids } },
+        data: { revokedAt: now, status: "offline", isPrimary: false },
+      });
+      await (tx as any).bridgeToken.updateMany({
+        where: { bridgeId: { in: ids }, revokedAt: null },
+        data: { revokedAt: now },
+      });
+    }
+
+    // Guarantee the workspace always has a routable primary: if no other
+    // non-revoked primary remains, this new bridge becomes primary.
+    const primaryCount = await (tx as any).bridge.count({
+      where: { userId, revokedAt: null, isPrimary: true },
+    });
+
     const bridge = await (tx as any).bridge.create({
       data: {
         userId,
         name: code.bridgeName || null,
         status: "offline",
         tokenHash,
+        isPrimary: primaryCount === 0,
       },
     });
 
