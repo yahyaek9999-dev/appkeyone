@@ -1,7 +1,34 @@
 # KEYONE Bridge — FINAL RELEASE LOCKDOWN Report
 
 **Date:** 2026-07-07
-**Release:** Bridge **v1.0.2** (store) · SaaS `715f8aa` (HEAD == origin/main == DEPLOYED)
+**Release:** Bridge **v1.0.3** (store) · SaaS/gateway `20461a4` (HEAD == origin/main == DEPLOYED)
+
+## 0. Runtime singleton — the "connected ×4 → LOGOUT → QR forever" bug (post-lockdown, from real runtime logs)
+
+Real logs showed login/gateway/Chromium/scan all working (`connected as 201227704155`), but the connected event fired **4×**, then **LOGOUT**, then QR regenerated forever, and messages produced no Dashboard activity.
+
+**Root cause:** making `ensureWa()` async (for the one-time Chromium download) put an `await ensureChromium()` gap between the `if (wa) return` singleton guard and `new Client()`. Concurrent callers (resume-on-connect + `start_qr` + `reconnect`) each passed the guard and each built a **new Client/Browser**. Multiple whatsapp-web.js clients on the **same LocalAuth session** make WhatsApp emit **LOGOUT** (one web session per device) → the session is torn down → QR loop; the orphaned clients each re-emit `ready`/`connected` (the 4×) and fight, so no stable session → no messages.
+
+**Fix (strict singletons + object-id logging to prove it):**
+- `ensureWa` memoizes the in-flight creation in `waInit` (assigned **synchronously**, before any await) → every concurrent caller awaits the SAME promise → exactly **one** Browser, Client, `initialize()`, and listener set.
+- `markConnected()` idempotent via `connectedOnce` → exactly **one** connected event; removed the getState safety-net (a second connected source).
+- `destroyWa()` is the single teardown (removeAllListeners + destroy + reset); the `disconnected`/LOGOUT handler tears down and does **not** auto-recreate (that self-recreation *was* the loop).
+- `control()` serialized; `connect()` a strict single WebSocket (terminate prior, tracked reconnect timer, `ws===sock` guards).
+- Gateway: `reap()` cleans half-open/hard-killed sockets from `bridgesById`/`socketsByUser` without waiting for a `close` that may never arrive (ping-terminate + a readyState reconcile pass).
+
+**PROVEN on the box (object ids):**
+- 6 concurrent `start_qr` → **`wa#1` only, `ws#1` only, initialize=1, LOGOUT=0**, all QR from `wa#1`.
+- Gateway restart → reconnects **`ws#2` with the SAME `wa#1`** (initialize still 1, 0 LOGOUT).
+- `kill -9`'d bridge → gateway reaps the socket in **~10s** (not stuck forever).
+- Connected-state chain **13/13** re-run green on the deployed gateway.
+
+Message-relay path (`client.on("message")` → `inbound` → gateway → `/api/whatsapp/incoming`) is the same wiring the production wa-service uses and now logs `inbound from … → relaying to Cloud [wa#N]`; it was starved only because the LOGOUT loop killed the session. Full message→Dashboard confirmation needs one live phone scan.
+
+---
+
+_(original lockdown, still valid:)_
+
+**Prior release line:** Bridge v1.0.2 · SaaS `715f8aa`
 **Verdict:** ✅ **READY FOR CUSTOMER RELEASE** — 0 known BLOCKER/HIGH. Remaining items are external-only (installer signing, one human phone scan, live Windows/Intel-Mac runtime).
 
 **Self-review (adversarial, after the main audit): 4 raw → 1 confirmed HIGH, fixed.** The update/rollback app-swap (`renameSync(app,backup); renameSync(src,app)`) could leave `app/` MISSING if the 2nd rename threw mid-swap (Windows lock/AV, TOCTOU) → service can't start. Both swap paths now restore `app/` from the backup on failure (a failed update/rollback self-heals). Verified present in the shipped `.deb`. The other 3 self-review findings were REFUTED.
