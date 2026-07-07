@@ -47,7 +47,7 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.2-wweb";
+const VERSION = "1.0.3-wweb";
 const PROVIDER = "whatsapp";
 fs.mkdirSync(HOME, { recursive: true });
 const CFG = path.join(HOME, "config.json");
@@ -169,8 +169,14 @@ async function cmdLogin(name) {
 }
 
 // =================================================================== runtime ===
-let ws = null, wsAlive = false, hbTimer = null, logTimer = null, reconnectDelay = 1000;
-let wa = null, waReady = false, waIdentity = "", linking = false;
+let ws = null, wsSeq = 0, hbTimer = null, logTimer = null, reconnectDelay = 1000, reconnectTimer = null;
+// WhatsApp engine — STRICT singleton. `waInit` memoizes the in-flight creation so
+// concurrent ensureWa() callers (resume-on-connect + start_qr + reconnect) can
+// NEVER construct a second Client/Browser. A second client on the SAME LocalAuth
+// session makes WhatsApp emit LOGOUT (only one web session per device) → the
+// "connected ×N → LOGOUT → QR forever" loop. `connectedOnce` makes the connected
+// event fire exactly once per session. `waSeq`/`wsSeq` are object ids for logs.
+let wa = null, waInit = null, waSeq = 0, waReady = false, waIdentity = "", linking = false, connectedOnce = false;
 
 function frame(type, payload, corr) {
   return JSON.stringify({ v: 1, id: crypto.randomUUID(), type, ts: Date.now(), corr, payload });
@@ -205,72 +211,89 @@ async function ensureChromium() {
   return chromePath;
 }
 
-// Safety net: `ready` is the primary "connected" signal. If it is merely LATE,
-// confirm via getState() so the Dashboard still flips to Connected once WhatsApp
-// is genuinely CONNECTED. Never publishes before WhatsApp reports CONNECTED.
-function confirmConnectedViaState() {
-  let ok = 0, tries = 0;
-  const iv = setInterval(async () => {
-    if (waReady || !wa) { clearInterval(iv); return; }
-    if (++tries > 24) { clearInterval(iv); return; } // ~72s cap
-    let st = "";
-    try { st = String((await wa.getState()) || "").toUpperCase(); } catch { return; }
-    if (st !== "CONNECTED") { ok = 0; return; }
-    if (++ok >= 4 && !waReady) {                       // ~12s stably CONNECTED
-      waReady = true; linking = false;
-      waIdentity = (wa.info && wa.info.wid && wa.info.wid.user) || waIdentity || "";
-      sendState("connected", waIdentity);
-      log("info", `whatsapp: connected as ${waIdentity} (confirmed via state)`);
-      clearInterval(iv);
-    }
-  }, 3000);
-  if (typeof iv.unref === "function") iv.unref();
+// Publish the single "connected" event for this session — IDEMPOTENT. `ready` may
+// fire more than once (wwebjs internal reconnects); we surface exactly one.
+function markConnected(identity, id) {
+  if (connectedOnce) return;
+  connectedOnce = true; waReady = true; linking = false;
+  waIdentity = identity || waIdentity || "";
+  sendState("connected", waIdentity);
+  log("info", `whatsapp: connected as ${waIdentity} [wa#${id}]`);
 }
 
-async function ensureWa(cfg) {
-  if (wa) return wa;
-  const exe = await ensureChromium();
-  log("info", "whatsapp: initializing real WhatsApp Web (Chromium)…");
-  wa = new Client({
-    authStrategy: new LocalAuth({ clientId: cfg.bridgeId || "keyone", dataPath: path.join(HOME, "wweb") }),
-    puppeteer: {
-      headless: true,
-      executablePath: exe,
-      // Match the production Recovery/Import client exactly (the known-good args).
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-accelerated-2d-canvas", "--no-first-run", "--no-zygote", "--disable-gpu"],
-    },
-  });
-  wa.on("qr", (code) => { linking = true; sendState("linking", ""); sendQr(code); log("info", "whatsapp: QR ready — scan from the Dashboard"); });
-  wa.on("loading_screen", (p) => log("info", `whatsapp: loading ${p}%`));
-  wa.on("authenticated", () => { log("info", "whatsapp: QR scanned — authenticating"); confirmConnectedViaState(); });
-  wa.on("auth_failure", (m) => { log("error", `whatsapp: auth failure: ${m}`); sendState("disconnected", ""); });
-  wa.on("ready", () => {
-    waReady = true; linking = false;
-    waIdentity = (wa.info && wa.info.wid && wa.info.wid.user) || "";
-    sendState("connected", waIdentity);
-    log("info", `whatsapp: connected as ${waIdentity}`);
-  });
-  wa.on("disconnected", (r) => { waReady = false; sendState("disconnected", ""); log("warn", `whatsapp: disconnected (${r})`); });
-  wa.on("message", (m) => {
-    if (m.fromMe || m.isStatus) return;
-    const text = m.body || "";
-    if (!text) return; // media in a later phase
-    const phone = String(m.from || "").replace(/@.*/, "");
-    wsSend("inbound", {
-      provider: PROVIDER, from: { phone, name: m._data?.notifyName || "" },
-      mediaType: "text", text,
-      providerMessageId: m.id?._serialized || "", providerTimestamp: (m.timestamp || 0) * 1,
+// The ONE place a Client is torn down: strip listeners (so a dying client can
+// never emit into shared state), destroy the browser, and reset ALL engine state
+// so the next ensureWa() builds a clean singleton. Never auto-recreates.
+async function destroyWa(reason) {
+  const c = wa;
+  wa = null; waInit = null; waReady = false; connectedOnce = false; linking = false;
+  if (c) {
+    try { c.removeAllListeners(); } catch {}
+    try { await c.destroy(); } catch {}
+    log("info", `whatsapp: engine stopped (${reason})`);
+  }
+}
+
+// STRICT singleton. Memoizing the async creation in `waInit` closes the race where
+// the old `if (wa) return` guard had an `await ensureChromium()` gap — concurrent
+// callers would each build a Client. Now every concurrent caller awaits the SAME
+// promise → exactly one Browser, one Client, one initialize(), one set of listeners.
+function ensureWa(cfg) {
+  if (waInit) return waInit;
+  const p = (async () => {
+    const exe = await ensureChromium();
+    const id = ++waSeq;
+    log("info", `whatsapp: initializing WhatsApp Web engine [wa#${id}] pid=${process.pid}`);
+    const client = new Client({
+      authStrategy: new LocalAuth({ clientId: cfg.bridgeId || "keyone", dataPath: path.join(HOME, "wweb") }),
+      puppeteer: {
+        headless: true,
+        executablePath: exe,
+        // Match the production Recovery/Import client exactly (the known-good args).
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-accelerated-2d-canvas", "--no-first-run", "--no-zygote", "--disable-gpu"],
+      },
     });
-  });
-  wa.initialize().catch((e) => { log("error", `whatsapp: init error: ${e.message}`); wa = null; });
-  return wa;
+    client.on("qr", (code) => { linking = true; connectedOnce = false; sendState("linking", ""); sendQr(code); log("info", `whatsapp: QR ready — scan from the Dashboard [wa#${id}]`); });
+    client.on("loading_screen", (pct) => log("info", `whatsapp: loading ${pct}% [wa#${id}]`));
+    client.on("authenticated", () => log("info", `whatsapp: QR scanned — authenticating [wa#${id}]`));
+    client.on("auth_failure", (m) => { log("error", `whatsapp: auth failure: ${m} [wa#${id}]`); sendState("disconnected", ""); });
+    client.on("ready", () => markConnected((client.info && client.info.wid && client.info.wid.user) || "", id));
+    client.on("disconnected", (r) => {
+      const logout = String(r).toUpperCase().includes("LOGOUT");
+      log("warn", `whatsapp: disconnected (${r}) [wa#${id}]`);
+      sendState(logout ? "logged_out" : "disconnected", "");
+      // Tear down cleanly and DO NOT auto-recreate — that self-recreation was the
+      // QR-forever loop. The Dashboard drives a fresh link (start_qr / reconnect).
+      if (wa === client) destroyWa("disconnected:" + r).catch(() => {});
+    });
+    client.on("message", (m) => {
+      if (m.fromMe || m.isStatus) return;
+      const text = m.body || "";
+      if (!text) return; // media in a later phase
+      const phone = String(m.from || "").replace(/@.*/, "");
+      log("info", `whatsapp: inbound from ${phone} → relaying to Cloud [wa#${id}]`);
+      wsSend("inbound", {
+        provider: PROVIDER, from: { phone, name: m._data?.notifyName || "" },
+        mediaType: "text", text,
+        providerMessageId: m.id?._serialized || "", providerTimestamp: (m.timestamp || 0) * 1,
+      });
+    });
+    wa = client;
+    client.initialize().catch((e) => { log("error", `whatsapp: init error: ${e.message} [wa#${id}]`); if (wa === client) destroyWa("init-error").catch(() => {}); });
+    return client;
+  })();
+  waInit = p;
+  // If creation fails (e.g. Chromium download error), clear the memo so a later
+  // start_qr can retry instead of forever returning the rejected promise.
+  p.catch(() => { if (waInit === p) waInit = null; });
+  return p;
 }
 
 async function startLink(cfg) {
+  if (wa && waReady) { sendState("connected", waIdentity); log("info", "whatsapp: already linked"); return; }
   try { await ensureWa(cfg); }
   catch (e) { log("error", `whatsapp: engine prep failed: ${e.message}`); sendState("disconnected", ""); return; }
-  if (waReady) { sendState("connected", waIdentity); log("info", `whatsapp: already linked as ${waIdentity}`); return; }
-  // If wwebjs is mid-init it will emit `qr` shortly; nothing else to do.
+  // The single Client will emit `qr` (fresh link) or `ready` (resumed session).
   log("info", "whatsapp: link requested — a QR will stream to the Dashboard");
 }
 
@@ -281,38 +304,55 @@ async function sendMessage(to, text) {
   catch (e) { return { ok: false, error: e.message }; }
 }
 
-async function control(action) {
+// Controls are SERIALIZED (chained) so a burst of dashboard clicks can never
+// interleave teardown + create and spawn a competing Client.
+let controlChain = Promise.resolve();
+function control(action) {
+  controlChain = controlChain.then(() => doControl(action)).catch((e) => log("error", `control error: ${e.message}`));
+  return controlChain;
+}
+async function doControl(action) {
   log("info", `dashboard control received: ${action} (${PROVIDER})`);
   const cfg = loadCfg();
   switch (action) {
     case "start_qr": await startLink(cfg); break;
-    case "disconnect": if (wa) { try { await wa.destroy(); } catch {} wa = null; waReady = false; sendState("disconnected", ""); } break;
+    case "disconnect": await destroyWa("disconnect"); sendState("disconnected", ""); break;
     case "reconnect": case "restart":
-      if (wa) { try { await wa.destroy(); } catch {} wa = null; waReady = false; }
-      try { await ensureWa(cfg); } catch (e) { log("error", `whatsapp: engine prep failed: ${e.message}`); sendState("disconnected", ""); } break;
+      await destroyWa("restart");
+      try { await ensureWa(cfg); } catch (e) { log("error", `whatsapp: engine prep failed: ${e.message}`); sendState("disconnected", ""); }
+      break;
     case "logout":
-      if (wa) { try { await wa.logout(); } catch {} try { await wa.destroy(); } catch {} wa = null; waReady = false; sendState("logged_out", ""); }
+      if (wa) { try { await wa.logout(); } catch {} }
+      await destroyWa("logout"); sendState("logged_out", "");
       break;
     default: log("warn", `unknown control action: ${action}`);
   }
 }
 
 // ------------------------------------------------------------ gateway link ----
+// STRICT single socket. Any prior socket is torn down first, a pending reconnect
+// timer is cleared, and every handler is guarded by `ws === sock` so a stale
+// socket can never act after a newer one replaced it.
 function connect(cfg) {
-  const url = `${CLOUD_WS}?token=${encodeURIComponent(cfg.token)}`;
-  ws = new WebSocket(url);
-  ws.on("open", () => {
-    wsAlive = true; reconnectDelay = 1000;
+  clearTimeout(reconnectTimer); reconnectTimer = null;
+  if (ws) { try { ws.removeAllListeners(); ws.terminate(); } catch {} ws = null; }
+  const id = ++wsSeq;
+  const sock = new WebSocket(`${CLOUD_WS}?token=${encodeURIComponent(cfg.token)}`);
+  ws = sock;
+  sock.on("open", () => {
+    if (ws !== sock) { try { sock.terminate(); } catch {} return; }
+    reconnectDelay = 1000;
     wsSend("hello", { protocolVersion: 1, version: VERSION, os: process.platform, arch: process.arch, providers: [PROVIDER] });
-    log("info", "cloud link up");
-    // Resume an existing WhatsApp session automatically (LocalAuth → no QR needed).
-    // Non-blocking so the heartbeat/log timers below start immediately even if
-    // the one-time Chromium download is still in progress.
+    log("info", `cloud link up [ws#${id}]`);
+    // Resume an existing WhatsApp session automatically (LocalAuth → no QR). The
+    // memoized ensureWa guarantees this shares the single Client with any
+    // subsequent start_qr — no second engine.
     if (fs.existsSync(path.join(HOME, "wweb"))) ensureWa(cfg).catch((e) => log("error", `whatsapp: resume error: ${e.message}`));
     clearInterval(hbTimer); hbTimer = setInterval(() => wsSend("heartbeat", {}), 25000);
     clearInterval(logTimer); logTimer = setInterval(drainLogs, 3000);
   });
-  ws.on("message", (buf) => {
+  sock.on("message", (buf) => {
+    if (ws !== sock) return;
     let f = null; try { f = JSON.parse(buf.toString()); } catch { return; }
     if (!f || !f.type) return;
     const p = f.payload || {};
@@ -326,13 +366,19 @@ function connect(cfg) {
       // hello_ack / heartbeat_ack / *_ack — nothing to do.
     }
   });
-  ws.on("close", () => { wsAlive = false; clearInterval(hbTimer); clearInterval(logTimer); scheduleReconnect(cfg); });
-  ws.on("error", (e) => { log("warn", `cloud link error: ${e.message}`); try { ws.close(); } catch {} });
+  sock.on("close", () => {
+    if (ws !== sock) return;               // a newer socket already took over
+    clearInterval(hbTimer); clearInterval(logTimer);
+    log("warn", `cloud link down [ws#${id}]`);
+    scheduleReconnect(cfg);
+  });
+  sock.on("error", (e) => { log("warn", `cloud link error: ${e.message} [ws#${id}]`); try { sock.close(); } catch {} });
 }
 function scheduleReconnect(cfg) {
+  clearTimeout(reconnectTimer);
   reconnectDelay = Math.min(30000, reconnectDelay * 2);
-  log("warn", `cloud link down — retry in ${Math.round(reconnectDelay / 1000)}s`);
-  setTimeout(() => connect(cfg), reconnectDelay);
+  log("warn", `cloud link retry in ${Math.round(reconnectDelay / 1000)}s`);
+  reconnectTimer = setTimeout(() => connect(cfg), reconnectDelay);
 }
 function drainLogs() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
