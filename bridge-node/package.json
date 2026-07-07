@@ -1,12 +1,13 @@
 {
   "name": "keyone-wa-bridge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "KEYONE WhatsApp Bridge — whatsapp-web.js transport (real WhatsApp Web). Speaks the same gateway protocol as the Go bridge; Dashboard + gateway unchanged.",
   "bin": { "keyone-wa-bridge": "keyone-wa-bridge.js" },
   "scripts": { "start": "node keyone-wa-bridge.js start" },
   "dependencies": {
     "whatsapp-web.js": "^1.34.7",
+    "puppeteer": "24.38.0",
     "ws": "^8.18.0"
   }
 }

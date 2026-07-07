@@ -15,25 +15,15 @@ New-Item -ItemType Directory -Force -Path $Home | Out-Null
 Copy-Item -Recurse -Force (Join-Path $Src "app")      $Dest
 Copy-Item -Force          (Join-Path $Src "node.exe") $Dest
 
-# Detect Chrome / Edge (whatsapp-web.js needs a real Chromium engine).
-$chrome = $null
-foreach ($p in @(
-  "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
-  "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
-  "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
-  "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
-  "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe")) {
-  if (Test-Path $p) { $chrome = $p; break }
-}
-if ($chrome) { Write-Host "Detected browser: $chrome" }
-else { Write-Warning "No Chrome/Edge found — install Google Chrome, then re-run (or the bridge downloads Chromium on first run)." }
+# The Bridge downloads its OWN matched Chromium (the build WhatsApp Web pairing
+# needs) into %LOCALAPPDATA%\keyone-wa-bridge\chromium on first run — we do NOT
+# point it at a system Chrome, which is a mismatched build that breaks pairing.
 
 # CLI shims (BOTH documented names). They set the SAME home the service uses, so
 # `keyone-bridge login` links the exact session the Scheduled Task runs.
 $shim = @"
 @echo off
 if "%KEYONE_BRIDGE_HOME%"=="" set "KEYONE_BRIDGE_HOME=$Home"
-if "%KEYONE_CHROME%"=="" set "KEYONE_CHROME=$chrome"
 "%~dp0node.exe" "%~dp0app\keyone-wa-bridge.js" %*
 "@
 Set-Content -Encoding ASCII -Path (Join-Path $Dest "keyone-bridge.cmd")    -Value $shim

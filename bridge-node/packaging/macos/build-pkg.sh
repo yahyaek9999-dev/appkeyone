@@ -27,7 +27,6 @@ cat > "$PAYLOAD$INSTALL_DIR/com.keyone.wa-bridge.plist.tmpl" <<PLIST
     <string>$INSTALL_DIR/run</string><string>start</string>
   </array>
   <key>EnvironmentVariables</key><dict>
-    <key>KEYONE_CHROME</key><string>__CHROME__</string>
     <key>KEYONE_BRIDGE_HOME</key><string>__HOME__</string>
   </dict>
   <key>RunAtLoad</key><true/>
@@ -59,22 +58,17 @@ INSTALL_DIR="/usr/local/keyone-wa-bridge"
 mkdir -p /usr/local/bin
 ln -sf "$INSTALL_DIR/run" /usr/local/bin/keyone-bridge
 ln -sf "$INSTALL_DIR/run" /usr/local/bin/keyone-wa-bridge
-# Detect Chrome/Chromium (system first — the reliable path for whatsapp-web.js).
-CHROME=""
-for c in \
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  "/Applications/Chromium.app/Contents/MacOS/Chromium" \
-  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"; do
-  [ -x "$c" ] && CHROME="$c" && break
-done
+# The Bridge downloads its OWN matched Chromium (the build WhatsApp Web pairing
+# needs) into ~/.keyone-wa-bridge/chromium on first run — we deliberately do NOT
+# point it at the system Chrome (a mismatched system Chrome breaks pairing).
 # The console (logged-in) user owns the WhatsApp session + LaunchAgent.
 USER_NAME="$(stat -f%Su /dev/console)"; USER_HOME="$(eval echo ~"$USER_NAME")"
 BRIDGE_HOME="$USER_HOME/.keyone-wa-bridge"; mkdir -p "$BRIDGE_HOME"; chown "$USER_NAME" "$BRIDGE_HOME"
 LA_DIR="$USER_HOME/Library/LaunchAgents"; mkdir -p "$LA_DIR"
-sed -e "s#__CHROME__#${CHROME}#" -e "s#__HOME__#${BRIDGE_HOME}#" \
+sed -e "s#__HOME__#${BRIDGE_HOME}#" \
     "$INSTALL_DIR/com.keyone.wa-bridge.plist.tmpl" > "$LA_DIR/com.keyone.wa-bridge.plist"
 chown "$USER_NAME" "$LA_DIR/com.keyone.wa-bridge.plist"
-echo "KEYONE WA Bridge installed. Chrome: ${CHROME:-'(none — will download Chromium on first run)'}"
+echo "KEYONE WA Bridge installed. It will download its WhatsApp engine on first run."
 # Load the agent as the console user (bootstraps + starts it).
 UID_N="$(id -u "$USER_NAME")"
 launchctl bootout "gui/$UID_N/com.keyone.wa-bridge" 2>/dev/null || true

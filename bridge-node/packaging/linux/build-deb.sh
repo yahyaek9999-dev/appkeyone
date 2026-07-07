@@ -20,11 +20,11 @@ Section: net
 Priority: optional
 Architecture: $DEBARCH
 Maintainer: KEYONE <support@keyone1.com>
-Depends: ca-certificates, fonts-liberation
-Recommends: chromium | chromium-browser | google-chrome-stable
+Depends: ca-certificates, fonts-liberation, libnss3, libnspr4, libdrm2, libgbm1, libxkbcommon0, libxcomposite1, libxdamage1, libxfixes3, libxrandr2, libpango-1.0-0, libcairo2, libatk1.0-0 | libatk1.0-0t64, libatk-bridge2.0-0 | libatk-bridge2.0-0t64, libcups2 | libcups2t64, libasound2 | libasound2t64, libatspi2.0-0 | libatspi2.0-0t64, libgtk-3-0 | libgtk-3-0t64
 Description: KEYONE WhatsApp Bridge — whatsapp-web.js transport (real WhatsApp Web).
- Self-contained (bundled Node). Detects system Chrome/Chromium; runs headless as
- a systemd service (as the installing user). Link with: keyone-bridge login
+ Self-contained (bundled Node). Downloads its own matched Chromium on first run;
+ runs headless as a systemd service (as the installing user). The Depends above
+ are the shared libraries that Chromium needs. Link with: keyone-bridge login
 CTRL
 
 # postinst writes the systemd unit at install time so the service runs as the
@@ -37,11 +37,10 @@ TARGET_USER="${SUDO_USER:-root}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"; [ -n "$TARGET_HOME" ] || TARGET_HOME=/root
 BRIDGE_HOME="$TARGET_HOME/.keyone-wa-bridge"
 mkdir -p "$BRIDGE_HOME"; chown "$TARGET_USER" "$BRIDGE_HOME" 2>/dev/null || true
-CHROME=""
-for c in /usr/bin/google-chrome-stable /usr/bin/google-chrome /usr/bin/chromium /usr/bin/chromium-browser /snap/bin/chromium; do
-  [ -x "$c" ] && CHROME="$c" && break
-done
-printf 'KEYONE_CHROME=%s\nKEYONE_BRIDGE_HOME=%s\n' "$CHROME" "$BRIDGE_HOME" > /etc/keyone-wa-bridge.env
+# The Bridge downloads its OWN matched Chromium into $BRIDGE_HOME/chromium on
+# first run (the build WhatsApp Web pairing needs) — we deliberately do NOT point
+# it at a system Chrome, which is a mismatched build that breaks pairing.
+printf 'KEYONE_BRIDGE_HOME=%s\n' "$BRIDGE_HOME" > /etc/keyone-wa-bridge.env
 cat > /lib/systemd/system/keyone-wa-bridge.service <<UNIT
 [Unit]
 Description=KEYONE WhatsApp Bridge (whatsapp-web.js)
@@ -60,7 +59,7 @@ UNIT
 # CLI on PATH — BOTH documented names. /usr/local/bin is on the default PATH.
 ln -sf /opt/keyone-wa-bridge/run /usr/local/bin/keyone-bridge
 ln -sf /opt/keyone-wa-bridge/run /usr/local/bin/keyone-wa-bridge
-echo "KEYONE WA Bridge installed for user $TARGET_USER. Chrome: ${CHROME:-'(none — install chromium)'}"
+echo "KEYONE WA Bridge installed for user $TARGET_USER. It downloads its WhatsApp engine on first run."
 echo "  Link it now:  keyone-bridge login"
 systemctl daemon-reload || true
 systemctl enable keyone-wa-bridge.service >/dev/null 2>&1 || true

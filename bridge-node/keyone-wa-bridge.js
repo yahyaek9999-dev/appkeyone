@@ -32,8 +32,22 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
 const CLOUD_API = process.env.KEYONE_CLOUD_API || "https://w.keyone1.com";
 const CLOUD_WS = process.env.KEYONE_CLOUD_WS || "wss://w.keyone1.com/bridge";
 const HOME = process.env.KEYONE_BRIDGE_HOME || path.join(os.homedir(), ".keyone-wa-bridge");
-const CHROME = process.env.KEYONE_CHROME || undefined;
-const VERSION = "1.0.0-wweb";
+// WhatsApp engine: use the puppeteer-MATCHED Chromium (the exact build the
+// production Recovery/Import client pairs with). Proven root cause (2026-07-07):
+// driving the customer's SYSTEM Chrome makes wwebjs fire `authenticated` and hit
+// `loading 100%` but NEVER fire `ready`, so the Bridge never publishes
+// `connected` and the Dashboard hangs on "Generating QR". A system Chrome is
+// therefore honored ONLY as an explicit opt-in (KEYONE_CHROME_FORCE=1); by
+// default we download + use the matched Chromium, identical on every OS.
+const FORCE_SYSTEM_CHROME =
+  process.env.KEYONE_CHROME_FORCE === "1" && process.env.KEYONE_CHROME
+    ? process.env.KEYONE_CHROME
+    : "";
+// Respect a build-time PUPPETEER_CACHE_DIR (Docker bakes Chromium in there);
+// otherwise download into the Bridge home so it persists across restarts.
+const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
+let chromePath = null;
+const VERSION = "1.0.1-wweb";
 const PROVIDER = "whatsapp";
 fs.mkdirSync(HOME, { recursive: true });
 const CFG = path.join(HOME, "config.json");
@@ -148,20 +162,68 @@ function sendState(state, identity) { wsSend("state", { provider: PROVIDER, stat
 function sendQr(code) { wsSend("link_artifact", { provider: PROVIDER, kind: "qr", data: code, expiresAt: Date.now() + 25000 }); }
 
 // ------------------------------------------------------- whatsapp-web.js engine
-function ensureWa(cfg) {
+// Resolve the WhatsApp engine (Chromium). Downloads the puppeteer-PINNED build
+// once into KEYONE_BRIDGE_HOME/chromium — same version, same mechanism, on every
+// OS. This is the config production pairs with; a system Chrome does not.
+async function ensureChromium() {
+  if (FORCE_SYSTEM_CHROME) return FORCE_SYSTEM_CHROME;
+  if (chromePath && fs.existsSync(chromePath)) return chromePath;
+  process.env.PUPPETEER_CACHE_DIR = PUP_CACHE;
+  fs.mkdirSync(PUP_CACHE, { recursive: true });
+  const puppeteer = require("puppeteer");
+  let expected = "";
+  try { expected = puppeteer.executablePath(); } catch {}
+  if (expected && fs.existsSync(expected)) { chromePath = expected; return chromePath; }
+  const browsers = require("@puppeteer/browsers");
+  let buildId = "";
+  try { buildId = puppeteer.PUPPETEER_REVISIONS && puppeteer.PUPPETEER_REVISIONS.chrome; } catch {}
+  if (!buildId && expected) { const m = String(expected).match(/[\/\\](\d+\.[\d.]+)[\/\\]/); if (m) buildId = m[1]; }
+  if (!buildId) buildId = await browsers.resolveBuildId("chrome", browsers.detectBrowserPlatform(), "stable");
+  log("info", `whatsapp: preparing the WhatsApp engine (Chromium ${buildId}) — one-time download…`);
+  const inst = await browsers.install({ browser: "chrome", buildId, cacheDir: PUP_CACHE });
+  chromePath = (inst && inst.executablePath) || puppeteer.executablePath();
+  log("info", "whatsapp: WhatsApp engine ready");
+  return chromePath;
+}
+
+// Safety net: `ready` is the primary "connected" signal. If it is merely LATE,
+// confirm via getState() so the Dashboard still flips to Connected once WhatsApp
+// is genuinely CONNECTED. Never publishes before WhatsApp reports CONNECTED.
+function confirmConnectedViaState() {
+  let ok = 0, tries = 0;
+  const iv = setInterval(async () => {
+    if (waReady || !wa) { clearInterval(iv); return; }
+    if (++tries > 24) { clearInterval(iv); return; } // ~72s cap
+    let st = "";
+    try { st = String((await wa.getState()) || "").toUpperCase(); } catch { return; }
+    if (st !== "CONNECTED") { ok = 0; return; }
+    if (++ok >= 4 && !waReady) {                       // ~12s stably CONNECTED
+      waReady = true; linking = false;
+      waIdentity = (wa.info && wa.info.wid && wa.info.wid.user) || waIdentity || "";
+      sendState("connected", waIdentity);
+      log("info", `whatsapp: connected as ${waIdentity} (confirmed via state)`);
+      clearInterval(iv);
+    }
+  }, 3000);
+  if (typeof iv.unref === "function") iv.unref();
+}
+
+async function ensureWa(cfg) {
   if (wa) return wa;
+  const exe = await ensureChromium();
   log("info", "whatsapp: initializing real WhatsApp Web (Chromium)…");
   wa = new Client({
     authStrategy: new LocalAuth({ clientId: cfg.bridgeId || "keyone", dataPath: path.join(HOME, "wweb") }),
     puppeteer: {
       headless: true,
-      executablePath: CHROME,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+      executablePath: exe,
+      // Match the production Recovery/Import client exactly (the known-good args).
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-accelerated-2d-canvas", "--no-first-run", "--no-zygote", "--disable-gpu"],
     },
   });
   wa.on("qr", (code) => { linking = true; sendState("linking", ""); sendQr(code); log("info", "whatsapp: QR ready — scan from the Dashboard"); });
   wa.on("loading_screen", (p) => log("info", `whatsapp: loading ${p}%`));
-  wa.on("authenticated", () => log("info", "whatsapp: QR scanned — authenticating"));
+  wa.on("authenticated", () => { log("info", "whatsapp: QR scanned — authenticating"); confirmConnectedViaState(); });
   wa.on("auth_failure", (m) => { log("error", `whatsapp: auth failure: ${m}`); sendState("disconnected", ""); });
   wa.on("ready", () => {
     waReady = true; linking = false;
@@ -186,7 +248,8 @@ function ensureWa(cfg) {
 }
 
 async function startLink(cfg) {
-  ensureWa(cfg);
+  try { await ensureWa(cfg); }
+  catch (e) { log("error", `whatsapp: engine prep failed: ${e.message}`); sendState("disconnected", ""); return; }
   if (waReady) { sendState("connected", waIdentity); log("info", `whatsapp: already linked as ${waIdentity}`); return; }
   // If wwebjs is mid-init it will emit `qr` shortly; nothing else to do.
   log("info", "whatsapp: link requested — a QR will stream to the Dashboard");
@@ -207,7 +270,7 @@ async function control(action) {
     case "disconnect": if (wa) { try { await wa.destroy(); } catch {} wa = null; waReady = false; sendState("disconnected", ""); } break;
     case "reconnect": case "restart":
       if (wa) { try { await wa.destroy(); } catch {} wa = null; waReady = false; }
-      ensureWa(cfg); break;
+      try { await ensureWa(cfg); } catch (e) { log("error", `whatsapp: engine prep failed: ${e.message}`); sendState("disconnected", ""); } break;
     case "logout":
       if (wa) { try { await wa.logout(); } catch {} try { await wa.destroy(); } catch {} wa = null; waReady = false; sendState("logged_out", ""); }
       break;
@@ -224,7 +287,9 @@ function connect(cfg) {
     wsSend("hello", { protocolVersion: 1, version: VERSION, os: process.platform, arch: process.arch, providers: [PROVIDER] });
     log("info", "cloud link up");
     // Resume an existing WhatsApp session automatically (LocalAuth → no QR needed).
-    if (fs.existsSync(path.join(HOME, "wweb"))) ensureWa(cfg);
+    // Non-blocking so the heartbeat/log timers below start immediately even if
+    // the one-time Chromium download is still in progress.
+    if (fs.existsSync(path.join(HOME, "wweb"))) ensureWa(cfg).catch((e) => log("error", `whatsapp: resume error: ${e.message}`));
     clearInterval(hbTimer); hbTimer = setInterval(() => wsSend("heartbeat", {}), 25000);
     clearInterval(logTimer); logTimer = setInterval(drainLogs, 3000);
   });

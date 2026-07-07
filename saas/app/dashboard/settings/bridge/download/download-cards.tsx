@@ -21,10 +21,16 @@ export function DownloadCards({ base }: { base: string }) {
   }, []);
 
   const dockerfile = `FROM node:20-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends chromium ca-certificates fonts-liberation && rm -rf /var/lib/apt/lists/*
-ENV KEYONE_CHROME=/usr/bin/chromium KEYONE_BRIDGE_HOME=/data
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+  ca-certificates fonts-liberation libnss3 libnspr4 libdrm2 libgbm1 libxkbcommon0 \\
+  libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2 \\
+  libatk1.0-0 libatk-bridge2.0-0 libcups2 libasound2 libatspi2.0-0 libgtk-3-0 \\
+  && rm -rf /var/lib/apt/lists/*
+ENV KEYONE_BRIDGE_HOME=/data PUPPETEER_CACHE_DIR=/opt/keyone-chromium
 WORKDIR /app
 ADD ${origin}${base}/app.tar.gz /app/
+# bake in the puppeteer-matched Chromium (the build WhatsApp Web pairing needs)
+RUN node /app/node_modules/puppeteer/install.mjs
 ENTRYPOINT ["node","/app/keyone-wa-bridge.js","start"]`;
 
   const cards: {
