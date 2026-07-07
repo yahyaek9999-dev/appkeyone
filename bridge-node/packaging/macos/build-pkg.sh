@@ -69,11 +69,17 @@ sed -e "s#__HOME__#${BRIDGE_HOME}#" \
     "$INSTALL_DIR/com.keyone.wa-bridge.plist.tmpl" > "$LA_DIR/com.keyone.wa-bridge.plist"
 chown "$USER_NAME" "$LA_DIR/com.keyone.wa-bridge.plist"
 echo "KEYONE WA Bridge installed. It will download its WhatsApp engine on first run."
-# Load the agent as the console user (bootstraps + starts it).
+# Load the agent as the console user (bootstraps + starts it). Report the outcome
+# — a swallowed failure would leave the Dashboard offline with no diagnostic.
 UID_N="$(id -u "$USER_NAME")"
 launchctl bootout "gui/$UID_N/com.keyone.wa-bridge" 2>/dev/null || true
-launchctl bootstrap "gui/$UID_N" "$LA_DIR/com.keyone.wa-bridge.plist" 2>/dev/null || \
-  sudo -u "$USER_NAME" launchctl load "$LA_DIR/com.keyone.wa-bridge.plist" 2>/dev/null || true
+if launchctl bootstrap "gui/$UID_N" "$LA_DIR/com.keyone.wa-bridge.plist" 2>/dev/null || \
+   sudo -u "$USER_NAME" launchctl load "$LA_DIR/com.keyone.wa-bridge.plist" 2>/dev/null; then
+  echo "KEYONE WA Bridge service started."
+else
+  echo "WARNING: could not start the service now; it will start at next login. To start it immediately, run:"
+  echo "  launchctl bootstrap gui/$UID_N \"$LA_DIR/com.keyone.wa-bridge.plist\""
+fi
 exit 0
 POST
 chmod +x "$SCRIPTS/postinstall"

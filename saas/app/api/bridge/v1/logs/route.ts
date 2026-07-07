@@ -23,7 +23,10 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const bridgeId = url.searchParams.get("bridgeId") || "";
-  const limit = Math.min(Number(url.searchParams.get("limit") || 200), 500);
+  // Clamp to a finite [1,500]; a non-numeric ?limit (e.g. "abc") must NOT become
+  // take:NaN (which Prisma rejects with a 500) — fall back to the default.
+  const rawLimit = Number(url.searchParams.get("limit"));
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 500) : 200;
 
   // Ownership check.
   const owned = await (prisma as any).bridge.findFirst({

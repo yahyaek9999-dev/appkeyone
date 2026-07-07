@@ -47,7 +47,7 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.1-wweb";
+const VERSION = "1.0.2-wweb";
 const PROVIDER = "whatsapp";
 fs.mkdirSync(HOME, { recursive: true });
 const CFG = path.join(HOME, "config.json");
@@ -91,6 +91,16 @@ async function cmdUpdate() {
   const ROOT = path.dirname(APPDIR);        // <bundle>
   const bundled = fs.existsSync(path.join(ROOT, "node")) || fs.existsSync(path.join(ROOT, "node.exe"));
   if (!bundled) { console.log("update: not an installed bundle (run the installer to update)."); return; }
+  // `update --rollback`: restore the previous app/ that a prior update staged as
+  // app.old (recovery after a bad update). Restart the service to apply.
+  if (process.argv.slice(3).includes("--rollback")) {
+    const old = path.join(ROOT, "app.old");
+    if (!fs.existsSync(old)) { console.log("rollback: no previous version (app.old) to restore — reinstall from the KEYONE store."); return; }
+    const tmp = path.join(ROOT, "app.rollback.tmp"); fs.rmSync(tmp, { recursive: true, force: true });
+    fs.renameSync(APPDIR, tmp); fs.renameSync(old, APPDIR); fs.rmSync(tmp, { recursive: true, force: true });
+    console.log("rolled back to the previous version — restart the service to apply.");
+    return;
+  }
   const man = JSON.parse((await getURL(DL_BASE + "/version.json")).toString());
   if (!man.app || !man.app.file) { console.log("update: manifest has no app package."); return; }
   if (!isNewer(VERSION, man.version)) { console.log("already up to date (" + VERSION + ")"); return; }
@@ -336,14 +346,133 @@ async function cmdStart() {
   process.on("SIGTERM", () => process.exit(0));
 }
 
+// ------------------------------------------------------------ CLI: diagnostics
+// Reachability probe: resolves true if the host answers ANY HTTP status (TCP+TLS
+// ok), false on a network/DNS/TLS error. Used by status/doctor.
+function reachable(url) {
+  return new Promise((resolve) => {
+    try {
+      const req = https.get(url, (r) => { r.resume(); resolve(true); });
+      req.on("error", () => resolve(false));
+      req.setTimeout(6000, () => { try { req.destroy(); } catch {} resolve(false); });
+    } catch { resolve(false); }
+  });
+}
+
+function sessionLinked() { return fs.existsSync(path.join(HOME, "wweb")); }
+function engineState() {
+  try { const p = require("puppeteer").executablePath(); if (p && fs.existsSync(p)) return "ready: " + p; } catch {}
+  return fs.existsSync(PUP_CACHE) ? "downloaded (in " + PUP_CACHE + ")" : "downloads on first link (~150MB, one-time)";
+}
+
+async function cmdStatus() {
+  const cfg = loadCfg();
+  console.log(`keyone-wa-bridge ${VERSION}`);
+  console.log(`  home:      ${HOME}`);
+  if (!cfg.token || !cfg.bridgeId) {
+    console.log("  linked:    NO — run `keyone-bridge login`");
+  } else {
+    console.log("  linked:    YES");
+    console.log(`  bridge id: ${cfg.bridgeId}`);
+    console.log(`  workspace: ${cfg.workspaceId || "?"}`);
+    console.log(`  name:      ${cfg.name || os.hostname()}`);
+  }
+  console.log(`  whatsapp:  ${sessionLinked() ? "session present (scan not needed)" : "not linked — scan the QR from the Dashboard"}`);
+  console.log(`  engine:    ${engineState()}`);
+  console.log(`  cloud:     ${(await reachable(CLOUD_API)) ? "reachable" : "UNREACHABLE"} (${CLOUD_API})`);
+}
+
+async function cmdDoctor() {
+  const cfg = loadCfg();
+  const rows = [];
+  rows.push(["config linked (token + bridgeId)", !!(cfg.token && cfg.bridgeId), cfg.bridgeId ? cfg.bridgeId : "run `keyone-bridge login`"]);
+  rows.push(["node runtime", !!process.version, `${process.version} ${process.platform}/${process.arch}`]);
+  rows.push(["cloud API reachable", await reachable(CLOUD_API), CLOUD_API]);
+  let puppeteerOk = false, engineInfo = "";
+  try { require("puppeteer"); require("@puppeteer/browsers"); puppeteerOk = true; engineInfo = engineState(); }
+  catch (e) { engineInfo = "puppeteer missing: " + e.message; }
+  rows.push(["WhatsApp engine deps", puppeteerOk, engineInfo]);
+  rows.push(["home dir writable", (() => { try { fs.accessSync(HOME, fs.constants.W_OK); return true; } catch { return false; } })(), HOME]);
+  rows.push(["whatsapp session", sessionLinked(), sessionLinked() ? "linked" : "not yet (optional until you scan)"]);
+  let ok = true;
+  for (const [name, pass, info] of rows) {
+    console.log(`${pass ? "✓" : "✗"} ${name}${info ? "  (" + info + ")" : ""}`);
+    if (!pass && name !== "whatsapp session") ok = false;
+  }
+  console.log(ok ? "\nOK — the bridge can link and run." : "\nSome checks failed — fix the ✗ items above.");
+  return ok;
+}
+
+function cmdLogout() {
+  // Local unlink on THIS host (clears token + WhatsApp session). Full revocation
+  // (so a stale copy can never reconnect) is done from the Dashboard.
+  try { fs.rmSync(CFG, { force: true }); } catch {}
+  try { fs.rmSync(path.join(HOME, "wweb"), { recursive: true, force: true }); } catch {}
+  console.log("Unlinked on this host (token + WhatsApp session cleared).");
+  console.log("To fully revoke it, also remove this device from your KEYONE Dashboard.");
+}
+
+function cmdLogs(nArg) {
+  const N = Math.max(1, Math.min(5000, Number(nArg) || 200));
+  const files = [path.join(HOME, "bridge.out.log"), path.join(HOME, "bridge.err.log")];
+  let printed = false;
+  for (const f of files) {
+    try {
+      if (fs.existsSync(f) && fs.statSync(f).size > 0) {
+        const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);
+        console.log(`--- ${f} (last ${N}) ---`);
+        console.log(lines.slice(-N).join("\n"));
+        printed = true;
+      }
+    } catch {}
+  }
+  if (!printed) {
+    console.log("No local log file yet. The bridge logs via its service manager:");
+    console.log("  macOS:   tail -f ~/.keyone-wa-bridge/bridge.out.log");
+    console.log("  Linux:   journalctl -u keyone-wa-bridge -f");
+    console.log('  Windows: schtasks /Run /TN "KEYONE WA Bridge", or run `keyone-bridge start` to watch live');
+  }
+}
+
+// Restart/stop the OS service that supervises the bridge (best-effort, per-OS).
+function cmdService(action) {
+  const cp = require("child_process");
+  const run = (c) => cp.execSync(c, { stdio: "ignore" });
+  try {
+    if (process.platform === "darwin") {
+      const uid = process.getuid ? process.getuid() : "";
+      if (action === "stop") run(`launchctl bootout gui/${uid}/com.keyone.wa-bridge`);
+      else run(`launchctl kickstart -k gui/${uid}/com.keyone.wa-bridge`);
+    } else if (process.platform === "linux") {
+      run(`systemctl ${action === "stop" ? "stop" : "restart"} keyone-wa-bridge`);
+    } else if (process.platform === "win32") {
+      try { run(`schtasks /End /TN "KEYONE WA Bridge"`); } catch {}
+      if (action !== "stop") run(`schtasks /Run /TN "KEYONE WA Bridge"`);
+    }
+    console.log(`service ${action}: ok`);
+  } catch (e) {
+    console.log(`Could not ${action} the service automatically (${String(e.message).split("\n")[0]}). Run manually:`);
+    console.log("  macOS:   launchctl kickstart -k gui/$(id -u)/com.keyone.wa-bridge");
+    console.log("  Linux:   sudo systemctl restart keyone-wa-bridge");
+    console.log('  Windows: schtasks /End /TN "KEYONE WA Bridge" && schtasks /Run /TN "KEYONE WA Bridge"');
+  }
+}
+
 // --------------------------------------------------------------------- main ---
+const USAGE = "usage: keyone-wa-bridge <login|start|status|doctor|logs|restart|stop|logout|update|version>";
 (async () => {
   const cmd = process.argv[2];
   try {
     if (cmd === "login") await cmdLogin(process.argv.slice(3).join(" "));
     else if (cmd === "start" || cmd === "run") await cmdStart();
+    else if (cmd === "status") await cmdStatus();
+    else if (cmd === "doctor") process.exit((await cmdDoctor()) ? 0 : 1);
+    else if (cmd === "logs") cmdLogs(process.argv[3]);
+    else if (cmd === "restart") cmdService("restart");
+    else if (cmd === "stop") cmdService("stop");
+    else if (cmd === "logout") cmdLogout();
     else if (cmd === "update") await cmdUpdate();
-    else if (cmd === "version" || cmd === "-v") console.log("keyone-wa-bridge", VERSION);
-    else { console.error("usage: keyone-wa-bridge <login|start|update|version>"); process.exit(2); }
+    else if (cmd === "version" || cmd === "-v" || cmd === "--version") console.log("keyone-wa-bridge", VERSION);
+    else { console.error(USAGE); process.exit(2); }
   } catch (e) { console.error("error:", e.message); process.exit(1); }
 })();

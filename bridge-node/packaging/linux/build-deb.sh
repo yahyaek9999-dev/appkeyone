@@ -63,7 +63,12 @@ echo "KEYONE WA Bridge installed for user $TARGET_USER. It downloads its WhatsAp
 echo "  Link it now:  keyone-bridge login"
 systemctl daemon-reload || true
 systemctl enable keyone-wa-bridge.service >/dev/null 2>&1 || true
-systemctl start keyone-wa-bridge.service >/dev/null 2>&1 || true
+if systemctl start keyone-wa-bridge.service >/dev/null 2>&1; then
+  echo "  service started."
+else
+  echo "  WARNING: service did not start now (it is enabled and will start on boot)."
+  echo "  Start it now:  sudo systemctl start keyone-wa-bridge.service"
+fi
 exit 0
 POST
 

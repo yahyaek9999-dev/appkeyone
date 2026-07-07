@@ -718,10 +718,27 @@ server.listen(PORT, () => {
   );
 });
 
-function shutdown() {
+async function shutdown() {
   console.log("[bridge-gateway] shutting down…");
   clearInterval(pingTimer);
   clearInterval(sweepTimer);
+  // Flip every currently-connected Bridge offline NOW. wss.close() only stops
+  // ACCEPTING sockets — it does not close live ones, so ws.on("close")→markOffline
+  // would not run during a restart, leaving bridges falsely "online" for up to
+  // ~150s (heartbeat timeout + sweep) during which bridge-mode sends fail with
+  // no_bridge_online. A single bulk UPDATE keeps the DB in sync with reality.
+  const ids = Array.from(bridgesById.keys());
+  if (pool && ids.length) {
+    try {
+      await pool.query(
+        `UPDATE "Bridge" SET "status" = 'offline', "updatedAt" = now() WHERE "id" = ANY($1::text[])`,
+        [ids],
+      );
+    } catch (err) {
+      console.error("[bridge-gateway] shutdown markOffline error:", err.message);
+    }
+  }
+  for (const ws of wss.clients) { try { ws.terminate(); } catch {} }
   wss.close();
   server.close(() => {
     if (pool) pool.end().finally(() => process.exit(0));
