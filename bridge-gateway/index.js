@@ -544,6 +544,18 @@ function deregister(ws) {
   }
 }
 
+// Reap a dead socket from the registries WITHOUT waiting for the 'close' event.
+// A hard-killed / half-open bridge (SIGKILL, power loss, crash) may never deliver
+// a FIN, so 'close' can be delayed indefinitely; the ping-keepalive and sweep call
+// this directly so bridgesById / socketsByUser never accumulate dead sockets.
+function reap(ws) {
+  deregister(ws);
+  if (!bridgesById.has(ws.bridgeId)) {
+    markOffline(ws.bridgeId);
+    lastLinkArtifact.delete(ws.bridgeId);
+  }
+}
+
 wss.on("connection", (ws, req) => {
   const ident = req._bridge || {};
   ws.bridgeId = ident.bridgeId;
@@ -663,13 +675,9 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
-    deregister(ws);
-    // If this bridge has no other live socket, flip it offline immediately and
-    // drop its cached link artifact (a reconnecting bridge re-streams a fresh one).
-    if (!bridgesById.has(ws.bridgeId)) {
-      markOffline(ws.bridgeId);
-      lastLinkArtifact.delete(ws.bridgeId);
-    }
+    // Reap from the registries + (if no other live socket) flip offline and drop
+    // the cached link artifact — a reconnecting bridge re-streams a fresh one.
+    reap(ws);
   });
 
   ws.on("error", () => {
@@ -681,7 +689,8 @@ wss.on("connection", (ws, req) => {
 const pingTimer = setInterval(() => {
   for (const ws of wss.clients) {
     if (ws.isAlive === false) {
-      ws.terminate(); // triggers 'close' -> deregister + markOffline
+      try { ws.terminate(); } catch {}
+      reap(ws); // reap directly — don't rely on a 'close' that may never arrive
       continue;
     }
     ws.isAlive = false;
@@ -691,6 +700,13 @@ const pingTimer = setInterval(() => {
       /* ignore */
     }
   }
+  // Reconcile: reap any REGISTERED socket that is no longer OPEN — covers a socket
+  // that left wss.clients without its 'close' handler cleaning the maps. Snapshot
+  // first (reap mutates the sets during iteration).
+  const dead = [];
+  for (const ws of bridgesById.values()) if (ws.readyState !== ws.OPEN) dead.push(ws);
+  for (const set of socketsByUser.values()) for (const ws of set) if (ws.readyState !== ws.OPEN) dead.push(ws);
+  for (const ws of dead) { try { ws.terminate(); } catch {} reap(ws); }
 }, PING_INTERVAL_MS);
 pingTimer.unref();
 
