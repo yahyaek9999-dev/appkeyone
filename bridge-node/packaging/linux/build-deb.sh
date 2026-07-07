@@ -13,25 +13,6 @@ mkdir -p "$ROOT/opt/keyone-wa-bridge" "$ROOT/lib/systemd/system" "$ROOT/DEBIAN"
 
 cp -R "$BUNDLE/." "$ROOT/opt/keyone-wa-bridge/"
 
-cat > "$ROOT/lib/systemd/system/keyone-wa-bridge.service" <<UNIT
-[Unit]
-Description=KEYONE WhatsApp Bridge (whatsapp-web.js)
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=keyone-bridge
-Environment=KEYONE_BRIDGE_HOME=/var/lib/keyone-wa-bridge
-EnvironmentFile=-/etc/keyone-wa-bridge.env
-ExecStart=/opt/keyone-wa-bridge/run start
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
 cat > "$ROOT/DEBIAN/control" <<CTRL
 Package: keyone-wa-bridge
 Version: $VERSION
@@ -43,22 +24,44 @@ Depends: ca-certificates, fonts-liberation
 Recommends: chromium | chromium-browser | google-chrome-stable
 Description: KEYONE WhatsApp Bridge — whatsapp-web.js transport (real WhatsApp Web).
  Self-contained (bundled Node). Detects system Chrome/Chromium; runs headless as
- a systemd service. Link with: keyone-wa-bridge login
+ a systemd service (as the installing user). Link with: keyone-bridge login
 CTRL
 
+# postinst writes the systemd unit at install time so the service runs as the
+# HUMAN who installed it — the same account that runs `keyone-bridge login`, so
+# both share ~/.keyone-wa-bridge (no separate service-user home mismatch).
 cat > "$ROOT/DEBIAN/postinst" <<'POST'
 #!/bin/sh
 set -e
-id keyone-bridge >/dev/null 2>&1 || useradd --system --home /var/lib/keyone-wa-bridge --shell /usr/sbin/nologin keyone-bridge
-mkdir -p /var/lib/keyone-wa-bridge && chown -R keyone-bridge:keyone-bridge /var/lib/keyone-wa-bridge
-ln -sf /opt/keyone-wa-bridge/run /usr/local/bin/keyone-wa-bridge
-# Detect Chrome/Chromium; record it for the service (empty → puppeteer downloads on first run).
+TARGET_USER="${SUDO_USER:-root}"
+TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"; [ -n "$TARGET_HOME" ] || TARGET_HOME=/root
+BRIDGE_HOME="$TARGET_HOME/.keyone-wa-bridge"
+mkdir -p "$BRIDGE_HOME"; chown "$TARGET_USER" "$BRIDGE_HOME" 2>/dev/null || true
 CHROME=""
 for c in /usr/bin/google-chrome-stable /usr/bin/google-chrome /usr/bin/chromium /usr/bin/chromium-browser /snap/bin/chromium; do
   [ -x "$c" ] && CHROME="$c" && break
 done
-echo "KEYONE_CHROME=$CHROME" > /etc/keyone-wa-bridge.env
-echo "KEYONE WA Bridge installed. Chrome: ${CHROME:-'(none — install chromium or set KEYONE_CHROME)'}"
+printf 'KEYONE_CHROME=%s\nKEYONE_BRIDGE_HOME=%s\n' "$CHROME" "$BRIDGE_HOME" > /etc/keyone-wa-bridge.env
+cat > /lib/systemd/system/keyone-wa-bridge.service <<UNIT
+[Unit]
+Description=KEYONE WhatsApp Bridge (whatsapp-web.js)
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=$TARGET_USER
+EnvironmentFile=/etc/keyone-wa-bridge.env
+ExecStart=/opt/keyone-wa-bridge/run start
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+UNIT
+# CLI on PATH — BOTH documented names. /usr/local/bin is on the default PATH.
+ln -sf /opt/keyone-wa-bridge/run /usr/local/bin/keyone-bridge
+ln -sf /opt/keyone-wa-bridge/run /usr/local/bin/keyone-wa-bridge
+echo "KEYONE WA Bridge installed for user $TARGET_USER. Chrome: ${CHROME:-'(none — install chromium)'}"
+echo "  Link it now:  keyone-bridge login"
 systemctl daemon-reload || true
 systemctl enable keyone-wa-bridge.service >/dev/null 2>&1 || true
 systemctl start keyone-wa-bridge.service >/dev/null 2>&1 || true
@@ -70,7 +73,8 @@ cat > "$ROOT/DEBIAN/prerm" <<'PRE'
 set -e
 systemctl stop keyone-wa-bridge.service >/dev/null 2>&1 || true
 systemctl disable keyone-wa-bridge.service >/dev/null 2>&1 || true
-rm -f /usr/local/bin/keyone-wa-bridge
+rm -f /usr/local/bin/keyone-bridge /usr/local/bin/keyone-wa-bridge /lib/systemd/system/keyone-wa-bridge.service /etc/keyone-wa-bridge.env
+systemctl daemon-reload >/dev/null 2>&1 || true
 exit 0
 PRE
 chmod 0755 "$ROOT/DEBIAN/postinst" "$ROOT/DEBIAN/prerm"

@@ -37,10 +37,28 @@ cat > "$PAYLOAD$INSTALL_DIR/com.keyone.wa-bridge.plist.tmpl" <<PLIST
 </dict></plist>
 PLIST
 
+cat > "$PAYLOAD$INSTALL_DIR/uninstall.sh" <<'UNINST'
+#!/bin/bash
+# Uninstall KEYONE WA Bridge (run with sudo). Keeps ~/.keyone-wa-bridge (session).
+U="$(stat -f%Su /dev/console)"; UH="$(eval echo ~"$U")"
+sudo -u "$U" launchctl bootout "gui/$(id -u "$U")/com.keyone.wa-bridge" 2>/dev/null || true
+rm -f "$UH/Library/LaunchAgents/com.keyone.wa-bridge.plist"
+rm -f /usr/local/bin/keyone-bridge /usr/local/bin/keyone-wa-bridge
+rm -rf /usr/local/keyone-wa-bridge
+echo "KEYONE WA Bridge removed. (~/.keyone-wa-bridge kept — delete it to fully unlink.)"
+UNINST
+chmod +x "$PAYLOAD$INSTALL_DIR/uninstall.sh"
+
 cat > "$SCRIPTS/postinstall" <<'POST'
 #!/bin/bash
 set -e
 INSTALL_DIR="/usr/local/keyone-wa-bridge"
+# Put the CLI on PATH (both names). /usr/local/bin is on the default macOS PATH.
+# The CLI + the LaunchAgent both use ~/.keyone-wa-bridge, so `keyone-bridge login`
+# links the exact session the service runs.
+mkdir -p /usr/local/bin
+ln -sf "$INSTALL_DIR/run" /usr/local/bin/keyone-bridge
+ln -sf "$INSTALL_DIR/run" /usr/local/bin/keyone-wa-bridge
 # Detect Chrome/Chromium (system first — the reliable path for whatsapp-web.js).
 CHROME=""
 for c in \
