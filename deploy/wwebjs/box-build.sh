@@ -36,7 +36,18 @@ assemble() { # <target>
   local t; t="$(mktemp -d)"
   case "$E" in tar.xz) tar xJf "nc/$N.$E" -C "$t";; tar.gz) tar xzf "nc/$N.$E" -C "$t";; zip) (cd "$t" && unzip -q "/tmp/kwbuild/nc/$N.$E");; esac
   if [ "$W" = 1 ]; then cp "$t/$N/$B" "$O/node.exe"; printf '@echo off\r\n"%%~dp0node.exe" "%%~dp0app\\keyone-wa-bridge.js" %%*\r\n' > "$O/run.cmd";
-  else cp "$t/$N/$B" "$O/node"; chmod +x "$O/node"; printf '#!/bin/sh\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexec "$DIR/node" "$DIR/app/keyone-wa-bridge.js" "$@"\n' > "$O/run"; chmod +x "$O/run"; fi
+  else
+    cp "$t/$N/$B" "$O/node"; chmod +x "$O/node"
+    cat > "$O/run" <<'RUN'
+#!/bin/sh
+# Resolve symlinks (e.g. /usr/local/bin/keyone-bridge) to find the real bundle dir.
+SELF="$0"
+while [ -h "$SELF" ]; do L="$(readlink "$SELF")"; case "$L" in /*) SELF="$L";; *) SELF="$(dirname "$SELF")/$L";; esac; done
+DIR="$(cd "$(dirname "$SELF")" && pwd)"
+exec "$DIR/node" "$DIR/app/keyone-wa-bridge.js" "$@"
+RUN
+    chmod +x "$O/run"
+  fi
   rm -rf "$t"; echo "  ✓ $T ($(du -sh "$O" | cut -f1))"
 }
 echo "▶ assemble bundles"

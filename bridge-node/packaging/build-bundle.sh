@@ -47,7 +47,10 @@ if [ "$WIN" = 1 ]; then
 else
   cat > "$OUT/run" <<'RUN'
 #!/bin/sh
-DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve symlinks (e.g. /usr/local/bin/keyone-bridge) to find the real bundle dir.
+SELF="$0"
+while [ -h "$SELF" ]; do L="$(readlink "$SELF")"; case "$L" in /*) SELF="$L";; *) SELF="$(dirname "$SELF")/$L";; esac; done
+DIR="$(cd "$(dirname "$SELF")" && pwd)"
 exec "$DIR/node" "$DIR/app/keyone-wa-bridge.js" "$@"
 RUN
   chmod +x "$OUT/run"

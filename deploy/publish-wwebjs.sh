@@ -35,7 +35,17 @@ assemble() { # <target>
   [ -f "$C/$N.$E" ] || curl -fsSL "https://nodejs.org/dist/$NODE_VER/$N.$E" -o "$C/$N.$E"
   local TMP; TMP="$(mktemp -d)"; ( cd "$TMP" && case "$E" in tar.gz) tar xzf "$C/$N.$E";; tar.xz) tar xJf "$C/$N.$E";; zip) unzip -q "$C/$N.$E";; esac )
   if [ "$W" = 1 ]; then cp "$TMP/$N/$B" "$OUT/node.exe"; printf '@echo off\r\n"%%~dp0node.exe" "%%~dp0app\\keyone-wa-bridge.js" %%*\r\n' > "$OUT/run.cmd";
-  else cp "$TMP/$N/$B" "$OUT/node"; chmod +x "$OUT/node"; printf '#!/bin/sh\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexec "$DIR/node" "$DIR/app/keyone-wa-bridge.js" "$@"\n' > "$OUT/run"; chmod +x "$OUT/run"; fi
+  else
+    cp "$TMP/$N/$B" "$OUT/node"; chmod +x "$OUT/node"
+    cat > "$OUT/run" <<'RUN'
+#!/bin/sh
+SELF="$0"
+while [ -h "$SELF" ]; do L="$(readlink "$SELF")"; case "$L" in /*) SELF="$L";; *) SELF="$(dirname "$SELF")/$L";; esac; done
+DIR="$(cd "$(dirname "$SELF")" && pwd)"
+exec "$DIR/node" "$DIR/app/keyone-wa-bridge.js" "$@"
+RUN
+    chmod +x "$OUT/run"
+  fi
   rm -rf "$TMP"; echo "  ✓ $T ($(du -sh "$OUT"|cut -f1))"
 }
 for T in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win-x64; do assemble "$T"; done
