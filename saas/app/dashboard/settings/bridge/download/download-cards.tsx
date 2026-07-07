@@ -114,6 +114,13 @@ ENTRYPOINT ["node","/app/keyone-wa-bridge.js","start"]`;
           <li>ارجع للوحة التحكم واضغط «بدء الربط» لمسح رمز QR بواتساب.</li>
         </ol>
         <p className="text-xs text-slate-500">
+          <b className="text-slate-300">لم يتصل خلال دقيقة؟</b> شغّل{" "}
+          <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-sky-200">keyone-bridge doctor</code>{" "}
+          للتشخيص، أو{" "}
+          <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-sky-200">keyone-bridge start</code>{" "}
+          لتشغيله يدوياً. أول رمز QR قد يستغرق ~دقيقة (تنزيل محرك واتساب لمرة واحدة).
+        </p>
+        <p className="text-xs text-slate-500">
           كل الملفات مستضافة على خوادم KEYONE. للتحقق من السلامة:
           <a href={`${base}/checksums.txt`} className="ms-1 text-sky-300 underline">بصمات SHA-256</a>
           <span className="mx-1">·</span>

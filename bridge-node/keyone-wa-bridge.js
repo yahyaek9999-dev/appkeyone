@@ -97,7 +97,12 @@ async function cmdUpdate() {
     const old = path.join(ROOT, "app.old");
     if (!fs.existsSync(old)) { console.log("rollback: no previous version (app.old) to restore — reinstall from the KEYONE store."); return; }
     const tmp = path.join(ROOT, "app.rollback.tmp"); fs.rmSync(tmp, { recursive: true, force: true });
-    fs.renameSync(APPDIR, tmp); fs.renameSync(old, APPDIR); fs.rmSync(tmp, { recursive: true, force: true });
+    fs.renameSync(APPDIR, tmp);
+    // If putting app.old in place fails (e.g. a lock/AV on Windows), restore the
+    // current app/ from tmp so the running app dir is NEVER left missing.
+    try { fs.renameSync(old, APPDIR); }
+    catch (e) { try { if (!fs.existsSync(APPDIR)) fs.renameSync(tmp, APPDIR); } catch {} throw e; }
+    fs.rmSync(tmp, { recursive: true, force: true });
     console.log("rolled back to the previous version — restart the service to apply.");
     return;
   }
@@ -114,7 +119,11 @@ async function cmdUpdate() {
   require("child_process").execFileSync("tar", ["xzf", tgz, "-C", stage]);
   fs.rmSync(tgz, { force: true });
   const old = path.join(ROOT, "app.old"); fs.rmSync(old, { recursive: true, force: true });
-  fs.renameSync(APPDIR, old); fs.renameSync(stage, APPDIR);
+  fs.renameSync(APPDIR, old);
+  // If swapping in the new app/ fails, restore the previous app/ from app.old so
+  // the running app dir is never left missing (a failed update self-heals).
+  try { fs.renameSync(stage, APPDIR); }
+  catch (e) { try { if (!fs.existsSync(APPDIR)) fs.renameSync(old, APPDIR); } catch {} throw e; }
   console.log("updated to " + man.version + " — restart the service to apply.");
 }
 

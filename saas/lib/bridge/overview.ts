@@ -18,7 +18,7 @@ export type TransportView = {
   hasQr: boolean;
   qr: string | null; // raw QR string (rendered to an image client-side)
   qrAgeMs: number | null;
-  qrExpiresAt: string | null; // the code's REAL expiry (ISO), streamed from whatsmeow
+  qrExpiresAt: string | null; // the code's REAL expiry (ISO), streamed from the Bridge
   qrRemainingMs: number; // ms until this exact code dies (0 once dead)
   lastError: string | null;
 };
@@ -62,7 +62,7 @@ function transportView(t: any): TransportView {
   const qrAt = t.lastQrAt ? new Date(t.lastQrAt).getTime() : null;
   const qrExp = t.lastQrExpiresAt ? new Date(t.lastQrExpiresAt).getTime() : null;
   const qrAgeMs = qrAt !== null ? now - qrAt : null;
-  // A code is "live" only until its REAL expiry (from whatsmeow). Show a QR only
+  // A code is "live" only until its REAL expiry (from the Bridge). Show a QR only
   // while it is genuinely scannable — a rotated/dead code fails WhatsApp pairing.
   const liveUntil = qrExp ?? (qrAt !== null ? qrAt + QR_FALLBACK_TTL_MS : null);
   const fresh = liveUntil !== null && now < liveUntil;

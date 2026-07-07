@@ -142,7 +142,7 @@ function BridgeCard({
         ) : wa?.hasQr && wa.qr ? (
           <QrPanel qr={wa.qr} remainingMs={wa.qrRemainingMs} onRefresh={() => control("start_qr")} busy={busy === "start_qr"} />
         ) : wa?.state === "linking" ? (
-          // Session is live but this instant is between whatsmeow's ~20s code
+          // Session is live but this instant is between WhatsApp Web's ~20s code
           // rotations — the next live code arrives on the next poll. Never show a
           // dead code (that is what caused "Check your connection and try again").
           <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-4 text-sm text-slate-300">
@@ -220,8 +220,8 @@ function BridgeCard({
 // ---- QR panel with expiration countdown -----------------------------------
 
 function QrPanel({ qr, remainingMs, onRefresh, busy }: { qr: string; remainingMs: number; onRefresh: () => void; busy: boolean }) {
-  // Count down from the code's REAL remaining lifetime (whatsmeow expiry), not a
-  // fixed 60s. A new live code replaces this one via polling before it dies.
+  // Count down from the code's REAL remaining lifetime (Bridge-streamed expiry),
+  // not a fixed 60s. A new live code replaces this one via polling before it dies.
   const [remaining, setRemaining] = useState(Math.max(0, Math.round(remainingMs / 1000)));
   useEffect(() => { setRemaining(Math.max(0, Math.round(remainingMs / 1000))); }, [remainingMs, qr]);
   useEffect(() => {
