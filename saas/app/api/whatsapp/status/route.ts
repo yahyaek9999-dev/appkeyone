@@ -7,6 +7,46 @@ import { recordMilestone } from "@/lib/activation/track";
 export async function GET() {
   try {
     const user = await requireUser();
+
+    // KEYONE Bridge tenants: their session lives on THEIR machine, not in the
+    // co-located wa-service — polling it here always says "disconnected" and
+    // used to stomp Bot.whatsappStatus right after the gateway set it. Serve
+    // the bridge-derived state instead (DB-backed, written by the gateway).
+    try {
+      const { bridgeEnabled } = await import("@/lib/bridge/flags");
+      const { normalizeConnectionMode } = await import("@/lib/messaging/mode");
+      if (
+        bridgeEnabled() &&
+        normalizeConnectionMode((user.bot as any)?.connectionMode) === "bridge"
+      ) {
+        const transport = await (prisma as any).bridgeTransport.findFirst({
+          where: {
+            provider: "whatsapp",
+            bridge: { userId: user.id, revokedAt: null, status: "online" },
+          },
+          orderBy: { updatedAt: "desc" },
+          select: { state: true, identity: true },
+        });
+        const connected = transport?.state === "connected";
+        if (connected && user.bot?.whatsappStatus !== "connected") {
+          await prisma.bot.update({
+            where: { userId: user.id },
+            data: { whatsappStatus: "connected", whatsappPhone: transport?.identity || undefined },
+          });
+          recordMilestone(user.id, "whatsapp_connected").catch(() => {});
+        }
+        return NextResponse.json({
+          status: connected ? "connected" : transport?.state === "linking" ? "qr" : "disconnected",
+          qr: null, // the Bridge page renders the QR (raw code streams there)
+          pairingCode: null,
+          phone: transport?.identity || user.bot?.whatsappPhone || null,
+          mode: "bridge",
+        });
+      }
+    } catch {
+      /* bridge lookup is additive — fall through to the wa-service path */
+    }
+
     const r = await wa.status(user.id);
     if (!r.ok) {
       return NextResponse.json({ status: "service_unreachable", qr: null, phone: null });

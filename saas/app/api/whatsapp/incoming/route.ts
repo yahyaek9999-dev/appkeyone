@@ -107,14 +107,34 @@ export async function POST(req: Request) {
   if (!userId)
     return NextResponse.json({ error: "userId required" }, { status: 400 });
 
+  // KEYONE Bridge relays the SAME lifecycle events through the gateway with
+  // source:"bridge" so the whole platform (status, queue drain, safety) reacts
+  // identically to the co-located wa-service. Two bridge-specific rules:
+  //   • connected(bridge) also switches the tenant to connectionMode="bridge" —
+  //     scanning the QR on their own machine IS the transport choice, and
+  //     without the mode flip their outbound would still target the wa-service.
+  //   • disconnected(bridge) only applies to tenants ALREADY in bridge mode, so
+  //     a stray/old bridge process can never stomp a QR/Meta tenant's status.
+  const fromBridge = String((body as any).source || "") === "bridge";
+
   if (event === "connected") {
+    let bridgeModeSwitch = false;
+    if (fromBridge) {
+      try {
+        const { bridgeEnabled } = await import("@/lib/bridge/flags");
+        bridgeModeSwitch = bridgeEnabled();
+      } catch {
+        bridgeModeSwitch = false;
+      }
+    }
     await prisma.bot
       .update({
         where: { userId },
         data: {
           whatsappStatus: "connected",
           whatsappPhone: body.phone || null,
-        },
+          ...(bridgeModeSwitch ? { connectionMode: "bridge" } : {}),
+        } as any,
       })
       .catch(() => {});
     // Recovery path: when a WA session reconnects, immediately drain a small
@@ -128,6 +148,15 @@ export async function POST(req: Request) {
   }
   if (event === "disconnected") {
     const reason = String((body as any).reason || "unknown");
+    if (fromBridge) {
+      const botMode = await prisma.bot
+        .findUnique({ where: { userId }, select: { connectionMode: true } as any })
+        .catch(() => null);
+      const { normalizeConnectionMode } = await import("@/lib/messaging/mode");
+      if (normalizeConnectionMode((botMode as any)?.connectionMode) !== "bridge") {
+        return NextResponse.json({ ok: true, ignored: "not_bridge_mode" });
+      }
+    }
     await prisma.bot
       .update({
         where: { userId },

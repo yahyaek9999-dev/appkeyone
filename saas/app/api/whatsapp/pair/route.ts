@@ -7,6 +7,24 @@ export async function POST(req: Request) {
     const user = await requirePermission("settings");
     const { phone } = await req.json();
     if (!phone) return NextResponse.json({ error: "رقم الهاتف مطلوب" }, { status: 400 });
+
+    // Bridge tenants link from the Bridge page — see whatsapp/start guard.
+    try {
+      const { bridgeEnabled } = await import("@/lib/bridge/flags");
+      const { normalizeConnectionMode } = await import("@/lib/messaging/mode");
+      const { prisma } = await import("@/lib/db");
+      const bot = await prisma.bot.findUnique({
+        where: { userId: user.id },
+        select: { connectionMode: true } as any,
+      });
+      if (bridgeEnabled() && normalizeConnectionMode((bot as any)?.connectionMode) === "bridge") {
+        return NextResponse.json(
+          { error: "حسابك مربوط عبر KEYONE Bridge — اربط واتساب من صفحة Bridge في الإعدادات.", mode: "bridge" },
+          { status: 409 },
+        );
+      }
+    } catch { /* additive guard only */ }
+
     // Make sure session is started first
     await wa.start(user.id);
     // Tiny delay to allow socket init
