@@ -47,16 +47,30 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.3-wweb";
+const VERSION = "1.0.4-wweb";
 const PROVIDER = "whatsapp";
 fs.mkdirSync(HOME, { recursive: true });
 const CFG = path.join(HOME, "config.json");
 
 // ------------------------------------------------------------------ logging ---
 const logRing = [];
+// On macOS/Linux the service manager captures stdout (launchd StandardOutPath /
+// journald). The Windows Scheduled Task captures NOTHING, so the daemon mirrors
+// its lines to HOME/bridge.out.log there — `keyone-bridge logs` works on every OS.
+let daemonFileLog = false;
 function log(level, msg) {
   const line = `${new Date().toISOString()} ${level.toUpperCase()} ${msg}`;
   console.log(line);
+  if (daemonFileLog) {
+    try {
+      const f = path.join(HOME, "bridge.out.log");
+      try {
+        if (fs.existsSync(f) && fs.statSync(f).size > 2_000_000)
+          fs.renameSync(f, path.join(HOME, "bridge.out.log.1"));
+      } catch {}
+      fs.appendFileSync(f, line + "\n");
+    } catch {}
+  }
   logRing.push({ level, message: String(msg).slice(0, 2000) });
   if (logRing.length > 500) logRing.splice(0, logRing.length - 500);
 }
@@ -86,16 +100,18 @@ function isNewer(cur, latest) {
 }
 // `update`: platform-agnostic self-update of the app/ dir (keyone-wa-bridge.js +
 // node_modules) from the KEYONE store, keeping the bundled node. Restart to apply.
+// Returns "updated" | "current" | "not_bundle" | "no_app" | "rolled_back" so the
+// daemon's auto-update path can act on the outcome (the CLI just prints).
 async function cmdUpdate() {
   const APPDIR = __dirname;                 // <bundle>/app
   const ROOT = path.dirname(APPDIR);        // <bundle>
   const bundled = fs.existsSync(path.join(ROOT, "node")) || fs.existsSync(path.join(ROOT, "node.exe"));
-  if (!bundled) { console.log("update: not an installed bundle (run the installer to update)."); return; }
+  if (!bundled) { console.log("update: not an installed bundle (run the installer to update)."); return "not_bundle"; }
   // `update --rollback`: restore the previous app/ that a prior update staged as
   // app.old (recovery after a bad update). Restart the service to apply.
   if (process.argv.slice(3).includes("--rollback")) {
     const old = path.join(ROOT, "app.old");
-    if (!fs.existsSync(old)) { console.log("rollback: no previous version (app.old) to restore — reinstall from the KEYONE store."); return; }
+    if (!fs.existsSync(old)) { console.log("rollback: no previous version (app.old) to restore — reinstall from the KEYONE store."); return "no_app"; }
     const tmp = path.join(ROOT, "app.rollback.tmp"); fs.rmSync(tmp, { recursive: true, force: true });
     fs.renameSync(APPDIR, tmp);
     // If putting app.old in place fails (e.g. a lock/AV on Windows), restore the
@@ -104,11 +120,11 @@ async function cmdUpdate() {
     catch (e) { try { if (!fs.existsSync(APPDIR)) fs.renameSync(tmp, APPDIR); } catch {} throw e; }
     fs.rmSync(tmp, { recursive: true, force: true });
     console.log("rolled back to the previous version — restart the service to apply.");
-    return;
+    return "rolled_back";
   }
   const man = JSON.parse((await getURL(DL_BASE + "/version.json")).toString());
-  if (!man.app || !man.app.file) { console.log("update: manifest has no app package."); return; }
-  if (!isNewer(VERSION, man.version)) { console.log("already up to date (" + VERSION + ")"); return; }
+  if (!man.app || !man.app.file) { console.log("update: manifest has no app package."); return "no_app"; }
+  if (!isNewer(VERSION, man.version)) { console.log("already up to date (" + VERSION + ")"); return "current"; }
   console.log("updating " + VERSION + " → " + man.version + " …");
   const buf = await getURL(DL_BASE + "/" + man.app.file);
   const sum = crypto.createHash("sha256").update(buf).digest("hex");
@@ -125,6 +141,7 @@ async function cmdUpdate() {
   try { fs.renameSync(stage, APPDIR); }
   catch (e) { try { if (!fs.existsSync(APPDIR)) fs.renameSync(old, APPDIR); } catch {} throw e; }
   console.log("updated to " + man.version + " — restart the service to apply.");
+  return "updated";
 }
 
 // ---------------------------------------------------------------- http (JSON) --
@@ -170,6 +187,60 @@ async function cmdLogin(name) {
 
 // =================================================================== runtime ===
 let ws = null, wsSeq = 0, hbTimer = null, logTimer = null, reconnectDelay = 1000, reconnectTimer = null;
+let lastRxAt = 0, updateTimer = null, shuttingDown = false;
+
+// ------------------------------------------------- single-instance lock ------
+// TWO bridge processes on one home = two whatsapp-web.js Clients on the SAME
+// LocalAuth session → WhatsApp force-LOGOUTs the device (one web session per
+// device) and pairing loops forever. This happened in the field: the service
+// daemon + a manual `keyone-bridge start` (which our own docs suggest as a
+// remedy) ran side by side. The lock makes any extra `start` WAIT — it never
+// exits, so a KeepAlive/systemd/Task daemon parks quietly until the other copy
+// stops, then takes over cleanly.
+const LOCK = path.join(HOME, "bridge.lock");
+let lockBeat = null;
+function lockHolder() {
+  try {
+    const st = fs.statSync(LOCK);
+    // The owner refreshes the lock's mtime every 30s. An old mtime means the
+    // owner is gone even if the recorded pid was recycled by another process
+    // (containers/reboots recycle low pids all the time).
+    if (Date.now() - st.mtimeMs > 120_000) return 0;
+    const pid = Number(fs.readFileSync(LOCK, "utf8").trim());
+    if (!pid || pid === process.pid) return 0;
+    process.kill(pid, 0); // throws when that pid no longer exists → stale lock
+    return pid;
+  } catch { return 0; }
+}
+async function acquireLock() {
+  let warned = 0;
+  for (;;) {
+    if (!lockHolder()) {
+      try { fs.writeFileSync(LOCK, String(process.pid), { mode: 0o600 }); } catch {}
+      if (lockHolder() === 0) {
+        clearInterval(lockBeat);
+        lockBeat = setInterval(() => {
+          try {
+            // keep ownership fresh; re-assert if something clobbered the file
+            if (Number(fs.readFileSync(LOCK, "utf8").trim()) === process.pid) {
+              const now = new Date(); fs.utimesSync(LOCK, now, now);
+            }
+          } catch {}
+        }, 30_000);
+        if (typeof lockBeat.unref === "function") lockBeat.unref();
+        return; // we own the file (last writer wins → loop converges to ONE owner)
+      }
+    } else if (Date.now() - warned > 60_000) {
+      warned = Date.now();
+      log("warn", `another keyone-wa-bridge (pid ${lockHolder()}) already runs on this machine — waiting (ONE runtime per machine; stop the other copy to hand over)`);
+    }
+    await sleep(5000);
+  }
+}
+function releaseLock() {
+  clearInterval(lockBeat); lockBeat = null;
+  try { if (Number(fs.readFileSync(LOCK, "utf8").trim()) === process.pid) fs.rmSync(LOCK, { force: true }); } catch {}
+}
 // WhatsApp engine — STRICT singleton. `waInit` memoizes the in-flight creation so
 // concurrent ensureWa() callers (resume-on-connect + start_qr + reconnect) can
 // NEVER construct a second Client/Browser. A second client on the SAME LocalAuth
@@ -227,6 +298,7 @@ function markConnected(identity, id) {
 async function destroyWa(reason) {
   const c = wa;
   wa = null; waInit = null; waReady = false; connectedOnce = false; linking = false;
+  try { stopAllTyping(); } catch {}
   if (c) {
     try { c.removeAllListeners(); } catch {}
     try { await c.destroy(); } catch {}
@@ -267,16 +339,7 @@ function ensureWa(cfg) {
       if (wa === client) destroyWa("disconnected:" + r).catch(() => {});
     });
     client.on("message", (m) => {
-      if (m.fromMe || m.isStatus) return;
-      const text = m.body || "";
-      if (!text) return; // media in a later phase
-      const phone = String(m.from || "").replace(/@.*/, "");
-      log("info", `whatsapp: inbound from ${phone} → relaying to Cloud [wa#${id}]`);
-      wsSend("inbound", {
-        provider: PROVIDER, from: { phone, name: m._data?.notifyName || "" },
-        mediaType: "text", text,
-        providerMessageId: m.id?._serialized || "", providerTimestamp: (m.timestamp || 0) * 1,
-      });
+      relayInboundMsg(client, m, id).catch((e) => log("warn", `inbound relay error: ${e.message} [wa#${id}]`));
     });
     wa = client;
     client.initialize().catch((e) => { log("error", `whatsapp: init error: ${e.message} [wa#${id}]`); if (wa === client) destroyWa("init-error").catch(() => {}); });
@@ -289,6 +352,87 @@ function ensureWa(cfg) {
   return p;
 }
 
+// ---------------------------------------------------------- inbound relay ----
+// Mirrors the production wa-service message handler EXACTLY, so the Cloud's
+// /api/whatsapp/incoming sees the same shape it has always seen:
+//   • groups / status / broadcast / newsletters are skipped
+//   • @c.us JIDs → "+<digits>" (E.164 with the plus, matching every CRM row)
+//   • @lid contacts resolve a real phone ONLY from a trusted @c.us JID
+//     (never contact.number — WhatsApp's privacy model can put the LID there,
+//     which poisoned production data with fake "+16xxx…" phones before)
+//   • media (voice/image/video/document) forwarded base64 so transcription /
+//     vision run identically
+//   • replyJid lets the auto-reply go back to the exact chat (works for @lid)
+async function relayInboundMsg(client, m, id) {
+  if (m.fromMe || m.isStatus) return;
+  const from = String(m.from || "");
+  const server = from.split("@")[1] || "";
+  if (server !== "c.us" && server !== "lid") return; // g.us / broadcast / newsletter / status
+  let contact = null;
+  try { contact = await m.getContact(); } catch {}
+  const trusted = (jid) =>
+    typeof jid === "string" && jid.endsWith("@c.us") ? "+" + jid.replace("@c.us", "") : null;
+  const phone =
+    server === "c.us"
+      ? "+" + from.replace("@c.us", "")
+      : trusted(contact?.id?._serialized) || trusted(m.author) || "lid:" + from.replace(/@.*$/, "");
+  const name = contact?.pushname || contact?.name || m._data?.notifyName || "";
+
+  let text = m.body || "";
+  let mediaType = "text", mediaBase64, mimetype;
+  if (m.hasMedia) {
+    mediaType =
+      m.type === "audio" || m.type === "ptt" ? "voice"
+      : m.type === "image" ? "image"
+      : m.type === "video" ? "video"
+      : m.type === "document" ? "document" : "text";
+    if (mediaType !== "text") {
+      try {
+        const media = await m.downloadMedia();
+        // 8MB base64 cap — the relay frame + Cloud body limit must stay sane.
+        if (media?.data && media.data.length < 8_000_000) { mediaBase64 = media.data; mimetype = media.mimetype; }
+      } catch (e) { log("warn", `whatsapp: media download failed: ${e.message} [wa#${id}]`); }
+    }
+  }
+  if (!text.trim() && !mediaBase64) return;
+
+  // Typing indicator while the Cloud generates the reply (parity with the
+  // wa-service). Auto-stops when the reply is sent, or after 90s regardless.
+  startTyping(client, from).catch(() => {});
+  log("info", `whatsapp: inbound from ${phone} (${mediaType}) → relaying to Cloud [wa#${id}]`);
+  wsSend("inbound", {
+    provider: PROVIDER, from: { phone, name },
+    mediaType, text, mediaBase64, mimetype, replyJid: from,
+    providerMessageId: m.id?._serialized || "", providerTimestamp: (m.timestamp || 0) * 1,
+  });
+}
+
+// -------------------------------------------------------- typing indicator ----
+// WhatsApp clears "typing…" after ~25s, so refresh every 15s like the
+// wa-service does; hard-stop after 90s so a dropped reply can never leave the
+// chat typing forever.
+const typingTimers = new Map(); // jid -> { iv, to, chat }
+async function startTyping(client, jid) {
+  try {
+    const chat = await client.getChatById(jid);
+    stopTyping(jid);
+    await chat.sendStateTyping();
+    const iv = setInterval(() => { chat.sendStateTyping().catch(() => {}); }, 15_000);
+    const to = setTimeout(() => stopTyping(jid), 90_000);
+    if (typeof iv.unref === "function") iv.unref();
+    if (typeof to.unref === "function") to.unref();
+    typingTimers.set(jid, { iv, to, chat });
+  } catch { /* typing is best-effort */ }
+}
+function stopTyping(jid) {
+  const t = typingTimers.get(jid);
+  if (!t) return;
+  clearInterval(t.iv); clearTimeout(t.to);
+  typingTimers.delete(jid);
+  try { t.chat.clearState().catch(() => {}); } catch {}
+}
+function stopAllTyping() { for (const jid of Array.from(typingTimers.keys())) stopTyping(jid); }
+
 async function startLink(cfg) {
   if (wa && waReady) { sendState("connected", waIdentity); log("info", "whatsapp: already linked"); return; }
   try { await ensureWa(cfg); }
@@ -297,11 +441,40 @@ async function startLink(cfg) {
   log("info", "whatsapp: link requested — a QR will stream to the Dashboard");
 }
 
-async function sendMessage(to, text) {
+// ------------------------------------------------------------- outbound ------
+// Parity with the wa-service send path:
+//   • an explicit replyJid (auto-replies) targets the exact chat, @lid included
+//   • cold sends resolve the JID via getNumberId (LID-aware Store lookup) —
+//     without it new contacts fail with WhatsApp's cryptic "No LID for user"
+//   • lid:/@lid pseudo-phones and malformed numbers are rejected up front
+//   • preDelayMs/typingDelayMs (from the Cloud's humanize/anti-ban engine) are
+//     honored with a real typing indicator, exactly like the wa-service
+async function sendMessage(to, text, opts = {}) {
   if (!wa || !waReady) return { ok: false, error: "not linked" };
-  const jid = `${String(to).replace(/[^\d]/g, "")}@c.us`;
-  try { const m = await wa.sendMessage(jid, text); return { ok: true, providerMessageId: m.id?._serialized || "" }; }
-  catch (e) { return { ok: false, error: e.message }; }
+  try {
+    let jid = typeof opts.jid === "string" && /@(c\.us|lid)$/.test(opts.jid) ? opts.jid : null;
+    if (!jid) {
+      const raw = String(to || "");
+      if (raw.startsWith("lid:") || raw.includes("@lid"))
+        return { ok: false, error: "cannot initiate send to WhatsApp LID; no public phone available" };
+      const digits = raw.replace(/^\+/, "").replace(/[^\d]/g, "");
+      if (digits.length < 8 || digits.length > 15)
+        return { ok: false, error: `invalid phone format: "${to}"` };
+      let numberId;
+      try { numberId = await wa.getNumberId(digits); }
+      catch (e) { return { ok: false, error: `getNumberId failed: ${e.message}` }; }
+      if (!numberId) return { ok: false, error: "number not registered on WhatsApp" };
+      jid = numberId._serialized;
+    }
+    const preDelayMs = Math.max(0, Math.min(3000, Number(opts.preDelayMs) || 0));
+    const typingDelayMs = Math.max(0, Math.min(8000, Number(opts.typingDelayMs) || 0));
+    if (preDelayMs) { stopTyping(jid); await sleep(preDelayMs); }   // "reading" pause
+    if (typingDelayMs) { await startTyping(wa, jid); await sleep(typingDelayMs); }
+    stopTyping(jid);
+    if (!wa || !waReady) return { ok: false, error: "not linked" }; // engine died during the delay
+    const m = await wa.sendMessage(jid, text);
+    return { ok: true, providerMessageId: m.id?._serialized || "" };
+  } catch (e) { return { ok: false, error: e.message }; }
 }
 
 // Controls are SERIALIZED (chained) so a burst of dashboard clicks can never
@@ -325,16 +498,60 @@ async function doControl(action) {
       if (wa) { try { await wa.logout(); } catch {} }
       await destroyWa("logout"); sendState("logged_out", "");
       break;
+    // The Dashboard's update button pushes this — it must actually run the
+    // self-update (it was silently ignored before, leaving customers stuck on
+    // old builds with the Dashboard spinner saying "updating…" forever).
+    case "update": await applyUpdateAndRestart("dashboard"); break;
     default: log("warn", `unknown control action: ${action}`);
   }
+}
+
+// ------------------------------------------------------------- self-update ----
+// Stages the newer app/ from the KEYONE store (checksum-verified) then exits so
+// the service manager restarts us on the new code. launchd (KeepAlive) and
+// systemd (Restart=always) restart on ANY exit; the Windows Scheduled Task only
+// restarts on FAILURE, hence the non-zero exit there. LocalAuth persists — the
+// WhatsApp session resumes with no QR.
+async function applyUpdateAndRestart(source) {
+  let outcome = "current";
+  try { outcome = await cmdUpdate(); } catch (e) { log("error", `update failed (${source}): ${e.message}`); return; }
+  if (outcome !== "updated") { log("info", `update check (${source}): ${outcome === "current" ? `up to date (${VERSION})` : outcome}`); return; }
+  log("info", `update staged (${source}) — restarting to load the new version`);
+  try { await Promise.race([destroyWa("update-restart"), sleep(4000)]); } catch {}
+  releaseLock();
+  process.exit(process.platform === "win32" ? 1 : 0);
+}
+
+// Auto-update: check shortly after start (crash-fix builds must reach customers
+// without any manual step), then every ~6h with jitter. Escape hatch:
+// KEYONE_BRIDGE_NO_AUTOUPDATE=1.
+function scheduleAutoUpdate() {
+  if (process.env.KEYONE_BRIDGE_NO_AUTOUPDATE === "1") { log("info", "auto-update disabled (KEYONE_BRIDGE_NO_AUTOUPDATE=1)"); return; }
+  const kick = () => applyUpdateAndRestart("auto").catch(() => {});
+  setTimeout(kick, 90_000).unref?.();
+  updateTimer = setInterval(kick, 6 * 3600_000 + Math.floor(Math.random() * 1800_000));
+  if (typeof updateTimer.unref === "function") updateTimer.unref();
 }
 
 // ------------------------------------------------------------ gateway link ----
 // STRICT single socket. Any prior socket is torn down first, a pending reconnect
 // timer is cleared, and every handler is guarded by `ws === sock` so a stale
 // socket can never act after a newer one replaced it.
-function connect(cfg) {
+//
+// The config is RE-READ from disk on every attempt: after a re-login (which
+// supersedes this machine's old bridge row and revokes its token) the daemon
+// must pick up the NEW token on its next retry. Holding the boot-time token in
+// memory produced an endless 401 loop in the field — the Dashboard showed the
+// device offline forever while the daemon hammered a revoked credential.
+function connect() {
+  if (shuttingDown) return;
   clearTimeout(reconnectTimer); reconnectTimer = null;
+  const cfg = loadCfg();
+  if (!cfg.token || !cfg.bridgeId) {
+    log("warn", "not linked — run `keyone-bridge login` (retrying in 5s)");
+    reconnectTimer = setTimeout(connect, 5000);
+    return;
+  }
   if (ws) { try { ws.removeAllListeners(); ws.terminate(); } catch {} ws = null; }
   const id = ++wsSeq;
   const sock = new WebSocket(`${CLOUD_WS}?token=${encodeURIComponent(cfg.token)}`);
@@ -342,17 +559,35 @@ function connect(cfg) {
   sock.on("open", () => {
     if (ws !== sock) { try { sock.terminate(); } catch {} return; }
     reconnectDelay = 1000;
+    lastRxAt = Date.now();
     wsSend("hello", { protocolVersion: 1, version: VERSION, os: process.platform, arch: process.arch, providers: [PROVIDER] });
     log("info", `cloud link up [ws#${id}]`);
+    // Re-announce the CURRENT transport state after every (re)connect: a gateway
+    // restart marks tenants disconnected, and `ready` will not fire again on the
+    // already-running Client — without this the Dashboard would stay
+    // "disconnected" even though WhatsApp is live.
+    if (waReady) sendState("connected", waIdentity);
     // Resume an existing WhatsApp session automatically (LocalAuth → no QR). The
     // memoized ensureWa guarantees this shares the single Client with any
     // subsequent start_qr — no second engine.
     if (fs.existsSync(path.join(HOME, "wweb"))) ensureWa(cfg).catch((e) => log("error", `whatsapp: resume error: ${e.message}`));
-    clearInterval(hbTimer); hbTimer = setInterval(() => wsSend("heartbeat", {}), 25000);
+    clearInterval(hbTimer);
+    hbTimer = setInterval(() => {
+      // Half-open guard: if the gateway stops answering (no frame of any kind
+      // for >90s — acks come back for every heartbeat), recycle the socket
+      // instead of staying "connected" but deaf.
+      if (Date.now() - lastRxAt > 90_000) {
+        log("warn", `cloud link unresponsive >90s — recycling socket [ws#${id}]`);
+        try { sock.terminate(); } catch {}
+        return;
+      }
+      wsSend("heartbeat", {});
+    }, 25000);
     clearInterval(logTimer); logTimer = setInterval(drainLogs, 3000);
   });
   sock.on("message", (buf) => {
     if (ws !== sock) return;
+    lastRxAt = Date.now();
     let f = null; try { f = JSON.parse(buf.toString()); } catch { return; }
     if (!f || !f.type) return;
     const p = f.payload || {};
@@ -360,7 +595,8 @@ function connect(cfg) {
       case "control": control(p.action); break;
       case "start_link": control("start_qr"); break;
       case "outbound":
-        sendMessage(p.to, p.text).then((ack) => wsSend("outbound_ack", { ok: ack.ok, providerMessageId: ack.providerMessageId, error: ack.error }, f.id));
+        sendMessage(p.to, p.text, { jid: p.replyJid || p.jid, preDelayMs: p.preDelayMs, typingDelayMs: p.typingDelayMs })
+          .then((ack) => wsSend("outbound_ack", { ok: ack.ok, providerMessageId: ack.providerMessageId, error: ack.error }, f.id));
         break;
       case "error": log("warn", `cloud error frame: ${JSON.stringify(p)}`); break;
       // hello_ack / heartbeat_ack / *_ack — nothing to do.
@@ -369,16 +605,29 @@ function connect(cfg) {
   sock.on("close", () => {
     if (ws !== sock) return;               // a newer socket already took over
     clearInterval(hbTimer); clearInterval(logTimer);
-    log("warn", `cloud link down [ws#${id}]`);
-    scheduleReconnect(cfg);
+    if (!shuttingDown) log("warn", `cloud link down [ws#${id}]`);
+    scheduleReconnect();
   });
-  sock.on("error", (e) => { log("warn", `cloud link error: ${e.message} [ws#${id}]`); try { sock.close(); } catch {} });
+  sock.on("error", (e) => {
+    const msg = String(e.message || e);
+    if (/401/.test(msg)) {
+      // Revoked/superseded token (e.g. this machine was re-linked, or the device
+      // was removed in the Dashboard). Keep retrying slowly — connect() re-reads
+      // config.json, so a fresh `keyone-bridge login` heals this automatically.
+      reconnectDelay = 60_000;
+      log("error", `cloud rejected this bridge's token (401) [ws#${id}] — if this persists, run \`keyone-bridge login\` to re-link this machine`);
+    } else {
+      log("warn", `cloud link error: ${msg} [ws#${id}]`);
+    }
+    try { sock.close(); } catch {}
+  });
 }
-function scheduleReconnect(cfg) {
+function scheduleReconnect() {
+  if (shuttingDown) return;
   clearTimeout(reconnectTimer);
-  reconnectDelay = Math.min(30000, reconnectDelay * 2);
+  reconnectDelay = Math.min(60000, reconnectDelay * 2);
   log("warn", `cloud link retry in ${Math.round(reconnectDelay / 1000)}s`);
-  reconnectTimer = setTimeout(() => connect(cfg), reconnectDelay);
+  reconnectTimer = setTimeout(() => connect(), reconnectDelay);
 }
 function drainLogs() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -387,6 +636,10 @@ function drainLogs() {
 }
 
 async function cmdStart() {
+  daemonFileLog = process.platform === "win32"; // launchd/journald capture stdout elsewhere
+  // ONE runtime per machine — see acquireLock(). Waits (never dies) so the
+  // service daemon and a manual foreground `start` can hand over cleanly.
+  await acquireLock();
   let cfg = loadCfg();
   // A service may be started before `login`. Idle-wait for the link instead of
   // exiting (KeepAlive would otherwise crash-loop the daemon on a fresh install).
@@ -395,10 +648,24 @@ async function cmdStart() {
     while (!cfg.token || !cfg.bridgeId) { await sleep(5000); cfg = loadCfg(); }
     log("info", "link detected");
   }
-  log("info", `keyone-wa-bridge ${VERSION} starting (bridge=${cfg.bridgeId}, transport=whatsapp-web.js)`);
-  connect(cfg);
-  process.on("SIGINT", () => process.exit(0));
-  process.on("SIGTERM", () => process.exit(0));
+  log("info", `keyone-wa-bridge ${VERSION} starting (bridge=${cfg.bridgeId}, transport=whatsapp-web.js, pid=${process.pid})`);
+  connect();
+  scheduleAutoUpdate();
+  // Graceful shutdown: the Chromium child MUST be destroyed or it survives as an
+  // orphan holding RAM + the LocalAuth profile lock. launchctl bootout sends
+  // SIGTERM then SIGKILLs shortly after, so the teardown is time-boxed.
+  const shutdown = async (sig) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log("info", `shutting down (${sig})`);
+    clearTimeout(reconnectTimer); clearInterval(hbTimer); clearInterval(logTimer); clearInterval(updateTimer);
+    try { if (ws) { ws.removeAllListeners(); ws.close(); } } catch {}
+    try { await Promise.race([destroyWa("shutdown"), sleep(4500)]); } catch {}
+    releaseLock();
+    process.exit(0);
+  };
+  process.on("SIGINT", () => { shutdown("SIGINT"); });
+  process.on("SIGTERM", () => { shutdown("SIGTERM"); });
 }
 
 // ------------------------------------------------------------ CLI: diagnostics
