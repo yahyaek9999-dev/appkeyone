@@ -95,8 +95,43 @@ if launchctl bootstrap "gui/$UID_N" "$LA_DIR/com.keyone.wa-bridge.plist" 2>/dev/
    sudo -u "$USER_NAME" launchctl load "$LA_DIR/com.keyone.wa-bridge.plist" 2>/dev/null; then
   echo "KEYONE WA Bridge service started."
 else
-  echo "WARNING: could not start the service now; it will start at next login. To start it immediately, run:"
-  echo "  launchctl bootstrap gui/$UID_N \"$LA_DIR/com.keyone.wa-bridge.plist\""
+  echo "WARNING: could not start the service now; it will start at next login."
+fi
+
+# ---- Auto-link: generate device code WITHOUT Terminal (No-Terminal UX) ---------
+# Only needed on FRESH installs (no existing token). On upgrades, the existing
+# token is still valid and the daemon reconnects automatically.
+CFG_FILE="$BRIDGE_HOME/config.json"
+if [ ! -f "$CFG_FILE" ] || ! python3 -c "import json,sys; d=json.load(open('$CFG_FILE')); exit(0 if d.get('token') and d.get('bridgeId') else 1)" 2>/dev/null; then
+  CLOUD_API="https://w.keyone1.com"
+  TMPLOG=$(mktemp /tmp/keyone-bridge-login.XXXXXX)
+  # Run login as the user (inherits KEYONE_BRIDGE_HOME). Detach from postinstall
+  # so the process survives after the installer exits.
+  sudo -u "$USER_NAME" env KEYONE_BRIDGE_HOME="$BRIDGE_HOME" \
+    nohup "$INSTALL_DIR/run" login > "$TMPLOG" 2>&1 &
+  echo "Device-code flow started in background (PID $!)."
+
+  # Wait up to 12 seconds for the device code to appear in the login output.
+  CODE=""; for _i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    sleep 1
+    CODE=$(grep -oE '[A-Z0-9]{4}-[A-Z0-9]{4}' "$TMPLOG" 2>/dev/null | head -1)
+    [ -n "$CODE" ] && break
+  done
+
+  if [ -n "$CODE" ]; then
+    LINK_URL="$CLOUD_API/dashboard/settings/bridge/link?user_code=$CODE"
+    # Show macOS notification so the user sees the code without any Terminal.
+    sudo -u "$USER_NAME" osascript <<APPLE 2>/dev/null || true
+display notification "رمز الربط: $CODE — انسخه في لوحة التحكم" with title "KEYONE WA Bridge" subtitle "تثبيت مكتمل ✓"
+APPLE
+    # Open the dashboard link page pre-filled with the code.
+    sudo -u "$USER_NAME" open "$LINK_URL" 2>/dev/null || true
+    echo "Auto-link: code $CODE shown via notification. Browser opened to link page."
+  else
+    # Fallback: just open the bridge settings page and let the user link manually.
+    sudo -u "$USER_NAME" open "$CLOUD_API/dashboard/settings/bridge" 2>/dev/null || true
+    echo "Auto-link: could not capture device code. Open bridge settings to link manually."
+  fi
 fi
 exit 0
 POST
