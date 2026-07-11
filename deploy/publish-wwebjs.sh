@@ -77,8 +77,9 @@ scp -q -i "$SSH_KEY" "$PK/dist/keyone-wa-bridge-$VERSION-darwin-arm64.pkg" "$HOS
 scp -q -i "$SSH_KEY" "$PK/dist/keyone-wa-bridge-$VERSION-darwin-x64.pkg"   "$HOST:/tmp/kwpub/keyone-wa-bridge-darwin-x64.pkg"
 scp -q -i "$SSH_KEY" "$WZ" "$HOST:/tmp/kwpub/keyone-wa-bridge-win-x64.zip"
 scp -q -i "$SSH_KEY" "$APP" "$HOST:/tmp/kwpub/app.tar.gz"
-scp -q -i "$SSH_KEY" -r "$PK/dist/linux-x64"  "$HOST:/tmp/kwpub/linux/linux-x64"
-scp -q -i "$SSH_KEY" -r "$PK/dist/linux-arm64" "$HOST:/tmp/kwpub/linux/linux-arm64"
+# tar+pipe is 10-50× faster than scp -r for directories with thousands of small files
+( cd "$PK/dist" && tar czf - linux-x64  | "${SSH[@]}" "$HOST" 'cd /tmp/kwpub/linux && tar xzf -' )
+( cd "$PK/dist" && tar czf - linux-arm64 | "${SSH[@]}" "$HOST" 'cd /tmp/kwpub/linux && tar xzf -' )
 scp -q -i "$SSH_KEY" "$PK/linux/build-deb.sh" "$HOST:/tmp/kwpub/linux/build-deb.sh"
 
 echo "▶ build DEBs + arrange store + version.json + REMOVE old Go artifacts"
