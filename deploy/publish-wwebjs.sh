@@ -51,7 +51,8 @@ RUN
   fi
   rm -rf "$TMP"; echo "  ✓ $T ($(du -sh "$OUT"|cut -f1))"
 }
-for T in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win-x64; do assemble "$T"; done
+for T in darwin-arm64 darwin-x64 linux-arm64 win-x64; do assemble "$T"; done
+# linux-x64 is the REF — already complete from build-bundle.sh, skip assemble()
 # refresh app js everywhere (in case it changed) + rebuild ref app.tar.gz
 cp "$BN/keyone-wa-bridge.js" "$REF/keyone-wa-bridge.js"
 for T in darwin-arm64 darwin-x64 linux-arm64 win-x64; do cp "$BN/keyone-wa-bridge.js" "$PK/dist/$T/app/keyone-wa-bridge.js"; done
