@@ -325,14 +325,22 @@ function pickUserSocket(userId) {
 /**
  * Push an `outbound` frame to a Bridge and await its ack.
  * Resolves { ok, providerMessageId? } / { ok:false, error }.
+ * `extra` carries optional per-message fields the Bridge honors (replyJid to
+ * answer the exact chat incl. @lid, preDelayMs/typingDelayMs from the Cloud's
+ * humanize/anti-ban engine).
  */
-function pushOutbound(ws, provider, to, text) {
+function pushOutbound(ws, provider, to, text, extra) {
   return new Promise((resolve) => {
     if (!ws || ws.readyState !== ws.OPEN) {
       resolve({ ok: false, error: "bridge_socket_closed" });
       return;
     }
-    const frame = envelope("outbound", { provider: provider || "whatsapp", to, text });
+    const frame = envelope("outbound", {
+      ...(extra || {}),
+      provider: provider || "whatsapp",
+      to,
+      text,
+    });
     const timer = setTimeout(() => {
       pendingAcks.delete(frame.id);
       resolve({ ok: false, error: "ack_timeout" });
@@ -342,10 +350,41 @@ function pushOutbound(ws, provider, to, text) {
   });
 }
 
-/** Relay one inbound message to the Cloud; return the {reply} (or null). */
-async function relayInbound(userId, payload) {
+/**
+ * POST one event to the SAME Cloud endpoint the production wa-service uses
+ * (/api/whatsapp/incoming, x-internal-secret). Returns the parsed JSON or null.
+ * Used for `incoming` AND for the wa-service lifecycle events (`connected`,
+ * `disconnected`, `send_failed`) so Bot.whatsappStatus, the queue drain on
+ * reconnect, and the safety engine behave IDENTICALLY for bridge tenants.
+ * Every bridge-originated event carries source:"bridge" — the Cloud guards
+ * status writes by connectionMode so a stray bridge can never stomp a
+ * QR/Meta tenant.
+ */
+async function notifyCloud(body) {
   if (!INTERNAL_SECRET) return null;
-  const body = {
+  try {
+    const res = await fetch(CLOUD_INCOMING_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify({ ...body, source: "bridge" }),
+    });
+    if (!res.ok) {
+      console.error("[bridge-gateway] cloud", body.event, "responded", res.status);
+      return null;
+    }
+    return await res.json().catch(() => null);
+  } catch (e) {
+    console.error("[bridge-gateway] cloud", body.event, "unreachable:", e.message);
+    return null;
+  }
+}
+
+/** Relay one inbound message to the Cloud; return the {reply,…} (or null). */
+async function relayInbound(userId, payload) {
+  return notifyCloud({
     event: "incoming",
     userId,
     from: payload.from || { phone: payload.fromPhone, name: payload.fromName },
@@ -355,25 +394,7 @@ async function relayInbound(userId, payload) {
     mimetype: payload.mimetype,
     providerMessageId: payload.providerMessageId || null,
     providerTimestamp: payload.providerTimestamp || null,
-  };
-  try {
-    const res = await fetch(CLOUD_INCOMING_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": INTERNAL_SECRET,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      console.error("[bridge-gateway] cloud incoming responded", res.status);
-      return null;
-    }
-    return await res.json().catch(() => null);
-  } catch (e) {
-    console.error("[bridge-gateway] cloud incoming unreachable:", e.message);
-    return null;
-  }
+  });
 }
 
 // ---- HTTP server (health + internal outbound) ------------------------------
@@ -549,10 +570,17 @@ function deregister(ws) {
 // a FIN, so 'close' can be delayed indefinitely; the ping-keepalive and sweep call
 // this directly so bridgesById / socketsByUser never accumulate dead sockets.
 function reap(ws) {
+  if (ws._reaped) return; // close + keepalive-reconcile can both reach here
+  ws._reaped = true;
   deregister(ws);
   if (!bridgesById.has(ws.bridgeId)) {
     markOffline(ws.bridgeId);
     lastLinkArtifact.delete(ws.bridgeId);
+    // The WhatsApp client lives INSIDE the bridge process — a dead bridge means
+    // sends will fail, so surface it exactly like a wa-service disconnect. The
+    // Cloud ignores this for tenants not in bridge mode, and the bridge
+    // re-announces `connected` on its next (re)connect, so a blip self-heals.
+    notifyCloud({ event: "disconnected", userId: ws.userId, reason: "bridge_offline" }).catch(() => {});
   }
 }
 
@@ -609,12 +637,40 @@ wss.on("connection", (ws, req) => {
         const result = await relayInbound(ws.userId, p);
         if (result && result.reply) {
           // Fire-and-forget the reply (the Bridge acks it via outbound_ack).
-          pushOutbound(ws, p.provider || "whatsapp", p.from?.phone || p.fromPhone, result.reply);
+          // Forward the Cloud's humanize delays + the exact reply chat (replyJid
+          // answers @lid contacts correctly) — the same data the wa-service uses.
+          pushOutbound(ws, p.provider || "whatsapp", p.from?.phone || p.fromPhone, result.reply, {
+            jid: p.replyJid || null,
+            preDelayMs: Number(result.preDelayMs) || 0,
+            typingDelayMs: Number(result.typingDelayMs) || 0,
+          }).then((ack) => {
+            if (!ack.ok) {
+              notifyCloud({
+                event: "send_failed",
+                userId: ws.userId,
+                to: p.from?.phone || p.fromPhone || "unknown",
+                reason: ack.error || "bridge_send_failed",
+                source_detail: "auto_reply",
+              }).catch(() => {});
+            }
+          });
         }
         break;
       }
       case "state": {
-        await upsertTransportState(ws.bridgeId, p.provider || "whatsapp", p.state, p.identity);
+        const st = String(p.state || "");
+        await upsertTransportState(ws.bridgeId, p.provider || "whatsapp", st, p.identity);
+        // Mirror the wa-service lifecycle events so the WHOLE platform reacts
+        // exactly as it does for the co-located QR gateway: `connected` sets
+        // Bot.whatsappStatus/whatsappPhone + drains the outgoing queue;
+        // `disconnected` flips status + feeds the safety engine. The Cloud
+        // additionally switches the tenant's connectionMode to "bridge" on a
+        // bridge connect, which is what routes their outbound through here.
+        if (st === "connected") {
+          notifyCloud({ event: "connected", userId: ws.userId, phone: p.identity || null }).catch(() => {});
+        } else if (st === "disconnected" || st === "logged_out") {
+          notifyCloud({ event: "disconnected", userId: ws.userId, reason: "bridge:" + st }).catch(() => {});
+        }
         send(ws, envelope("state_ack", { ok: true }, frame.id));
         break;
       }
@@ -648,7 +704,14 @@ wss.on("connection", (ws, req) => {
         if (pend) {
           clearTimeout(pend.timer);
           pendingAcks.delete(frame.corr);
-          pend.resolve({ ok: true, providerMessageId: p.providerMessageId || null });
+          // Honor the Bridge's ok flag — an ack can report a FAILED send
+          // (unregistered number, engine died mid-send). Treating every ack as
+          // success made failed sends look delivered to the queue/safety layer.
+          pend.resolve(
+            p.ok === false
+              ? { ok: false, error: p.error || "bridge_send_failed" }
+              : { ok: true, providerMessageId: p.providerMessageId || null },
+          );
         }
         break;
       }
@@ -714,14 +777,20 @@ pingTimer.unref();
 const sweepTimer = setInterval(async () => {
   if (!pool) return;
   try {
-    await pool.query(
+    const { rows } = await pool.query(
       `UPDATE "Bridge"
           SET "status" = 'offline', "updatedAt" = now()
         WHERE "status" = 'online'
           AND ("lastHeartbeatAt" IS NULL
-               OR "lastHeartbeatAt" < now() - ($1::int || ' milliseconds')::interval)`,
+               OR "lastHeartbeatAt" < now() - ($1::int || ' milliseconds')::interval)
+        RETURNING "id", "userId"`,
       [HEARTBEAT_TIMEOUT_MS],
     );
+    // Crash-without-close: the socket never FIN'd, so reap() never fired for
+    // these — emit the same disconnected event it would have.
+    for (const r of rows) {
+      notifyCloud({ event: "disconnected", userId: r.userId, reason: "bridge_heartbeat_stale" }).catch(() => {});
+    }
   } catch (err) {
     console.error("[bridge-gateway] staleness sweep db error:", err.message);
   }
@@ -744,6 +813,7 @@ async function shutdown() {
   // ~150s (heartbeat timeout + sweep) during which bridge-mode sends fail with
   // no_bridge_online. A single bulk UPDATE keeps the DB in sync with reality.
   const ids = Array.from(bridgesById.keys());
+  const userIds = Array.from(new Set(Array.from(bridgesById.values()).map((w) => w.userId).filter(Boolean)));
   if (pool && ids.length) {
     try {
       await pool.query(
@@ -754,6 +824,12 @@ async function shutdown() {
       console.error("[bridge-gateway] shutdown markOffline error:", err.message);
     }
   }
+  // terminate() below may exit the process before the sockets' close handlers
+  // (and their reap→notify) run — emit the disconnects explicitly. Bridges
+  // reconnect within seconds and re-announce `connected`, so a restart heals.
+  await Promise.allSettled(
+    userIds.map((uid) => notifyCloud({ event: "disconnected", userId: uid, reason: "gateway_restart" })),
+  );
   for (const ws of wss.clients) { try { ws.terminate(); } catch {} }
   wss.close();
   server.close(() => {
