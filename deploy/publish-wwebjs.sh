@@ -30,7 +30,10 @@ assemble() { # <target>
     linux-arm64)  N="node-$NODE_VER-linux-arm64";  E="tar.xz"; B="bin/node"; W=0;;
     win-x64)      N="node-$NODE_VER-win-x64";      E="zip";    B="node.exe"; W=1;;
   esac
-  mkdir -p "$OUT"; rm -rf "$OUT/app"; cp -R "$REF" "$OUT/app"
+  mkdir -p "$OUT"
+  # linux-x64 IS the reference bundle — deleting + copying it onto itself
+  # destroyed the vendored app (fresh-checkout publishes failed here).
+  if [ "$OUT/app" != "$REF" ]; then rm -rf "$OUT/app"; cp -R "$REF" "$OUT/app"; fi
   local C="$PK/.nodecache"; mkdir -p "$C"
   [ -f "$C/$N.$E" ] || curl -fsSL "https://nodejs.org/dist/$NODE_VER/$N.$E" -o "$C/$N.$E"
   local TMP; TMP="$(mktemp -d)"; ( cd "$TMP" && case "$E" in tar.gz) tar xzf "$C/$N.$E";; tar.xz) tar xJf "$C/$N.$E";; zip) unzip -q "$C/$N.$E";; esac )
@@ -81,11 +84,14 @@ echo "▶ build DEBs + arrange store + version.json + REMOVE old Go artifacts"
 "${SSH[@]}" "$HOST" "VERSION='$VERSION' STORE='$STORE' bash -s" <<'REMOTE'
 set -euo pipefail
 cd /tmp/kwpub
-# DEBs (bundle path expected at ../dist/<arch> by build-deb.sh)
-mkdir -p linux/dist && cp -R linux/linux-x64 linux/dist/linux-x64 && cp -R linux/linux-arm64 linux/dist/linux-arm64
+# DEBs — build-deb.sh resolves the bundle at $HERE/../dist/<arch>, i.e.
+# /tmp/kwpub/dist (NOT linux/dist, which made fresh-box publishes fail with
+# "bundle missing").
+rm -rf dist && mkdir -p dist
+cp -R linux/linux-x64 dist/linux-x64 && cp -R linux/linux-arm64 dist/linux-arm64
 ( cd linux && bash build-deb.sh linux-x64 "$VERSION" >/dev/null && bash build-deb.sh linux-arm64 "$VERSION" >/dev/null )
-DEB_AMD=$(ls linux/dist/keyone-wa-bridge_*_amd64.deb | head -1)
-DEB_ARM=$(ls linux/dist/keyone-wa-bridge_*_arm64.deb | head -1)
+DEB_AMD=$(ls dist/keyone-wa-bridge_*_amd64.deb | head -1)
+DEB_ARM=$(ls dist/keyone-wa-bridge_*_arm64.deb | head -1)
 
 # ---- REMOVE every old Go/whatsmeow artifact so it is unreachable ----
 sudo rm -f "$STORE"/windows/keyone-bridge_windows_amd64.exe "$STORE"/windows/latest.exe
