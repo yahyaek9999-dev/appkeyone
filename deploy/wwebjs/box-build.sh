@@ -60,7 +60,7 @@ DEB_ARM=$(ls pk/dist/keyone-wa-bridge_*_arm64.deb | head -1)
 echo "  amd64=$(du -h "$DEB_AMD"|cut -f1) arm64=$(du -h "$DEB_ARM"|cut -f1)"
 
 echo "▶ Windows zip"
-( cd pk/dist/win-x64 && cp /tmp/kwbuild/win/install.ps1 /tmp/kwbuild/win/uninstall.ps1 . && zip -qr /tmp/kwbuild/keyone-wa-bridge-win-x64.zip node.exe app run.cmd install.ps1 uninstall.ps1 )
+( cd pk/dist/win-x64 && cp /tmp/kwbuild/win/install.ps1 /tmp/kwbuild/win/uninstall.ps1 /tmp/kwbuild/win/install.cmd /tmp/kwbuild/win/uninstall.cmd . && zip -qr /tmp/kwbuild/keyone-wa-bridge-win-x64.zip node.exe app run.cmd install.ps1 uninstall.ps1 install.cmd uninstall.cmd )
 echo "  win zip: $(du -h keyone-wa-bridge-win-x64.zip|cut -f1)"
 
 echo "▶ darwin bundle tarballs (Mac wraps these into .pkg)"

@@ -33,6 +33,14 @@ CTRL
 cat > "$ROOT/DEBIAN/postinst" <<'POST'
 #!/bin/sh
 set -e
+# Retire every previous bridge runtime before starting this one: the legacy Go
+# bridge service AND any orphan manual `keyone-bridge start` — two runtimes on
+# one LocalAuth session make WhatsApp force-LOGOUT the device.
+systemctl stop keyone-bridge.service >/dev/null 2>&1 || true
+systemctl disable keyone-bridge.service >/dev/null 2>&1 || true
+rm -f /lib/systemd/system/keyone-bridge.service /opt/keyone-bridge/keyone-bridge 2>/dev/null || true
+pkill -f 'keyone-wa-bridge\.js' >/dev/null 2>&1 || true
+sleep 1
 TARGET_USER="${SUDO_USER:-root}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"; [ -n "$TARGET_HOME" ] || TARGET_HOME=/root
 BRIDGE_HOME="$TARGET_HOME/.keyone-wa-bridge"
@@ -41,6 +49,9 @@ mkdir -p "$BRIDGE_HOME"; chown "$TARGET_USER" "$BRIDGE_HOME" 2>/dev/null || true
 # first run (the build WhatsApp Web pairing needs) — we deliberately do NOT point
 # it at a system Chrome, which is a mismatched build that breaks pairing.
 printf 'KEYONE_BRIDGE_HOME=%s\n' "$BRIDGE_HOME" > /etc/keyone-wa-bridge.env
+# The service runs AS $TARGET_USER and self-updates /opt/keyone-wa-bridge/app in
+# place — root-owned files make every update fail with EACCES.
+chown -R "$TARGET_USER" /opt/keyone-wa-bridge 2>/dev/null || true
 cat > /lib/systemd/system/keyone-wa-bridge.service <<UNIT
 [Unit]
 Description=KEYONE WhatsApp Bridge (whatsapp-web.js)

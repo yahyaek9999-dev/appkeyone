@@ -59,7 +59,9 @@ bash "$PK/macos/build-pkg.sh" darwin-x64   "$VERSION" >/dev/null && echo "  ✓ 
 
 echo "▶ Windows ZIP"
 WZ="$PK/dist/keyone-wa-bridge-win-x64.zip"; rm -f "$WZ"
-( cd "$PK/dist/win-x64" && cp "$PK/windows/install.ps1" "$PK/windows/uninstall.ps1" . && zip -qr "$WZ" node.exe app run.cmd install.ps1 uninstall.ps1 )
+( cd "$PK/dist/win-x64" \
+  && cp "$PK/windows/install.ps1" "$PK/windows/uninstall.ps1" "$PK/windows/install.cmd" "$PK/windows/uninstall.cmd" . \
+  && zip -qr "$WZ" node.exe app run.cmd install.ps1 uninstall.ps1 install.cmd uninstall.cmd )
 echo "  ✓ $(du -h "$WZ"|cut -f1)"
 
 echo "▶ app.tar.gz (platform-agnostic self-update package)"

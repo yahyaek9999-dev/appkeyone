@@ -52,6 +52,21 @@ cat > "$SCRIPTS/postinstall" <<'POST'
 #!/bin/bash
 set -e
 INSTALL_DIR="/usr/local/keyone-wa-bridge"
+USER_NAME_EARLY="$(stat -f%Su /dev/console)"; UID_EARLY="$(id -u "$USER_NAME_EARLY")"
+# ---- retire every previous bridge runtime BEFORE starting the new one --------
+# 1. The legacy Go bridge (com.keyone.bridge): field machines still had it
+#    bootstrapped and RUNNING, fighting the wa-bridge over the same gateway
+#    registration. Boot it out and delete its artifacts.
+sudo -u "$USER_NAME_EARLY" launchctl bootout "gui/$UID_EARLY/com.keyone.bridge" 2>/dev/null || true
+rm -f "$(eval echo ~"$USER_NAME_EARLY")/Library/LaunchAgents/com.keyone.bridge.plist" 2>/dev/null || true
+rm -rf /usr/local/keyone-bridge 2>/dev/null || true
+rm -f /usr/local/bin/keyone-bridge-go 2>/dev/null || true
+# 2. Any running wa-bridge (the LaunchAgent AND manual/orphan `start` copies):
+#    upgrades must never leave the OLD version running beside the new one — two
+#    Clients on one LocalAuth session make WhatsApp force-LOGOUT the device.
+sudo -u "$USER_NAME_EARLY" launchctl bootout "gui/$UID_EARLY/com.keyone.wa-bridge" 2>/dev/null || true
+pkill -f 'keyone-wa-bridge\.js' 2>/dev/null || true
+sleep 1
 # Put the CLI on PATH (both names). /usr/local/bin is on the default macOS PATH.
 # The CLI + the LaunchAgent both use ~/.keyone-wa-bridge, so `keyone-bridge login`
 # links the exact session the service runs.
@@ -64,6 +79,9 @@ ln -sf "$INSTALL_DIR/run" /usr/local/bin/keyone-wa-bridge
 # The console (logged-in) user owns the WhatsApp session + LaunchAgent.
 USER_NAME="$(stat -f%Su /dev/console)"; USER_HOME="$(eval echo ~"$USER_NAME")"
 BRIDGE_HOME="$USER_HOME/.keyone-wa-bridge"; mkdir -p "$BRIDGE_HOME"; chown "$USER_NAME" "$BRIDGE_HOME"
+# The daemon runs AS THE USER and self-updates app/ in place — a root-owned
+# payload makes every update fail with EACCES. Hand the bundle to the user.
+chown -R "$USER_NAME" "$INSTALL_DIR" 2>/dev/null || true
 LA_DIR="$USER_HOME/Library/LaunchAgents"; mkdir -p "$LA_DIR"
 sed -e "s#__HOME__#${BRIDGE_HOME}#" \
     "$INSTALL_DIR/com.keyone.wa-bridge.plist.tmpl" > "$LA_DIR/com.keyone.wa-bridge.plist"

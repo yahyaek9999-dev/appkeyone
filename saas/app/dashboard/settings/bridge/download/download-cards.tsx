@@ -39,7 +39,7 @@ ENTRYPOINT ["node","/app/keyone-wa-bridge.js","start"]`;
     links: { label: string; href: string }[];
   }[] = [
     {
-      os: "windows", name: "Windows", icon: "🪟", note: "ويندوز 10/11 — فُكّ الضغط ثم شغّل install.ps1 (يعمل تلقائياً عند تسجيل الدخول).",
+      os: "windows", name: "Windows", icon: "🪟", note: "ويندوز 10/11 — فُكّ الضغط ثم شغّل install.cmd بنقرة مزدوجة (بدون صلاحيات مسؤول؛ يعمل تلقائياً عند تسجيل الدخول).",
       primary: { label: "تنزيل لـ Windows (.zip)", href: `${base}/windows/keyone-wa-bridge-win-x64.zip` },
       links: [],
     },
