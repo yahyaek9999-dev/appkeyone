@@ -105,12 +105,14 @@ ENTRYPOINT ["node","/app/keyone-wa-bridge.js","start"]`;
         <b className="text-slate-100">بعد التثبيت:</b>
         <ol className="list-decimal space-y-1 pe-5 text-slate-400">
           <li>
-            افتح <b>نافذة طرفية جديدة</b> ثم شغّل{" "}
-            <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-sky-200">keyone-bridge login</code>{" "}
-            (يظهر لك رمز قصير).
-            <span className="block text-xs text-slate-500">Windows: افتح نافذة جديدة بعد التثبيت حتى يُحدَّث الـ PATH. macOS/Linux: الأمر متاح فوراً في نافذة جديدة.</span>
+            <span className="text-slate-200 font-medium">macOS (الإصدار 1.0.5+):</span>{" "}
+            بعد اكتمال التثبيت سيفتح المتصفح تلقائياً — اعتمد الجهاز بنقرة واحدة.
+            <span className="block text-xs text-slate-500 mt-0.5">Linux / Windows أو إصدارات قديمة: افتح نافذة طرفية وشغّل{" "}
+              <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-sky-200">keyone-bridge login</code>{" "}
+              (يظهر رمز قصير) ثم اعتمده من{" "}
+              <a href="/dashboard/settings/bridge/link" className="text-sky-300 underline">صفحة ربط الجهاز</a>.
+            </span>
           </li>
-          <li>اعتمد الرمز من <a href="/dashboard/settings/bridge/link" className="text-sky-300 underline">صفحة ربط الجهاز</a>.</li>
           <li>ارجع للوحة التحكم واضغط «بدء الربط» لمسح رمز QR بواتساب.</li>
         </ol>
         <p className="text-xs text-slate-500">
