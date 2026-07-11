@@ -585,6 +585,8 @@ function connect() {
     }, 25000);
     clearInterval(logTimer); logTimer = setInterval(drainLogs, 3000);
   });
+  // WS protocol pings from the gateway (every 30s) also prove the link is alive.
+  sock.on("ping", () => { if (ws === sock) lastRxAt = Date.now(); });
   sock.on("message", (buf) => {
     if (ws !== sock) return;
     lastRxAt = Date.now();
