@@ -47,7 +47,7 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.9-wweb";
+const VERSION = "1.0.10-wweb";
 // Pin a known-current WhatsApp Web build instead of trusting whatsapp-web.js's
 // bundled default (2.3000.1017054665, baked in at npm-publish time). Root cause
 // (2026-07-12, field report): a customer's phone confirmed the device as
@@ -338,6 +338,31 @@ async function destroyWa(reason) {
   }
 }
 
+// Reap any Chromium process still pointing at THIS bridge's own session dir —
+// a hard kill of the daemon (SIGKILL, OOM-killer, power loss, `kill -9`)
+// orphans the Chromium child (SIGKILL to a parent does NOT propagate to
+// children). Puppeteer's own SingletonLock then makes the NEXT launch fail
+// with "already running", but nothing was ever proactively cleaning the
+// orphan up — it just sat there burning RAM/CPU until a human noticed.
+// Cross-platform: pgrep+kill on macOS/Linux, WMI+Stop-Process on Windows.
+function reapOrphanChromium() {
+  const sessionDir = path.join(HOME, "wweb");
+  try {
+    if (process.platform === "win32") {
+      const esc = sessionDir.replace(/\\/g, "\\\\").replace(/'/g, "''");
+      require("child_process").execSync(
+        `powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${esc}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
+        { stdio: "ignore", timeout: 10_000 }
+      );
+    } else {
+      require("child_process").execSync(
+        `pgrep -f ${JSON.stringify(sessionDir)} | xargs -r kill -9`,
+        { stdio: "ignore", timeout: 10_000, shell: "/bin/sh" }
+      );
+    }
+  } catch { /* nothing to reap, or the tool is unavailable — best-effort */ }
+}
+
 // STRICT singleton. Memoizing the async creation in `waInit` closes the race where
 // the old `if (wa) return` guard had an `await ensureChromium()` gap — concurrent
 // callers would each build a Client. Now every concurrent caller awaits the SAME
@@ -427,7 +452,8 @@ function ensureWa(cfg) {
       // Chrome conflict: the old Chromium process is still alive after a rapid
       // restart (update, launchd keepalive, SIGTERM race). Wait for it to fully exit.
       if (/Target closed|already running|Execution context|onQRChanged.*already exists/i.test(msg)) {
-        log("warn", "whatsapp: Chromium conflict — waiting 5s for previous browser to exit");
+        log("warn", "whatsapp: Chromium conflict — reaping any orphaned browser and waiting 5s");
+        reapOrphanChromium();
         await sleep(5000);
         // Session files may be partially written during the conflicted init — clear them
         // so the next start_qr triggers a clean QR instead of looping on the bad state.
@@ -739,6 +765,12 @@ async function cmdStart() {
   // ONE runtime per machine — see acquireLock(). Waits (never dies) so the
   // service daemon and a manual foreground `start` can hand over cleanly.
   await acquireLock();
+  // We now hold the sole-owner lock — any Chromium still pointing at our own
+  // session dir can only be an orphan from a hard-killed previous run (SIGKILL,
+  // OOM-killer, power loss), never a legitimate sibling. Clean it before we
+  // launch our own, so a crashed daemon self-heals on the very next start
+  // instead of leaking RAM/CPU until a human notices.
+  reapOrphanChromium();
   let cfg = loadCfg();
   // A service may be started before `login`. Idle-wait for the link instead of
   // exiting (KeepAlive would otherwise crash-loop the daemon on a fresh install).
