@@ -47,7 +47,7 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.6-wweb";
+const VERSION = "1.0.7-wweb";
 const PROVIDER = "whatsapp";
 fs.mkdirSync(HOME, { recursive: true });
 const CFG = path.join(HOME, "config.json");
@@ -248,6 +248,7 @@ function releaseLock() {
 // "connected ×N → LOGOUT → QR forever" loop. `connectedOnce` makes the connected
 // event fire exactly once per session. `waSeq`/`wsSeq` are object ids for logs.
 let wa = null, waInit = null, waSeq = 0, waReady = false, waIdentity = "", linking = false, connectedOnce = false;
+let authWatchdog = null; // cleared on destroy; fires if `ready` never follows `authenticated`
 
 function frame(type, payload, corr) {
   return JSON.stringify({ v: 1, id: crypto.randomUUID(), type, ts: Date.now(), corr, payload });
@@ -296,6 +297,7 @@ function markConnected(identity, id) {
 // never emit into shared state), destroy the browser, and reset ALL engine state
 // so the next ensureWa() builds a clean singleton. Never auto-recreates.
 async function destroyWa(reason) {
+  if (authWatchdog) { clearTimeout(authWatchdog); authWatchdog = null; }
   const c = wa;
   wa = null; waInit = null; waReady = false; connectedOnce = false; linking = false;
   try { stopAllTyping(); } catch {}
@@ -327,9 +329,28 @@ function ensureWa(cfg) {
     });
     client.on("qr", (code) => { linking = true; connectedOnce = false; sendState("linking", ""); sendQr(code); log("info", `whatsapp: QR ready — scan from the Dashboard [wa#${id}]`); });
     client.on("loading_screen", (pct) => log("info", `whatsapp: loading ${pct}% [wa#${id}]`));
-    client.on("authenticated", () => log("info", `whatsapp: QR scanned — authenticating [wa#${id}]`));
+    client.on("authenticated", () => {
+      log("info", `whatsapp: QR scanned — authenticating [wa#${id}]`);
+      // Watchdog: WhatsApp auth should complete within 90s. If `ready` never fires,
+      // the session files are likely corrupted (e.g. process was killed mid-auth).
+      // Auto-clear the session so the next start_qr generates a clean QR.
+      if (authWatchdog) clearTimeout(authWatchdog);
+      authWatchdog = setTimeout(() => {
+        authWatchdog = null;
+        if (waReady || wa !== client) return;
+        log("warn", `whatsapp: auth watchdog — ready never fired after 90s, clearing corrupted session [wa#${id}]`);
+        destroyWa("auth-watchdog").then(() => {
+          try { fs.rmSync(path.join(HOME, "wweb"), { recursive: true, force: true }); } catch {}
+          log("info", "whatsapp: session cleared — send start_qr from the Dashboard for a fresh QR");
+          sendState("disconnected", "");
+        }).catch(() => {});
+      }, 90_000);
+    });
     client.on("auth_failure", (m) => { log("error", `whatsapp: auth failure: ${m} [wa#${id}]`); sendState("disconnected", ""); });
-    client.on("ready", () => markConnected((client.info && client.info.wid && client.info.wid.user) || "", id));
+    client.on("ready", () => {
+      if (authWatchdog) { clearTimeout(authWatchdog); authWatchdog = null; }
+      markConnected((client.info && client.info.wid && client.info.wid.user) || "", id);
+    });
     client.on("disconnected", (r) => {
       const logout = String(r).toUpperCase().includes("LOGOUT");
       log("warn", `whatsapp: disconnected (${r}) [wa#${id}]`);
@@ -342,7 +363,26 @@ function ensureWa(cfg) {
       relayInboundMsg(client, m, id).catch((e) => log("warn", `inbound relay error: ${e.message} [wa#${id}]`));
     });
     wa = client;
-    client.initialize().catch((e) => { log("error", `whatsapp: init error: ${e.message} [wa#${id}]`); if (wa === client) destroyWa("init-error").catch(() => {}); });
+    client.initialize().catch(async (e) => {
+      log("error", `whatsapp: init error: ${e.message} [wa#${id}]`);
+      if (wa !== client) return;
+      await destroyWa("init-error").catch(() => {});
+      const msg = String(e.message || "");
+      // Chrome conflict: the old Chromium process is still alive after a rapid
+      // restart (update, launchd keepalive, SIGTERM race). Wait for it to fully exit.
+      if (/Target closed|already running|Execution context|onQRChanged.*already exists/i.test(msg)) {
+        log("warn", "whatsapp: Chromium conflict — waiting 5s for previous browser to exit");
+        await sleep(5000);
+        // Session files may be partially written during the conflicted init — clear them
+        // so the next start_qr triggers a clean QR instead of looping on the bad state.
+        if (/Execution context|onQRChanged.*already exists/i.test(msg)) {
+          log("warn", "whatsapp: clearing possibly corrupted session after Chromium conflict");
+          try { fs.rmSync(path.join(HOME, "wweb"), { recursive: true, force: true }); } catch {}
+          log("info", "whatsapp: session cleared — send start_qr from the Dashboard for a fresh QR");
+        }
+      }
+      sendState("disconnected", "");
+    });
     return client;
   })();
   waInit = p;
@@ -492,6 +532,7 @@ async function doControl(action) {
     case "disconnect": await destroyWa("disconnect"); sendState("disconnected", ""); break;
     case "reconnect": case "restart":
       await destroyWa("restart");
+      await sleep(2000); // give Chromium time to fully exit before creating a new Client
       try { await ensureWa(cfg); } catch (e) { log("error", `whatsapp: engine prep failed: ${e.message}`); sendState("disconnected", ""); }
       break;
     case "logout":
@@ -517,7 +558,7 @@ async function applyUpdateAndRestart(source) {
   try { outcome = await cmdUpdate(); } catch (e) { log("error", `update failed (${source}): ${e.message}`); return; }
   if (outcome !== "updated") { log("info", `update check (${source}): ${outcome === "current" ? `up to date (${VERSION})` : outcome}`); return; }
   log("info", `update staged (${source}) — restarting to load the new version`);
-  try { await Promise.race([destroyWa("update-restart"), sleep(4000)]); } catch {}
+  try { await Promise.race([destroyWa("update-restart"), sleep(6000)]); } catch {}
   releaseLock();
   process.exit(process.platform === "win32" ? 1 : 0);
 }
