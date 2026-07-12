@@ -1,16 +1,25 @@
 # KEYONE Bridge — Operations Runbook
 
-How to deploy, enable, monitor, and troubleshoot the Bridge in production. The
-Bridge is **off by default** (`BRIDGE_ENABLED` unset) and completely inert until
-deliberately enabled — existing QR and Meta Cloud customers are never affected.
+> **Superseded 2026-07-12** — this doc described the retired Go/whatsmeow
+> Bridge (`keyone-bridge` CLI, install-linux.sh, `BRIDGE_ENABLED` unset by
+> default). WhatsApp rejected pairing from reimplemented multi-device clients
+> (whatsmeow/Baileys); the transport was replaced with whatsapp-web.js
+> (real Chromium), which pairs reliably. **The full, current, actively
+> maintained runbook is `KEYONE_BRIDGE_SUPPORT_RUNBOOK.md`** — read that one.
+> This file is kept only for the still-accurate deploy/enable steps below.
+
+How to deploy, enable, monitor, and troubleshoot the Bridge in production.
+`BRIDGE_ENABLED=1` is **currently set** in production — the Bridge is live,
+not gated off. Existing QR and Meta Cloud customers are unaffected either way
+(`Bot.connectionMode` scopes the transport per tenant).
 
 ## Components
 
 | Component | Where | Role |
 |---|---|---|
 | Cloud bridge APIs | `saas/app/api/bridge/v1/*` | device-code+PKCE link, token rotate, revoke, status |
-| `bridge-gateway` | AWS box, systemd `keyone-bridge-gateway` :3002 | WS ingress + relay (localhost-only until Caddy route added) |
-| Go Bridge | customer host | headless connector (`keyone-bridge` CLI/service) |
+| `bridge-gateway` | AWS box, systemd `keyone-bridge-gateway.service` :3002 | WS ingress + relay, public via Caddy `/bridge` |
+| Bridge | customer host | `bridge-node/keyone-wa-bridge.js` — Node + whatsapp-web.js + headless Chromium, packaged per-OS (`.pkg`/`.zip`/`.deb`) |
 
 ## Deploy the Cloud/gateway
 
@@ -20,41 +29,43 @@ deploy/release-aws.sh                 # builds on server, migrates, restarts, ve
 ```
 Reconciles `~/keyone/DEPLOYED_COMMIT` to the commit and checks `/api/health`.
 Never flips feature flags. A failed server build restores the previous `.next`.
+See `DEPLOYMENT_RULES.md` for the full contract.
 
-## Enable the Bridge in production (go-live checklist)
-
-1. **Wire the public WS route** in the server Caddyfile (`/etc/caddy/Caddyfile`):
-   ```
-   w.keyone1.com {
-     encode gzip zstd
-     reverse_proxy /bridge* localhost:3002
-     reverse_proxy localhost:3000
-   }
-   ```
-   `sudo systemctl reload caddy`. (Today Caddy sends everything to :3000, so the
-   gateway is localhost-only.)
-2. **Provision signing certs** and re-release signed installers (see
-   `keyone-bridge/packaging/README.md` §4).
-3. **Flip the flag**: add `BRIDGE_ENABLED=1` to `~/keyone/.env`, `sudo systemctl
-   restart keyone keyone-bridge-gateway`. Also set `BRIDGE_WS_URL=wss://w.keyone1.com/bridge`.
-4. **Link one real device** (`keyone-bridge login`), scan the QR from the
-   Dashboard, send/receive a test message end to end. Confirm connected memory.
-5. Move a pilot tenant's bot to `connectionMode='bridge'` and verify outbound
-   routes through the Bridge (the `wa.sendNow` gate) while QR/Meta tenants are
-   unchanged.
-
-To **disable**: remove `BRIDGE_ENABLED` from `.env` and restart — everything
-returns to 404/inert immediately; no data is lost (bridge rows are additive).
-
-## Customer install (per host)
+## Publish a new Bridge version (customer-side artifact, separate from the above)
 
 ```bash
-# Linux server
-sudo keyone-bridge/packaging/install-linux.sh <binary>
-sudo -u keyone-bridge KEYONE_BRIDGE_HOME=/var/lib/keyone-bridge KEYONE_BRIDGE_SECRET_FILE=1 keyone-bridge login
-sudo systemctl enable --now keyone-bridge
-# macOS:   packaging/install-macos.sh   Windows (elevated): packaging/windows/install.ps1
+bash deploy/publish-wwebjs.sh <version>   # bump const VERSION in keyone-wa-bridge.js FIRST
 ```
+See `KEYONE_BRIDGE_SUPPORT_RUNBOOK.md` §8 for the full publish contract and
+the VERSION-bump/BOM gotchas.
+
+## Enable/disable the Bridge feature flag
+
+```bash
+# enable (already the case in production today):
+grep -q '^BRIDGE_ENABLED=' ~/keyone/.env || echo 'BRIDGE_ENABLED=1' | sudo tee -a ~/keyone/.env
+grep -q '^BRIDGE_WS_URL=' ~/keyone/.env || echo 'BRIDGE_WS_URL=wss://w.keyone1.com/bridge' | sudo tee -a ~/keyone/.env
+sudo systemctl restart keyone.service keyone-bridge-gateway.service
+
+# disable (kill switch — instantly inert, no data loss, bridge rows are additive):
+sudo sed -i '/^BRIDGE_ENABLED=/d' ~/keyone/.env
+sudo systemctl restart keyone.service
+```
+Off ⇒ every `/api/bridge/v1/*` route 404s and no Bridge UI renders.
+
+## Customer install (per host) — current, no-Terminal flow
+
+Customers never see any of this — it's automated by the installer:
+- **macOS**: download the `.pkg`, double-click, approve. Postinstall runs
+  the device-code login in the background, shows the code via a native
+  notification, and opens the Dashboard link page pre-filled.
+- **Windows**: download the `.zip`, double-click `install.cmd` (no admin, no
+  PowerShell typed by hand). Same background auto-link flow, shown via a
+  native `MessageBox`.
+- **Linux**: `.deb` install + `systemctl enable --now keyone-wa-bridge`;
+  linking still requires one manual `keyone-wa-bridge login` (no no-Terminal
+  flow built for Linux yet — desktop Linux is a small fraction of the
+  customer base).
 
 ## Monitor
 

@@ -21,7 +21,7 @@ Customer-facing steps live in `KEYONE_BRIDGE_CUSTOMER_MANUAL.md`.
 | Database | PostgreSQL 16, `127.0.0.1:5432` | Tables `Bridge`, `BridgeTransport`, `BridgeToken`, `BridgeAuthCode`, `BridgeLogLine` |
 | Reverse proxy | Caddy, `/etc/caddy/Caddyfile` | `@bridge path /bridge* → :3002`; else `:3000`. Versioned: `deploy/Caddyfile.production` |
 | Env | `~/keyone/.env` (also `EnvironmentFile` for the gateway) | `BRIDGE_ENABLED`, `BRIDGE_WS_URL`, `BRIDGE_GATEWAY_INTERNAL_URL`, `BRIDGE_HEARTBEAT_TIMEOUT_MS`, `SAAS_INTERNAL_SECRET`, `POSTGRES_URL` |
-| Customer Bridge | customer host | Go binary `keyone-bridge`; data dir per OS (see Customer Manual §13) |
+| Customer Bridge | customer host | Node/whatsapp-web.js binary `keyone-wa-bridge` (**not** the retired Go/whatsmeow build); data dir per OS (see Customer Manual §13) |
 
 Host: `ubuntu@13.63.79.43` (w.keyone1.com), key `~/Downloads/keyone.pem`.
 
@@ -112,10 +112,29 @@ sockets; bridges auto-reconnect within seconds (capped backoff).
    **Start QR** / **Refresh QR** (fires a `start_qr` control frame).
 3. Control reaching the bridge? `POST /internal/control` returns `409
    no_bridge_online` if the bridge socket is down.
-4. Customer-side: `keyone-bridge logs` / `doctor` on their host shows whatsmeow
-   errors (e.g. QR timeout, logged out).
+4. Customer-side: `keyone-wa-bridge logs` / `doctor` on their host. Since v1.0.8
+   the bridge self-heals the two known root causes instead of just looping:
+   - **Phone shows Linked but Dashboard never leaves "connecting", QR
+     regenerates** — whatsapp-web.js loaded a live WhatsApp Web build that had
+     drifted past what the page-injection code expects (`ready` never fires
+     after `authenticated`). Fixed in v1.0.9 by pinning `webVersionCache` to a
+     verified community-tracked build. If it recurs, the fix is bumping
+     `WEB_VERSION` in `bridge-node/keyone-wa-bridge.js` to a newer
+     `wppconnect-team/wa-version` snapshot and republishing.
+   - **QR shown right after a restart discards a session that was about to
+     connect** — whatsapp-web.js can emit one spurious `qr` while restoring an
+     existing LocalAuth session; the bridge now suppresses it once (60s grace,
+     logged as `QR during auth restore — suppressing`) before treating it as
+     real. If `ready` never fires within 90s of `authenticated`, the bridge
+     auto-clears the session log line `auth watchdog — ... clearing corrupted
+     session`).
+   - **`Target closed` / `Execution context destroyed` / `already running`** —
+     Chromium conflict from a rapid restart; the bridge reaps any orphaned
+     Chromium pointing at its own session dir (`reapOrphanChromium`, v1.0.10)
+     and retries. A hard-killed daemon (SIGKILL/OOM) self-heals on its next
+     `start` for the same reason.
 
-### C. "Messages not sending"
+### C. "Messages not sending" (typing shows, customer never gets a reply)
 1. Is the bot on Bridge? `Bot.connectionMode` must normalize to `bridge`
    (`lib/messaging/mode.ts`). If it's `qr`/`meta_cloud`, Bridge isn't the path.
 2. Is a **primary online** bridge present with WA `connected`? Outbound routes to
@@ -124,6 +143,20 @@ sockets; bridges auto-reconnect within seconds (capped backoff).
    socket; `ack_timeout` means the bridge didn't ack (WA send failing).
 4. Offline queue: outbound during a WA outage is queued on the bridge and drained
    on reconnect — a backlog is expected to clear itself.
+5. **Silent safety kill-switch** (confirmed root cause, 2026-07-12): `POST
+   /api/whatsapp/incoming` returns `{ok:true, reply:null, blocked:"..."}` on
+   several gates — a `2xx` with no error, so the customer sees typing-then-nothing
+   and support sees nothing in the gateway logs (the gateway only logs on
+   `notifyCloud` failure, not on a successful-but-blocked reply). Check
+   `SafetyState.killSwitchActive` for the `userId` first — `reconnect_storm`
+   trips at 6+ reconnects in 10 minutes and is a **false positive** if the
+   customer was mid-troubleshooting (re-linking repeatedly) rather than actually
+   abusive. Self-service: Dashboard → Settings → Safety → "إلغاء الإيقاف
+   الطارئ" (calls `POST /api/safety/clear-kill`). Also check `blocked:
+   no_subscription / inactive_status / expired / quota_exhausted /
+   daily_cap_exhausted` (billing-side, not a bug) and `duplicate_event` (DB
+   `@@unique([conversationId, providerMessageId])` de-dupe — expected on a
+   gateway retry, not a symptom).
 
 ### D. "Update stuck on Updating"
 - `Bridge.updating=true` is cleared when the bridge re-says `hello` after the
@@ -177,8 +210,18 @@ deploy/release-aws.sh                 # build-on-server, migrate (additive db pu
   destructive change).
 - Invariant to keep green: **Git == origin/main == DEPLOYED_COMMIT**, and the
   server `saas/` source hashes equal the committed tree.
-- The Go bridge is **customer-installed**, not deployed here; it ships as GitHub
-  Release binaries/installers (`keyone-bridge/packaging`, `make dist`).
+- The customer Bridge (`bridge-node/keyone-wa-bridge.js`) is **customer-installed**,
+  not deployed with the Cloud/gateway above. Publish a new version with
+  `deploy/publish-wwebjs.sh <version>` — assembles macOS (arm64+x64 `.pkg`),
+  Windows (`.zip`), Linux (amd64+arm64 `.deb`), and the self-update
+  `app.tar.gz`, uploads to the KEYONE download store, and writes
+  `version.json` + `checksums.txt`. Bump `const VERSION` in
+  `keyone-wa-bridge.js` for every publish — a stale VERSION string is what
+  caused the v1.0.4 infinite auto-update loop (isNewer() never resolves
+  `false`, so the bridge updates-and-restarts itself every ~90s, killing any
+  in-progress WhatsApp pairing). Auto-update polls `version.json` and
+  self-restarts on a genuinely newer version; checksum verification is
+  mandatory since v1.0.9 (a manifest without `sha256` aborts the update).
 
 ## 9. Escalation
 
@@ -194,3 +237,19 @@ logs if available.
 - Auto-update fetches from the KEYONE download store (version.json + SHA-256); code-signing of installers remains a pre-GA item;
   until then installers are unsigned (integrity via SHA-256 `checksums.txt`).
 - Media/group flows are relayed generically; full media pipeline is post-v1.
+- **As of v1.0.10 (2026-07-12):** the QR-restore regression, the WhatsApp Web
+  version-drift stall, the orphan-Chromium leak, and the silent kill-switch
+  false-positive (§5.C) are fixed and verified with real runtime evidence —
+  a throwaway Bridge was linked with a genuine token, the actual published
+  binary was run, and the full inbound→AI→outbound round trip was proven
+  end-to-end (5.5s). **Not yet verified with a real customer phone scan** —
+  no test device was available this session; the fix is reasoned from a
+  well-documented whatsapp-web.js failure mode and did not break QR
+  generation in the live test, but `ready`/`connected` after an actual scan
+  needs field confirmation.
+- The Windows installer's PowerShell script must ship with a UTF-8 BOM if it
+  contains any non-ASCII character (Arabic text, em-dashes, etc.) —
+  `install.cmd` invokes Windows PowerShell 5.1 (`powershell.exe -File`), which
+  decodes a BOM-less `.ps1` using the system codepage, not UTF-8, corrupting
+  multi-byte sequences inside string literals ("String terminator missing").
+  Verify with `xxd install.ps1 | head -1` → must start `efbb bf`.
