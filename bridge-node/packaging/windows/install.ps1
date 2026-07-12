@@ -1,4 +1,4 @@
-# KEYONE WhatsApp Bridge — Windows installer (run via install.cmd).
+﻿# KEYONE WhatsApp Bridge — Windows installer (run via install.cmd).
 # Ships inside keyone-wa-bridge-win-x64.zip alongside node.exe + app\ + run.cmd.
 #
 # PER-USER install (no administrator rights, mirroring the macOS per-user

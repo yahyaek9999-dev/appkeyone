@@ -1,4 +1,4 @@
-# KEYONE WhatsApp Bridge — Windows uninstaller (run via uninstall.cmd).
+﻿# KEYONE WhatsApp Bridge — Windows uninstaller (run via uninstall.cmd).
 $ErrorActionPreference = "SilentlyContinue"
 $Dest    = Join-Path $env:LOCALAPPDATA "Programs\KEYONE WA Bridge"
 $OldDest = Join-Path $env:ProgramFiles "KEYONE WA Bridge"   # pre-1.0.4 admin install

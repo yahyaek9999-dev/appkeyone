@@ -47,7 +47,27 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.8-wweb";
+const VERSION = "1.0.9-wweb";
+// Pin a known-current WhatsApp Web build instead of trusting whatsapp-web.js's
+// bundled default (2.3000.1017054665, baked in at npm-publish time). Root cause
+// (2026-07-12, field report): a customer's phone confirmed the device as
+// LINKED/Active, but the Dashboard never left "connecting" and a fresh QR kept
+// reappearing. whatsapp-web.js's `type: 'local'` cache only helps SUBSEQUENT
+// connects on a session that already succeeded once — the customer's PRODUCTION
+// wa-service sessions still work because they cached a good version long ago.
+// A brand-new pairing (every new Bridge customer) instead fetches whatever
+// WhatsApp serves live TODAY; if that has drifted past what this whatsapp-web.js
+// release's page-injection code (LoadUtils/Store hooks) expects, `authenticated`
+// fires (WhatsApp's server accepted the phone-side pairing) but the in-page
+// injection silently stalls and `ready` never fires — with authTimeoutMs
+// defaulting to 0 (no timeout) inside the library itself, it would hang forever
+// were it not for our own auth-watchdog surfacing it as a QR-regeneration loop.
+// Pinning a fetched-and-verified-live WA Web build removes the drift.
+const WEB_VERSION = "2.3000.1043030358-alpha";
+const WEB_VERSION_CACHE = {
+  type: "remote",
+  remotePath: `https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/${WEB_VERSION}.html`,
+};
 const PROVIDER = "whatsapp";
 fs.mkdirSync(HOME, { recursive: true });
 const CFG = path.join(HOME, "config.json");
@@ -332,6 +352,8 @@ function ensureWa(cfg) {
     log("info", `whatsapp: initializing WhatsApp Web engine [wa#${id}] pid=${process.pid}${hadAuthAtStart ? " (existing session present)" : ""}`);
     const client = new Client({
       authStrategy: new LocalAuth({ clientId: cfg.bridgeId || "keyone", dataPath: path.join(HOME, "wweb") }),
+      webVersion: WEB_VERSION,
+      webVersionCache: WEB_VERSION_CACHE,
       puppeteer: {
         headless: true,
         executablePath: exe,
