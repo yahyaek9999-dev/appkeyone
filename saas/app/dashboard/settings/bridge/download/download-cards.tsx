@@ -105,9 +105,9 @@ ENTRYPOINT ["node","/app/keyone-wa-bridge.js","start"]`;
         <b className="text-slate-100">بعد التثبيت:</b>
         <ol className="list-decimal space-y-1 pe-5 text-slate-400">
           <li>
-            <span className="text-slate-200 font-medium">macOS (الإصدار 1.0.5+):</span>{" "}
-            بعد اكتمال التثبيت سيفتح المتصفح تلقائياً — اعتمد الجهاز بنقرة واحدة.
-            <span className="block text-xs text-slate-500 mt-0.5">Linux / Windows أو إصدارات قديمة: افتح نافذة طرفية وشغّل{" "}
+            <span className="text-slate-200 font-medium">macOS و Windows (الإصدار 1.0.8+):</span>{" "}
+            بعد اكتمال التثبيت سيفتح المتصفح تلقائياً — اعتمد الجهاز بنقرة واحدة (بدون نافذة طرفية).
+            <span className="block text-xs text-slate-500 mt-0.5">Linux أو إصدارات قديمة: افتح نافذة طرفية وشغّل{" "}
               <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-sky-200">keyone-bridge login</code>{" "}
               (يظهر رمز قصير) ثم اعتمده من{" "}
               <a href="/dashboard/settings/bridge/link" className="text-sky-300 underline">صفحة ربط الجهاز</a>.
