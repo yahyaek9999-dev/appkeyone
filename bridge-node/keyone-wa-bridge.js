@@ -47,7 +47,7 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.7-wweb";
+const VERSION = "1.0.8-wweb";
 const PROVIDER = "whatsapp";
 fs.mkdirSync(HOME, { recursive: true });
 const CFG = path.join(HOME, "config.json");
@@ -128,7 +128,10 @@ async function cmdUpdate() {
   console.log("updating " + VERSION + " → " + man.version + " …");
   const buf = await getURL(DL_BASE + "/" + man.app.file);
   const sum = crypto.createHash("sha256").update(buf).digest("hex");
-  if (man.app.sha256 && sum !== man.app.sha256) throw new Error("checksum mismatch — aborting update");
+  // Checksum verification is MANDATORY, not opt-in — a manifest missing sha256
+  // (compromised store, MITM strip, publish bug) must never install unverified code.
+  if (!man.app.sha256) throw new Error("update manifest missing sha256 — refusing to install unverified code");
+  if (sum !== man.app.sha256) throw new Error("checksum mismatch — aborting update");
   const stage = path.join(ROOT, "app.new");
   fs.rmSync(stage, { recursive: true, force: true }); fs.mkdirSync(stage, { recursive: true });
   const tgz = path.join(ROOT, "app.tgz"); fs.writeFileSync(tgz, buf);
@@ -249,6 +252,13 @@ function releaseLock() {
 // event fire exactly once per session. `waSeq`/`wsSeq` are object ids for logs.
 let wa = null, waInit = null, waSeq = 0, waReady = false, waIdentity = "", linking = false, connectedOnce = false;
 let authWatchdog = null; // cleared on destroy; fires if `ready` never follows `authenticated`
+// Bounds the QR-during-restore suppression below — mirrors whatsapp-service/src/sessions.js
+// (the proven original QR implementation), reset to 0 once `ready` actually fires.
+let restoreRetries = 0;
+const AUTH_RESTORE_QR_GRACE_MS = 60_000;
+const AUTH_RESTORE_QR_MAX_RETRIES = 1;
+function sessionAuthDir(cfg) { return path.join(HOME, "wweb", "session-" + (cfg.bridgeId || "keyone")); }
+function hasExistingSession(cfg) { try { return fs.readdirSync(sessionAuthDir(cfg)).length > 0; } catch { return false; } }
 
 function frame(type, payload, corr) {
   return JSON.stringify({ v: 1, id: crypto.randomUUID(), type, ts: Date.now(), corr, payload });
@@ -314,10 +324,12 @@ async function destroyWa(reason) {
 // promise → exactly one Browser, one Client, one initialize(), one set of listeners.
 function ensureWa(cfg) {
   if (waInit) return waInit;
+  const hadAuthAtStart = hasExistingSession(cfg);
+  let qrRestoreTimer = null;
   const p = (async () => {
     const exe = await ensureChromium();
     const id = ++waSeq;
-    log("info", `whatsapp: initializing WhatsApp Web engine [wa#${id}] pid=${process.pid}`);
+    log("info", `whatsapp: initializing WhatsApp Web engine [wa#${id}] pid=${process.pid}${hadAuthAtStart ? " (existing session present)" : ""}`);
     const client = new Client({
       authStrategy: new LocalAuth({ clientId: cfg.bridgeId || "keyone", dataPath: path.join(HOME, "wweb") }),
       puppeteer: {
@@ -327,7 +339,27 @@ function ensureWa(cfg) {
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-accelerated-2d-canvas", "--no-first-run", "--no-zygote", "--disable-gpu"],
       },
     });
-    client.on("qr", (code) => { linking = true; connectedOnce = false; sendState("linking", ""); sendQr(code); log("info", `whatsapp: QR ready — scan from the Dashboard [wa#${id}]`); });
+    client.on("qr", (code) => {
+      // whatsapp-web.js can emit a spurious `qr` while restoring an EXISTING
+      // LocalAuth session (proven root cause, ported from the original working
+      // implementation at whatsapp-service/src/sessions.js). Showing it would
+      // discard a session that was about to reach `ready` and force an
+      // unnecessary re-scan ("QR regeneration" / "never reaches READY").
+      // Suppress it ONCE, give the restore a grace period, and only show a
+      // real QR if it still hasn't connected (or there was no prior session).
+      if (hadAuthAtStart && !connectedOnce && restoreRetries < AUTH_RESTORE_QR_MAX_RETRIES && !qrRestoreTimer) {
+        restoreRetries++;
+        log("warn", `whatsapp: QR during auth restore — suppressing, retry ${restoreRetries}/${AUTH_RESTORE_QR_MAX_RETRIES} in ${AUTH_RESTORE_QR_GRACE_MS / 1000}s [wa#${id}]`);
+        qrRestoreTimer = setTimeout(() => {
+          qrRestoreTimer = null;
+          if (waReady || wa !== client) return;
+          log("warn", `whatsapp: auth restore did not settle — recreating engine [wa#${id}]`);
+          destroyWa("auth-restore-retry").then(() => { ensureWa(cfg).catch(() => {}); }).catch(() => {});
+        }, AUTH_RESTORE_QR_GRACE_MS);
+        return;
+      }
+      linking = true; connectedOnce = false; sendState("linking", ""); sendQr(code); log("info", `whatsapp: QR ready — scan from the Dashboard [wa#${id}]`);
+    });
     client.on("loading_screen", (pct) => log("info", `whatsapp: loading ${pct}% [wa#${id}]`));
     client.on("authenticated", () => {
       log("info", `whatsapp: QR scanned — authenticating [wa#${id}]`);
@@ -349,6 +381,8 @@ function ensureWa(cfg) {
     client.on("auth_failure", (m) => { log("error", `whatsapp: auth failure: ${m} [wa#${id}]`); sendState("disconnected", ""); });
     client.on("ready", () => {
       if (authWatchdog) { clearTimeout(authWatchdog); authWatchdog = null; }
+      if (qrRestoreTimer) { clearTimeout(qrRestoreTimer); qrRestoreTimer = null; }
+      restoreRetries = 0;
       markConnected((client.info && client.info.wid && client.info.wid.user) || "", id);
     });
     client.on("disconnected", (r) => {

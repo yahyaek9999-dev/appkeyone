@@ -116,13 +116,61 @@ if "%KEYONE_BRIDGE_HOME%"=="" set "KEYONE_BRIDGE_HOME=$HomeDir"
   }
   if ($started) { Write-Host "Bridge daemon started (background)." }
 
+  # ---- Auto-link: generate a device code WITHOUT a terminal (No-Terminal UX) --
+  # Mirrors the macOS postinstall flow (packaging/macos/build-pkg.sh). Only on a
+  # FRESH install (no existing token) — upgrades keep their existing link and the
+  # daemon reconnects on its own.
+  $CfgFile = Join-Path $HomeDir "config.json"
+  $alreadyLinked = $false
+  if (Test-Path $CfgFile) {
+    try {
+      $cfg = Get-Content $CfgFile -Raw | ConvertFrom-Json
+      if ($cfg.token -and $cfg.bridgeId) { $alreadyLinked = $true }
+    } catch {}
+  }
+  if (-not $alreadyLinked) {
+    $CloudApi = "https://w.keyone1.com"
+    $TmpLog = Join-Path $env:TEMP "keyone-bridge-login-$([guid]::NewGuid().ToString('N')).log"
+    try {
+      Start-Process -FilePath $runCmd -ArgumentList "login" -WindowStyle Hidden `
+        -RedirectStandardOutput $TmpLog -RedirectStandardError "$TmpLog.err" | Out-Null
+    } catch {
+      Write-Warning "Could not start the auto-link process: $_"
+    }
+
+    $code = $null
+    for ($i = 0; $i -lt 12 -and -not $code; $i++) {
+      Start-Sleep -Seconds 1
+      if (Test-Path $TmpLog) {
+        $m = Select-String -Path $TmpLog -Pattern '[A-Z0-9]{4}-[A-Z0-9]{4}' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($m) { $code = $m.Matches[0].Value }
+      }
+    }
+
+    if ($code) {
+      $linkUrl = "$CloudApi/dashboard/settings/bridge/link?user_code=$code"
+      try { Start-Process $linkUrl } catch {}
+      try {
+        Add-Type -AssemblyName System.Windows.Forms | Out-Null
+        [System.Windows.Forms.MessageBox]::Show(
+          "رمز الربط: $code`n`nتم فتح لوحة التحكم في المتصفح - أدخل الرمز لربط هذا الجهاز.",
+          "KEYONE WA Bridge - تثبيت مكتمل",
+          [System.Windows.Forms.MessageBoxButtons]::OK,
+          [System.Windows.Forms.MessageBoxIcon]::Information
+        ) | Out-Null
+      } catch {}
+      Write-Host "Auto-link: code $code shown in a dialog. Browser opened to the link page."
+    } else {
+      try { Start-Process "$CloudApi/dashboard/settings/bridge" } catch {}
+      Write-Host "Auto-link: could not capture a device code. Opened bridge settings to link manually."
+    }
+  }
+
   Write-Host ""
   Write-Host "Installed. Next steps:"
-  Write-Host "  1. Open a NEW terminal (PowerShell or CMD) so PATH refreshes."
-  Write-Host "  2. Run:  keyone-bridge login    (shows a short code)"
-  Write-Host "  3. Approve the code in your KEYONE Dashboard - the bridge connects"
-  Write-Host "     automatically, then click 'Start / Show QR' and scan with WhatsApp."
-  Write-Host "  Diagnostics:  keyone-bridge doctor     Logs:  keyone-bridge logs"
+  Write-Host "  1. Approve the code shown in your KEYONE Dashboard."
+  Write-Host "  2. The bridge connects automatically, then click 'Start / Show QR' and scan with WhatsApp."
+  Write-Host "  (Optional terminal use: open a NEW terminal so PATH refreshes, then 'keyone-bridge doctor' or 'keyone-bridge logs'.)"
   exit 0
 } catch {
   Write-Host ""
