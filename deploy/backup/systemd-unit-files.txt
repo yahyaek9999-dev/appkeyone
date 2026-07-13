@@ -1,0 +1,19 @@
+# /etc/systemd/system/keyone-dbbackup.service
+[Unit]
+Description=KEYONE production Postgres backup
+After=keyone.service
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/backup-db.sh
+[Install]
+WantedBy=multi-user.target
+
+# /etc/systemd/system/keyone-dbbackup.timer
+[Unit]
+Description=Run KEYONE Postgres backup nightly
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=300
+Persistent=true
+[Install]
+WantedBy=timers.target
