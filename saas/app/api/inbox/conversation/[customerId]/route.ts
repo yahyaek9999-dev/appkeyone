@@ -56,6 +56,7 @@ export async function GET(
             role: m.role,
             content: m.content,
             mediaType: m.mediaType,
+            mediaUrl: m.mediaUrl,
             intent: m.intent,
             sentiment: m.sentiment,
             angerScore: m.angerScore,

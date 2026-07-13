@@ -6,6 +6,7 @@ import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { generateBotReply } from "@/lib/integrations/ai/reply";
 import { getCached, setCached } from "@/lib/llm-cache";
 import { transcribeAudio, describeImage } from "@/lib/media";
+import { saveInboundMedia, MAX_INBOUND_MEDIA_BYTES } from "@/lib/media/inbound-message";
 import { notifyMerchant, notifyAdmin, resolveNotifyPhone } from "@/lib/notify";
 import {
   classify,
@@ -314,6 +315,25 @@ export async function POST(req: Request) {
     }
   }
 
+  // ---- Persist the raw media so the inbox can render it, not just a caption --
+  let mediaUrl: string | null = null;
+  if (
+    mediaBase64 &&
+    (mediaType === "voice" ||
+      mediaType === "image" ||
+      mediaType === "video" ||
+      mediaType === "document")
+  ) {
+    try {
+      const bytes = Buffer.from(mediaBase64, "base64");
+      if (bytes.length > 0 && bytes.length <= MAX_INBOUND_MEDIA_BYTES) {
+        mediaUrl = await saveInboundMedia(mimetype || "application/octet-stream", bytes);
+      }
+    } catch (e) {
+      console.error("[wa-incoming] media save failed:", (e as Error)?.message);
+    }
+  }
+
   // ---- Decode media into a textual representation --------------------------
   let messageText = rawText || "";
   if (mediaType === "voice") {
@@ -483,6 +503,7 @@ export async function POST(req: Request) {
       role: "user",
       content: messageText,
       mediaType,
+      mediaUrl,
       providerMessageId,
       flagged,
       createdAt: historicalInbound && providerTimestampMs((body as any).providerTimestamp)
