@@ -1,8 +1,13 @@
 // Database client singleton.
 //
-// Supports:
-//   - SQLite (current production) with optional WAL mode for 3-5× write throughput
-//   - PostgreSQL (migration target) with Supabase dual-URL pattern
+// Production is PostgreSQL only (prisma/schema.postgres.prisma, selected via
+// package.json's "prisma"."schema" key) — POSTGRES_URL/POSTGRES_DIRECT_URL are
+// the vars the schema itself declares. DATABASE_URL/DATABASE_DIRECT_URL are a
+// legacy SQLite-era override kept only for any environment still on
+// prisma/schema.prisma (sqlite). Postgres vars are checked first: an
+// environment with both set (e.g. a local dev worktree that still carries a
+// leftover DATABASE_URL for the SQLite dev.db) must not have the schema's own
+// Postgres connection silently clobbered by a sqlite-shaped URL.
 //
 // WAL mode: set PRAGMAS_SKIP=true or DATABASE_WAL=false to disable.
 // Connection pooling: set DATABASE_DIRECT_URL for Supabase direct connection.
@@ -22,7 +27,11 @@ if (typeof (BigInt.prototype as unknown as { toJSON?: () => string }).toJSON !==
 const globalForPrisma = global as unknown as { prisma?: PrismaClient };
 
 function createClient(): PrismaClient {
-  const url = process.env.DATABASE_DIRECT_URL || process.env.DATABASE_URL;
+  const url =
+    process.env.POSTGRES_DIRECT_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.DATABASE_DIRECT_URL ||
+    process.env.DATABASE_URL;
 
   const client = new PrismaClient(
     url
