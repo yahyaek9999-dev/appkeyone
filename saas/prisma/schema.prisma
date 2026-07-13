@@ -600,7 +600,7 @@ model Broadcast {
   template      String                 // body, may contain {name} {phone}
   audience      String    @default("all")  // all | hot | warm | buyers | no_purchase | inactive | abandoned | date_range | tag:<tag>
   personalize   Boolean   @default(false)  // ask LLM to gently personalize per recipient (default OFF = exact mode for safety)
-  status        String    @default("queued")  // queued | sending | done | canceled
+  status        String    @default("queued")  // queued | sending | paused | done | canceled | credit_queued
   total         Int       @default(0)
   sent          Int       @default(0)
   failed        Int       @default(0)

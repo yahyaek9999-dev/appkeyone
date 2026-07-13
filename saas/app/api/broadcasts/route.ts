@@ -3,10 +3,7 @@ import { prisma } from "@/lib/db";
 import { getUserIdForPermission, getAuthContext } from "@/lib/auth";
 import { auditCtx } from "@/lib/audit/log";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { checkLimit, incrementUsage } from "@/lib/membership/limits";
-import { buildAudienceWhere } from "@/lib/broadcasts/audience";
-import { resolveSegmentCustomers } from "@/lib/analytics/segments";
-import { enforceWalletForSend, blockedSendMessage } from "@/lib/wallet/enforce";
+import { createBroadcastFromSettings, type BroadcastSettings } from "@/lib/broadcasts/create";
 
 export const dynamic = "force-dynamic";
 
@@ -61,127 +58,33 @@ export async function POST(req: Request) {
     to: body.to || null,
   };
 
-  if (!template) {
-    return NextResponse.json({ error: "نص الرسالة مطلوب" }, { status: 400 });
-  }
-
-  // ---- Membership gate -------------------------------------------------------
-  // Suspended accounts and plans without broadcast access (or with the monthly
-  // cap exhausted) are blocked here. We never let a broadcast be created when
-  // the merchant can't actually send it. Plan-level featureFlags.broadcasts=false
-  // turns this into a clean "feature_disabled" error instead of a quota miss.
-  const decision = await checkLimit(uid, "broadcast");
-  if (!decision.allowed) {
-    return NextResponse.json(
-      {
-        error:
-          decision.reason === "suspended"        ? "الحساب معلّق" :
-          decision.reason === "expired"          ? "اشتراكك منتهي — قم بالتجديد" :
-          decision.reason === "feature_disabled" ? "البث الجماعي غير متاح في باقتك الحالية" :
-          decision.reason === "exhausted"        ? `استنفدت حد البث الشهري (${decision.cap}) — يتجدد ${decision.resetAt?.toLocaleDateString("ar-EG")}` :
-                                                   "البث غير متاح حالياً",
-        reason: decision.reason,
-        used: decision.used,
-        cap: decision.cap,
-      },
-      { status: 403 }
-    );
-  }
-
-  // ---- Wallet balance gate (additive, flag-gated WALLET_ENFORCE_SENDS) -------
-  // Boundary enforcement: when prepaid billing enforcement is ON and the wallet
-  // is empty/suspended, block the broadcast HERE — before anything is queued —
-  // and record a billing audit + notify the merchant. The protected send
-  // pipeline (lib/messaging/*, the drain cron) is untouched. Default OFF →
-  // walletAllowsSend() fails open, so this is a no-op until an operator opts in.
-  const walletGate = await enforceWalletForSend(uid, "broadcast");
-  if (!walletGate.allowed) {
-    return NextResponse.json(
-      {
-        error: blockedSendMessage(walletGate.reason, walletGate.balance),
-        reason: walletGate.reason,
-        balance: walletGate.balance,
-        code: "insufficient_balance",
-      },
-      { status: 402 }
-    );
-  }
-
-  // Resolve recipients. AI-segment audiences ("segment:<key>") are resolved
-  // from real order facts + scores via the segmentation engine; every other
-  // audience uses the existing shared where-builder. Both yield the same
-  // { id, phone, name } shape so the rest of the send pipeline is unchanged.
-  let allMatched: { id: string; phone: string | null; name: string | null }[];
-  if (audience.startsWith("segment:")) {
-    allMatched = await resolveSegmentCustomers(uid, audience.slice("segment:".length), { reachableOnly: false });
-  } else {
-    const where: any = buildAudienceWhere(uid, audience, audienceOpts);
-    allMatched = await prisma.customer.findMany({
-      where,
-      select: { id: true, phone: true, name: true },
-    });
-  }
-
-  // Exclude unreachable contacts: rows whose stored phone is actually a
-  // WhatsApp LID (privacy id, not a dialable number). We can never initiate
-  // a broadcast to them — the wa-service would just throw "cannot initiate
-  // send to WhatsApp LID". Filtering here keeps the broadcast counters
-  // honest and lets the merchant know upfront how many were skipped.
-  const isReachable = (ph: string | null | undefined) => {
-    const v = (ph || "").trim();
-    if (!v) return false;
-    if (v.startsWith("lid:")) return false;
-    if (v.includes("@lid")) return false;
-    const digits = v.replace(/^\+/, "").replace(/[^\d]/g, "");
-    return digits.length >= 8 && digits.length <= 13;
+  const settings: BroadcastSettings = {
+    title,
+    template,
+    audience,
+    personalize,
+    couponCode,
+    imageUrl,
+    scheduledAt,
+    audienceOpts,
   };
-  const customers = allMatched.filter((c) => isReachable(c.phone));
-  const skipped = allMatched.length - customers.length;
 
-  if (customers.length === 0) {
+  const result = await createBroadcastFromSettings(uid, settings);
+  if (!result.ok) {
     return NextResponse.json(
-      {
-        error:
-          allMatched.length === 0
-            ? "لا يوجد عملاء يطابقون هذه الجمهور"
-            : `كل العملاء (${skipped}) لا يملكون رقم هاتف يمكن المراسلة عليه (معرّفات واتساب فقط).`,
-      },
-      { status: 400 }
+      { error: result.error, reason: result.reason, used: result.used, cap: result.cap, balance: result.balance,
+        ...(result.status === 402 ? { code: "insufficient_balance" } : {}) },
+      { status: result.status },
     );
   }
-
-  const bc = await prisma.broadcast.create({
-    data: {
-      userId: uid,
-      title,
-      template: template.slice(0, 4000),
-      audience,
-      personalize,
-      couponCode,
-      imageUrl,
-      scheduledAt,
-      total: customers.length,
-      items: {
-        create: customers.map((c: any) => ({
-          customerId: c.id,
-          phone: c.phone,
-          name: c.name,
-        })),
-      },
-    } as any,
-  });
-
-  // Membership: count this broadcast against the monthly cap. Best-effort —
-  // a counter write failure must never undo a successful broadcast creation.
-  await incrementUsage(uid, "broadcast", 1);
 
   void auditCtx(await getAuthContext(), "broadcast.created", {
     userId: uid,
     targetType: "broadcast",
-    targetId: bc.id,
-    metadata: { title, audience, recipients: customers.length },
+    targetId: result.broadcast.id,
+    metadata: { title, audience, recipients: result.broadcast.total },
     req,
   });
 
-  return NextResponse.json({ ok: true, broadcast: bc, skipped });
+  return NextResponse.json({ ok: true, broadcast: result.broadcast, skipped: result.skipped });
 }

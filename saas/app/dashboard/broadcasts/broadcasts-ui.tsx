@@ -23,6 +23,10 @@ import {
   Target,
   Trophy,
   Lightbulb,
+  PauseCircle,
+  PlayCircle,
+  Copy,
+  Pencil,
 } from "lucide-react";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
@@ -41,7 +45,7 @@ type Bc = {
   scheduledAt?: string | null;
   couponCode?: string | null;
   imageUrl?: string | null;
-  status: "queued" | "sending" | "done" | "canceled";
+  status: "queued" | "sending" | "paused" | "done" | "canceled" | "credit_queued";
   total: number;
   sent: number;
   failed: number;
@@ -108,6 +112,7 @@ const GEN_TYPES: { key: string; label: string }[] = [
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: any }> = {
   queued: { label: "في الانتظار", cls: "bg-slate-500/15 text-slate-300 border-slate-500/30", icon: Clock },
   sending: { label: "جاري الإرسال", cls: "bg-sky-500/15 text-sky-300 border-sky-500/30", icon: Loader2 },
+  paused: { label: "متوقفة مؤقتاً", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30", icon: PauseCircle },
   done: { label: "مكتمل", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", icon: CheckCircle2 },
   canceled: { label: "ملغى", cls: "bg-rose-500/15 text-rose-300 border-rose-500/30", icon: AlertCircle },
 };
@@ -134,6 +139,53 @@ export default function BroadcastsUi() {
   const [inactiveDays, setInactiveDays] = useState("30");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  // ---- Edit modal state (pre-send only: title/template/coupon/image/schedule) ----
+  const [editing, setEditing] = useState<Bc | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTemplate, setEditTemplate] = useState("");
+  const [editCoupon, setEditCoupon] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editScheduledAt, setEditScheduledAt] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  function startEdit(bc: Bc) {
+    setEditing(bc);
+    setEditTitle(bc.title);
+    setEditTemplate(bc.template);
+    setEditCoupon(bc.couponCode || "");
+    setEditImageUrl(bc.imageUrl || "");
+    setEditScheduledAt(bc.scheduledAt ? new Date(bc.scheduledAt).toISOString().slice(0, 16) : "");
+  }
+
+  async function submitEdit() {
+    if (!editing || !editTemplate.trim()) return;
+    setEditSubmitting(true);
+    try {
+      const r = await fetch(`/api/broadcasts/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "edit",
+          title: editTitle.trim(),
+          template: editTemplate.trim(),
+          couponCode: editCoupon.trim() || null,
+          imageUrl: editImageUrl.trim() || null,
+          scheduledAt: editScheduledAt ? new Date(editScheduledAt).toISOString() : null,
+        }),
+      });
+      const j = await r.json();
+      if (r.ok) {
+        success("تم تحديث الحملة");
+        setEditing(null);
+        load();
+      } else {
+        error(j.error || "فشل التعديل");
+      }
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
 
   // ---- AI generator state ----
   const [genType, setGenType] = useState("offer");
@@ -346,7 +398,7 @@ export default function BroadcastsUi() {
   }
 
   async function cancel(bc: Bc) {
-    if (!(await confirm({ title: "إيقاف الحملة", body: "الرسائل المرسلة لن تتراجع.", confirmLabel: "إيقاف", cancelLabel: "إلغاء", danger: true }))) return;
+    if (!(await confirm({ title: "إلغاء الحملة نهائياً", body: "الرسائل المرسلة لن تتراجع، ولن يمكن استئناف الحملة بعد الإلغاء. لإيقاف مؤقت قابل للاستئناف استخدم زر \"إيقاف مؤقت\".", confirmLabel: "إلغاء نهائي", cancelLabel: "تراجع", danger: true }))) return;
     await fetch(`/api/broadcasts/${bc.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -359,6 +411,41 @@ export default function BroadcastsUi() {
     if (!(await confirm({ title: "حذف الحملة", body: "سيتم حذف الحملة وكل سجلاتها.", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
     await fetch(`/api/broadcasts/${bc.id}`, { method: "DELETE" });
     load();
+  }
+
+  async function pause(bc: Bc) {
+    const r = await fetch(`/api/broadcasts/${bc.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "pause" }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { success("تم إيقاف الحملة مؤقتاً"); load(); }
+    else error(j.error || "فشل الإيقاف المؤقت");
+  }
+
+  async function resume(bc: Bc) {
+    const r = await fetch(`/api/broadcasts/${bc.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "resume" }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { success("تم استئناف الحملة"); load(); }
+    else error(j.error || "فشل الاستئناف");
+  }
+
+  async function duplicate(bc: Bc) {
+    const r = await fetch(`/api/broadcasts/${bc.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "duplicate" }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { success("تم إنشاء نسخة من الحملة"); load(); }
+    else if (r.status === 403 && (j.reason === "exhausted" || j.reason === "feature_disabled" || j.reason === "expired")) {
+      setUpgrade({ variant: "broadcast_limit", tier: j.reason === "feature_disabled" ? "k_growth" : "k_pro" });
+    } else error(j.error || "فشل تكرار الحملة");
   }
 
   async function toggleAnalytics(bc: Bc) {
@@ -504,16 +591,54 @@ export default function BroadcastsUi() {
                         نتيجة A/B
                       </button>
                     )}
+                    {bc.status === "queued" && bc.sent === 0 && (
+                      <button
+                        onClick={() => startEdit(bc)}
+                        title="تعديل الحملة"
+                        className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300 text-xs inline-flex items-center gap-1 hover:bg-white/10"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        تعديل
+                      </button>
+                    )}
                     {(bc.status === "queued" || bc.status === "sending") && (
+                      <button
+                        onClick={() => pause(bc)}
+                        title="إيقاف مؤقت — استكمل لاحقاً"
+                        className="px-2.5 py-1 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs inline-flex items-center gap-1"
+                      >
+                        <PauseCircle className="w-3 h-3" />
+                        إيقاف مؤقت
+                      </button>
+                    )}
+                    {bc.status === "paused" && (
+                      <button
+                        onClick={() => resume(bc)}
+                        title="استئناف الحملة"
+                        className="px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs inline-flex items-center gap-1"
+                      >
+                        <PlayCircle className="w-3 h-3" />
+                        استئناف
+                      </button>
+                    )}
+                    {(bc.status === "queued" || bc.status === "sending" || bc.status === "paused") && (
                       <button
                         onClick={() => cancel(bc)}
                         className="px-2.5 py-1 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30 text-xs inline-flex items-center gap-1"
                       >
                         <StopCircle className="w-3 h-3" />
-                        إيقاف
+                        إلغاء نهائي
                       </button>
                     )}
-                    {(bc.status === "done" || bc.status === "canceled") && (
+                    <button
+                      onClick={() => duplicate(bc)}
+                      title="تكرار الحملة بنفس الإعدادات لجمهور محدّث"
+                      className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300 text-xs inline-flex items-center gap-1 hover:bg-white/10"
+                    >
+                      <Copy className="w-3 h-3" />
+                      تكرار
+                    </button>
+                    {(bc.status === "done" || bc.status === "canceled" || bc.status === "paused") && (
                       <button onClick={() => remove(bc)} className="p-1.5 rounded-md text-rose-300 hover:bg-rose-500/10">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -858,6 +983,81 @@ export default function BroadcastsUi() {
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : abMode ? <FlaskConical className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                 {abMode ? "إطلاق اختبار A/B" : scheduleMode === "later" ? "جدولة الحملة" : "إطلاق الحملة"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
+          <div
+            className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Pencil className="w-4 h-4" /> تعديل الحملة</h2>
+              <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="text-xs text-slate-400 mb-4 bg-white/5 rounded-lg p-2.5">
+              الجمهور ({AUDIENCE_LABEL[editing.audience] || editing.audience}, {editing.total} مستلم) لا يمكن تعديله بعد الإنشاء — استخدم "تكرار" لإعادة الاستهداف لجمهور جديد.
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-slate-300 mb-1 block">عنوان الحملة</label>
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-slate-300 mb-1 block">نص الرسالة</label>
+                <textarea
+                  value={editTemplate}
+                  onChange={(e) => setEditTemplate(e.target.value)}
+                  rows={5}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-slate-300 mb-1 flex items-center gap-1"><Ticket className="w-3.5 h-3.5" /> كود كوبون (اختياري)</label>
+                  <input
+                    value={editCoupon}
+                    onChange={(e) => setEditCoupon(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-300 mb-1 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> رابط صورة (اختياري)</label>
+                  <input
+                    value={editImageUrl}
+                    onChange={(e) => setEditImageUrl(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-slate-300 mb-1 flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> موعد الإرسال (فارغ = فوراً)</label>
+                <input
+                  type="datetime-local"
+                  value={editScheduledAt}
+                  onChange={(e) => setEditScheduledAt(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => setEditing(null)} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">إلغاء</button>
+              <button
+                onClick={submitEdit}
+                disabled={editSubmitting || !editTemplate.trim()}
+                className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-sm inline-flex items-center gap-2"
+              >
+                {editSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                حفظ التعديلات
               </button>
             </div>
           </div>
