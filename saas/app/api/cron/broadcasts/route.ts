@@ -49,25 +49,27 @@ export async function POST(req: Request) {
   // mid-send, items can be stuck in `sending` forever. Anything claimed more
   // than STALE_CLAIM_MS ago with no sentAt is safe to release back to pending.
   // Keeps the queue self-healing without a separate janitor.
+  //
+  // This threshold used to be declared but never actually applied (the query
+  // had no time filter at all) — it reset EVERY `sending` item on EVERY tick,
+  // regardless of age. With BATCH_SIZE=20 items * SEND_DELAY_MS=2.5s, one tick
+  // can legitimately take up to ~50s against a 60s cron interval; a slow
+  // upstream wa.send could push that past 60s, so a still-legitimately-
+  // in-flight item from the previous (still-running) tick could have been
+  // reset to `pending` and raced by this tick before its own atomic claim
+  // below ever ran. There's no claimedAt column, so `updatedAt` (bumped by
+  // the claim's own updateMany) is the closest proxy for "how long has this
+  // been sending."
   const STALE_CLAIM_MS = 5 * 60_000;
   await prisma.broadcastItem.updateMany({
     where: {
       broadcastId: bc.id,
       status: "sending",
       sentAt: null,
-      // Best-effort proxy for "claimed long ago": items still in `sending`
-      // that were never marked sent. We have no claimedAt column, so we use
-      // the broadcast's own startedAt as the lower bound — a tick this old
-      // is definitely stale.
+      claimedAt: { lt: new Date(Date.now() - STALE_CLAIM_MS) },
     },
     data: { status: "pending" },
   });
-  // ^ NOTE: SQLite update without a time filter is acceptable here because
-  // `sending` is only set inside this exact handler and only persists for the
-  // duration of one wa.send call. If a row sits in `sending` after STALE_CLAIM_MS
-  // it can ONLY mean a crash. Bound the recovery to this broadcast to avoid
-  // unrelated side effects, then proceed.
-  void STALE_CLAIM_MS; // referenced for future tightening; kept for traceability.
 
   const items = await prisma.broadcastItem.findMany({
     where: { broadcastId: bc.id, status: "pending" },
@@ -117,7 +119,7 @@ export async function POST(req: Request) {
     // skips the item entirely; the winner owns it from here on.
     const claim = await prisma.broadcastItem.updateMany({
       where: { id: it.id, status: "pending" },
-      data: { status: "sending" },
+      data: { status: "sending", claimedAt: new Date() },
     });
     if (claim.count === 0) {
       // Another concurrent tick already grabbed this item.

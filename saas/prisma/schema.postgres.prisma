@@ -655,6 +655,13 @@ model BroadcastItem {
   status        String     @default("pending")  // pending | sent | failed | skipped
   error         String?
   sentAt        DateTime?
+  // Set when the atomic pending→sending claim succeeds (cron/broadcasts
+  // route). Lets the stale-claim recovery sweep tell "claimed a moment ago,
+  // still legitimately in flight" from "claimed minutes ago, the tick that
+  // owned it must have crashed" — there was previously no timestamp at all
+  // to distinguish these, so the sweep unconditionally reset every `sending`
+  // row on every tick.
+  claimedAt     DateTime?
 
   @@index([broadcastId, status])
   @@index([customerId, status])            // Customer 360: timeline shows received broadcasts
