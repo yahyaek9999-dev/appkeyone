@@ -10,6 +10,18 @@
 > selection**. Everything below that names those transports is illustrative of the
 > interface's extensibility only — not a v1 deliverable.
 
+> **⚠️ RUNTIME CORRECTION (2026-07-13): Provider #1 did NOT ship on Go +
+> whatsmeow.** Item 6 of the locked decisions below, and the Go `transport.
+> Provider` interface in §2-3, describe the originally-approved runtime. In
+> practice WhatsApp's pairing servers rejected the whatsmeow/Baileys protocol
+> implementation (commit `613a682`) — the shipping engine is **Node.js +
+> whatsapp-web.js + Puppeteer/Chromium** (`bridge-node/keyone-wa-bridge.js`),
+> confirmed still current as of the `fix(bridge): v1.0.10` line of commits.
+> `deploy/publish-downloads.sh` (the Go publisher) is retired and guarded
+> against accidental use (`e54bb4d`). This doc's Go-specific architecture
+> sections are historical context for the original decision, not a build
+> target — don't implement against them.
+
 This document folds in the customer's locked decisions. Read it first; the big doc is the reference.
 
 ---
