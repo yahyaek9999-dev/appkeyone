@@ -53,7 +53,12 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">كلمة المرور</label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-300">كلمة المرور</label>
+            <Link href="/forgot-password" className="text-xs font-medium text-brand-400 hover:text-brand-300">
+              نسيت كلمة المرور؟
+            </Link>
+          </div>
           <input name="password" type="password" required className="input" />
         </div>
         {err && (

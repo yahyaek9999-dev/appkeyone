@@ -41,6 +41,16 @@ model User {
   // default so existing users are unaffected by the migration.
   knowledgeBrainEnabled Boolean @default(false)
 
+  // ---- Self-service password reset ----
+  // Mirrors TeamMember's invite-token pattern: sha256 hash stored (never the
+  // raw token), single-use (cleared on success), short expiry. Indexed, not
+  // @unique — a unique constraint here would make `prisma db push` flag this
+  // as a possible data-loss change and abort the no-`--accept-data-loss`
+  // production deploy (DEPLOYMENT_RULES.md); a crypto-random token makes a
+  // collision negligible, and the reset route re-checks expiry/hash anyway.
+  resetTokenHash String?
+  resetExpiresAt DateTime?
+
   bot            Bot?
   subscription   Subscription?
   teamMembers    TeamMember[] @relation("TeamOwner")
@@ -91,6 +101,8 @@ model User {
 
   // ---- KEYONE Bridge (additive, new tables only; flag-gated transport) ----
   bridges           Bridge[]
+
+  @@index([resetTokenHash])
 }
 
 /// Team members who can log into a workspace under the OWNER's account with a
