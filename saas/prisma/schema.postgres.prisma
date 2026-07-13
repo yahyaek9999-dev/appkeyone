@@ -662,9 +662,22 @@ model BroadcastItem {
   // to distinguish these, so the sweep unconditionally reset every `sending`
   // row on every tick.
   claimedAt     DateTime?
+  // Number of send attempts so far. A transient failure (network error,
+  // 5xx, 429) re-queues (status back to "pending") up to MAX_RETRIES instead
+  // of failing permanently on the first hiccup; a classified-permanent
+  // failure (4xx other than 429) fails immediately without consuming retries.
+  retryCount    Int        @default(0)
+  // WaMessage.id this item's send was enqueued as. wa.send() returning ok
+  // only means "successfully queued" (see lib/messaging/outgoing-queue.ts) —
+  // actual delivery success/failure is decided later, asynchronously, when
+  // the queue drains. Without this link, status="sent" was set the instant
+  // a send was queued and never corrected if delivery ultimately failed.
+  // The cron's own reconciliation step uses this to catch up.
+  waMessageId   String?
 
   @@index([broadcastId, status])
   @@index([customerId, status])            // Customer 360: timeline shows received broadcasts
+  @@index([status, waMessageId])           // delivery-status reconciliation sweep
 }
 
 /// Logs unanswerable questions. When the bot tells the user "I don't know",

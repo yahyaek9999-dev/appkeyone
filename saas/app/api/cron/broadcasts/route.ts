@@ -15,6 +15,60 @@ export const maxDuration = 60;
 const BATCH_SIZE = 20;
 // Pause between sends (ms) — gentle on WhatsApp's rate limits.
 const SEND_DELAY_MS = 2_500;
+// A transient failure (network error / 5xx / 429) re-queues up to this many
+// times before being marked permanently failed; each retry waits for the
+// next cron tick (~60s), so this is also a natural backoff.
+const MAX_SEND_RETRIES = 3;
+
+// How many "sent"-but-unconfirmed items to reconcile per tick. Bounded so a
+// large backlog can't make a single tick run long; it catches up over
+// several ticks if needed.
+const RECONCILE_BATCH_SIZE = 200;
+
+/**
+ * Corrects BroadcastItem.status for items marked "sent" (meaning "was
+ * successfully queued", not "was delivered" — see waMessageId's schema
+ * comment) whose linked WaMessage ultimately failed to actually deliver.
+ * Without this, a queued-then-later-failed send stayed misreported as
+ * "sent" forever — the broadcast's own sent/failed counters and the
+ * analytics route (app/api/broadcasts/[id]/analytics) both read directly off
+ * these fields, so this is real, customer-visible reporting accuracy.
+ */
+async function reconcileDeliveryStatus(): Promise<number> {
+  const candidates = await prisma.broadcastItem.findMany({
+    where: { status: "sent", waMessageId: { not: null } },
+    orderBy: { sentAt: "asc" },
+    take: RECONCILE_BATCH_SIZE,
+    select: { id: true, broadcastId: true, waMessageId: true },
+  });
+  if (candidates.length === 0) return 0;
+
+  const waIds = candidates.map((c) => c.waMessageId as string);
+  const waMessages = await (prisma as any).waMessage.findMany({
+    where: { id: { in: waIds } },
+    select: { id: true, status: true, errorDetail: true },
+  });
+  const byId = new Map(waMessages.map((m: any) => [m.id, m]));
+
+  let corrected = 0;
+  for (const item of candidates) {
+    const msg = byId.get(item.waMessageId as string) as any;
+    if (!msg || msg.status !== "failed") continue; // still in flight or genuinely delivered — leave alone
+
+    await prisma.$transaction([
+      prisma.broadcastItem.update({
+        where: { id: item.id },
+        data: { status: "failed", error: `delivery failed: ${String(msg.errorDetail || "").slice(0, 200)}` },
+      }),
+      prisma.broadcast.update({
+        where: { id: item.broadcastId },
+        data: { sent: { decrement: 1 }, failed: { increment: 1 } },
+      }),
+    ]);
+    corrected++;
+  }
+  return corrected;
+}
 
 /**
  * Drains pending Broadcast queues. Called by Windows Scheduled Task every
@@ -24,6 +78,11 @@ export async function POST(req: Request) {
   if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  const reconciled = await reconcileDeliveryStatus().catch((e) => {
+    console.error("[broadcasts] delivery-status reconciliation failed:", e?.message || e);
+    return 0;
+  });
 
   // Pick the oldest due queued/sending broadcast across all users.
   // Scheduled campaigns (scheduledAt in the future) are held until due;
@@ -36,7 +95,7 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "asc" },
     include: { user: { select: { id: true } } },
   });
-  if (!bc) return NextResponse.json({ ok: true, idle: true });
+  if (!bc) return NextResponse.json({ ok: true, idle: true, reconciled });
 
   if (bc.status === "queued") {
     await prisma.broadcast.update({
@@ -93,7 +152,7 @@ export async function POST(req: Request) {
       where: { id: bc.id },
       data: { status: "done", finishedAt: new Date() },
     });
-    return NextResponse.json({ ok: true, finished: bc.id });
+    return NextResponse.json({ ok: true, finished: bc.id, reconciled });
   }
 
   let sent = 0, failed = 0;
@@ -107,7 +166,7 @@ export async function POST(req: Request) {
       select: { status: true },
     });
     if (fresh?.status === "canceled") {
-      return NextResponse.json({ ok: true, canceled: true });
+      return NextResponse.json({ ok: true, canceled: true, reconciled });
     }
 
     // ---- Atomic claim: prevent duplicate sends from overlapping cron ticks ----
@@ -244,17 +303,40 @@ export async function POST(req: Request) {
 
     const r = await wa.send(bc.userId, it.phone, body, "broadcast");
     if (r.ok) {
+      // r.ok only means "successfully queued" (see waMessageId comment in
+      // schema.prisma) — link the WaMessage id so the reconciliation sweep
+      // below can catch up if delivery ultimately fails asynchronously.
+      const waMessageId = (r.data as any)?.id ? String((r.data as any).id) : null;
       await prisma.broadcastItem.update({
         where: { id: it.id },
-        data: { status: "sent", sentAt: new Date() },
+        data: { status: "sent", sentAt: new Date(), waMessageId },
       });
       sent++;
     } else {
-      await prisma.broadcastItem.update({
-        where: { id: it.id },
-        data: { status: "failed", error: JSON.stringify(r.data).slice(0, 200) },
-      });
-      failed++;
+      // Transient (network error / 5xx / 429) vs permanent (any other 4xx —
+      // e.g. invalid number) failure. Previously every failure was permanent
+      // on the first attempt, so a rate-limit blip or a momentary network
+      // error to the wa-service permanently failed a recipient who would
+      // otherwise have gone through fine on the next tick.
+      const status = (r as any).status;
+      const isTransient = status === 0 || status >= 500 || status === 429;
+      const nextRetryCount = (it as any).retryCount + 1;
+      if (isTransient && nextRetryCount <= MAX_SEND_RETRIES) {
+        await prisma.broadcastItem.update({
+          where: { id: it.id },
+          data: {
+            status: "pending", // re-enters the normal queue on the next tick
+            retryCount: nextRetryCount,
+            error: `retry ${nextRetryCount}/${MAX_SEND_RETRIES}: ${JSON.stringify(r.data).slice(0, 160)}`,
+          },
+        });
+      } else {
+        await prisma.broadcastItem.update({
+          where: { id: it.id },
+          data: { status: "failed", error: JSON.stringify(r.data).slice(0, 200) },
+        });
+        failed++;
+      }
     }
 
     // small pause so WhatsApp doesn't ban the session
@@ -269,7 +351,7 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true, broadcastId: bc.id, sent, failed, skippedClaim, skippedCompliance, waMode });
+  return NextResponse.json({ ok: true, broadcastId: bc.id, sent, failed, skippedClaim, skippedCompliance, waMode, reconciled });
 }
 
 function sleep(ms: number) {
