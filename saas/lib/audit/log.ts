@@ -52,6 +52,7 @@ export type AuditAction =
   | "admin.payment_rejected"
   | "admin.payment_refunded"
   | "settings.meta_cloud_verified"
+  | "customer.merged"
   | (string & {});
 
 export interface AuditInput {

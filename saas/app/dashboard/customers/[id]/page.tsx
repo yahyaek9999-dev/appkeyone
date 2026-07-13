@@ -6,6 +6,7 @@ import { ArrowRight, Phone, Trash2 } from "lucide-react";
 import ChatView from "./chat-view";
 import { formatCustomerPhone } from "@/lib/phone";
 import DeleteCustomerButton from "./delete-button";
+import MergeCustomerButton from "./merge-button";
 
 export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
   const user = await requireUser();
@@ -46,6 +47,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
         </div>
         <div className="text-sm text-slate-500 text-left flex flex-col items-end gap-1">
           <div>{customer.conversation?.messages.length || 0} رسالة</div>
+          <MergeCustomerButton customerId={customer.id} customerName={customer.name} customerPhone={customer.phone} />
           <DeleteCustomerButton customerId={customer.id} />
         </div>
       </div>
