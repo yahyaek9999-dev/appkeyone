@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# RETIRED 2026-07-13 — builds and publishes the Go/whatsmeow Bridge, which
+# WhatsApp rejects pairing from (see bridge-node/keyone-wa-bridge.js header).
+# Running this WOULD OVERWRITE the current working whatsapp-web.js Bridge in
+# the download store (same path: /var/www/keyone-downloads/keyone-bridge) with
+# the old broken one. Use deploy/publish-wwebjs.sh instead.
+echo "REFUSING TO RUN: this script publishes the retired Go bridge and would" >&2
+echo "overwrite the current working whatsapp-web.js Bridge. Use:" >&2
+echo "  deploy/publish-wwebjs.sh <version>" >&2
+exit 1
+
+# --- original script body, kept for reference only, unreachable above ---
 # Publish KEYONE Bridge downloads to the KEYONE self-hosted download store.
 # NO GitHub. Serves at https://w.keyone1.com/downloads/keyone-bridge/.
 #
