@@ -20,11 +20,19 @@ broadcasts campaigns, and surfaces operational insights. UI is **primarily Arabi
   - `app/` — routes (public landing, `(auth)`, `dashboard/`, `admin/`, `api/`).
   - `components/` — UI (e.g. `hero/`, `ui/`).
   - `lib/` — `auth.ts`, `db.ts`, `i18n/`, `rbac.ts`, `admin.ts`, etc.
-  - `prisma/` — the **selected** schema is `prisma/schema.postgres.prisma`
-    (pinned via the `"prisma"."schema"` key in `package.json`); the checked-in
-    `prisma/schema.prisma` with `provider = "sqlite"` is a stale, unused
-    leftover from an earlier local-dev setup — do not edit it expecting it to
-    affect production.
+  - `prisma/` — **dual-schema, deliberately kept in lock-step, not a leftover**
+    (corrected — an earlier pass through this doc mischaracterized it):
+    `schema.prisma` (sqlite) is the hand-edited source; `bash
+    scripts/generate-pg-schema.sh` derives `schema.postgres.prisma` from it
+    (swaps the provider/datasource only); `node scripts/verify/schema-parity.js`
+    structurally diffs both and fails the build on drift (154 models, verified
+    in lock-step as of 2026-07-12). **Only `schema.postgres.prisma` is ever
+    actually applied** — it's pinned via the `"prisma"."schema"` key in
+    `package.json`, so every `prisma generate`/`db push`/`studio` command, and
+    `deploy/release-aws.sh`, targets it. Workflow for a schema change: edit
+    `schema.prisma`, run `generate-pg-schema.sh`, run `schema-parity.js` to
+    confirm no drift, then deploy (which regenerates the Postgres client from
+    `schema.postgres.prisma`).
   - `scripts/verify/` — regression verifiers (`rbac`, `schema-parity`, …).
 - `whatsapp-service/` — the legacy co-located QR WhatsApp transport (systemd
   `keyone-wa.service`, `:3001`) — still the reference behavior the Bridge

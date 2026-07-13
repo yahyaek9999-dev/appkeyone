@@ -30,10 +30,14 @@ From `saas/`:
 
 1. **Typecheck** — `npx tsc --noEmit`
 2. **Build** — `npm run build` (`prisma generate && next build`). Locally this
-   requires a real `POSTGRES_URL` (the schema is `prisma/schema.postgres.prisma`,
-   selected via the `"prisma"."schema"` key in `package.json` — the checked-in
-   `prisma/schema.prisma` with `provider = "sqlite"` is a stale, unused
-   leftover). Without a reachable Postgres, `/login`, `/signup`, and
+   requires a real `POSTGRES_URL` — the schema **actually applied** is
+   `prisma/schema.postgres.prisma`, selected via the `"prisma"."schema"` key in
+   `package.json`. `prisma/schema.prisma` (sqlite) is the deliberately
+   maintained hand-edit source for schema CHANGES — never applied by itself,
+   but not dead code either. Changing a model: edit `schema.prisma` → `bash
+   scripts/generate-pg-schema.sh` → `node scripts/verify/schema-parity.js`
+   (must print "154 models in lock-step" with zero drift) → deploy. Without a
+   reachable Postgres, `/login`, `/signup`, and
    `/team/accept` fail to statically prerender (they call `siteConfig.upsert()`
    at build time) — this is a **local-environment gap only**; the real deploy
    build always runs on the server where `POSTGRES_URL` is correctly set.
