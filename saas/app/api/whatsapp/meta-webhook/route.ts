@@ -27,6 +27,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { decryptSecret } from "@/lib/crypto-util";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,9 @@ export async function GET(req: Request) {
 // 5. Return 200 always (Meta-recommended) so retries stop, even on errors.
 // ---------------------------------------------------------------------------
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { name: "meta-webhook-ip", ...RATE_LIMITS.whatsapp });
+  if (limited) return limited;
+
   const raw = await req.text();
   const signature = req.headers.get("x-hub-signature-256") || "";
 

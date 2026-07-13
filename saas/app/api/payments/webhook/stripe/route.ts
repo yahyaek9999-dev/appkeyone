@@ -5,10 +5,14 @@
  */
 import { NextResponse } from "next/server";
 import { handleWebhook } from "@/lib/payments";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { name: "stripe-webhook-ip", ...RATE_LIMITS.whatsapp });
+  if (limited) return limited;
+
   const raw = await req.text();
   const out = await handleWebhook("stripe", raw, req.headers);
   return NextResponse.json(

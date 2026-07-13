@@ -6,10 +6,14 @@
  */
 import { NextResponse } from "next/server";
 import { handleWebhook } from "@/lib/payments";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 async function handle(req: Request) {
+  const limited = enforceRateLimit(req, { name: "paymob-webhook-ip", ...RATE_LIMITS.whatsapp });
+  if (limited) return limited;
+
   const raw = await req.text();
   const out = await handleWebhook("paymob", raw, req.headers, new URL(req.url));
   return NextResponse.json(
