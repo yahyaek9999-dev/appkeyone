@@ -15,16 +15,30 @@ broadcasts campaigns, and surfaces operational insights. UI is **primarily Arabi
 
 ## Repository layout
 
-- `saas/` — the Next.js 14 app (App Router, Prisma + SQLite, Tailwind). This is
-  the deployed product.
+- `saas/` — the Next.js 14 app (App Router, Prisma + **PostgreSQL**, Tailwind).
+  This is the deployed product.
   - `app/` — routes (public landing, `(auth)`, `dashboard/`, `admin/`, `api/`).
   - `components/` — UI (e.g. `hero/`, `ui/`).
   - `lib/` — `auth.ts`, `db.ts`, `i18n/`, `rbac.ts`, `admin.ts`, etc.
-  - `prisma/` — schema + `prod.db` (SQLite) on the VPS.
+  - `prisma/` — the **selected** schema is `prisma/schema.postgres.prisma`
+    (pinned via the `"prisma"."schema"` key in `package.json`); the checked-in
+    `prisma/schema.prisma` with `provider = "sqlite"` is a stale, unused
+    leftover from an earlier local-dev setup — do not edit it expecting it to
+    affect production.
   - `scripts/verify/` — regression verifiers (`rbac`, `schema-parity`, …).
-- `whatsapp-service/` — the WhatsApp microservice (runs on `:3001`).
-- `deploy/` — `build.sh`, `release.sh`, `rollback-release.sh`; wrapped by
-  top-level `deploy.sh`.
+- `whatsapp-service/` — the legacy co-located QR WhatsApp transport (systemd
+  `keyone-wa.service`, `:3001`) — still the reference behavior the Bridge
+  transport must match.
+- `bridge-node/` — the current WhatsApp Bridge (`keyone-wa-bridge.js`,
+  whatsapp-web.js + headless Chromium), customer-installed. Replaced an
+  earlier Go/whatsmeow bridge (whatsmeow/Baileys pairing was rejected by
+  WhatsApp for reimplemented multi-device clients).
+- `bridge-gateway/` — standalone WS ingress (systemd
+  `keyone-bridge-gateway.service`, `:3002`) relaying between Bridges and the
+  Cloud.
+- `deploy/` — current: `release-aws.sh` (Cloud+gateway), `publish-wwebjs.sh`
+  (Bridge). `build.sh`/`release.sh`/`rollback-release.sh`/top-level
+  `deploy.sh` target the **retired** Windows VPS — do not use them.
 - `project-knowledge/` — reports, audits, and these state/context/rules docs.
 
 ---
@@ -66,12 +80,26 @@ broadcasts campaigns, and surfaces operational insights. UI is **primarily Arabi
 
 ## Infrastructure
 
-- Production: Windows VPS `Administrator@217.154.163.16`, service **`mse-saas`**
-  via nssm, app at `C:\app\saas`, releases at `C:\app\releases`, app on `:3000`.
-- DB: `DATABASE_URL="file:./prod.db"` (SQLite). Prisma `5.22.0`.
-- Live URL: **https://app.keyone1.com** (apex `keyone1.com` = separate marketing
-  SPA).
-- Health/readiness: `/api/health`, `/api/ready`.
+> **Corrected 2026-07-12** — this section previously described the Windows VPS
+> (`Administrator@217.154.163.16`, nssm, SQLite). That box is retired; the
+> section below is verified against the live server, not carried over from an
+> old doc.
+
+- Production: AWS Linux (eu-north-1), host `ubuntu@13.63.79.43`
+  (`w.keyone1.com`), key `~/Downloads/keyone.pem`.
+- Services (systemd): `keyone.service` (Next.js, `:3000`),
+  `keyone-bridge-gateway.service` (Bridge WS ingress, `:3002`),
+  `keyone-wa.service` (legacy co-located QR transport, `:3001`). Caddy
+  terminates TLS and reverse-proxies `/` → `:3000`, `/bridge` → `:3002`,
+  `/downloads` → the Bridge download store.
+- DB: PostgreSQL, `POSTGRES_URL` in `~/keyone/.env` — **not** SQLite.
+- Live URL: **https://w.keyone1.com**. `keyone1.com` (apex) also resolves
+  (200) and serves separately; `app.keyone1.com` (an older doc's claimed live
+  URL) does not resolve at all — confirmed dead, do not use it anywhere
+  (marketing links, OG tags, emails).
+- Health/readiness: `/api/health` (`{"status":"ok","db":"ok"}`) and `/api/ready`
+  (`{"ready":bool,"verdict":..., "checks":[db, schema, outgoing_queue]}`) —
+  both confirmed live.
 - See [DEPLOYMENT_RULES.md](DEPLOYMENT_RULES.md) before any deploy.
 
 ---

@@ -143,6 +143,20 @@ sockets; bridges auto-reconnect within seconds (capped backoff).
    socket; `ack_timeout` means the bridge didn't ack (WA send failing).
 4. Offline queue: outbound during a WA outage is queued on the bridge and drained
    on reconnect — a backlog is expected to clear itself.
+4b. **Outgoing queue never drained on a schedule** (confirmed + fixed
+    2026-07-12): `GET /api/ready` surfaced `"outgoing_queue":"warn"` live in
+    production — 8 real customer messages had been stuck `queued` for 97
+    minutes. Root cause: `/api/cron/outgoing-messages` (the durable
+    `WaMessage`-queue drain) was never wired into the server's cron —
+    `/home/ubuntu/run-qr-crons.sh` (systemd `keyone-qrcron.timer`, every 60s)
+    only called `qr-queue`/`qr-scheduler`. The only drain that ever ran was
+    the small `event==="connected"` recovery batch — a tenant whose Bridge
+    stayed connected never got their backlog swept at all. Fixed by adding
+    `outgoing-messages` to the cron loop (now version-controlled at
+    `deploy/cron/run-qr-crons.sh` — it previously existed **only** on the
+    server with no source of truth). Verified live:
+    `queued:8,staleQueued:8,oldestQueuedAgeSec:5853` →
+    `queued:0,staleQueued:0` immediately after the fix.
 5. **Silent safety kill-switch** (confirmed root cause, 2026-07-12): `POST
    /api/whatsapp/incoming` returns `{ok:true, reply:null, blocked:"..."}` on
    several gates — a `2xx` with no error, so the customer sees typing-then-nothing
