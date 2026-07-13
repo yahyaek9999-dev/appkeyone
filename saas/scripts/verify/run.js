@@ -368,7 +368,7 @@ async function verifyOrders() {
   await safe("orders:commerce-dedup", async () => {
     try {
       const dupes = await prisma.$queryRawUnsafe(
-        "SELECT userId, externalSource, externalOrderId, COUNT(*) AS n FROM \"Order\" WHERE externalOrderId IS NOT NULL AND externalOrderId != '' GROUP BY userId, externalSource, externalOrderId HAVING COUNT(*) > 1 LIMIT 20",
+        'SELECT "userId", "externalSource", "externalOrderId", COUNT(*) AS n FROM "Order" WHERE "externalOrderId" IS NOT NULL AND "externalOrderId" != \'\' GROUP BY "userId", "externalSource", "externalOrderId" HAVING COUNT(*) > 1 LIMIT 20',
       );
       if (Array.isArray(dupes) && dupes.length)
         fail(
@@ -517,7 +517,7 @@ async function verifyCommerce() {
   await safe("commerce:event-dedup", async () => {
     try {
       const dupes = await prisma.$queryRawUnsafe(
-        "SELECT integrationId, externalEventId, COUNT(*) AS n FROM CommerceWebhookEvent GROUP BY integrationId, externalEventId HAVING COUNT(*) > 1 LIMIT 20",
+        'SELECT "integrationId", "externalEventId", COUNT(*) AS n FROM "CommerceWebhookEvent" GROUP BY "integrationId", "externalEventId" HAVING COUNT(*) > 1 LIMIT 20',
       );
       if (Array.isArray(dupes) && dupes.length)
         fail(
