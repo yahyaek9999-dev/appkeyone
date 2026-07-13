@@ -47,11 +47,26 @@ async function activateMembership(userId: string, planSlug: string): Promise<str
   if (!planSlug) return null;
   const plan = await prisma.plan.findUnique({ where: { slug: planSlug } });
   if (!plan) return null;
-  const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 30 * 24 * 3600 * 1000);
+  // Reset usage counters on activation — matches app/api/admin/upgrade-
+  // requests/route.ts's activation path. Without this, a customer upgrading
+  // mid-cycle via this (the actual customer-facing proof-of-payment) flow
+  // kept stale usage from the old plan, since rollIfNeeded() only resets at
+  // the next calendar-month boundary — they could hit exhaustion sooner than
+  // the new plan should allow.
   await prisma.subscription.upsert({
     where: { userId },
-    update: { planId: plan.id, status: "active", expiresAt },
-    create: { userId, planId: plan.id, status: "active", expiresAt, billingCycle: "monthly" },
+    update: {
+      planId: plan.id,
+      status: "active",
+      expiresAt,
+      msgsUsed: 0,
+      aiRequestsUsed: 0,
+      broadcastsUsed: 0,
+      usageResetAt: now,
+    },
+    create: { userId, planId: plan.id, status: "active", expiresAt, billingCycle: "monthly", usageResetAt: now },
   });
   return plan.slug;
 }
