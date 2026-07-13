@@ -1,43 +1,87 @@
-# Production cron — `keyone-qrcron.timer`
+# Production cron — `keyone-qrcron.timer` + `keyone-hourlycron.timer`
 
-Brought into version control 2026-07-12 after discovering it existed ONLY on
-the server (`/home/ubuntu/run-qr-crons.sh` + two systemd units), with no
-source-of-truth copy anywhere — a server rebuild would have silently lost it.
+Brought into version control 2026-07-12/13 after discovering these existed
+ONLY on the server, with no source-of-truth copy anywhere — a server rebuild
+would have silently lost all scheduled background work.
 
-## What it does
+## Background: the migration gap
 
-Every 60s (`OnUnitActiveSec=60`), `run-qr-crons.sh` POSTs
-`x-internal-secret`-authenticated requests to three internal cron endpoints
-on the local Next.js app (`127.0.0.1:3000`):
+`app/api/cron/` has **22** endpoints. Most of their own header comments say
+things like *"Triggered by a scheduled task on the VPS"* — the retired
+Windows VPS's Task Scheduler. When production moved to this AWS Linux box,
+only `qr-queue`/`qr-scheduler` got a replacement (`keyone-qrcron.timer`).
+**19 endpoints were never wired to anything on the new box** — no crontab, no
+systemd timer, nothing. Confirmed via `systemctl list-timers --all` (only
+`keyone-qrcron.timer` existed) and `crontab -l` (empty, both users).
 
-- `POST /api/cron/qr-queue`
-- `POST /api/cron/qr-scheduler`
-- `POST /api/cron/outgoing-messages` — **added 2026-07-12**. Before this, the
-  durable outgoing WhatsApp message queue (`lib/messaging/outgoing-queue.ts`,
-  `WaMessage` table) was drained **only** by the small
-  `event === "connected"` recovery batch inside
-  `app/api/whatsapp/incoming/route.ts` (`batchSize: 5, perUserLimit: 2`) —
-  there was no regular sweep. Found via a real, live signal:
-  `GET /api/ready` showed `"outgoing_queue":{"status":"warn"}`, and 8 real
-  customer messages had been stuck `queued` for 97 minutes. Confirmed fixed
-  live: `queued: 8 → 0` immediately after wiring this in.
+Real, live impact found from this gap:
+- `outgoing-messages` — 8 real customer WhatsApp messages stuck `queued` 97
+  minutes (fixed 2026-07-12, see below).
+- `broadcasts` — a real campaign (`title: "حملة: عملاء باردون"`, 8 recipients)
+  had been stuck `status:"queued"` since **2026-07-04** (9 days). Its
+  `template` field was just `"."` — too ambiguous to let auto-send to real
+  phone numbers as a side effect of this fix, so it was **canceled** via the
+  real `PATCH /api/broadcasts/[id] {action:"cancel"}` API before wiring the
+  cron (the customer can recreate a real campaign; irreversible sends aren't
+  worth the risk of firing stale/test-looking content).
+- `payments-reconcile` — the safety-net sweep for the wallet/Stripe/Paymob
+  webhook flow (re-credits any paid-but-webhook-never-arrived transaction)
+  had never run once in production.
+- The rest (`trial-expiry`, `abandoned-cart`, `daily-report`, `automations`,
+  `meta*`, `catalog-sync`, `product-affinity`, `provider-maintenance`,
+  `incident-scan`, `llm-prewarm`, `brain-learning`, `credits-monthly`,
+  `brain-credits-monthly`, `meta-cost`) are lower urgency — several are
+  flag-gated off in the current `.env` (`WALLET_BILLING_ENABLED`,
+  `BRAIN_MONTHLY_CREDITS_ENABLED`, `BROADCAST_MONTHLY_CREDITS_ENABLED` are all
+  unset, so those specific ones no-op regardless) — but they were clearly
+  intended to run, so they're now wired hourly rather than left orphaned.
+
+## What runs, and how often
+
+**`keyone-qrcron.timer` — every 60s** (time-critical, designed for this
+cadence per their own header comments):
+```
+qr-queue  qr-scheduler  outgoing-messages  broadcasts  payments-reconcile
+```
+
+**`keyone-hourlycron.timer` — every 3600s** (everything else that was
+orphaned; hourly is a safe conservative default — none of these need
+sub-hourly precision, several no-op harmlessly when their feature flag is
+off):
+```
+trial-expiry  abandoned-cart  daily-report  automations  follow-ups  meta
+meta-webhook-processor  meta-quality-monitor  meta-template-sync
+catalog-sync  product-affinity  provider-maintenance  incident-scan
+llm-prewarm  brain-learning  credits-monthly  brain-credits-monthly  meta-cost
+```
+
+Both scripts POST `x-internal-secret`-authenticated requests to
+`127.0.0.1:3000/api/cron/<name>` — same auth guard (`checkInternalSecret`,
+fail-closed) every route already uses.
 
 ## Redeploy after a server rebuild
 
 ```bash
-scp -i ~/Downloads/keyone.pem deploy/cron/run-qr-crons.sh ubuntu@13.63.79.43:/home/ubuntu/run-qr-crons.sh
-ssh -i ~/Downloads/keyone.pem ubuntu@13.63.79.43 'chmod +x /home/ubuntu/run-qr-crons.sh'
-# recreate the two systemd units from keyone-qrcron.unit-files.txt at
-# /etc/systemd/system/keyone-qrcron.{service,timer}, then:
-ssh -i ~/Downloads/keyone.pem ubuntu@13.63.79.43 'sudo systemctl daemon-reload && sudo systemctl enable --now keyone-qrcron.timer'
+scp -i ~/Downloads/keyone.pem deploy/cron/run-qr-crons.sh deploy/cron/run-hourly-crons.sh ubuntu@13.63.79.43:/home/ubuntu/
+ssh -i ~/Downloads/keyone.pem ubuntu@13.63.79.43 'chmod +x /home/ubuntu/run-qr-crons.sh /home/ubuntu/run-hourly-crons.sh'
+# recreate all four systemd units from systemd-unit-files.txt at
+# /etc/systemd/system/keyone-{qrcron,hourlycron}.{service,timer}, then:
+ssh -i ~/Downloads/keyone.pem ubuntu@13.63.79.43 \
+  'sudo systemctl daemon-reload && sudo systemctl enable --now keyone-qrcron.timer keyone-hourlycron.timer'
 ```
 
 ## Verify it's actually running
 
 ```bash
-ssh ubuntu@13.63.79.43 'systemctl list-timers keyone-qrcron.timer'   # next/last fire time
+ssh ubuntu@13.63.79.43 'systemctl list-timers keyone-qrcron.timer keyone-hourlycron.timer'
 ssh ubuntu@13.63.79.43 'curl -s http://127.0.0.1:3000/api/cron/outgoing-messages'   # GET = health only, no drain
 ```
 `GET /api/ready` on the public app also surfaces `outgoing_queue` health —
-`"status":"warn"` with a growing `staleQueued`/`oldestQueuedAgeSec` means this
-timer has stopped firing (or the app can't reach it) and needs attention.
+`"status":"warn"` with a growing `staleQueued`/`oldestQueuedAgeSec` means the
+60s timer has stopped firing (or the app can't reach it) and needs attention.
+
+## If you add a new `app/api/cron/*` endpoint
+
+It will **not** run automatically. Add it to one of the two scripts above
+(pick 60s vs hourly based on its own header comment's suggested cadence), redeploy
+per the "Redeploy after a server rebuild" section, and note it in this file.

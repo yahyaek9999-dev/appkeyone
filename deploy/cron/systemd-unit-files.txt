@@ -1,0 +1,34 @@
+# /etc/systemd/system/keyone-qrcron.service
+[Unit]
+Description=KEYONE QR queue scheduler tick
+After=keyone.service
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/run-qr-crons.sh
+
+# /etc/systemd/system/keyone-qrcron.timer
+[Unit]
+Description=Run KEYONE QR queue scheduler every minute
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=60
+AccuracySec=10
+[Install]
+WantedBy=timers.target
+# /etc/systemd/system/keyone-hourlycron.service
+[Unit]
+Description=KEYONE hourly background jobs
+After=keyone.service
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/run-hourly-crons.sh
+
+# /etc/systemd/system/keyone-hourlycron.timer
+[Unit]
+Description=Run KEYONE hourly background jobs
+[Timer]
+OnBootSec=120
+OnUnitActiveSec=3600
+AccuracySec=60
+[Install]
+WantedBy=timers.target
