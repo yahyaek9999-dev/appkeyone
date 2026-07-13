@@ -547,6 +547,30 @@ const wss = new WebSocketServer({
 });
 
 function register(ws) {
+  // Evict any prior live socket for this same bridgeId BEFORE adding the new
+  // one. Without this, a quick reconnect (network blip, restart) leaves the
+  // stale socket sitting in socketsByUser — bridgesById.set() below overwrites
+  // its own entry, but the Set doesn't dedupe by bridgeId, so a half-open
+  // stale socket (readyState can still read OPEN before the ping/sweep at
+  // ~30-90s catches it) can be picked by pickUserSocket()'s fallback, risking
+  // an outbound_ack timeout on a live send. Mirrors the runtime-side
+  // single-instance guard (v1.0.3/v1.0.10) that was never mirrored here.
+  const prior = bridgesById.get(ws.bridgeId);
+  if (prior && prior !== ws) {
+    // deregister (not reap()) — a fresh connection is registering right now,
+    // so this is a handover, not a real disconnect; reap() would find
+    // bridgesById empty for this bridgeId at this instant and fire a false
+    // markOffline/notifyCloud "disconnected" event. Mark it _reaped so the
+    // stale socket's own eventual 'close' handler (which calls reap()) is a
+    // no-op instead of double-deregistering.
+    prior._reaped = true;
+    deregister(prior);
+    try {
+      prior.terminate();
+    } catch {
+      /* already closing */
+    }
+  }
   bridgesById.set(ws.bridgeId, ws);
   let set = socketsByUser.get(ws.userId);
   if (!set) {
