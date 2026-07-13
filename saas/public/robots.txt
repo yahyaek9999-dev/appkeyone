@@ -6,4 +6,4 @@ Disallow: /dashboard
 Disallow: /dashboard/*
 Disallow: /api/*
 
-Sitemap: https://k1wb.app.keyone1.com/sitemap.xml
+Sitemap: https://w.keyone1.com/sitemap.xml

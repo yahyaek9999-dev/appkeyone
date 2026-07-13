@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://k1wb.app.keyone1.com";
+const BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://w.keyone1.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
