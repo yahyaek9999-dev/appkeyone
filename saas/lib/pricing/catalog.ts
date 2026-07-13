@@ -9,8 +9,13 @@
  *     matrix, badges. It is typed + versioned and never needs a migration.
  *
  * The 6 public tiers use NEW slugs (k_*) so existing subscribers on legacy
- * plan rows are never touched. `prisma/seed-plans.ts` upserts DB rows whose
- * numbers are DERIVED from this catalog, keeping the two in sync by slug.
+ * plan rows are never touched. `lib/pricing/seed-catalog-plans.ts` (run via
+ * `prisma/seed-plans.ts` or the admin Plans page) BOOTSTRAPS DB rows from
+ * this catalog once — it only creates rows that don't exist yet and never
+ * updates an existing one. The numbers here are the *initial* defaults, not
+ * a live sync: once a Plan row exists, an admin editing its price via
+ * /api/admin/plans is the actual source of truth for that plan going
+ * forward, and this file's numbers for that tier are no longer authoritative.
  *
  * Limit convention (matches lib/membership/limits.ts): a numeric limit of
  * `0` means UNLIMITED. Feature *availability* is gated by the capability set,

@@ -113,11 +113,32 @@ export default function PlansUi({ initial }: { initial: PlanRow[] }) {
     router.refresh();
   }
 
+  async function seedCatalog() {
+    setMsg(null);
+    const r = await fetch("/api/admin/plans/seed-catalog", { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    setMsg(
+      r.ok
+        ? j.created.length
+          ? `تم إنشاء ${j.created.length} باقة جديدة من الكتالوج: ${j.created.join(", ")}`
+          : "كل باقات الكتالوج موجودة بالفعل — لم يتغيّر شيء"
+        : `فشل: ${j.error || r.status}`,
+    );
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button onClick={seedDefaults} className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-sm font-bold">
           ⚙️ زرع القيم الافتراضية لكل الباقات
+        </button>
+        <button
+          onClick={seedCatalog}
+          className="px-4 py-2 rounded-lg bg-brand-500/20 text-brand-300 hover:bg-brand-500/30 text-sm font-bold"
+          title="ينشئ فقط الباقات المفقودة من الكتالوج — لا يغيّر أي باقة موجودة أو تم تعديل سعرها"
+        >
+          🧩 زرع باقات الكتالوج المفقودة
         </button>
         {msg && <span className="text-sm text-slate-300">{msg}</span>}
       </div>
