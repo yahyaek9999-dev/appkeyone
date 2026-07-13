@@ -19,7 +19,10 @@ export default async function CustomersPage({
   const { user } = await requirePagePermission("customers");
   const q = (searchParams?.q || "").trim();
   const page = Math.max(1, parseInt(searchParams?.page || "1", 10) || 1);
-  const where: any = { userId: user.id };
+  // archivedAt is documented as "hidden from active views" (schema.prisma)
+  // but no list query actually excluded it — archiving a customer silently
+  // did nothing. Excluded here to make the feature actually work.
+  const where: any = { userId: user.id, archivedAt: null };
   if (q) where.OR = [{ name: { contains: q } }, { phone: { contains: q } }];
 
   const [customers, total, active7d] = await Promise.all([

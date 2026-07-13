@@ -9,7 +9,10 @@ export async function GET() {
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
   const customers = await prisma.customer.findMany({
-    where: { userId: uid } as any,
+    // archivedAt is documented as "hidden from active views" (schema.prisma)
+    // but this query never excluded it — archiving a customer never actually
+    // hid their conversation from the inbox.
+    where: { userId: uid, archivedAt: null } as any,
     orderBy: { lastSeenAt: "desc" },
     take: 200,
     include: {
