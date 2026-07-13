@@ -387,6 +387,8 @@ model Subscription {
   // Optional per-tenant contracted customer ceiling. Null = use the plan limit.
   // Used only as a non-shrinking floor so existing tenants are never broken.
   contractedCustomers Int?
+
+  @@index([planId])
 }
 
 model ApiCall {
@@ -743,6 +745,7 @@ model Order {
   @@index([userId, createdAt])
   @@index([customerId])
   @@index([commerceIntegrationId])
+  @@index([conversationId])
   @@index([userId, status, total])            // analytics: revenue aggregation
   @@unique([userId, externalSource, externalOrderId])
 }
@@ -2970,6 +2973,7 @@ model Shipment {
 
   @@index([userId, createdAt])
   @@index([orderId])
+  @@index([providerId])
 }
 
 // ===== Prompts + AI Control (recovered from pedantic-feynman; additive) =====
