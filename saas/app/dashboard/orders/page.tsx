@@ -54,7 +54,16 @@ export default async function OrdersPage({
       orderBy: { createdAt: "desc" },
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
-      include: { items: true },
+      select: {
+        id: true,
+        customerName: true,
+        customerPhone: true,
+        total: true,
+        currency: true,
+        aiConfidence: true,
+        status: true,
+        items: { select: { name: true, quantity: true }, take: 1 },
+      },
     }),
     (prisma as any).order.groupBy({
       by: ["status"],

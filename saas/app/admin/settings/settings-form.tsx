@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Save, MessageCircle, Mail, Building2 } from "lucide-react";
+import { Save, MessageCircle, Mail, Building2, AlertTriangle } from "lucide-react";
 
 type Initial = {
   brandName: string;
@@ -9,6 +9,8 @@ type Initial = {
   supportWhatsapp: string;
   supportEmail: string;
   paymentNote: string;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
 };
 
 export default function SettingsForm({ initial }: { initial: Initial }) {
@@ -76,6 +78,32 @@ export default function SettingsForm({ initial }: { initial: Initial }) {
           className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none resize-y"
         />
         <p className="text-xs text-slate-500">تظهر للعملاء عند الاستفسار عن الدفع.</p>
+      </div>
+
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center gap-2 text-slate-300">
+          <AlertTriangle className="w-4 h-4" /> <span className="font-medium">وضع الصيانة</span>
+        </div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.maintenanceMode}
+            onChange={(e) => setForm({ ...form, maintenanceMode: e.target.checked })}
+            className="w-4 h-4"
+          />
+          <span className="text-sm text-slate-300">إظهار بانر صيانة لكل العملاء</span>
+        </label>
+        <div>
+          <label className="text-sm text-slate-400 mb-1 block">رسالة الصيانة</label>
+          <textarea
+            value={form.maintenanceMessage}
+            onChange={(e) => setForm({ ...form, maintenanceMessage: e.target.value })}
+            rows={2}
+            placeholder="مثال: هنعمل صيانة مجدولة من 2 لـ 4 صباحاً — الخدمة ممكن تتأثر مؤقتاً."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none resize-y"
+          />
+          <p className="text-xs text-slate-500 mt-1">تظهر كبانر أعلى كل الصفحات لكل العملاء لما وضع الصيانة يكون مفعّل.</p>
+        </div>
       </div>
 
       {msg && (

@@ -17,6 +17,8 @@ export default async function AdminSettingsPage() {
         supportWhatsapp: cfg.supportWhatsapp,
         supportEmail: cfg.supportEmail,
         paymentNote: cfg.paymentNote,
+        maintenanceMode: (cfg as any).maintenanceMode || false,
+        maintenanceMessage: (cfg as any).maintenanceMessage || "",
       }} />
     </div>
   );

@@ -1,18 +1,34 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const uid = await getUserIdForPermission("inbox");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+
+  // Without ?q, the default "recent inbox" view: last 200 active customers,
+  // unchanged behavior. With ?q, a real server-side search across the FULL
+  // customer set (not just those 200) and the FULL message history (not just
+  // each conversation's single most recent message) — previously the client
+  // only filtered the already-loaded 200-row page by its last message.
+  const q = req.nextUrl.searchParams.get("q")?.trim() || "";
+
+  const where: any = { userId: uid, archivedAt: null };
+  if (q) {
+    where.OR = [
+      { name: { contains: q } },
+      { phone: { contains: q } },
+      { conversation: { messages: { some: { content: { contains: q } } } } },
+    ];
+  }
 
   const customers = await prisma.customer.findMany({
     // archivedAt is documented as "hidden from active views" (schema.prisma)
     // but this query never excluded it — archiving a customer never actually
     // hid their conversation from the inbox.
-    where: { userId: uid, archivedAt: null } as any,
+    where,
     orderBy: { lastSeenAt: "desc" },
     take: 200,
     include: {

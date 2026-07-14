@@ -147,6 +147,7 @@ export const PUBLIC_OR_INTERNAL_ROUTES: { route: string; reason: string }[] = [
   { route: "api/payments/webhook/stripe/route.ts", reason: "Stripe-Signature HMAC-SHA256 signed payment webhook (no session)" },
   { route: "api/whatsapp/incoming/route.ts", reason: "internal-secret guarded inbound processor" },
   { route: "api/whatsapp/status/route.ts", reason: "authenticated read of own bot status" },
+  { route: "api/cron/ai-catalog-guard/route.ts", reason: "x-internal-secret guarded cron" },
   { route: "api/cron/broadcasts/route.ts", reason: "x-internal-secret guarded cron" },
   { route: "api/cron/daily-report/route.ts", reason: "x-internal-secret guarded cron" },
   { route: "api/cron/follow-ups/route.ts", reason: "x-internal-secret guarded cron" },

@@ -77,6 +77,14 @@ export function useRealtimeSnapshot({
   useEffect(() => {
     let closed = false;
     let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let currentEs: EventSource | null = null;
+    // Exponential backoff for SSE reconnect attempts, capped at 60s, so a
+    // dropped stream doesn't strand the page on 20-30s polling for the rest
+    // of the session — it keeps retrying SSE in the background and switches
+    // back to "live" the moment the stream comes back.
+    let reconnectDelayMs = 5000;
+    const MAX_RECONNECT_DELAY_MS = 60000;
     const url = activeCustomerId
       ? `/api/realtime/stream?customerId=${encodeURIComponent(activeCustomerId)}`
       : "/api/realtime/stream";
@@ -90,9 +98,9 @@ export function useRealtimeSnapshot({
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const next = (await res.json()) as RealtimeSnapshot;
         apply(next);
-        setState("fallback");
+        setState((prev) => (prev === "live" ? "live" : "fallback"));
       } catch {
-        setState("offline");
+        setState((prev) => (prev === "live" ? "live" : "offline"));
       }
     }
 
@@ -111,42 +119,67 @@ export function useRealtimeSnapshot({
       fallbackTimer = setInterval(fallbackTick, fallbackMs);
     }
 
-    setState("connecting");
+    function stopFallback() {
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = null;
+      }
+    }
+
+    function scheduleReconnect() {
+      if (closed || reconnectTimer) return;
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        if (!closed) connect();
+      }, reconnectDelayMs);
+      reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
+    }
 
     // EventSource is intentionally lightweight: one stream per page, 5s server tick.
-    // If a proxy/browser blocks SSE, we fall back to slow polling automatically.
-    try {
-      const es = new EventSource(url);
-      es.onopen = () => {
-        if (!closed) setState("live");
-      };
-      es.onmessage = (ev) => {
-        if (closed) return;
-        try {
-          const next = JSON.parse(ev.data) as RealtimeSnapshot;
-          apply(next);
+    // If a proxy/browser blocks SSE, or a drop happens mid-session, we fall back to
+    // slow polling immediately while retrying the stream itself in the background.
+    function connect() {
+      try {
+        const es = new EventSource(url);
+        currentEs = es;
+        es.onopen = () => {
+          if (closed) return;
+          reconnectDelayMs = 5000; // reset backoff on a successful connection
+          stopFallback();
           setState("live");
-        } catch {
-          // Ignore malformed frames; the next server tick will repair state.
-        }
-      };
-      es.onerror = () => {
-        if (closed) return;
-        es.close();
+        };
+        es.onmessage = (ev) => {
+          if (closed) return;
+          try {
+            const next = JSON.parse(ev.data) as RealtimeSnapshot;
+            apply(next);
+            setState("live");
+          } catch {
+            // Ignore malformed frames; the next server tick will repair state.
+          }
+        };
+        es.onerror = () => {
+          if (closed) return;
+          es.close();
+          if (currentEs === es) currentEs = null;
+          startFallback();
+          scheduleReconnect();
+        };
+      } catch {
         startFallback();
-      };
-      return () => {
-        closed = true;
-        es.close();
-        if (fallbackTimer) clearInterval(fallbackTimer);
-      };
-    } catch {
-      startFallback();
-      return () => {
-        closed = true;
-        if (fallbackTimer) clearInterval(fallbackTimer);
-      };
+        scheduleReconnect();
+      }
     }
+
+    setState("connecting");
+    connect();
+
+    return () => {
+      closed = true;
+      currentEs?.close();
+      stopFallback();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
   }, [activeCustomerId, fallbackMs]);
 
   return { state, snapshot };

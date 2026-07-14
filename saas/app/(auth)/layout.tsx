@@ -1,5 +1,6 @@
 import PublicNav from "@/components/ui/public-nav";
 import { getSiteConfig } from "@/lib/admin";
+import { MaintenanceBanner } from "@/components/ui/maintenance-banner";
 
 export default async function AuthLayout({
   children,
@@ -13,6 +14,11 @@ export default async function AuthLayout({
       <div className="pointer-events-none fixed inset-0" aria-hidden="true">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-10%,rgba(12,122,108,0.06),transparent_58%)]" />
       </div>
+      {(cfg as any).maintenanceMode ? (
+        <div className="fixed inset-x-0 top-0 z-20">
+          <MaintenanceBanner message={(cfg as any).maintenanceMessage} />
+        </div>
+      ) : null}
       <PublicNav
         brandName={cfg.brandName || "KEYONE"}
         supportWhatsapp={cfg.supportWhatsapp}
