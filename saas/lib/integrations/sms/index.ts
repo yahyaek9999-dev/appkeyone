@@ -98,13 +98,16 @@ export async function runSmsSend(p: ResolvedProvider, msg: SmsMessage): Promise<
     }
 
     if (p.provider === "infobip") {
-      // endpoint=baseUrl, secret=apiKey
+      // endpoint=baseUrl (merchant-configurable), secret=apiKey — safeFetch
+      // re-validates the resolved address at send time, not just at the
+      // config-save-time check, closing a DNS-rebinding TOCTOU window (the
+      // same reason the "custom" provider two branches below already uses it).
       const base = p.endpoint.replace(/\/+$/, "");
-      const res = await fetch(`${base}/sms/2/text/advanced`, {
+      const res = await safeFetch(`${base}/sms/2/text/advanced`, {
         method: "POST", signal,
         headers: { Authorization: `App ${p.secret}`, "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ messages: [{ from, destinations: [{ to: msg.to }], text: msg.body }] }),
-      });
+      } as any);
       if (!res.ok) throw new IntegrationError("sms", "infobip", res.status, await readErr(res), isRetryableStatus(res.status));
       const j = await res.json().catch(() => ({}));
       const m = j?.messages?.[0];
@@ -148,7 +151,7 @@ async function pingSms(p: ResolvedProvider): Promise<void> {
     } else if (p.provider === "plivo") {
       res = await fetch(`https://api.plivo.com/v1/Account/${encodeURIComponent(p.publicId)}/`, { headers: { Authorization: basic(p.publicId, p.secret) }, signal });
     } else if (p.provider === "infobip") {
-      res = await fetch(`${p.endpoint.replace(/\/+$/, "")}/account/1/balance`, { headers: { Authorization: `App ${p.secret}`, Accept: "application/json" }, signal });
+      res = await safeFetch(`${p.endpoint.replace(/\/+$/, "")}/account/1/balance`, { headers: { Authorization: `App ${p.secret}`, Accept: "application/json" }, signal } as any);
     } else if (p.provider === "custom") {
       // Cannot validate generic gateway creds without sending; verify the
       // endpoint is a public, resolvable https URL (SSRF guard).

@@ -12,6 +12,7 @@
  */
 import { prisma } from "@/lib/db";
 import { qrQueueFlags, HOLDING_STATUSES } from "./flags";
+import { startOfLocalDay } from "@/lib/tz";
 
 interface Interval {
   start: number;
@@ -111,8 +112,10 @@ export interface DaySlot {
  */
 export async function dayAvailability(dayLocal: Date, slotMin = 60): Promise<{ lanes: number; slots: DaySlot[] }> {
   const lanes = qrQueueFlags.lanes;
-  const dayStart = new Date(dayLocal);
-  dayStart.setHours(0, 0, 0, 0);
+  // Real Cairo-local day boundary, not the server's own local time
+  // (setHours runs in UTC on the production box) — otherwise the calendar's
+  // "day" is offset by the server/Cairo gap for slots near midnight.
+  const dayStart = startOfLocalDay("Africa/Cairo", dayLocal);
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60_000);
 
   const rows = await prisma.qrReservation.findMany({

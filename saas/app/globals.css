@@ -104,8 +104,12 @@
         @apply text-2xl font-semibold tracking-[-0.02em] text-white tabular-nums sm:text-[28px];
     }
 
+    /* slate-400, not slate-500 — slate-500 (#64748b) on this dark canvas is
+       ~4.16:1 contrast, below WCAG AA's 4.5:1 for normal text. slate-400
+       (~7.7:1) passes. Used by .page-desc/.table-header too (below), and
+       between them these three classes render on ~85 pages app-wide. */
     .kpi-label {
-        @apply text-xs font-medium text-slate-500;
+        @apply text-xs font-medium text-slate-400;
     }
 
     .page-title {
@@ -113,7 +117,7 @@
     }
 
     .page-desc {
-        @apply text-sm text-slate-500;
+        @apply text-sm text-slate-400;
     }
 
     .section-title {
@@ -131,7 +135,7 @@
     }
 
     .table-header {
-        @apply border-b border-white/[0.07] px-4 py-2.5 text-start text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500;
+        @apply border-b border-white/[0.07] px-4 py-2.5 text-start text-[11px] font-medium uppercase tracking-[0.06em] text-slate-400;
     }
 
     .table-cell {

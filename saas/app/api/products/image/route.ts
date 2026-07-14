@@ -36,6 +36,6 @@ export async function POST(req: Request) {
   if (!sniffed || !ALLOWED_IMAGE.has(sniffed)) {
     return NextResponse.json({ error: "bad_image_type", message: "الملف يجب أن يكون صورة (JPG/PNG/WebP/HEIC)." }, { status: 400 });
   }
-  const path = await saveProductImage(sniffed, bytes);
+  const path = await saveProductImage(sniffed, bytes, uid);
   return NextResponse.json({ ok: true, path });
 }

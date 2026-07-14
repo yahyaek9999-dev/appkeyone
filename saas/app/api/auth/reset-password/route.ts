@@ -55,6 +55,9 @@ export async function POST(req: Request) {
       passwordHash: await hashPassword(parsed.data.password),
       resetTokenHash: null,
       resetExpiresAt: null,
+      // Revokes every existing session token (stolen cookie, old device) —
+      // see lib/auth.ts's `pwc` claim check.
+      passwordChangedAt: new Date(),
     },
   });
   if (result.count === 0) {

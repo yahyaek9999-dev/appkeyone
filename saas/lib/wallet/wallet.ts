@@ -48,12 +48,23 @@ export async function getOrCreateWallet(userId: string): Promise<WalletRow> {
   const existing = await prisma.wallet.findUnique({ where: { userId } });
   if (existing) return existing as unknown as WalletRow;
 
-  const created = await prisma.wallet.create({
-    data: {
-      userId,
-      lowBalanceThresholdUsd: roundUsd(walletFlags.lowBalanceThresholdUsd),
-    },
-  });
+  let created;
+  try {
+    created = await prisma.wallet.create({
+      data: {
+        userId,
+        lowBalanceThresholdUsd: roundUsd(walletFlags.lowBalanceThresholdUsd),
+      },
+    });
+  } catch (e: any) {
+    // Lost a concurrent first-create race (two requests both saw no existing
+    // row) — the winner already created it, just return that row instead of
+    // surfacing a transient 500 for the loser.
+    if (e?.code === "P2002") {
+      return (await prisma.wallet.findUnique({ where: { userId } })) as unknown as WalletRow;
+    }
+    throw e;
+  }
   // Optional welcome credit (default 0 → no-op).
   const welcome = roundUsd(walletFlags.welcomeCreditUsd);
   if (welcome > 0) {

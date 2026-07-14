@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: { file: string } 
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const img = await readProductImage(params.file);
+  const img = await readProductImage(params.file, uid);
   if (!img) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   return new NextResponse(new Uint8Array(img.bytes), {

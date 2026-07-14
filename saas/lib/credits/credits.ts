@@ -24,7 +24,17 @@ export interface CreditWalletRow {
 export async function getOrCreateCreditWallet(userId: string): Promise<CreditWalletRow> {
   const existing = await prisma.broadcastCreditWallet.findUnique({ where: { userId } });
   if (existing) return existing as CreditWalletRow;
-  const created = await prisma.broadcastCreditWallet.create({ data: { userId } });
+  let created;
+  try {
+    created = await prisma.broadcastCreditWallet.create({ data: { userId } });
+  } catch (e: any) {
+    // Lost a concurrent first-create race — return the winner's row instead
+    // of surfacing a transient 500.
+    if (e?.code === "P2002") {
+      return (await prisma.broadcastCreditWallet.findUnique({ where: { userId } })) as CreditWalletRow;
+    }
+    throw e;
+  }
   const welcome = Math.max(0, creditFlags.welcomeCredits);
   if (welcome > 0) {
     await credit({ userId, kind: "adjustment", amount: welcome, source: "system", reason: "welcome_credits", idempotencyKey: `welcome:${created.id}` }).catch(() => {});

@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "هذا الحساب موقوف. تواصل مع الدعم." }, { status: 403 });
     }
     clearEmailFail(email);
-    await createSession(user.id);
+    await createSession(user.id, (user as any).passwordChangedAt);
     const role = (user as any).role || "user";
     return NextResponse.json({
       ok: true,

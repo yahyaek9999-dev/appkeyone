@@ -36,9 +36,19 @@ export async function verifyPassword(pw: string, hash: string) {
   return bcrypt.compare(pw, hash);
 }
 
-/** Owner session — token payload `{ uid }`. Unchanged from the original. */
-export async function createSession(userId: string) {
-  const token = await new SignJWT({ uid: userId })
+/**
+ * Owner session — token payload `{ uid, pwc }`. `pwc` (passwordChangedAt, as
+ * epoch ms) is compared against the User row on every request so a password
+ * reset invalidates any other copy of the token (stolen cookie, old device)
+ * immediately instead of leaving it valid for up to 30 more days. Looked up
+ * lazily when the caller doesn't already have the value in hand.
+ */
+export async function createSession(userId: string, passwordChangedAt?: Date) {
+  const pwc =
+    passwordChangedAt ??
+    (await prisma.user.findUnique({ where: { id: userId }, select: { passwordChangedAt: true } }))
+      ?.passwordChangedAt;
+  const token = await new SignJWT({ uid: userId, pwc: pwc ? pwc.getTime() : undefined })
     .setProtectedHeader({ alg: ALG })
     .setIssuedAt()
     .setExpirationTime("30d")
@@ -52,9 +62,22 @@ export async function createSession(userId: string) {
   });
 }
 
-/** Team-member session — token payload `{ mid }` (the TeamMember.id). */
+/**
+ * Team-member session — token payload `{ mid, pwc }`. `pwc` mirrors the
+ * OWNER's `passwordChangedAt` (member auth ultimately hangs off the owner
+ * workspace) so an owner password reset also revokes existing member tokens
+ * — consistent with the existing "owner suspended → member loses access too"
+ * rule in getAuthContext().
+ */
 export async function createMemberSession(memberId: string) {
-  const token = await new SignJWT({ mid: memberId })
+  const member = await prisma.teamMember.findUnique({
+    where: { id: memberId },
+    select: { ownerId: true },
+  });
+  const owner = member
+    ? await prisma.user.findUnique({ where: { id: member.ownerId }, select: { passwordChangedAt: true } })
+    : null;
+  const token = await new SignJWT({ mid: memberId, pwc: owner?.passwordChangedAt ? owner.passwordChangedAt.getTime() : undefined })
     .setProtectedHeader({ alg: ALG })
     .setIssuedAt()
     .setExpirationTime("30d")
@@ -73,15 +96,27 @@ export function clearSession() {
 }
 
 /** Decode the session cookie. Returns the raw payload or null. */
-async function readToken(): Promise<{ uid?: string; mid?: string } | null> {
+async function readToken(): Promise<{ uid?: string; mid?: string; pwc?: number } | null> {
   const tok = cookies().get(COOKIE)?.value;
   if (!tok) return null;
   try {
     const { payload } = await jwtVerify(tok, SECRET);
-    return payload as { uid?: string; mid?: string };
+    return payload as { uid?: string; mid?: string; pwc?: number };
   } catch {
     return null;
   }
+}
+
+/**
+ * True when the token's embedded `pwc` claim is strictly older than the
+ * account's current passwordChangedAt — meaning the password was changed
+ * after this token was issued, so it must be treated as revoked. A token
+ * with no `pwc` claim (signed before this feature existed) is grandfathered
+ * in rather than mass-logging-out every existing session on rollout.
+ */
+function isRevokedByPasswordChange(tokenPwc: number | undefined, current: Date | null | undefined): boolean {
+  if (tokenPwc === undefined || !current) return false;
+  return current.getTime() > tokenPwc;
 }
 
 /**
@@ -135,6 +170,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     // already holds — not just at login. `suspended` is a scalar on User so it
     // is already loaded by loadOwner's include. Treat as unauthenticated.
     if ((user as any).suspended) return null;
+    if (isRevokedByPasswordChange(payload.pwc, (user as any).passwordChangedAt)) return null;
     return {
       user,
       role: "owner",
@@ -153,6 +189,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     // A member operates inside the owner's workspace — if the owner is suspended,
     // the whole workspace is frozen, so the member loses access too.
     if ((owner as any).suspended) return null;
+    if (isRevokedByPasswordChange(payload.pwc, (owner as any).passwordChangedAt)) return null;
     return {
       user: owner,
       role: normalizeRole(member.role),

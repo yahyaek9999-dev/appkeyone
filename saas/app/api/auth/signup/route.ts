@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     // Best-effort — a missing/misconfigured plan catalog must never block signup
     // itself; the user just lands on the activation paywall in that edge case.
     await grantTrial(user.id, SIGNUP_TRIAL_HOURS, { grantedBy: "signup:auto" }).catch(() => {});
-    await createSession(user.id);
+    await createSession(user.id, (user as any).passwordChangedAt);
     return NextResponse.json({ ok: true, status: "approved", redirectTo: "/onboarding" });
   }
 
