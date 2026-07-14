@@ -59,6 +59,11 @@ export interface NbaInputs {
   // existing callers (and Store tenants) behave exactly as before. Only used to
   // suppress module-specific advice (e.g. no product-upsell when products OFF).
   productsEnabled?: boolean;
+
+  // A real, in-stock, not-yet-bought product to name in the upsell message
+  // (lib/intelligence/product-recs.ts). Optional — when absent, msgUpsell()
+  // falls back to its previous generic phrasing (no behavior regression).
+  recommendedProduct?: { name: string; price: number } | null;
 }
 
 export interface NbaFactor {

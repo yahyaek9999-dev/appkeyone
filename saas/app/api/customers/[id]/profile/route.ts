@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { readNegotiation } from "@/lib/sales-engine";
 import { decideNextBestAction } from "@/lib/intelligence/next-best-action";
+import { recommendProduct } from "@/lib/intelligence/product-recs";
 import {
   classifyValueTier,
   valueTierLabel,
@@ -150,6 +151,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const cBand = churnBand(churnProbability);
   const sentimentTrend = computeSentimentTrend(memory?.sentimentHistory);
 
+  // Single-customer lookup — cheap enough to always compute (no N+1 concern
+  // here, unlike the Revenue Copilot's bulk worklist). Falls back to null
+  // (generic upsell phrasing) on any error.
+  const recommendedProduct = await recommendProduct(uid, c.id).catch(() => null);
+
   const nba = decideNextBestAction({
     customerName: c.name,
     leadScore: c.leadScore || 0,
@@ -167,6 +173,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     valueTier,
     objections: memObjections,
     discountAsks: memDiscountAsks,
+    recommendedProduct,
   });
 
   return NextResponse.json({

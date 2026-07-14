@@ -279,6 +279,9 @@ function msgOfferValue(i: NbaInputs): string {
   return `${greet(i.customerName)} أنا فاهم إن السعر مهم. خليني أوريك القيمة اللي هتاخدها بالظبط مقابل ده — وممكن أرشحلك الخيار الأنسب لميزانيتك من غير ما تتنازل عن الجودة.`;
 }
 function msgUpsell(i: NbaInputs): string {
+  if (i.recommendedProduct?.name) {
+    return `${greet(i.customerName)} شكراً لطلبك الأخير 🙏. عندي "${i.recommendedProduct.name}" بيكمّل اللي اشتريته وكتير من العملاء بياخدوه معاه — تحب أبعتلك تفاصيله؟`;
+  }
   return `${greet(i.customerName)} شكراً لطلبك الأخير 🙏. عندي حاجة واحدة بتكمّل اللي اشتريته وكتير من العملاء بياخدوها معاه — تحب أبعتلك تفاصيلها؟`;
 }
 function msgWinBack(i: NbaInputs): string {

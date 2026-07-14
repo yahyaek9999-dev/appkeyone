@@ -154,6 +154,38 @@ export async function triggerMemoryUpdate(args: {
   }
 }
 
+export type SummarizeNowResult =
+  | { ok: true; summary: string }
+  | { ok: false; reason: "in_progress" | "no_conversation" | "extract_failed" };
+
+/**
+ * On-demand variant of the background rolling summarizer: bypasses the
+ * pendingCount threshold and runs the extractor immediately for a merchant-
+ * triggered "Summarize Now" action (e.g. Customer 360). Shares the same
+ * inflight guard as the background trigger so the two can never race.
+ */
+export async function summarizeNow(customerId: string): Promise<SummarizeNowResult> {
+  if (inflight.has(customerId)) return { ok: false, reason: "in_progress" };
+
+  const customer = await prisma.customer
+    .findUnique({ where: { id: customerId }, select: { conversation: { select: { id: true } } } })
+    .catch(() => null);
+  const conversationId = customer?.conversation?.id;
+  if (!conversationId) return { ok: false, reason: "no_conversation" };
+
+  inflight.add(customerId);
+  try {
+    await runExtractor({ customerId, conversationId });
+  } catch {
+    return { ok: false, reason: "extract_failed" };
+  } finally {
+    inflight.delete(customerId);
+  }
+
+  const row = await (prisma as any).customerMemory.findUnique({ where: { customerId } }).catch(() => null);
+  return { ok: true, summary: (row?.summary || "").trim() };
+}
+
 // ---------------------------------------------------------------------------
 // Internal: actually call the LLM, parse JSON facts, rewrite summary, merge
 // into Customer.preferences for backward compatibility.
@@ -322,6 +354,14 @@ async function runExtractor(args: {
           facts: mergedFacts,
         }),
       )
+      .catch(() => {});
+
+    // ---- Conversation Semantic Memory ----
+    // Sibling snapshot: embed the summary we JUST wrote into the searchable
+    // chunk store, so it stays semantically recallable once superseded by a
+    // newer summary. Same fail-closed, same-cycle, dynamic-import pattern.
+    import("@/lib/intelligence/conversation-memory")
+      .then((m) => m.recordConversationMemoryChunk({ userId: merchantUserId, customerId, content: summary }))
       .catch(() => {});
   }
 }

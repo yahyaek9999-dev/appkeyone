@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { Save, CheckCircle, Sparkles, ShoppingCart, User, MessageSquare, Bell, Zap } from "lucide-react";
+import { Save, CheckCircle, Sparkles, ShoppingCart, User, MessageSquare, Bell, Zap, FlaskConical } from "lucide-react";
+import PromptLab from "./prompt-lab";
 
 const PERSONAS = [
   { id: "ودود ومحترف", label: "ودود ومحترف", desc: "مناسب لمعظم الشركات" },
@@ -9,7 +10,7 @@ const PERSONAS = [
   { id: "خبير تقني", label: "خبير تقني", desc: "للشركات التقنية" },
 ];
 
-type Tab = "identity" | "instructions" | "humanize" | "sales" | "performance" | "alerts";
+type Tab = "identity" | "instructions" | "promptlab" | "humanize" | "sales" | "performance" | "alerts";
 
 export default function BotForm({ initial, userPhone }: { initial: any; userPhone: string }) {
   const [tab, setTab] = useState<Tab>("identity");
@@ -56,6 +57,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
   const TABS: { id: Tab; label: string; icon: any }[] = [
     { id: "identity", label: "الهوية", icon: User },
     { id: "instructions", label: "التعليمات", icon: MessageSquare },
+    { id: "promptlab", label: "مختبر البرومبت", icon: FlaskConical },
     { id: "humanize", label: "المحاكاة البشرية", icon: Sparkles },
     { id: "sales", label: "البيع والتفاوض", icon: ShoppingCart },
     { id: "performance", label: "الأداء", icon: Zap },
@@ -136,6 +138,9 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
           />
         </div>
       )}
+
+      {/* PROMPT LAB — versioned history + real playground + capability tester (additive, not part of the raw save() form) */}
+      {tab === "promptlab" && <PromptLab />}
 
       {/* HUMANIZE */}
       {tab === "humanize" && (

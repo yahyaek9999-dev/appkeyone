@@ -3,20 +3,26 @@
 // Compares up to 3 prompt candidates (the tenant's prompt versions, else
 // built-in A/B/C) on a DETERMINISTIC prompt-quality rubric (price-accuracy,
 // lead capture, escalation, tone, language, scope) — the real differentiator
-// without an LLM — plus shared retrieval/arena/brain context. Comparing the
-// actual GENERATED responses needs an LLM → READY FOR CONFIGURATION.
+// without an LLM — plus shared retrieval/arena/brain context, PLUS a real
+// generated reply per candidate (via aiChatWithFailover, same helper the
+// Prompt Playground uses) so admins can literally read and compare the
+// generated responses, not just a rubric on the prompt text.
 import { prisma } from "@/lib/db";
+import { generateTestReply } from "@/lib/ai-control/prompt-test";
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
-export const PROMPT_READY_FOR_CONFIG = ["مقارنة الردود المولّدة", "جودة الأسلوب", "دقة المخرجات"];
+/** A representative Arabic customer question used to elicit a comparable reply from every candidate. */
+const BENCHMARK_PROBE = "عايز اعرف السعر وهل متوفر دلوقتي؟";
 
-const RUBRIC: { key: string; re: RegExp }[] = [
-  { key: "price", re: /لا تخترع|لا تختلق|بدقة|الأسعار|سعر/ },
-  { key: "lead", re: /اسم|رقم|واتساب|تواصل|الاشتراك/ },
-  { key: "escalation", re: /الإدارة|مسؤول|تحويل|تصعيد/ },
-  { key: "tone", re: /احترام|ودود|اختصار|نبرة|لهجة|بأدب/ },
-  { key: "language", re: /بالعربية|العربية|عربي/ },
-  { key: "scope", re: /المتوفرة فقط|معلومات الشركة|خارج معلوماتك|لا تجب على/ },
+/** Deterministic prompt-quality rubric. Exported so lib/arena/optimize.ts can
+ *  point the LLM rewrite step at concrete gaps instead of a vague "improve this". */
+export const RUBRIC: { key: string; label: string; re: RegExp }[] = [
+  { key: "price", label: "دقة الأسعار (لا يخترع سعراً)", re: /لا تخترع|لا تختلق|بدقة|الأسعار|سعر/ },
+  { key: "lead", label: "التقاط بيانات العميل (اسم/رقم)", re: /اسم|رقم|واتساب|تواصل|الاشتراك/ },
+  { key: "escalation", label: "قواعد التصعيد للمسؤول", re: /الإدارة|مسؤول|تحويل|تصعيد/ },
+  { key: "tone", label: "نبرة محترمة وودودة", re: /احترام|ودود|اختصار|نبرة|لهجة|بأدب/ },
+  { key: "language", label: "الالتزام بالعربية", re: /بالعربية|العربية|عربي/ },
+  { key: "scope", label: "التقيّد بمعلومات الشركة فقط", re: /المتوفرة فقط|معلومات الشركة|خارج معلوماتك|لا تجب على/ },
 ];
 function rubricScore(body: string) {
   let m = 0;
@@ -67,8 +73,24 @@ export async function runPromptBenchmark(userId: string) {
   const hallucinationRisk = clamp(openHigh * 15 + openMed * 8);
   const conversationQuality = clamp(0.5 * resolution + 0.5 * knowledgeCoverage);
 
-  const scores = cands.map((c) => {
-    const rubric = rubricScore(c.body);
+  // Generate one real reply per candidate against the same probe question, so
+  // "دقة المخرجات" (output accuracy) scores the actual generated text, not
+  // just the instruction. Best-effort — a provider outage degrades to the
+  // instruction-only rubric rather than failing the whole benchmark.
+  const replies = await Promise.all(
+    cands.map(async (c) => {
+      try {
+        return await generateTestReply(userId, c.body, "", BENCHMARK_PROBE);
+      } catch {
+        return "";
+      }
+    }),
+  );
+
+  const scores = cands.map((c, i) => {
+    const instructionRubric = rubricScore(c.body);
+    const outputRubric = replies[i] ? rubricScore(replies[i]) : instructionRubric;
+    const rubric = clamp(0.4 * instructionRubric + 0.6 * outputRubric);
     return { label: c.label, rubric, overall: clamp(0.7 * rubric + 0.3 * arenaScore) };
   });
   const winnerIdx = scores.reduce(
@@ -96,7 +118,10 @@ export async function runPromptBenchmark(userId: string) {
       conversationQuality,
     },
   });
-  return { run, scores, winner, readyForConfiguration: PROMPT_READY_FOR_CONFIG };
+  // Generated replies are shown for this run only (not persisted — same
+  // ephemeral-text convention as the Prompt Playground's PromptTest rows).
+  const replyComparison = cands.map((c, i) => ({ label: c.label, reply: replies[i] }));
+  return { run, scores, winner, replies: replyComparison };
 }
 
 export async function getPromptBenchmarks(userId: string) {
@@ -115,6 +140,5 @@ export async function getPromptBenchmarks(userId: string) {
       .slice()
       .reverse()
       .map((h) => Math.max(h.aScore, h.bScore, h.cScore)),
-    readyForConfiguration: PROMPT_READY_FOR_CONFIG,
   };
 }

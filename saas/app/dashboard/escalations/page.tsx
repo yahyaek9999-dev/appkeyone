@@ -155,7 +155,7 @@ export default async function EscalationsPage() {
                   {new Date(t.updatedAt).toLocaleString("ar-EG")}
                 </div>
               </div>
-              <EscalationActions ticketId={t.id} status={t.status} />
+              <EscalationActions ticketId={t.id} status={t.status} initialDraft={(t as any).aiDraftReply} />
             </div>
           </div>
         ))}

@@ -1,12 +1,16 @@
 // AI Control Center Pro — Prompt Testing + Comparison + Rollback Analytics.
 //
 // Runs a test message through the REAL retrieval engine against a chosen prompt
-// version and scores grounding/confidence/sources deterministically. The
-// LLM-generated wording is the ONLY external piece → READY FOR CONFIGURATION;
-// the grounded preview (top retrieved snippet) and all scores/persistence are
-// real. Reuses PromptVersion (no duplication) per ECC "no duplication" rule.
+// version, scores grounding/confidence/sources deterministically, then calls
+// the tenant's configured provider (aiChatWithFailover — same vault/failover
+// path as every other tenant-scoped AI call) so llmResponse is a genuine
+// generated reply, not a placeholder. Reuses PromptVersion (no duplication)
+// per ECC "no duplication" rule. This never touches Bot.systemPrompt or the
+// live WhatsApp reply path — it is a read-only test call.
 import { prisma } from "@/lib/db";
 import { semanticSearch } from "@/lib/knowledge-brain/search";
+import { aiChatWithFailover } from "@/lib/integrations/ai";
+import type { ChatMsg } from "@/lib/providers/types";
 
 export async function runPromptTest(userId: string, promptVersionId: string, rawMessage: string) {
   // Treat the test message as untrusted input (prompt-defense): bound + trim.
@@ -46,14 +50,40 @@ export async function runPromptTest(userId: string, promptVersionId: string, raw
     },
   });
 
+  const llmResponse = await generateTestReply(userId, version?.body, groundedPreview, message);
+
   return {
     ok: true as const,
     promptLabel,
     scores: { confidence, sourceCount, groundingScore },
     groundedPreview,
     topSource,
-    llmResponse: "READY_FOR_CONFIGURATION",
+    llmResponse,
   };
+}
+
+/** Generates the actual test reply for a candidate prompt version. Read-only —
+ *  never writes to Bot.systemPrompt or any conversation/customer row. Exported
+ *  for reuse by lib/arena/prompt-bench.ts (side-by-side candidate comparison). */
+export async function generateTestReply(
+  userId: string,
+  promptBody: string | undefined,
+  groundedPreview: string,
+  message: string
+): Promise<string> {
+  const system = (promptBody || "أنت مساعد ذكي.").trim();
+  const messages: ChatMsg[] = [
+    { role: "system", content: system },
+    { role: "system", content: `معلومات من قاعدة المعرفة قد تفيد في الرد:\n${groundedPreview}`.slice(0, 2000) },
+    { role: "user", content: message },
+  ];
+  const r = await aiChatWithFailover(userId, messages, { temperature: 0.6, maxTokens: 500, timeoutMs: 30000 });
+  if (!r.ok) {
+    return r.reason === "no_provider_configured"
+      ? "لم يتم إعداد أي مزوّد ذكاء اصطناعي لهذا الحساب بعد."
+      : "تعذّر توليد رد تجريبي حالياً — حاول مرة أخرى.";
+  }
+  return r.result.text || "";
 }
 
 export async function getPromptTests(userId: string) {

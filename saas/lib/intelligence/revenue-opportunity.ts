@@ -18,7 +18,27 @@ import { resolveBusinessContext } from "@/lib/business-context";
 import { decideNextBestAction } from "./next-best-action";
 import { classifyValueTier, valueTierWeight } from "./value-tier";
 import { computeChurnProbability } from "./churn";
-import type { RevenueOpportunity, ValueTier } from "./types";
+import { recommendProduct } from "./product-recs";
+import { getLearnedKindWeightsCached } from "./self-learning";
+import { intelFlag } from "./flags";
+import type { NbaAction, RevenueOpportunity, ValueTier } from "./types";
+
+// Maps an NBA action to the closest FollowUpTask "kind" so the SAME learned
+// weights (lib/intelligence/self-learning.ts, today only consumed by
+// lib/follow-ups.ts) also bias this worklist's ordering — extending the
+// self-learning loop to a second surface instead of leaving it single-purpose.
+// Actions with no reasonable analogue (escalate) are left unweighted.
+const ACTION_TO_FOLLOWUP_KIND: Partial<Record<NbaAction, string>> = {
+  close_now: "pending_order",
+  answer_fast: "pending_order",
+  build_trust: "hesitation_recovery",
+  reduce_friction: "hesitation_recovery",
+  offer_value: "price_question",
+  upsell: "product_view",
+  win_back: "abandoned_conversation",
+  nudge_followup: "abandoned_conversation",
+  nurture: "abandoned_conversation",
+};
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -55,6 +75,13 @@ export async function buildRevenueCopilot(
     productsEnabled = (await resolveBusinessContext(userId)).modules.products;
   } catch {
     productsEnabled = true;
+  }
+
+  // Same self-learning weights lib/follow-ups.ts already applies to its queue —
+  // fetched once per run, fail-open (empty map → every lookup below is a no-op).
+  let learnedWeights: Record<string, number> = {};
+  if (intelFlag("INTEL_LEARNED_FOLLOWUP_WEIGHTS")) {
+    learnedWeights = await getLearnedKindWeightsCached(userId).catch(() => ({}));
   }
 
   // Active-ish customers in the last 60d OR any customer with intelligence
@@ -166,6 +193,20 @@ export async function buildRevenueCopilot(
       hesitationScore: c.hesitationScore || 0,
     });
 
+    // Cheap pre-check mirroring the NBA "upsell" branch's own conditions —
+    // only fetch a product recommendation for customers likely to land there,
+    // so this stays a bounded, small-subset lookup rather than N+1 over 600 rows.
+    let recommendedProduct = null as Awaited<ReturnType<typeof recommendProduct>>;
+    if (
+      productsEnabled &&
+      orderCount >= 1 &&
+      daysSinceLastInbound <= 7 &&
+      churnProbability < 40 &&
+      (c.lastIntent || "").toLowerCase() !== "complaint"
+    ) {
+      recommendedProduct = await recommendProduct(userId, c.id);
+    }
+
     const nba = decideNextBestAction({
       customerName: c.name,
       leadScore: c.leadScore || 0,
@@ -184,6 +225,7 @@ export async function buildRevenueCopilot(
       objections,
       discountAsks,
       productsEnabled,
+      recommendedProduct,
     });
 
     // Skip non-actionable items from the worklist (but they still counted in
@@ -199,6 +241,16 @@ export async function buildRevenueCopilot(
       valueTier,
     });
 
+    // Bias priority toward action kinds that historically reply/convert better
+    // for this merchant — advisory ordering only, never changes what action is
+    // suggested or whether/how a message is sent (still merchant-copy-paste).
+    const followUpKind = ACTION_TO_FOLLOWUP_KIND[nba.action];
+    const learnedWeight = followUpKind ? learnedWeights[followUpKind] : undefined;
+    const weightedPriority =
+      typeof learnedWeight === "number" && isFinite(learnedWeight) && learnedWeight > 0
+        ? Math.round(Math.max(1, Math.min(100, blendPriority(nba.priority, estimatedValue, aov) * learnedWeight)))
+        : blendPriority(nba.priority, estimatedValue, aov);
+
     opportunities.push({
       customerId: c.id,
       customerName: c.name,
@@ -210,8 +262,9 @@ export async function buildRevenueCopilot(
       confidence: nba.confidence,
       estimatedValue,
       // Global priority = NBA priority, lightly boosted by expected value so two
-      // equally-urgent moves are ordered by the money on the table.
-      priority: blendPriority(nba.priority, estimatedValue, aov),
+      // equally-urgent moves are ordered by the money on the table, then biased
+      // by the self-learning loop's learned kind weights (see above).
+      priority: weightedPriority,
       valueTier,
       leadScore: c.leadScore || 0,
       conversionScore: c.conversionScore || 0,

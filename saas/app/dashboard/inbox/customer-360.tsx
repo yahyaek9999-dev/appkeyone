@@ -49,6 +49,8 @@ import {
   Users,
   Wallet,
   Lightbulb,
+  Search,
+  RefreshCw,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCustomerPhone } from "@/lib/phone";
@@ -495,6 +497,12 @@ export default function Customer360({
                     <FactPill label="آخر نية" value={intel!.lastIntent ? INTENT_AR[intel!.lastIntent] || intel!.lastIntent : "—"} tone="neutral" />
                   </div>
                 </Section>
+
+                {/* ── On-demand conversation summary ── */}
+                <SummarizeNowBox customerId={customerId!} />
+
+                {/* ── Conversation Semantic Memory search (human-driven, read-only) ── */}
+                <MemorySearchBox customerId={customerId!} />
 
                 {/* ── key facts ── */}
                 <Section title="بيانات أساسية" icon={<UserIcon className="h-3.5 w-3.5" />}>
@@ -990,6 +998,100 @@ const FACTOR_WEIGHT_CLS = {
   medium: "border-slate-400/30 bg-slate-400/10 text-slate-200",
   low: "border-white/10 bg-white/[0.03] text-slate-400",
 };
+
+/** On-demand rolling-summary trigger (bypasses the background threshold).
+ *  Writes only to CustomerMemory — never touches the send pipeline. */
+function SummarizeNowBox({ customerId }: { customerId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function run() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await fetch(`/api/customers/${customerId}/summarize`, { method: "POST" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(j.error === "in_progress" ? "جاري التلخيص بالفعل — حاول بعد قليل." : "تعذّر التلخيص الآن."); return; }
+      setSummary(j.summary || "");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="ملخص المحادثة" icon={<RefreshCw className="h-3.5 w-3.5" />}>
+      <button
+        onClick={run}
+        disabled={busy}
+        className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 text-xs disabled:opacity-50 inline-flex items-center gap-1.5"
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} تلخيص الآن
+      </button>
+      {err && <div className="text-xs text-rose-300">{err}</div>}
+      {summary != null && (
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs text-slate-300">
+          {summary || "لا توجد رسائل كافية للتلخيص بعد."}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/** Human-driven semantic search over this customer's past memory snapshots
+ *  (lib/intelligence/conversation-memory.ts). Read-only lookup tool — not an
+ *  AI reply input, so it never touches the WhatsApp send pipeline. */
+function MemorySearchBox({ customerId }: { customerId: string }) {
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [hits, setHits] = useState<{ content: string; score: number; createdAt: string }[] | null>(null);
+
+  async function run() {
+    if (q.trim().length < 2) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/customers/${customerId}/memory-search?q=${encodeURIComponent(q)}`, { cache: "no-store" });
+      const j = await r.json().catch(() => null);
+      setHits(j?.hits || []);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="بحث في ذاكرة المحادثات" icon={<Search className="h-3.5 w-3.5" />}>
+      <div className="flex gap-1.5">
+        <input
+          className="input flex-1 text-sm"
+          placeholder="ابحث في ملخصات المحادثات السابقة…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && run()}
+        />
+        <button
+          onClick={run}
+          disabled={busy || q.trim().length < 2}
+          className="px-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+        </button>
+      </div>
+      {hits && (
+        hits.length ? (
+          <div className="space-y-1.5">
+            {hits.map((h, i) => (
+              <div key={i} className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs">
+                <div className="text-slate-300">{h.content}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">تطابق {Math.round(h.score * 100)}%</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-slate-500">لا توجد نتائج مطابقة.</div>
+        )
+      )}
+    </Section>
+  );
+}
 
 function NextBestActionCard({ advice }: { advice: NonNullable<Profile["advice"]> }) {
   const [copied, setCopied] = useState(false);

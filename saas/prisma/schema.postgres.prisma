@@ -1013,6 +1013,8 @@ model EscalationTicket {
   acknowledgedAt      DateTime?
   acknowledgedBy      String?
   resolvedAt          DateTime?
+  aiDraftReply        String?   // AI-drafted suggested reply for the human agent — never auto-sent
+  aiDraftAt           DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -1134,6 +1136,23 @@ model MemoryEdge {
   @@index([userId, subjectType, subjectKey])
   @@index([userId, objectType, objectKey])
   @@index([userId, relation])
+}
+
+// Conversation Semantic Memory (Intelligence Layer) — append-only embedded
+// snapshots of CustomerMemory.summary, so older summaries stay semantically
+// searchable after being overwritten. Same sparse term-frequency vector format
+// as DocumentChunk.vec (lib/knowledge-brain/vector.ts) — no new dependency.
+model ConversationMemoryChunk {
+  id         String   @id @default(cuid())
+  userId     String
+  customerId String
+  content    String
+  vec        String   // JSON: { term: tf } sparse vector
+  norm       Float
+  tokens     Int
+  createdAt  DateTime @default(now())
+
+  @@index([userId, customerId, createdAt])
 }
 
 model DailyReportDelivery {
@@ -3356,6 +3375,9 @@ model QualityBenchmark {
   flow              Int      @default(0)
   hallucinationRisk Int      @default(0)
   overall           Int      @default(0)
+  tone              Int?     // 0-100, LLM-judged — null when no provider was configured for this run
+  accuracy          Int?     // 0-100, LLM-judged
+  csatProxy         Int?     // 0-100, LLM-judged predicted customer satisfaction
   createdAt         DateTime @default(now())
 
   @@index([userId, createdAt])

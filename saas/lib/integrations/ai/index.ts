@@ -7,7 +7,7 @@
 // aiChatWithFailover() for callers that want cross-provider resilience + custom.
 
 import { routeProviderChat } from "@/lib/providers/provider-router";
-import type { ChatMsg, ProviderId } from "@/lib/providers/types";
+import type { ChatMsg, ProviderId, ToolCall, ToolChoice, ToolDef, ThinkingOpts } from "@/lib/providers/types";
 import type { ProviderOverride } from "@/lib/llm";
 import { runWithFailover } from "../failover";
 import { loadEnabledResolved } from "../vault";
@@ -15,8 +15,23 @@ import { registerService } from "../services";
 import { IntegrationError, type FailoverResult, type ResolvedProvider } from "../types";
 import { callCustomChat } from "./custom";
 
-export type AiChatOpts = { temperature?: number; maxTokens?: number; timeoutMs?: number };
-export type AiChatResult = { text: string; usage?: { inputTokens?: number; outputTokens?: number } };
+export type AiChatOpts = {
+  temperature?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
+  /** Opt-in streaming/tool-calling/reasoning passthrough — ignored by callers that don't set them. See lib/providers/types.ts. */
+  stream?: boolean;
+  onStreamChunk?: (chunk: string) => void;
+  tools?: ToolDef[];
+  toolChoice?: ToolChoice;
+  thinking?: ThinkingOpts;
+};
+export type AiChatResult = {
+  text: string;
+  usage?: { inputTokens?: number; outputTokens?: number };
+  toolCalls?: ToolCall[];
+  thinkingText?: string;
+};
 
 const KNOWN: ReadonlySet<string> = new Set(["openai", "claude", "gemini", "groq", "openrouter", "grok"]);
 
@@ -42,6 +57,11 @@ export async function runAiChat(
     maxTokens: opts.maxTokens,
     timeoutMs: opts.timeoutMs ?? 30000,
     retries: 1,
+    stream: opts.stream,
+    onStreamChunk: opts.onStreamChunk,
+    tools: opts.tools,
+    toolChoice: opts.toolChoice,
+    thinking: opts.thinking,
   });
 }
 

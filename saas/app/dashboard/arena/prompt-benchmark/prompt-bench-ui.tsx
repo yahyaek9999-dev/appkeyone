@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Play, Trophy, ArrowRight, TrendingUp, Lock } from "lucide-react";
+import { Loader2, Play, Trophy, ArrowRight, TrendingUp, MessageSquare } from "lucide-react";
 import Link from "next/link";
 
 type Run = {
@@ -20,11 +20,11 @@ type Run = {
   conversationQuality: number;
   createdAt?: string;
 };
+type Reply = { label: string; reply: string };
 type Data = {
   latest: Run | null;
   history: Run[];
   trend: number[];
-  readyForConfiguration: string[];
 };
 
 function color(s: number) {
@@ -35,6 +35,7 @@ export default function PromptBenchUi() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [replies, setReplies] = useState<Reply[] | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,7 +55,8 @@ export default function PromptBenchUi() {
   async function run() {
     setRunning(true);
     try {
-      await fetch("/api/arena/prompt-benchmark/run", { method: "POST" });
+      const j = await fetch("/api/arena/prompt-benchmark/run", { method: "POST" }).then((r) => r.json());
+      if (j.ok && Array.isArray(j.replies)) setReplies(j.replies);
       await load();
     } finally {
       setRunning(false);
@@ -171,21 +173,23 @@ export default function PromptBenchUi() {
             </div>
           )}
 
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <h2 className="font-bold text-sm mb-2 inline-flex items-center gap-2">
-              <Lock className="h-4 w-4 text-slate-400" /> جاهز للإعداد (يتطلب مزوّد LLM)
-            </h2>
-            <div className="flex flex-wrap gap-1.5">
-              {data!.readyForConfiguration.map((x, i) => (
-                <span
-                  key={i}
-                  className="text-[11px] rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-slate-400"
-                >
-                  {x}
-                </span>
-              ))}
-            </div>
-          </section>
+          {replies && (
+            <section className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+              <div className="border-b border-white/10 p-3 font-bold text-sm inline-flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-slate-400" /> الردود المولّدة (نفس السؤال التجريبي لكل نسخة)
+              </div>
+              <div className="divide-y divide-white/5">
+                {replies.map((rp, i) => (
+                  <div key={i} className="p-3">
+                    <div className="text-xs text-slate-400 mb-1 truncate">{rp.label}</div>
+                    <div className="text-sm text-slate-200 whitespace-pre-wrap">
+                      {rp.reply || <span className="text-slate-500">— لم يتم توليد رد —</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

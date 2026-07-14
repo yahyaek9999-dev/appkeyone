@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Play, Gauge, Lightbulb, ArrowRight, TrendingUp, Lock } from "lucide-react";
+import { Loader2, Play, Gauge, Lightbulb, ArrowRight, TrendingUp, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 type Q = {
@@ -11,9 +11,12 @@ type Q = {
   flow: number;
   hallucinationRisk: number;
   overall: number;
+  tone?: number | null;
+  accuracy?: number | null;
+  csatProxy?: number | null;
   createdAt?: string;
 };
-type Data = { latest: Q | null; history: Q[]; trend: number[]; readyForConfiguration: string[] };
+type Data = { latest: Q | null; history: Q[]; trend: number[] };
 
 function color(s: number) {
   return s >= 80 ? "text-emerald-400" : s >= 50 ? "text-amber-400" : "text-rose-400";
@@ -144,21 +147,18 @@ export default function QualityUi() {
                 </ul>
               </section>
             )}
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <h2 className="font-bold text-sm mb-2 inline-flex items-center gap-2">
-                <Lock className="h-4 w-4 text-slate-400" /> جاهز للإعداد (يتطلب مزوّد LLM)
-              </h2>
-              <div className="flex flex-wrap gap-1.5">
-                {data!.readyForConfiguration.map((r, i) => (
-                  <span
-                    key={i}
-                    className="text-[11px] rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-slate-400"
-                  >
-                    {r}
-                  </span>
-                ))}
-              </div>
-            </section>
+            {(q.tone != null || q.accuracy != null || q.csatProxy != null) && (
+              <section className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.05] p-4">
+                <h2 className="font-bold text-sm mb-2 inline-flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-violet-300" /> تقييم النموذج (نبرة / دقة / رضا متوقع)
+                </h2>
+                <div className="space-y-1.5">
+                  <Bar label="نبرة الرد" val={q.tone ?? 0} />
+                  <Bar label="دقة الإجابة" val={q.accuracy ?? 0} />
+                  <Bar label="رضا العميل المتوقع" val={q.csatProxy ?? 0} />
+                </div>
+              </section>
+            )}
           </div>
         </div>
       )}

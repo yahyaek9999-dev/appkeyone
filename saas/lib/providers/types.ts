@@ -19,18 +19,51 @@ export type ChatMsg = {
   content: string;
 };
 
+/** A callable tool/function definition, JSON-Schema-typed parameters (OpenAI function-calling shape; adapters translate per-vendor). */
+export type ToolDef = {
+  name: string;
+  description?: string;
+  parameters: Record<string, any>;
+};
+
+/** A tool invocation the model asked for. `arguments` is parsed JSON (best-effort — raw string kept in `rawArguments` if parsing fails). */
+export type ToolCall = {
+  id: string;
+  name: string;
+  arguments: Record<string, any>;
+  rawArguments?: string;
+};
+
+export type ToolChoice = "auto" | "none" | "required" | { name: string };
+
+/** Extended-thinking / reasoning-effort request. Ignored by adapters that don't support it. */
+export type ThinkingOpts = { enabled: boolean; budgetTokens?: number };
+
 export type ProviderCallOpts = {
   apiKey: string;
   model?: string | null;
   temperature?: number;
   maxTokens?: number;
   timeoutMs?: number;
+  /** Opt-in streaming. Only takes effect when `onStreamChunk` is also supplied; callers that omit both get the exact prior request/response behavior. */
+  stream?: boolean;
+  /** Invoked with each incremental text delta when `stream` is true and the adapter supports it. The final `ProviderResult` still carries the fully-assembled text. */
+  onStreamChunk?: (chunk: string) => void;
+  /** Tool/function definitions the model may call. Ignored by adapters/models without tool support. */
+  tools?: ToolDef[];
+  toolChoice?: ToolChoice;
+  /** Extended reasoning (Claude "thinking", OpenAI "reasoning_effort"-style). Ignored where unsupported. */
+  thinking?: ThinkingOpts;
 };
 
 export type ProviderResult = {
   text: string;
   /** Raw token usage if the provider reports it (best-effort). */
   usage?: { inputTokens?: number; outputTokens?: number };
+  /** Present when the model asked to call one or more tools instead of (or alongside) replying with text. */
+  toolCalls?: ToolCall[];
+  /** Present when the model returned extended-thinking/reasoning content (Claude "thinking" blocks). */
+  thinkingText?: string;
 };
 
 /** Default model picked when the merchant did not override it. Cheap + fast. */
