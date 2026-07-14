@@ -1,3 +1,8 @@
+# ── RETIRED — targets the old Windows VPS, which is no longer production. ──
+# Production is AWS Linux; deploy with deploy/release-aws.sh instead. See
+# project-knowledge/DEPLOYMENT_RULES.md. Kept for historical reference only.
+# ──────────────────────────────────────────────────────────────────────────
+#
 # ── KEYONE Deploy Script ──────────────────────────────────────────
 # Safe, incremental deploy with full pre-deploy snapshot, cache clearing,
 # build verification, non-destructive verification suite, and smoke testing.

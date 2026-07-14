@@ -64,6 +64,7 @@ const JOB_STATUS: Record<string, { l: string; c: string }> = {
 
 export default function BroadcastsProClient() {
   const [wallet, setWallet] = useState<WalletSummary>({ balance: 0, totalPurchased: 0, totalSpent: 0 });
+  const [walletLoadFailed, setWalletLoadFailed] = useState(false);
   const [perRecipient, setPerRecipient] = useState(1);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
@@ -76,8 +77,13 @@ export default function BroadcastsProClient() {
         setWallet(j.wallet);
         setPerRecipient(j.perRecipient || 1);
         setLedger(j.ledger || []);
+        setWalletLoadFailed(false);
+      } else {
+        setWalletLoadFailed(true);
       }
-    } catch {}
+    } catch {
+      setWalletLoadFailed(true);
+    }
   }, []);
 
   const loadAnalytics = useCallback(async () => {
@@ -98,7 +104,14 @@ export default function BroadcastsProClient() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <div className="card p-6 lg:col-span-2 border border-brand-500/30 bg-brand-500/[0.06]">
           <div className="flex items-center gap-2 text-slate-300 text-sm mb-2"><Coins className="h-4 w-4" /> رصيد الحملات الحالي</div>
-          <div className="text-4xl font-extrabold text-white">{wallet.balance.toLocaleString()}<span className="text-lg text-slate-400 font-normal mr-2">رصيد</span></div>
+          {walletLoadFailed ? (
+            <div className="flex items-center gap-2 text-rose-300 text-sm">
+              <AlertTriangle className="h-4 w-4" /> تعذّر تحميل الرصيد
+              <button onClick={loadWallet} className="text-xs underline text-slate-300 hover:text-white">إعادة المحاولة</button>
+            </div>
+          ) : (
+            <div className="text-4xl font-extrabold text-white">{wallet.balance.toLocaleString()}<span className="text-lg text-slate-400 font-normal mr-2">رصيد</span></div>
+          )}
           <div className="mt-2 text-xs text-slate-400">التكلفة: {perRecipient} رصيد لكل مستلِم</div>
         </div>
         <Tile icon={<Plus className="h-5 w-5 text-emerald-300" />} label="إجمالي المشترى" value={wallet.totalPurchased.toLocaleString()} />

@@ -16,6 +16,12 @@
  */
 
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { scalingFlags } from "@/lib/scaling-flags";
+import { actionFlags } from "@/lib/actions/flags";
+import { brainFlags } from "@/lib/brain/flags";
+import { creditFlags } from "@/lib/credits/flags";
+import { qrPoolFlags } from "@/lib/qr-pool/flags";
+import { qrQueueFlags } from "@/lib/qr-queue/flags";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +79,107 @@ const FLAGS: { key: string; label: string; description: string; on: boolean }[] 
     label: "طابور QR الذكي",
     description: "يفعّل جدولة سعة جلسات QR بدل التخصيص المباشر.",
     on: process.env.WA_SMART_QUEUE_ENABLED === "1" || process.env.WA_SMART_QUEUE_ENABLED === "true",
+  },
+  // Scaling optimizations (lib/scaling-flags.ts) — all default OFF, opt-in per box.
+  {
+    key: "ENABLE_SESSION_HIBERNATION",
+    label: "إسبات الجلسات الذكي",
+    description: "ينيّم جلسات واتساب الخاملة ويوقظها عند الحاجة لتقليل استهلاك الموارد.",
+    on: scalingFlags.sessionHibernation,
+  },
+  {
+    key: "ENABLE_SNAPSHOT_CACHE",
+    label: "تخزين لقطة SSE مؤقتاً",
+    description: "يشارك لقطة الحالة اللحظية بين الطلبات بدل إعادة حسابها لكل عميل.",
+    on: scalingFlags.snapshotCache,
+  },
+  {
+    key: "ENABLE_MESSAGE_COALESCING",
+    label: "دمج الرسائل المتتالية",
+    description: "يجمع رسائل العميل المتتالية السريعة قبل تمريرها للذكاء الاصطناعي.",
+    on: scalingFlags.messageCoalescing,
+  },
+  {
+    key: "ENABLE_CHROMIUM_OPTIMIZATION",
+    label: "تحسين موارد Chromium",
+    description: "يعطّل تحميل الصور/الوسائط/التتبّع داخل متصفح جلسة واتساب لتوفير الموارد.",
+    on: scalingFlags.chromiumOptimization,
+  },
+  {
+    key: "ENABLE_BACKGROUND_OFFLOADING",
+    label: "تفريغ المهام الخلفية",
+    description: "يجمّع الكتابات غير الحرجة لقاعدة البيانات في دفعات بدل الكتابة الفورية.",
+    on: scalingFlags.backgroundOffloading,
+  },
+  {
+    key: "WA_AI_REGISTRY_ENABLED",
+    label: "سجل مزوّدي الذكاء الموحّد لواتساب",
+    description: "يوجّه ردّ الذكاء الاصطناعي الحيّ عبر سجل المزوّدين الموحّد (vault ← legacy ← keyone) بدل المسار القديم مباشرة.",
+    on: scalingFlags.waAiRegistry,
+  },
+  // Action Engine (lib/actions/flags.ts)
+  {
+    key: "ACTION_ENGINE_ENABLED",
+    label: "محرّك الإجراءات",
+    description: "يفعّل اقتراح/تسجيل إجراءات محرّك الأتمتة (لا ينفّذ تعديلات فعلية إلا مع ACTION_ENGINE_EXECUTE).",
+    on: actionFlags.enabled,
+  },
+  {
+    key: "ACTION_ENGINE_EXECUTE",
+    label: "تنفيذ إجراءات المحرّك فعلياً",
+    description: "يسمح لمحرّك الإجراءات بتنفيذ تعديلات حقيقية بدل مجرّد اقتراحها.",
+    on: actionFlags.execute,
+  },
+  // Brain (lib/brain/flags.ts)
+  {
+    key: "BRAIN_ENABLED",
+    label: "طبقة الدماغ (Brain)",
+    description: "المفتاح الرئيسي لطبقة Brain المعرفية.",
+    on: brainFlags.enabled,
+  },
+  {
+    key: "BRAIN_CREDITS_ENABLED",
+    label: "استهلاك رصيد Brain",
+    description: "عند التفعيل، تستهلك استدعاءات Brain رصيداً وتُرفض عند نفاده (402).",
+    on: brainFlags.creditsEnabled,
+  },
+  {
+    key: "BRAIN_MONTHLY_CREDITS_ENABLED",
+    label: "منح رصيد Brain الشهري",
+    description: "يفعّل مهمة الكرون الشهرية لمنح رصيد Brain حسب الباقة.",
+    on: brainFlags.monthlyEnabled,
+  },
+  // Broadcast credits (lib/credits/flags.ts)
+  {
+    key: "BROADCAST_CREDITS_ENFORCE",
+    label: "إنفاذ رصيد حملات البث",
+    description: "يمنع إنشاء حملة بث جديدة عند عدم كفاية الرصيد.",
+    on: creditFlags.enforce,
+  },
+  {
+    key: "BROADCAST_MONTHLY_CREDITS_ENABLED",
+    label: "منح رصيد الحملات الشهري",
+    description: "يفعّل مهمة الكرون الشهرية لمنح رصيد حملات البث حسب الباقة.",
+    on: creditFlags.monthlyEnabled,
+  },
+  // QR pool + queue (lib/qr-pool/flags.ts, lib/qr-queue/flags.ts)
+  {
+    key: "QR_SCHEDULER_ENABLED",
+    label: "جدولة مسارات QR المشتركة",
+    description: "المفتاح الرئيسي لمجدول مسارات QR الذي يحجز سعة Smart QR Pool الحالية.",
+    on: qrPoolFlags.schedulerEnabled,
+  },
+  {
+    key: "QR_QUEUE_ENABLED",
+    label: "منصّة طابور حجز QR",
+    description: "يسمح للتاجر بحجز فترة على سعة جلسات QR المحدودة.",
+    on: qrQueueFlags.enabled,
+  },
+  {
+    key: "QR_QUEUE_WAKE_ON_ACTIVATE",
+    label: "إيقاظ الجلسة عند تفعيل الحجز",
+    description: "يوقظ جلسة واتساب الخاصة بالتاجر تلقائياً عند بدء فترة الحجز المؤكّدة.",
+    on: qrQueueFlags.wakeOnActivate,
   },
 ];
 

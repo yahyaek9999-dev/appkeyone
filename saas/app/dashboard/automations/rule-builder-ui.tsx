@@ -10,6 +10,7 @@ import {
   AUTOMATION_ACTIONS,
   SCORE_METRICS,
 } from "@/lib/automations/constants";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 // ── Meta ────────────────────────────────────────────────────────────────────
 
@@ -321,6 +322,7 @@ export default function RuleBuilderUi() {
   const [editing, setEditing] = useState<Rule | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const confirm = useConfirm();
 
   useEffect(() => { load(); }, []);
 
@@ -343,7 +345,8 @@ export default function RuleBuilderUi() {
   }
 
   async function deleteRule(id: string) {
-    if (!confirm("حذف القاعدة؟")) return;
+    const ok = await confirm({ title: "حذف القاعدة؟", confirmLabel: "حذف", danger: true });
+    if (!ok) return;
     await fetch(`/api/automations/rules?id=${id}`, { method: "DELETE" });
     setRules((prev) => prev.filter((r) => r.id !== id));
   }

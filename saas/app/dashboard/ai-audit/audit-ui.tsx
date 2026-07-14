@@ -125,7 +125,13 @@ export default function AuditUi() {
         <div className="p-12 text-center text-slate-400">
           <Loader2 className="mx-auto h-7 w-7 animate-spin" />
         </div>
-      ) : !data ? null : (
+      ) : !data ? (
+        error && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
+            <button onClick={load} className="text-sm underline text-slate-300 hover:text-white">إعادة المحاولة</button>
+          </div>
+        )
+      ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-[200px_1fr]">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5 flex flex-col items-center justify-center text-center">

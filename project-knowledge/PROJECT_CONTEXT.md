@@ -131,5 +131,5 @@ without explicit approval. Always put reports in `project-knowledge/`.**
 
 ## Related
 
-- [PROJECT_STATE_2026_06_05.md](PROJECT_STATE_2026_06_05.md) — latest state snapshot.
+- [PROJECT_STATE_2026_06_05.md](PROJECT_STATE_2026_06_05.md) — superseded point-in-time snapshot from 2026-06-05, kept for historical record only. This file (PROJECT_CONTEXT.md) is the current orientation doc.
 - [DEPLOYMENT_RULES.md](DEPLOYMENT_RULES.md) — the deploy contract.

@@ -1,5 +1,12 @@
 # KEYONE — Project State Snapshot (2026-06-05)
 
+> **⚠️ SUPERSEDED — point-in-time snapshot, not current state.** Production has
+> since moved off the Windows VPS to AWS Linux, the live URL is
+> `https://w.keyone1.com` (`app.keyone1.com` no longer resolves), and the
+> database is PostgreSQL. For current facts, see
+> [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) and
+> [DEPLOYMENT_RULES.md](DEPLOYMENT_RULES.md). Kept below for historical record only.
+
 Point-in-time record of what is live in production and what changed on this date.
 
 ---

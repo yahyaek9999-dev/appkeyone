@@ -88,6 +88,7 @@ function Delta({ now, prev }: { now: number; prev: number }) {
 export default function MonitoringUi() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -95,7 +96,9 @@ export default function MonitoringUi() {
     setLoading(true);
     try {
       const j = await fetch("/api/monitoring", { cache: "no-store" }).then((r) => r.json());
-      if (j.ok) setData(j);
+      if (j.ok) { setData(j); setLoadFailed(false); } else { setLoadFailed(true); }
+    } catch {
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -155,8 +158,17 @@ export default function MonitoringUi() {
       ) : !s ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-slate-400 flex flex-col items-center gap-3">
           <Activity className="h-10 w-10 opacity-40" />
-          <div className="font-medium text-slate-200">لم يُجرَ فحص بعد</div>
-          <div className="text-sm">اضغط «فحص الآن» لرصد نشاطك.</div>
+          {loadFailed ? (
+            <>
+              <div className="font-medium text-rose-300">تعذّر تحميل البيانات</div>
+              <button onClick={load} className="text-sm underline text-slate-300 hover:text-white">إعادة المحاولة</button>
+            </>
+          ) : (
+            <>
+              <div className="font-medium text-slate-200">لم يُجرَ فحص بعد</div>
+              <div className="text-sm">اضغط «فحص الآن» لرصد نشاطك.</div>
+            </>
+          )}
         </div>
       ) : (
         <>

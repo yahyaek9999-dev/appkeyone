@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Save, CheckCircle, Sparkles, ShoppingCart, User, MessageSquare, Bell, Zap, FlaskConical } from "lucide-react";
 import PromptLab from "./prompt-lab";
+import { useToast } from "@/components/ui/toast";
 
 const PERSONAS = [
   { id: "ودود ومحترف", label: "ودود ومحترف", desc: "مناسب لمعظم الشركات" },
@@ -13,6 +14,7 @@ const PERSONAS = [
 type Tab = "identity" | "instructions" | "promptlab" | "humanize" | "sales" | "performance" | "alerts";
 
 export default function BotForm({ initial, userPhone }: { initial: any; userPhone: string }) {
+  const { error: toastError } = useToast();
   const [tab, setTab] = useState<Tab>("identity");
   const [data, setData] = useState({
     name: initial.name || "",
@@ -42,15 +44,23 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
 
   async function save() {
     setSaving(true); setSaved(false);
-    const res = await fetch("/api/bot", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    setSaving(false);
-    if (res.ok) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+    try {
+      const res = await fetch("/api/bot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      } else {
+        const j = await res.json().catch(() => null);
+        toastError(j?.error || "تعذّر حفظ الإعدادات، حاول مرة أخرى");
+      }
+    } catch {
+      toastError("تعذّر الاتصال بالخادم، تحقق من اتصالك وحاول مرة أخرى");
+    } finally {
+      setSaving(false);
     }
   }
 

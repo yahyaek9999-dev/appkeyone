@@ -1,5 +1,10 @@
 #Requires -Version 7.0
 <#
+.RETIRED
+    Targets the old Windows VPS, which is no longer production. Production is
+    AWS Linux; deploy with deploy/release-aws.sh instead. See
+    project-knowledge/DEPLOYMENT_RULES.md. Kept for historical reference only.
+
 .SYNOPSIS
     KEYONE — Safe Remote Deploy  (runs locally on your Mac, deploys to VPS via SSH)
 

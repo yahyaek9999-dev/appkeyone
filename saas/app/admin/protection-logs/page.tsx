@@ -3,17 +3,20 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProtectionLogsPage({ searchParams }: { searchParams?: { kind?: string; page?: string } }) {
+export default async function AdminProtectionLogsPage({ searchParams }: { searchParams?: { kind?: string; page?: string; banPage?: string } }) {
   const kind = searchParams?.kind;
   const page = Math.max(1, Number(searchParams?.page || 1));
   const take = 100;
   const skip = (page - 1) * take;
+  const banPage = Math.max(1, Number(searchParams?.banPage || 1));
+  const banTake = 20;
+  const banSkip = (banPage - 1) * banTake;
 
   const where: any = {};
   const countWhere: any = {};
   if (kind) { where.kind = kind; countWhere.kind = kind; }
 
-  const [logs, total, banEvents] = await Promise.all([
+  const [logs, total, banEvents, banTotal] = await Promise.all([
     (prisma as any).protectionLog.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -23,8 +26,10 @@ export default async function AdminProtectionLogsPage({ searchParams }: { search
     (prisma as any).protectionLog.count({ where: countWhere }) || Promise.resolve(0),
     (prisma as any).banEvent.findMany({
       orderBy: { createdAt: "desc" },
-      take: 20,
+      skip: banSkip,
+      take: banTake,
     }) || Promise.resolve([]),
+    (prisma as any).banEvent.count({}) || Promise.resolve(0),
   ]);
 
   const SEVERITY_COLORS: Record<string, string> = {
@@ -85,7 +90,7 @@ export default async function AdminProtectionLogsPage({ searchParams }: { search
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-        <div className="border-b border-white/10 p-4 font-bold">أحداث الحظر (آخر 20)</div>
+        <div className="border-b border-white/10 p-4 font-bold">أحداث الحظر</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-white/5 text-slate-400">
@@ -115,6 +120,15 @@ export default async function AdminProtectionLogsPage({ searchParams }: { search
             </tbody>
           </table>
         </div>
+        {banTotal > banTake && (
+          <div className="flex items-center justify-between text-sm text-slate-400 border-t border-white/10 p-3">
+            <div>الصفحة {banPage} من {Math.ceil(banTotal / banTake)}</div>
+            <div className="flex gap-2">
+              {banPage > 1 && <a className="px-3 py-1 rounded bg-white/5 hover:bg-white/10" href={`/admin/protection-logs?banPage=${banPage - 1}${kind ? `&kind=${kind}` : ""}${page > 1 ? `&page=${page}` : ""}`}>السابق</a>}
+              {banPage * banTake < banTotal && <a className="px-3 py-1 rounded bg-white/5 hover:bg-white/10" href={`/admin/protection-logs?banPage=${banPage + 1}${kind ? `&kind=${kind}` : ""}${page > 1 ? `&page=${page}` : ""}`}>التالي</a>}
+            </div>
+          </div>
+        )}
       </div>
 
       {total > take && (

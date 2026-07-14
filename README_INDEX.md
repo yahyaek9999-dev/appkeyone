@@ -1,6 +1,6 @@
 # KEYONE — Documentation Index
 
-> **Live:** `https://app.keyone1.com` · **Latest build:** `f091d27-20260602`
+> **Live:** `https://w.keyone1.com` — `app.keyone1.com` does not resolve; do not use it anywhere (confirmed dead, see [project-knowledge/PROJECT_CONTEXT.md](project-knowledge/PROJECT_CONTEXT.md)). For the current deploy command, deployed-commit check, and infra facts, see [project-knowledge/DEPLOYMENT_RULES.md](project-knowledge/DEPLOYMENT_RULES.md) — not the table below, which describes the retired Windows-VPS workflow.
 
 ## 📋 Master Document (Start Here)
 
@@ -19,14 +19,16 @@
 
 ## 🚀 Deployment
 
+Current: `deploy/release-aws.sh [commit-ish]` deploys to the AWS production box. Full contract in [project-knowledge/DEPLOYMENT_RULES.md](project-knowledge/DEPLOYMENT_RULES.md).
+
+The files below (`deploy.sh`, `deploy/deploy.ps1`, `deploy/deploy-safe.ps1`, `deploy/health-check.ps1`, `deploy/build.sh`, `deploy/release.sh`, `deploy/rollback-release.sh`) target the **retired** Windows VPS — do not run them.
+
 | File | Purpose |
 |------|---------|
-| [`deploy.sh`](deploy.sh) | macOS → VPS deploy (push to GitHub, SSH, build, restart) |
-| [`deploy/deploy.ps1`](deploy/deploy.ps1) | On-VPS PowerShell deploy with full safety checks |
-| [`deploy/deploy-safe.ps1`](deploy/deploy-safe.ps1) | Safe remote deploy with pre-flight checks + db backup |
+| [`deploy/release-aws.sh`](deploy/release-aws.sh) | Current production deploy (AWS) |
+| [`deploy/publish-wwebjs.sh`](deploy/publish-wwebjs.sh) | Publish a new Bridge customer-daemon release |
 | [`deploy/Caddyfile`](deploy/Caddyfile) | Caddy v2 reverse proxy config |
 | [`deploy/env.saas.example`](deploy/env.saas.example) | SaaS environment variable template |
-| [`deploy/health-check.ps1`](deploy/health-check.ps1) | VPS health diagnostic |
 
 ## 📁 Repository Structure
 

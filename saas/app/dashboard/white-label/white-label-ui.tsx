@@ -21,16 +21,21 @@ export default function WhiteLabelUi() {
   const { success, error, info } = useToast();
   const [cfg, setCfg] = useState<WL | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState(false);
 
   async function load() {
     setLoading(true);
+    setLoadFailed(false);
     try {
       const r = await fetch("/api/white-label", { cache: "no-store" });
       const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "load_failed");
       setCfg(j.config);
       setPending(Boolean(j.pending));
+    } catch {
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -63,8 +68,16 @@ export default function WhiteLabelUi() {
   const set = (patch: Partial<WL>) => setCfg((c) => (c ? { ...c, ...patch } : c));
   const inp = "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none";
 
-  if (loading || !cfg) {
+  if (loading) {
     return <div className="card m-1 p-8 text-center text-slate-400">جارٍ التحميل...</div>;
+  }
+  if (loadFailed || !cfg) {
+    return (
+      <div className="card m-1 p-8 text-center text-slate-400">
+        <p className="mb-3">تعذّر تحميل الإعدادات.</p>
+        <button onClick={load} className="btn-primary">إعادة المحاولة</button>
+      </div>
+    );
   }
 
   return (

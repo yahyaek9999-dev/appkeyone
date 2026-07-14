@@ -1,5 +1,13 @@
 # KEYONE Bridge
 
+> **⚠️ RETIRED RUNTIME — this Go/whatsmeow implementation was never shipped.**
+> WhatsApp's pairing servers rejected the whatsmeow/Baileys multi-device
+> re-implementation this code depends on. The Bridge that actually ships is a
+> **separate, Node/whatsapp-web.js daemon** at `../bridge-node/keyone-wa-bridge.js`
+> (see `project-knowledge/KEYONE_BRIDGE_ARCHITECTURE_2026-07-05.md` and commit
+> `9a45dd9`). This directory is kept for historical reference only — do not
+> build or deploy it, and do not read it as a description of the live Bridge.
+
 A **headless** connector that moves the WhatsApp transport **off** the KEYONE
 Cloud and onto a machine you control. It behaves like a Cloudflare Tunnel /
 Tailscale / GitHub Actions runner: a small daemon that maintains a secure link to

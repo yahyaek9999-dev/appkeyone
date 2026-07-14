@@ -2,12 +2,9 @@
 
 KEYONE is a production WhatsApp/commerce SaaS platform with a Next.js dashboard, automation APIs, commerce integrations, and a separate WhatsApp runtime service.
 
-This repository is now managed with a professional GitHub + VPS workflow:
-
 - **GitHub is the source of truth**
 - **`main` is production**
-- **VPS runs production from `origin/main`**
-- **`keydeploy` is the standard one-command deploy path**
+- **Production runs on AWS Linux (`ubuntu@13.63.79.43`, `w.keyone1.com`), deployed via `deploy/release-aws.sh`** — see [project-knowledge/DEPLOYMENT_RULES.md](project-knowledge/DEPLOYMENT_RULES.md) for the full deploy contract. The Windows-VPS/`keydeploy` workflow described in older docs (`VPS_DEPLOY_WORKFLOW.md`, `DEVELOPMENT_SETUP.md`) is retired — do not use it.
 - **runtime data, secrets, sessions, backups, caches, and SQLite DB files are not committed**
 
 ---
@@ -80,40 +77,18 @@ From `saas/`:
 
 From repository root:
 
-- `pwsh ./deploy/verify-production.ps1` — read-only production verification
-- `keydeploy -DryRun` — deploy simulation
+- `deploy/release-aws.sh <commit-ish>` — deploy a specific commit to production (idempotent)
 
 ---
 
 ## Production deploy
 
-Install the one-command deploy shortcut once:
+```bash
+deploy/release-aws.sh                 # deploys HEAD
+deploy/release-aws.sh <commit-ish>    # deploys a specific commit
+```
 
-`pwsh ./deploy/install-keydeploy.ps1`
-
-Then restart PowerShell or reload your profile.
-
-Deploy production:
-
-`keydeploy`
-
-Dry-run:
-
-`keydeploy -DryRun`
-
-`keydeploy` performs:
-
-1. local Git checks
-2. GitHub push
-3. VPS backup
-4. safe `git pull --ff-only origin main`
-5. env verification
-6. production build
-7. service restart
-8. health check
-9. production verification
-
-See `VPS_DEPLOY_WORKFLOW.md` for the full deploy and rollback runbook.
+`git archive`s `saas/` and `bridge-gateway/` at the pinned commit, `rsync`s them to the AWS box, runs `npm install` + `prisma generate` + `prisma db push` (additive-only) + `next build` on the server, then restarts `keyone.service` + `keyone-bridge-gateway.service`. See [project-knowledge/DEPLOYMENT_RULES.md](project-knowledge/DEPLOYMENT_RULES.md) for the full contract, pre-deploy gates, and post-deploy verification checklist. The Bridge customer daemon (`bridge-node/`) is a separate artifact published with `deploy/publish-wwebjs.sh` — never by the script above.
 
 ---
 
@@ -139,12 +114,14 @@ Do not restart or modify WhatsApp auth/session state unless the task explicitly 
 
 ## Current production model
 
-- VPS: Windows Server
-- App root: `C:\app`
-- SaaS service: `mse-saas` via NSSM
-- WhatsApp service: `mse-wa` via NSSM
-- Health endpoint: `http://127.0.0.1:3000/api/health`
-- Standard deploy: `keydeploy`
+- Host: AWS Linux (eu-north-1), `ubuntu@13.63.79.43` (`w.keyone1.com`)
+- App dir: `~/keyone`
+- Services (systemd): `keyone.service` (Next.js, `:3000`), `keyone-bridge-gateway.service` (Bridge WS ingress, `:3002`), `keyone-wa.service` (legacy QR transport, `:3001`)
+- Database: PostgreSQL (`schema.postgres.prisma`) — not SQLite
+- Health endpoint: `https://w.keyone1.com/api/health`, readiness: `https://w.keyone1.com/api/ready`
+- Standard deploy: `deploy/release-aws.sh`
+
+See [project-knowledge/PROJECT_CONTEXT.md](project-knowledge/PROJECT_CONTEXT.md) for the full orientation doc.
 
 ---
 

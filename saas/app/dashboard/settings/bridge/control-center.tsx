@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BridgeOverview, BridgeView, BridgeStatus } from "@/lib/bridge/overview";
 import { QrImage } from "./qr-code";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const STATUS: Record<BridgeStatus, { text: string; dot: string; cls: string; pulse: boolean }> = {
   online:     { text: "متصل",         dot: "bg-emerald-400", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", pulse: false },
@@ -60,6 +61,7 @@ function BridgeCard({
   b, latest, releaseUrl, onChange,
 }: { b: BridgeView; latest: string | null; releaseUrl: string | null; onChange: () => void }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const st = STATUS[b.status];
@@ -68,7 +70,10 @@ function BridgeCard({
   const updateAvailable = !!latest && latest.replace(/^v/, "") !== (b.version || "").replace(/^v/, "");
 
   async function control(action: string, confirmText?: string) {
-    if (confirmText && !window.confirm(confirmText)) return;
+    if (confirmText) {
+      const ok = await confirm({ title: confirmText, confirmLabel: "تأكيد", danger: true });
+      if (!ok) return;
+    }
     setMsg(null); setBusy(action);
     try {
       const r = await fetch("/api/bridge/v1/control", {
@@ -84,7 +89,13 @@ function BridgeCard({
   }
 
   async function unlink() {
-    if (!window.confirm("سيتم فصل هذا الجهاز نهائياً وإبطال رموزه. متابعة؟")) return;
+    const ok = await confirm({
+      title: "فصل الجهاز نهائياً؟",
+      body: "سيتم فصل هذا الجهاز نهائياً وإبطال رموزه.",
+      confirmLabel: "فصل",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy("unlink");
     try {
       await fetch("/api/bridge/v1/revoke", {

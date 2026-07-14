@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Zap, Plus, Trash2, Save, Loader2, Power, PowerOff } from "lucide-react";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { EmptyState } from "@/components/ui/empty-state";
 
 type QR = {
@@ -20,13 +21,17 @@ export default function QuickRepliesUi() {
   const [newTriggers, setNewTriggers] = useState("");
   const [newReply, setNewReply] = useState("");
   const confirm = useConfirm();
+  const { error: toastError } = useToast();
 
   async function load() {
     setLoading(true);
     try {
       const r = await fetch("/api/quick-replies", { cache: "no-store" });
       const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "load_failed");
       setItems(j.items || []);
+    } catch {
+      toastError("تعذّر تحميل الردود السريعة");
     } finally {
       setLoading(false);
     }
@@ -39,31 +44,45 @@ export default function QuickRepliesUi() {
     if (!triggers.length || !newReply.trim()) return;
     setAdding(true);
     try {
-      await fetch("/api/quick-replies", {
+      const r = await fetch("/api/quick-replies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ triggers, reply: newReply.trim() }),
       });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { toastError(j?.error || "تعذّر إضافة الرد السريع"); return; }
       setNewTriggers(""); setNewReply("");
-      load();
+      await load();
+    } catch {
+      toastError("خطأ في الشبكة — تعذّر إضافة الرد السريع");
     } finally {
       setAdding(false);
     }
   }
 
   async function update(id: string, patch: Partial<QR>) {
-    await fetch(`/api/quick-replies/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    load();
+    try {
+      const r = await fetch(`/api/quick-replies/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!r.ok) { toastError("تعذّر حفظ التعديل"); return; }
+      await load();
+    } catch {
+      toastError("خطأ في الشبكة — تعذّر حفظ التعديل");
+    }
   }
 
   async function remove(id: string) {
     if (!(await confirm({ title: "حذف الرد السريع", body: "هل تريد حذف هذا الرد السريع؟", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/quick-replies/${id}`, { method: "DELETE" });
-    load();
+    try {
+      const r = await fetch(`/api/quick-replies/${id}`, { method: "DELETE" });
+      if (!r.ok) { toastError("تعذّر حذف الرد السريع"); return; }
+      await load();
+    } catch {
+      toastError("خطأ في الشبكة — تعذّر حذف الرد السريع");
+    }
   }
 
   return (

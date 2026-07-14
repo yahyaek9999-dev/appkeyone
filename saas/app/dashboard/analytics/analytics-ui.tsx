@@ -35,15 +35,21 @@ const SENTIMENT_LABEL: Record<string, string> = {
 export default function AnalyticsUi() {
   const [data, setData] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [days, setDays] = useState(30);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/analytics?days=${days}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => setData(j as Analytics))
+      .then((r) => {
+        if (!r.ok) throw new Error("load_failed");
+        return r.json();
+      })
+      .then((j) => { setData(j as Analytics); setLoadFailed(false); })
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [days, retryTick]);
 
   if (loading && !data) {
     return (
@@ -52,7 +58,14 @@ export default function AnalyticsUi() {
       </div>
     );
   }
-  if (!data) return null;
+  if (!data) {
+    return loadFailed ? (
+      <div className="rounded-2xl border border-rose-500/30 bg-rose-500/[0.08] p-10 text-center text-rose-200">
+        <div className="mb-2">تعذّر تحميل البيانات</div>
+        <button onClick={() => setRetryTick((t) => t + 1)} className="text-sm underline text-slate-300 hover:text-white">إعادة المحاولة</button>
+      </div>
+    ) : null;
+  }
 
   return (
     <div className="space-y-5">

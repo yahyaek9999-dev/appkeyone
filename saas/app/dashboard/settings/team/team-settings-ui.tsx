@@ -5,6 +5,7 @@ import {
   Users, Shield, Eye, ShoppingBag, Headphones,
   Plus, Trash2, ChevronDown, Info, Crown, Copy, Check, Link2,
 } from "lucide-react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const ROLES = [
   { value: "owner",   label: "المالك",    icon: Crown,       desc: "صلاحيات كاملة — لا يمكن تغييرها",    color: "text-amber-300", badge: "bg-amber-500/15 border-amber-500/30 text-amber-300" },
@@ -44,6 +45,7 @@ export function TeamSettingsUi({
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const confirm = useConfirm();
 
   async function invite() {
     if (!email.trim() || !email.includes("@")) {
@@ -74,7 +76,14 @@ export function TeamSettingsUi({
     }
   }
 
-  async function removeMember(id: string) {
+  async function removeMember(id: string, label: string) {
+    const ok = await confirm({
+      title: `إزالة "${label}" من الفريق؟`,
+      body: "سيفقد هذا العضو الوصول إلى لوحة التحكم فورًا.",
+      confirmLabel: "إزالة",
+      danger: true,
+    });
+    if (!ok) return;
     setSaving(true);
     const res = await fetch(`/api/settings/team?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     setSaving(false);
@@ -198,7 +207,7 @@ export function TeamSettingsUi({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <RoleSelector value={(m.role as Exclude<Role,"owner">) || "viewer"} onChange={(r) => changeRole(m.id, r)} />
-              <button onClick={() => removeMember(m.id)} disabled={saving} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 transition">
+              <button onClick={() => removeMember(m.id, m.name || m.email)} disabled={saving} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 transition">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>

@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# RETIRED (part of the old Windows-VPS deploy pipeline) — this artifact format
+# is only consumed by deploy/release.sh, which itself targets the retired VPS.
+# Production is AWS Linux; deploy with deploy/release-aws.sh instead, which
+# builds directly on the server. See project-knowledge/DEPLOYMENT_RULES.md.
+if [ -z "${I_KNOW_THIS_TARGETS_THE_RETIRED_WINDOWS_VPS:-}" ]; then
+  echo "🛑 build.sh packages for the RETIRED Windows-VPS deploy pipeline." >&2
+  echo "   Use deploy/release-aws.sh instead. See project-knowledge/DEPLOYMENT_RULES.md." >&2
+  exit 1
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # build.sh — Build locally & package deployable artifact
 #

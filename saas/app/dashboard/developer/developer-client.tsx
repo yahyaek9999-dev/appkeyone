@@ -12,6 +12,8 @@ import {
   KeyRound, Plus, RotateCw, Trash2, Loader2, Copy, Check, AlertTriangle,
   Activity, AlertCircle, Gauge, BookOpen, Webhook, ShieldCheck, X,
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type ApiKey = {
   id: string; name: string; keyPrefix: string; scopes: string; scopesList: string[];
@@ -127,9 +129,17 @@ function ApiKeysSection({
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rotated, setRotated] = useState<{ name: string; plaintext: string } | null>(null);
+  const { error: toastError } = useToast();
+  const confirm = useConfirm();
 
   async function rotate(k: ApiKey) {
-    if (!confirm(`تدوير المفتاح "${k.name}"؟ سيتوقف المفتاح الحالي فورًا ويصدر مفتاح جديد.`)) return;
+    const ok = await confirm({
+      title: `تدوير المفتاح "${k.name}"؟`,
+      body: "سيتوقف المفتاح الحالي فورًا ويصدر مفتاح جديد.",
+      confirmLabel: "تدوير",
+      danger: true,
+    });
+    if (!ok) return;
     setBusyId(k.id);
     try {
       const r = await fetch(`/api/developer/keys/${k.id}`, {
@@ -138,17 +148,25 @@ function ApiKeysSection({
       });
       const j = await r.json();
       if (j.ok && j.plaintext) { setRotated({ name: k.name, plaintext: j.plaintext }); reload(); }
-    } catch {} finally { setBusyId(null); }
+      else toastError(j.error || "تعذّر تدوير المفتاح");
+    } catch { toastError("خطأ في الشبكة — تعذّر تدوير المفتاح"); } finally { setBusyId(null); }
   }
 
   async function revoke(k: ApiKey) {
-    if (!confirm(`إلغاء المفتاح "${k.name}"؟ لا يمكن التراجع — أي تكامل يستخدمه سيتوقف.`)) return;
+    const ok = await confirm({
+      title: `إلغاء المفتاح "${k.name}"؟`,
+      body: "لا يمكن التراجع — أي تكامل يستخدمه سيتوقف.",
+      confirmLabel: "إلغاء المفتاح",
+      danger: true,
+    });
+    if (!ok) return;
     setBusyId(k.id);
     try {
       const r = await fetch(`/api/developer/keys/${k.id}`, { method: "DELETE" });
       const j = await r.json();
       if (j.ok) reload();
-    } catch {} finally { setBusyId(null); }
+      else toastError(j.error || "تعذّر إلغاء المفتاح");
+    } catch { toastError("خطأ في الشبكة — تعذّر إلغاء المفتاح"); } finally { setBusyId(null); }
   }
 
   return (

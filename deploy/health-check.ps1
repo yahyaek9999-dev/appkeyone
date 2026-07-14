@@ -1,4 +1,9 @@
 # ============================================================
+#  RETIRED — targets the old Windows VPS, which is no longer production.
+#  Production is AWS Linux; use `curl https://w.keyone1.com/api/health` and
+#  `/api/ready`, or the checklist in project-knowledge/DEPLOYMENT_RULES.md.
+#  Kept for historical reference only.
+# ============================================================
 #  KEYONE - Post-deploy health check
 # ------------------------------------------------------------
 #  Validates a freshly-deployed VPS without sending any user

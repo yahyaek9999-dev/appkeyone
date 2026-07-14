@@ -74,12 +74,15 @@ export default function ArenaUi() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState<"results" | "competitors">("results");
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const j = await fetch("/api/arena", { cache: "no-store" }).then((r) => r.json());
-      if (j.ok) setData(j);
+      if (j.ok) { setData(j); setLoadFailed(false); } else { setLoadFailed(true); }
+    } catch {
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -142,7 +145,14 @@ export default function ArenaUi() {
         <div className="p-12 text-center text-slate-400">
           <Loader2 className="mx-auto h-7 w-7 animate-spin" />
         </div>
-      ) : !data ? null : (
+      ) : !data ? (
+        loadFailed && (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/[0.08] p-10 text-center text-rose-200">
+            <div className="mb-2">تعذّر تحميل البيانات</div>
+            <button onClick={load} className="text-sm underline text-slate-300 hover:text-white">إعادة المحاولة</button>
+          </div>
+        )
+      ) : (
         <>
           {/* Tabs */}
           <div className="flex gap-2">

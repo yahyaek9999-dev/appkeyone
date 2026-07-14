@@ -11,6 +11,7 @@ import {
   ChevronUp, ChevronDown, Activity, ShieldCheck, ShieldAlert, ShieldQuestion,
   Power, PowerOff, ClipboardList, KeyRound,
 } from "lucide-react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type FieldSpec = {
   key: string;
@@ -208,6 +209,7 @@ function ProviderRow({
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const meta = STATUS_META[cred.status] || STATUS_META.unknown;
+  const confirm = useConfirm();
 
   async function test() {
     setBusy("test");
@@ -244,7 +246,8 @@ function ProviderRow({
   }
 
   async function remove() {
-    if (!window.confirm(`حذف ${descriptor?.label || cred.provider}؟`)) return;
+    const ok = await confirm({ title: `حذف ${descriptor?.label || cred.provider}؟`, confirmLabel: "حذف", danger: true });
+    if (!ok) return;
     setBusy("delete");
     try {
       await fetch(`/api/settings/providers/${slug}?provider=${encodeURIComponent(cred.provider)}`, { method: "DELETE" });

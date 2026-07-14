@@ -4,6 +4,13 @@ import { prisma } from "@/lib/db";
 import { hashPassword, createSession } from "@/lib/auth";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { recordMilestone } from "@/lib/activation/track";
+import { grantTrial } from "@/lib/membership/trial";
+
+// New self-serve signups get an automatic trial so the onboarding wizard
+// doesn't dead-end at the activation paywall with no self-serve way past it
+// (isActiveSubscription() treats an unexpired trial as active everywhere —
+// nav, entitlements, ActivationGuard — same as the admin-granted trial).
+const SIGNUP_TRIAL_HOURS = 72;
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +83,9 @@ export async function POST(req: Request) {
   recordMilestone(user.id, "signed_up", { approved }).catch(() => {});
 
   if (approved) {
+    // Best-effort — a missing/misconfigured plan catalog must never block signup
+    // itself; the user just lands on the activation paywall in that edge case.
+    await grantTrial(user.id, SIGNUP_TRIAL_HOURS, { grantedBy: "signup:auto" }).catch(() => {});
     await createSession(user.id);
     return NextResponse.json({ ok: true, status: "approved", redirectTo: "/onboarding" });
   }

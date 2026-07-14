@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 /**
  * Inline suspend / reactivate toggle for the admin businesses table.
@@ -12,19 +13,27 @@ import { useRouter } from "next/navigation";
  */
 export function SuspendButton({ userId, suspended, role }: { userId: string; suspended: boolean; role: string }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [pending, start] = useTransition();
   if (role === "admin") return null;
 
-  function toggle() {
+  async function toggle() {
     if (suspended) {
-      // Reactivate
+      const ok = await confirm({ title: "إعادة تفعيل هذا الحساب؟", confirmLabel: "إعادة تفعيل" });
+      if (!ok) return;
       start(async () => {
         await fetch(`/api/admin/users/${userId}/suspend`, { method: "DELETE" });
         router.refresh();
       });
     } else {
+      const ok = await confirm({
+        title: "تعليق هذا الحساب؟",
+        body: "سيفقد التاجر الوصول فوراً حتى تعيد تفعيله.",
+        confirmLabel: "تعليق",
+        danger: true,
+      });
+      if (!ok) return;
       const reason = prompt("سبب التعليق (اختياري):") || "manual_admin_action";
-      if (reason === null) return;
       start(async () => {
         await fetch(`/api/admin/users/${userId}/suspend`, {
           method: "POST",

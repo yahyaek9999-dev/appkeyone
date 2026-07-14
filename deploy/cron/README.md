@@ -6,7 +6,9 @@ would have silently lost all scheduled background work.
 
 ## Background: the migration gap
 
-`app/api/cron/` has **22** endpoints. Most of their own header comments say
+`app/api/cron/` had **22** endpoints at the time of this migration (now **24**
+— endpoints added since, including `ai-catalog-guard`, are wired into the
+scripts below as they ship). Most of their own header comments say
 things like *"Triggered by a scheduled task on the VPS"* — the retired
 Windows VPS's Task Scheduler. When production moved to this AWS Linux box,
 only `qr-queue`/`qr-scheduler` got a replacement (`keyone-qrcron.timer`).
@@ -53,7 +55,10 @@ trial-expiry  abandoned-cart  daily-report  automations  follow-ups  meta
 meta-webhook-processor  meta-quality-monitor  meta-template-sync
 catalog-sync  product-affinity  provider-maintenance  incident-scan
 llm-prewarm  brain-learning  credits-monthly  brain-credits-monthly  meta-cost
+ai-catalog-guard
 ```
+(`ai-catalog-guard` added 2026-07-14 — scans recent assistant replies against
+the tenant's real product catalog for hallucinated prices.)
 
 Both scripts POST `x-internal-secret`-authenticated requests to
 `127.0.0.1:3000/api/cron/<name>` — same auth guard (`checkInternalSecret`,

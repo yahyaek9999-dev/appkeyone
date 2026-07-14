@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 export default function StaffClient({ initial, departments }: { initial: any[]; departments: any[] }) {
   const [rows, setRows] = useState<any[]>(initial);
   const [form, setForm] = useState({ name: "", email: "", role: "support", departmentKey: "finance" });
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
   async function create() {
     setBusy(true);
     try {
@@ -14,6 +16,10 @@ export default function StaffClient({ initial, departments }: { initial: any[]; 
     } finally { setBusy(false); }
   }
   async function suspend(id: string, val: boolean) {
+    if (val) {
+      const ok = await confirm({ title: "إيقاف وصول هذا الموظف؟", confirmLabel: "إيقاف", danger: true });
+      if (!ok) return;
+    }
     const res = await fetch(`/api/admin/staff/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "suspend", suspend: val }) });
     const j = await res.json().catch(() => null);
     if (j?.staff) setRows((rs) => rs.map((r) => (r.id === id ? j.staff : r)));
