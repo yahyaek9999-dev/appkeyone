@@ -28,6 +28,8 @@ const WAIVED = new Set([
   "api/auth/signup/route.ts",
   "api/auth/logout/route.ts",
   "api/auth/accept-invite/route.ts",
+  "api/auth/forgot-password/route.ts",
+  "api/auth/reset-password/route.ts",
   "api/health/route.ts",
   "api/ready/route.ts",
   "api/commerce/webhooks/route.ts",

@@ -137,6 +137,8 @@ export const PUBLIC_OR_INTERNAL_ROUTES: { route: string; reason: string }[] = [
   { route: "api/auth/signup/route.ts", reason: "public — self-service signup" },
   { route: "api/auth/logout/route.ts", reason: "public — clears the session cookie" },
   { route: "api/auth/accept-invite/route.ts", reason: "public — token-authenticated invite accept" },
+  { route: "api/auth/forgot-password/route.ts", reason: "public — no session exists yet; rate-limited (RATE_LIMITS.auth)" },
+  { route: "api/auth/reset-password/route.ts", reason: "public — token-authenticated password reset; rate-limited (RATE_LIMITS.auth)" },
   { route: "api/health/route.ts", reason: "public liveness probe" },
   { route: "api/ready/route.ts", reason: "public readiness probe" },
   { route: "api/commerce/webhooks/route.ts", reason: "HMAC-signed third-party webhook (no session)" },
