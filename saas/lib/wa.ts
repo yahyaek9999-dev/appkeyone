@@ -1,25 +1,40 @@
 // Helpers to talk to the whatsapp-web.js microservice from Next.js
+import { createHash } from "crypto";
 import { bridgeEnabled } from "@/lib/bridge/flags";
 
 const BASE = process.env.WHATSAPP_SERVICE_URL || "http://127.0.0.1:3001";
 const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
 const SMART_QUEUE_ENABLED = process.env.WA_SMART_QUEUE_ENABLED !== "0";
+// Applied only to sendNow() (see below), not every call() use — start/pair/
+// exportData weren't audited for their expected latency, so this stays
+// scoped to exactly the path that needed it: a wedged whatsapp-service can
+// hang a send indefinitely, and since drainOutgoingQueue processes its batch
+// sequentially, one hung send stalls the entire tick for every tenant.
+const SEND_CALL_TIMEOUT_MS = Number(process.env.WA_SEND_TIMEOUT_MS) || 25_000;
 
-async function call(path: string, init?: RequestInit) {
+async function call(path: string, init?: RequestInit & { timeoutMs?: number }) {
+  const { timeoutMs, ...rest } = init || {};
   try {
     const res = await fetch(BASE + path, {
-      ...init,
+      ...rest,
       headers: {
         "Content-Type": "application/json",
         "X-Internal-Secret": SECRET,
-        ...(init?.headers || {}),
+        ...(rest.headers || {}),
       },
       cache: "no-store",
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
     });
     const json = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data: json };
   } catch (e: any) {
-    return { ok: false, status: 0, data: { error: e.message } };
+    // A timeout throws a DOMException (name "TimeoutError"), not a plain
+    // Error — normalize the message so classifyRetryDelayMs's existing
+    // "timeout" substring match (lib/messaging/outgoing-queue.ts) still
+    // classifies it as a transient, retryable failure rather than falling
+    // through to the generic 5-minute retry bucket.
+    const message = e?.name === "TimeoutError" ? "timeout" : e?.message || "request_failed";
+    return { ok: false, status: 0, data: { error: message } };
   }
 }
 
@@ -45,7 +60,22 @@ async function sendNow(userId: string, to: string, text: string) {
   return call(`/sessions/${userId}/send`, {
     method: "POST",
     body: JSON.stringify({ to, text }),
+    timeoutMs: SEND_CALL_TIMEOUT_MS,
   });
+}
+
+/**
+ * Deterministic idempotency key for a logical send: collapses duplicate or
+ * retried enqueue calls for the same (userId, recipient, reason, text)
+ * within a short time bucket into a single WaMessage row instead of two
+ * (e.g. a webhook delivered twice, or a caller retrying after a transient
+ * error before the first enqueue was even drained) — without permanently
+ * blocking a legitimately identical message sent again later (a new bucket
+ * starts every 5 minutes).
+ */
+function deriveIdempotencyKey(userId: string, to: string, text: string, reason: string): string {
+  const bucket = Math.floor(Date.now() / (5 * 60_000));
+  return createHash("sha256").update(`${userId}:${to}:${reason}:${bucket}:${text}`).digest("hex");
 }
 
 async function enqueueSend(
@@ -57,7 +87,8 @@ async function enqueueSend(
   if (!SMART_QUEUE_ENABLED) return sendNow(userId, to, text);
   try {
     const { enqueueOutboundText, drainOutgoingQueue } = await import("@/lib/messaging/outgoing-queue");
-    const queued = await enqueueOutboundText({ userId, to, text, reason });
+    const idempotencyKey = deriveIdempotencyKey(userId, to, text, reason);
+    const queued = await enqueueOutboundText({ userId, to, text, reason, idempotencyKey });
     if (!queued.queued) {
       return { ok: false, status: 500, data: { error: queued.reason || "queue_failed" } };
     }

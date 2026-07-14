@@ -125,6 +125,26 @@ export async function enqueueOutboundText(
     return { queued: false, reason: "missing_required_fields" };
   }
 
+  // Idempotency short-circuit — mirrors the pattern already used and proven
+  // correct in QRProvider.sendMessage. Must run BEFORE the upsert below:
+  // the upsert's `update` branch unconditionally resets status to "queued",
+  // which would be a real bug for a key reused after the row already
+  // resolved (sent/failed/expired) — it would resurrect and RESEND an
+  // already-delivered message instead of no-op'ing. A row still in
+  // queued/sending is legitimately re-enqueueable (bump its queuedAt), so
+  // only a terminal status short-circuits here.
+  if (input.idempotencyKey) {
+    const existing = await (prisma as any).waMessage
+      .findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+        select: { id: true, status: true, queuedAt: true },
+      })
+      .catch(() => null);
+    if (existing && (existing.status === "sent" || existing.status === "failed" || existing.status === "expired")) {
+      return { queued: true, id: existing.id, dueAt: existing.queuedAt };
+    }
+  }
+
   const basis = Date.now() + Math.max(0, Math.min(7 * 24 * 3_600_000, input.delayMs || 0));
   const pacing = pacingForReason(input.reason || "system");
   const inMemoryDueMs = nextAllowedSendAt(input.userId, to, basis, pacing);
@@ -210,7 +230,16 @@ export async function drainOutgoingQueue(
 
   await resetStaleSending(now).catch(() => {});
 
-  const rows = await (prisma as any).waMessage
+  // Fetch a wider candidate pool than the batch itself, then apply the
+  // per-user cap while SELECTING into the working batch (round-robin across
+  // users), not after a plain oldest-first take(batchSize). Previously one
+  // tenant's backlog could fill the entire batch on its own (e.g. batchSize
+  // rows all belonging to one userId with an old queue), leaving zero room
+  // for any other tenant that tick even though the post-fetch perUserLimit
+  // check existed — it only prevented over-processing *within* an
+  // already-unfair batch, not the unfairness itself.
+  const candidatePoolSize = Math.min(500, batchSize * 10);
+  const candidates = await (prisma as any).waMessage
     .findMany({
       where: {
         ...(opts.userId ? { userId: opts.userId } : {}),
@@ -220,9 +249,27 @@ export async function drainOutgoingQueue(
         queuedAt: { lte: now },
       },
       orderBy: [{ queuedAt: "asc" }, { attempts: "asc" }],
-      take: batchSize,
+      take: candidatePoolSize,
     })
     .catch(() => []);
+
+  const byUser = new Map<string, any[]>();
+  for (const row of candidates as any[]) {
+    const arr = byUser.get(row.userId) || [];
+    if (arr.length < perUserLimit) arr.push(row);
+    byUser.set(row.userId, arr);
+  }
+  const rows: any[] = [];
+  let more = true;
+  while (more && rows.length < batchSize) {
+    more = false;
+    for (const arr of byUser.values()) {
+      if (arr.length && rows.length < batchSize) {
+        rows.push(arr.shift());
+        more = true;
+      }
+    }
+  }
 
   result.examined = rows.length;
 
