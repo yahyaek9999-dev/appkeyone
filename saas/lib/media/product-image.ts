@@ -25,10 +25,6 @@ const EXT_BY_MIME: Record<string, string> = {
 
 export const MAX_PRODUCT_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
 
-export function isAllowedProductImage(mime: string): boolean {
-  return Object.prototype.hasOwnProperty.call(EXT_BY_MIME, (mime || "").toLowerCase());
-}
-
 /** True if a stored value is an internal uploaded-image path (not a pasted URL). */
 export function isInternalProductImage(value: string | null | undefined): boolean {
   return !!value && /^\/api\/products\/image\/[A-Za-z0-9._-]+$/.test(value);
