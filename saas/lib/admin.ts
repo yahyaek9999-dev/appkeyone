@@ -29,13 +29,26 @@ export async function requireFinanceAccess() {
   return ctx.user;
 }
 
-/** Returns the singleton site config row, creating it on first access. */
+/**
+ * Returns the singleton site config row, creating it on first access.
+ * `update: {}` means Prisma can't compile this to a single atomic native
+ * upsert, so concurrent first-ever callers (e.g. every top-level page
+ * prerendering in parallel against a brand-new database) can race to
+ * INSERT and one loses with P2002 — fall back to a plain read in that case.
+ */
 export async function getSiteConfig() {
-  return prisma.siteConfig.upsert({
-    where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton" },
-  });
+  try {
+    return await prisma.siteConfig.upsert({
+      where: { id: "singleton" },
+      update: {},
+      create: { id: "singleton" },
+    });
+  } catch (e: any) {
+    if (String(e?.code || "") === "P2002") {
+      return prisma.siteConfig.findUniqueOrThrow({ where: { id: "singleton" } });
+    }
+    throw e;
+  }
 }
 
 export type SubscriptionStatus = "pending" | "active" | "expired" | "canceled";
