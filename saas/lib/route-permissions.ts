@@ -173,6 +173,9 @@ export const PUBLIC_OR_INTERNAL_ROUTES: { route: string; reason: string }[] = [
   { route: "api/internal/metrics/route.ts", reason: "x-internal-secret guarded ops endpoint" },
   { route: "api/internal/queue-health/route.ts", reason: "x-internal-secret guarded ops endpoint" },
   { route: "api/internal/wa-health/route.ts", reason: "x-internal-secret guarded ops endpoint" },
+  { route: "api/bridge/v1/device/start/route.ts", reason: "public — RFC 8628 device grant start; Bridge has no account yet, rate-limited" },
+  { route: "api/bridge/v1/device/token/route.ts", reason: "public — RFC 8628 device grant poll; PKCE-proven + one-time consumed, rate-limited" },
+  { route: "api/bridge/v1/token/rotate/route.ts", reason: "Bearer bridge_token authenticated (no session); reuse-detected rotation, rate-limited" },
 ];
 
 /** Admin routes are guarded by `requireAdmin()` (owner + platform-admin role). */
