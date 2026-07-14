@@ -18,6 +18,7 @@ import {
   Inbox as InboxIcon,
   ArrowRight,
   IdCard,
+  FileText,
 } from "lucide-react";
 import Customer360 from "./customer-360";
 import { Avatar } from "@/components/ui/avatar";
@@ -52,6 +53,7 @@ type Msg = {
   role: "user" | "assistant" | "admin" | "system";
   content: string;
   mediaType?: string | null;
+  mediaUrl?: string | null;
   intent?: string | null;
   sentiment?: string | null;
   createdAt: string;
@@ -877,10 +879,56 @@ function MessageBubble({ m }: { m: Msg }) {
             </span>
           )}
         </div>
+        <MessageMedia m={m} />
         <div className="whitespace-pre-wrap text-sm">{m.content}</div>
       </div>
     </div>
   );
+}
+
+function MessageMedia({ m }: { m: Msg }) {
+  if (!m.mediaUrl) return null;
+  if (m.mediaType === "image") {
+    return (
+      <a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" className="mb-2 block">
+        <img
+          src={m.mediaUrl}
+          alt="صورة من العميل"
+          className="max-h-64 w-auto rounded-xl border border-white/10"
+          loading="lazy"
+        />
+      </a>
+    );
+  }
+  if (m.mediaType === "voice") {
+    return (
+      <audio controls src={m.mediaUrl} preload="none" className="mb-2 w-full max-w-[260px]" />
+    );
+  }
+  if (m.mediaType === "video") {
+    return (
+      <video
+        controls
+        src={m.mediaUrl}
+        preload="none"
+        className="mb-2 max-h-64 w-auto rounded-xl border border-white/10"
+      />
+    );
+  }
+  if (m.mediaType === "document") {
+    return (
+      <a
+        href={m.mediaUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-2 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs hover:bg-white/[0.08]"
+      >
+        <FileText className="h-4 w-4 shrink-0" />
+        <span>تنزيل الملف المرسل</span>
+      </a>
+    );
+  }
+  return null;
 }
 
 function Field({ label, value }: { label: string; value: string }) {
