@@ -72,9 +72,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     });
   }
 
-  await prisma.couponRedemption.create({
-    data: { couponId: coupon.id, userId: uid, customerId, orderId, revenue },
-  });
+  try {
+    await prisma.couponRedemption.create({
+      data: { couponId: coupon.id, userId: uid, customerId, orderId, revenue },
+    });
+  } catch (e: any) {
+    // Lost the oneTime-per-customer race (see the @@unique on CouponRedemption) —
+    // the usedCount increment above already committed, so roll it back before
+    // reporting the same "already used" error the pre-check above would give.
+    if (e?.code === "P2002") {
+      await prisma.coupon.update({ where: { id: coupon.id }, data: { usedCount: { decrement: 1 } } }).catch(() => {});
+      return NextResponse.json({ error: "هذا العميل استخدم الكوبون من قبل" }, { status: 400 });
+    }
+    throw e;
+  }
   const fresh = await prisma.coupon.findUnique({ where: { id: coupon.id }, select: { usedCount: true } });
 
   return NextResponse.json({ ok: true, usedCount: fresh?.usedCount ?? coupon.usedCount + 1 });

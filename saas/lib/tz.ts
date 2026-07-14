@@ -77,3 +77,21 @@ export function localYmd(tz: string, d: Date = new Date()): string {
   const p = partsInTz(d, tz);
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
+
+/**
+ * The real UTC instant for local midnight of `d`'s calendar day in `tz`.
+ * Use this (not `new Date(); setHours(0,0,0,0)`) for any "today"/day-boundary
+ * DB query — `setHours` runs in the server's own local time (UTC on the
+ * production box), which is 2-3 hours off Africa/Cairo and produces the
+ * wrong bucket for roughly the first few hours of every Cairo day.
+ * Handles DST/offset correctly via a standard double-conversion.
+ */
+export function startOfLocalDay(tz: string, d: Date = new Date()): Date {
+  const zone = safeTz(tz);
+  const p = partsInTz(d, zone);
+  const naiveUtcMidnight = Date.UTC(p.year, p.month - 1, p.day, 0, 0, 0);
+  const atNaive = partsInTz(new Date(naiveUtcMidnight), zone);
+  const localMsAtNaive = Date.UTC(atNaive.year, atNaive.month - 1, atNaive.day, atNaive.hour, atNaive.minute, 0);
+  const offsetMs = naiveUtcMidnight - localMsAtNaive;
+  return new Date(naiveUtcMidnight + offsetMs);
+}

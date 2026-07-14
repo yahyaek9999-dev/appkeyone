@@ -8,8 +8,10 @@
 // so every number here is already in whole EGP — no minor-unit conversion.
 
 import { prisma } from "@/lib/db";
+import { startOfLocalDay, localYmd } from "@/lib/tz";
 
 const DAY = 24 * 60 * 60 * 1000;
+const REVENUE_TZ = "Africa/Cairo";
 
 export interface BestSeller {
   name: string;
@@ -37,8 +39,9 @@ export async function revenueIntelligence(
   userId: string,
   now: Date = new Date(),
 ): Promise<RevenueIntel> {
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
+  // Local (Cairo) day boundary, not the server's own local time — a plain
+  // setHours(0,0,0,0) runs in UTC on the production box, ~3h off this market.
+  const todayStart = startOfLocalDay(REVENUE_TZ, now);
   const weekStart = new Date(now.getTime() - 7 * DAY);
   const monthStart = new Date(now.getTime() - 30 * DAY);
 
@@ -97,16 +100,18 @@ export async function revenueIntelligence(
   const aov =
     weekOrders.length > 0 ? Math.round(revenue7d / weekOrders.length) : 0;
 
-  // Weekly trend: bucket the 7d orders by calendar day (oldest → newest).
+  // Weekly trend: bucket the 7d orders by local (Cairo) calendar day, oldest
+  // → newest — localYmd, not toISOString(), so orders placed late evening
+  // Cairo time (still early UTC the next day) land in the right bucket.
   const trendMap = new Map<string, number>();
   for (const o of weekOrders) {
-    const key = o.createdAt.toISOString().slice(0, 10);
+    const key = localYmd(REVENUE_TZ, o.createdAt);
     trendMap.set(key, (trendMap.get(key) || 0) + (o.total || 0));
   }
   const weeklyTrend: { day: string; total: number }[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now.getTime() - i * DAY);
-    const key = d.toISOString().slice(0, 10);
+    const key = localYmd(REVENUE_TZ, d);
     weeklyTrend.push({ day: key, total: trendMap.get(key) || 0 });
   }
 

@@ -51,6 +51,15 @@ model User {
   // collision negligible, and the reset route re-checks expiry/hash anyway.
   resetTokenHash String?
   resetExpiresAt DateTime?
+  // Session revocation: embedded in the JWT at sign-time (`pwc` claim) and
+  // compared against this column on every request. A password change bumps
+  // this to now(), which invalidates every session token issued before the
+  // change (a stolen/leaked JWT stops working the moment the user resets
+  // their password) — closing the gap where logout/reset only cleared the
+  // browser's own cookie and left any other copy of the token valid for up
+  // to 30 more days. Tokens signed before this column existed carry no `pwc`
+  // claim and are grandfathered in (treated as valid) rather than mass-logged-out.
+  passwordChangedAt DateTime @default(now())
 
   bot            Bot?
   subscription   Subscription?
@@ -1548,6 +1557,22 @@ model Product {
   @@index([userId, category])
 }
 
+/// Ownership record for a device-uploaded product image, keyed by its stored
+/// filename. Closes a cross-tenant IDOR: the serve route
+/// (app/api/products/image/[file]) previously only checked "is any tenant
+/// logged in," never "does this tenant own this file." Rows are created at
+/// upload time; images uploaded before this model existed have no row and
+/// are grandfathered in (served to any authenticated user, same as before —
+/// not a regression) rather than mass-breaking every existing product photo.
+model ProductImage {
+  id        String   @id @default(cuid())
+  file      String   @unique
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 /// Coupon / Discount Engine.
 model Coupon {
   id           String   @id @default(cuid())
@@ -1582,6 +1607,13 @@ model CouponRedemption {
   revenue    Int      @default(0) // order value attributed to this redemption (EGP)
   redeemedAt DateTime @default(now())
 
+  // Backs the "oneTime per customer" check in the redeem route atomically —
+  // the prior findFirst-then-create was a TOCTOU race with no DB-level
+  // guard, so two near-simultaneous redemptions for the same coupon+customer
+  // could both pass the check. Postgres treats NULL as distinct under a
+  // unique index, so redemptions with no customerId (oneTime doesn't apply
+  // to them) are unaffected.
+  @@unique([couponId, customerId])
   @@index([couponId])
   @@index([userId, redeemedAt])
 }

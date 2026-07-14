@@ -40,6 +40,31 @@ const GENERIC_OK = {
   message: "إذا كان البريد الإلكتروني مسجلاً لدينا، فسيصلك رابط إعادة تعيين كلمة المرور.",
 };
 
+// Per-email cap (in addition to the per-IP rate limit above) — without it, a
+// single IP could trigger unlimited reset emails at one victim's inbox
+// (email-bombing) once a real platform email provider is configured; the
+// per-IP limit alone doesn't stop that. Mirrors login's per-email-hash guard.
+const emailRequestStore = new Map<string, { count: number; resetAt: number }>();
+const EMAIL_REQUEST_WINDOW_MS = 60 * 60 * 1000;
+const EMAIL_REQUEST_MAX = 3;
+function emailKey(email: string) {
+  return "pwreset:" + createHash("sha256").update(email).digest("hex");
+}
+function isEmailThrottled(email: string): boolean {
+  const e = emailRequestStore.get(emailKey(email));
+  return !!e && e.resetAt > Date.now() && e.count >= EMAIL_REQUEST_MAX;
+}
+function recordEmailRequest(email: string): void {
+  const key = emailKey(email);
+  const now = Date.now();
+  const e = emailRequestStore.get(key);
+  if (!e || e.resetAt < now) {
+    emailRequestStore.set(key, { count: 1, resetAt: now + EMAIL_REQUEST_WINDOW_MS });
+  } else {
+    e.count += 1;
+  }
+}
+
 export async function POST(req: Request) {
   const blocked = enforceRateLimit(req, { name: "forgot-password", ...RATE_LIMITS.auth });
   if (blocked) return blocked;
@@ -48,6 +73,13 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "أدخل بريدًا إلكترونيًا صالحًا" }, { status: 400 });
   }
+
+  // Same generic response as a normal request — don't leak whether the email
+  // exists via a distinct throttle message either.
+  if (isEmailThrottled(parsed.data.email)) {
+    return NextResponse.json(GENERIC_OK);
+  }
+  recordEmailRequest(parsed.data.email);
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email },

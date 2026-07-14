@@ -44,8 +44,17 @@ export function can(role: string | null | undefined, permission: Permission): bo
   return Array.isArray(perms) && perms.includes(permission);
 }
 
-/** Normalize an arbitrary string to a known Role, defaulting to "viewer". */
-export function normalizeRole(role: string | null | undefined): Role {
-  if (role && role in PERMISSIONS) return role as Role;
+/**
+ * Normalize an arbitrary string (a TeamMember.role value) to a known
+ * assignable role, defaulting to "viewer". Deliberately can never return
+ * "owner" — TeamMember.role is constrained to ASSIGNABLE_ROLES at every
+ * current write path (app/api/settings/team, accept-invite), but this is
+ * defense-in-depth: a future write path that ever persisted role:"owner" on
+ * a TeamMember row must not silently grant that member full owner
+ * permissions (including billing) just because "owner" is also a key in
+ * PERMISSIONS.
+ */
+export function normalizeRole(role: string | null | undefined): AssignableRole {
+  if (role && (ASSIGNABLE_ROLES as readonly string[]).includes(role)) return role as AssignableRole;
   return "viewer";
 }

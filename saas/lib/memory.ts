@@ -106,36 +106,37 @@ export async function triggerMemoryUpdate(args: {
 }): Promise<void> {
   const { customerId, conversationId } = args;
   try {
-    // Upsert memory row + increment counters atomically-ish.
     const existing = await (prisma as any).customerMemory.findUnique({
       where: { customerId },
     });
     const qualityPatch = buildQualityPatch(existing, args);
-    if (!existing) {
-      await (prisma as any).customerMemory.create({
-        data: {
-          customerId,
-          summary: "",
-          factsJson: "{}",
-          messageCount: 1,
-          pendingCount: 1,
-          pendingSinceMessageId: args.lastMessageId || null,
-          ...qualityPatch,
-        },
-      });
-    } else {
-      await (prisma as any).customerMemory.update({
-        where: { customerId },
-        data: {
-          messageCount: { increment: 1 },
-          pendingCount: { increment: 1 },
-          ...(existing.pendingSinceMessageId
-            ? {}
-            : { pendingSinceMessageId: args.lastMessageId || null }),
-          ...qualityPatch,
-        },
-      });
-    }
+    // A real atomic upsert (Prisma compiles this to INSERT ... ON CONFLICT DO
+    // UPDATE on Postgres) — not a findUnique-then-create/update branch, which
+    // was a genuine race: two inbound messages for the same customer arriving
+    // close together (webhook retry/double-text) could both see `!existing`
+    // and both call create(), with the loser's uncaught P2002 silently
+    // dropping that message's counter increment (this whole function is
+    // wrapped in a catch-all so nothing surfaces it).
+    await (prisma as any).customerMemory.upsert({
+      where: { customerId },
+      create: {
+        customerId,
+        summary: "",
+        factsJson: "{}",
+        messageCount: 1,
+        pendingCount: 1,
+        pendingSinceMessageId: args.lastMessageId || null,
+        ...qualityPatch,
+      },
+      update: {
+        messageCount: { increment: 1 },
+        pendingCount: { increment: 1 },
+        ...(existing?.pendingSinceMessageId
+          ? {}
+          : { pendingSinceMessageId: args.lastMessageId || null }),
+        ...qualityPatch,
+      },
+    });
 
     const row = await (prisma as any).customerMemory.findUnique({
       where: { customerId },

@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { grantTrial } from "@/lib/membership/trial";
+import { audit } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,11 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     approve: true,
   });
   if (!granted) return NextResponse.json({ error: "no_plan_available" }, { status: 400 });
+
+  void audit({
+    userId: target.id, action: "admin.trial_granted", actorId: (admin as any)?.id || null, actorEmail: admin.email || null, actorRole: "admin",
+    targetType: "user", targetId: target.id, metadata: { hours, plan: granted.plan.name }, req,
+  });
 
   return NextResponse.json({
     ok: true,

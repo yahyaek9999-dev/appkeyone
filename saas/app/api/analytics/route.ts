@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { startOfLocalDay, localYmd } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +38,10 @@ export async function GET(req: Request) {
 
   const now = new Date();
   const since = new Date(now.getTime() - days * 24 * 3600 * 1000);
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  // "Today" boundary in the merchant's real local day (Cairo by default), not
+  // the server's own local time (UTC on the production box) — a plain
+  // setHours(0,0,0,0) would put the boundary ~3 hours off for this market.
+  const startOfToday = startOfLocalDay("Africa/Cairo", now);
 
   // -------- Customers --------
   const customers = await prisma.customer.findMany({
@@ -108,12 +111,15 @@ export async function GET(req: Request) {
   // -- Daily traffic --
   const messagesDaily: { date: string; in: number; out: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const day = new Date(now);
-    day.setHours(0, 0, 0, 0);
-    day.setDate(day.getDate() - i);
-    const next = new Date(day);
-    next.setDate(day.getDate() + 1);
-    const dayKey = day.toISOString().slice(0, 10);
+    const day = startOfLocalDay("Africa/Cairo", new Date(now.getTime() - i * 24 * 3600 * 1000));
+    // +36h then re-floor to local midnight — lands solidly in the next local
+    // calendar day regardless of any DST shift, rather than assuming a fixed
+    // 24h offset always crosses exactly one local day boundary.
+    const next = startOfLocalDay("Africa/Cairo", new Date(day.getTime() + 36 * 3600 * 1000));
+    // localYmd, not day.toISOString() — `day` is the UTC instant of local
+    // midnight, so its own ISO date would be the WRONG calendar date (e.g.
+    // Cairo midnight is 21:00 UTC the previous day).
+    const dayKey = localYmd("Africa/Cairo", day);
     let inCount = 0, outCount = 0;
     for (const m of messages) {
       if (m.createdAt >= day && m.createdAt < next) {

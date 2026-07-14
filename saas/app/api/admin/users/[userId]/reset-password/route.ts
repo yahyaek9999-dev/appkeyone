@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
+import { audit } from "@/lib/audit/log";
 
 /**
  * Generate a memorable but strong temp password.
@@ -22,11 +23,12 @@ function generatePassword(): string {
 }
 
 export async function POST(
-  _req: Request,
+  req: Request,
   ctx: { params: { userId: string } }
 ) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireAdmin();
   } catch {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -52,12 +54,17 @@ export async function POST(
 
   await prisma.user.update({
     where: { id: userId },
-    data: { passwordHash },
+    // Bumping passwordChangedAt revokes any existing session token for this
+    // user immediately (lib/auth.ts's `pwc` claim check) — an admin-forced
+    // password reset now also logs out any device/stolen cookie right away,
+    // not just on next natural expiry.
+    data: { passwordHash, passwordChangedAt: new Date() },
   });
 
-  // Sessions are JWT-based with 30d expiry; cannot be revoked centrally.
-  // Customer must be told the password change forces them to re-login on
-  // their next session expiry — we surface this in the UI message.
+  void audit({
+    userId: user.id, action: "admin.user_password_reset", actorId: actor?.id || null, actorEmail: actor?.email || null, actorRole: "admin",
+    targetType: "user", targetId: user.id, metadata: { email: user.email }, req,
+  });
 
   return NextResponse.json({
     ok: true,

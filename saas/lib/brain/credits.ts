@@ -22,7 +22,17 @@ export interface BrainWalletRow {
 export async function getOrCreateBrainWallet(userId: string): Promise<BrainWalletRow> {
   const existing = await prisma.brainCreditWallet.findUnique({ where: { userId } });
   if (existing) return existing as BrainWalletRow;
-  const created = await prisma.brainCreditWallet.create({ data: { userId } });
+  let created;
+  try {
+    created = await prisma.brainCreditWallet.create({ data: { userId } });
+  } catch (e: any) {
+    // Lost a concurrent first-create race — return the winner's row instead
+    // of surfacing a transient 500.
+    if (e?.code === "P2002") {
+      return (await prisma.brainCreditWallet.findUnique({ where: { userId } })) as BrainWalletRow;
+    }
+    throw e;
+  }
   const welcome = Math.max(0, brainFlags.welcomeCredits);
   if (welcome > 0) {
     await credit({ userId, kind: "adjustment", amount: welcome, source: "system", reason: "welcome_credits", idempotencyKey: `brain-welcome:${created.id}` }).catch(() => {});

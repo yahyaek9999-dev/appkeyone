@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
+import { audit } from "@/lib/audit/log";
 
 export async function POST(req: Request, { params }: { params: { userId: string } }) {
   let admin;
@@ -34,6 +35,10 @@ export async function POST(req: Request, { params }: { params: { userId: string 
       suspendedAt: new Date(),
       suspendedReason: "deleted_by_admin",
     },
+  });
+  void audit({
+    userId, action: "admin.user_soft_deleted", actorId: (admin as any)?.id || null, actorEmail: (admin as any)?.email || null, actorRole: "admin",
+    targetType: "user", targetId: userId, metadata: { email: user.email }, req,
   });
   return NextResponse.json({ ok: true, softDeleted: true });
 }

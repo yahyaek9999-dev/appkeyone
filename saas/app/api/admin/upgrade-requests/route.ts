@@ -72,9 +72,13 @@ export async function POST(req: Request) {
     if (!plan) return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
 
     const now = new Date();
-    const expires = new Date(now);
-    if (reqRow.billingCycle === "yearly") expires.setFullYear(expires.getFullYear() + 1);
-    else expires.setMonth(expires.getMonth() + 1);
+    // Millisecond arithmetic, not setMonth()/setFullYear() — setMonth on a
+    // 29-31-day month tail (e.g. activating Jan 31) overflows into the wrong
+    // month (Mar 3 instead of Feb 28/29), silently granting extra free days.
+    // Matches the pattern already used in app/api/admin/subscriptions/route.ts.
+    const expires = new Date(
+      now.getTime() + (reqRow.billingCycle === "yearly" ? 365 : 30) * 24 * 60 * 60 * 1000,
+    );
 
     // Upsert the subscription to the target plan (additive; resets monthly usage).
     await prisma.subscription.upsert({

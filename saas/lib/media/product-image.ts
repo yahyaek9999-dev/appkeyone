@@ -10,6 +10,7 @@
 import { mkdir, writeFile, readFile, stat } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { prisma } from "@/lib/db";
 
 const ROOT = path.join(process.cwd(), "uploads", "products");
 
@@ -31,18 +32,33 @@ export function isInternalProductImage(value: string | null | undefined): boolea
 }
 
 /** Persist an uploaded product image. Returns the gated serve path stored on the product. */
-export async function saveProductImage(mime: string, bytes: Buffer): Promise<string> {
+export async function saveProductImage(mime: string, bytes: Buffer, userId: string): Promise<string> {
   const ext = EXT_BY_MIME[(mime || "").toLowerCase()] || "bin";
   await mkdir(ROOT, { recursive: true });
   const file = `${randomUUID()}.${ext}`;
   await writeFile(path.join(ROOT, file), bytes);
+  await (prisma as any).productImage.create({ data: { file, userId } }).catch(() => {});
   return `/api/products/image/${file}`;
 }
 
-/** Read a stored product image back for the gated serve route. */
-export async function readProductImage(file: string): Promise<{ bytes: Buffer; contentType: string } | null> {
+/**
+ * Read a stored product image back for the gated serve route, scoped to the
+ * requesting tenant. `requesterId === null` skips the ownership check
+ * (internal/admin callers that intentionally read across tenants).
+ * Images with no ownership row (uploaded before ProductImage existed) are
+ * grandfathered in and served regardless of requester — matches the
+ * pre-fix behavior exactly, so no existing product photo breaks.
+ */
+export async function readProductImage(
+  file: string,
+  requesterId: string | null = null,
+): Promise<{ bytes: Buffer; contentType: string } | null> {
   // file is the bare "<uuid>.<ext>"; reject anything that escapes the root.
   if (!/^[A-Za-z0-9._-]+$/.test(file)) return null;
+  if (requesterId) {
+    const owner = await (prisma as any).productImage.findUnique({ where: { file }, select: { userId: true } }).catch(() => null);
+    if (owner && owner.userId !== requesterId) return null;
+  }
   const abs = path.join(ROOT, file);
   try {
     await stat(abs);
