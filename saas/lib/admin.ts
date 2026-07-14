@@ -29,13 +29,25 @@ export async function requireFinanceAccess() {
   return ctx.user;
 }
 
-/** Returns the singleton site config row, creating it on first access. */
+/**
+ * Returns the singleton site config row, creating it on first access.
+ * Concurrent first-time callers (e.g. multiple requests hitting a fresh DB at once)
+ * can race on the create side of upsert and throw P2002; fall back to a plain read
+ * since the row is guaranteed to exist by then.
+ */
 export async function getSiteConfig() {
-  return prisma.siteConfig.upsert({
-    where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton" },
-  });
+  try {
+    return await prisma.siteConfig.upsert({
+      where: { id: "singleton" },
+      update: {},
+      create: { id: "singleton" },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      return prisma.siteConfig.findUniqueOrThrow({ where: { id: "singleton" } });
+    }
+    throw err;
+  }
 }
 
 export type SubscriptionStatus = "pending" | "active" | "expired" | "canceled";

@@ -92,6 +92,13 @@ const nextConfig = {
     serverActions: { bodySizeLimit: "10mb" },
     // Phase 6: enables instrumentation.ts + onRequestError hook
     instrumentationHook: true,
+    // pdfkit resolves its .afm font metrics via a `__dirname`-relative
+    // fs.readFileSync at runtime. Webpack-bundling the route (the default)
+    // rewrites that path to the compiled .next output dir, where the font
+    // data files were never copied — every PDF render 500s with ENOENT.
+    // Keeping it external makes Node `require()` it straight from
+    // node_modules at runtime, where __dirname resolves correctly.
+    serverComponentsExternalPackages: ["pdfkit"],
   },
 };
 

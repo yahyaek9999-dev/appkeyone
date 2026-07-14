@@ -1504,6 +1504,10 @@ model SiteConfig {
   claudeKeyEnc       String?
   geminiKeyEnc       String?
 
+  // ---- platform-wide maintenance banner (admin-set, shown to all tenants) ----
+  maintenanceMode    Boolean  @default(false)
+  maintenanceMessage String   @default("")
+
   updatedAt       DateTime @updatedAt
 }
 
@@ -1912,6 +1916,24 @@ model PaymentTransaction {
   @@index([userId, status])
   @@index([status, createdAt])
   @@index([provider, status])
+}
+
+/// Invoice — generated lazily (first view/download) from a completed
+/// PaymentTransaction. Deliberately decoupled from the payment webhook/
+/// reconcile pipeline (money-critical, untouched) — this only ever READS an
+/// already-finalized PaymentTransaction row, never participates in payment
+/// completion itself. One invoice per transaction (idempotent, create-only).
+model Invoice {
+  id                  String   @id @default(cuid())
+  userId              String
+  paymentTransactionId String  @unique
+  number              String   @unique  // sequential, human-facing (e.g. INV-000123)
+  amountUsd           Float
+  currency            String   @default("USD")
+  description         String   @default("")
+  issuedAt            DateTime @default(now())
+
+  @@index([userId, issuedAt])
 }
 
 // ===========================================================================

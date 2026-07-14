@@ -75,6 +75,10 @@ export default function InboxUi({
   } | null>(null);
   const [loadingActive, setLoadingActive] = useState(false);
   const [search, setSearch] = useState("");
+  // Server-verified search results (full customer set + full message
+  // history), replacing the instant client-side filter of the loaded page
+  // once the debounced server round-trip resolves. null = not searching.
+  const [searchResults, setSearchResults] = useState<Conv[] | null>(null);
   const [reply, setReply] = useState("");
   const { error: toastError } = useToast();
   const [sending, setSending] = useState(false);
@@ -313,15 +317,46 @@ export default function InboxUi({
     }
   }
 
-  const filtered = convs.filter((c) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      (c.name || "").toLowerCase().includes(q) ||
-      c.phone.includes(q) ||
-      c.lastMessage.toLowerCase().includes(q)
+  // Debounced server-side search: covers every conversation (not just the
+  // 200 most-recently-active) and full message history (not just each
+  // conversation's last message). Falls back to instant client-side
+  // filtering of the already-loaded page while the round-trip is in flight.
+  useEffect(() => {
+    const q = search.trim();
+    if (!q) {
+      setSearchResults(null);
+      return;
+    }
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/inbox/conversations?q=${encodeURIComponent(q)}`, {
+          cache: "no-store",
+        });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (alive) setSearchResults(j.conversations || []);
+      } catch {
+        // Keep the instant client-side filter as the fallback on network error.
+      }
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [search]);
+
+  const filtered = (() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return convs;
+    if (searchResults) return searchResults;
+    return convs.filter(
+      (c) =>
+        (c.name || "").toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        c.lastMessage.toLowerCase().includes(q),
     );
-  });
+  })();
 
   return (
     <div className="-m-4 flex h-[calc(100dvh_-_4rem_-_env(safe-area-inset-top))] min-w-0 overflow-hidden bg-canvas/80 md:-m-6 md:h-[calc(100vh_-_3rem)] lg:-m-10">

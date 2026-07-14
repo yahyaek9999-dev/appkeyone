@@ -13,8 +13,9 @@ import { getWalletSummary } from "@/lib/wallet/wallet";
 import { getTenantMetaBreakdown } from "@/lib/wallet/analytics";
 import { walletFlags } from "@/lib/wallet/flags";
 import { formatUsd, formatUsdPrecise } from "@/lib/wallet/money";
-import { Wallet as WalletIcon, AlertTriangle, TrendingDown, ArrowUpCircle, MessageSquare, Coins } from "lucide-react";
+import { Wallet as WalletIcon, AlertTriangle, TrendingDown, ArrowUpCircle, MessageSquare, Coins, FileText, Download } from "lucide-react";
 import { customerPayableMethods } from "@/lib/payments-ops/accounts";
+import { prisma } from "@/lib/db";
 import WalletClient from "./wallet-client";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +30,16 @@ export default async function WalletPage() {
   if (!can(ctx.role, "billing")) redirect("/dashboard");
 
   const uid = ctx.user.id;
-  const [wallet, meta, payableMethods] = await Promise.all([
+  const [wallet, meta, payableMethods, invoicableTransactions] = await Promise.all([
     getWalletSummary(uid),
     getTenantMetaBreakdown(uid, { days: 30 }),
     customerPayableMethods().catch(() => [] as any[]),
+    (prisma as any).paymentTransaction.findMany({
+      where: { userId: uid, status: { in: ["paid", "reconciled"] } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, provider: true, amountUsd: true, currency: true, createdAt: true },
+    }).catch(() => [] as any[]),
   ]);
 
   const stateTone =
@@ -131,6 +138,33 @@ export default async function WalletPage() {
           </p>
         )}
       </div>
+
+      {/* Invoices — one per completed payment, generated on first download */}
+      {invoicableTransactions.length > 0 && (
+        <div className="card p-5">
+          <h2 className="font-bold text-lg flex items-center gap-2 mb-4">
+            <FileText className="h-4 w-4 text-brand-300" /> الفواتير
+          </h2>
+          <div className="divide-y divide-white/5">
+            {invoicableTransactions.map((t: any) => (
+              <div key={t.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div>
+                  <div className="text-slate-200">
+                    {new Date(t.createdAt).toLocaleDateString("ar-EG")} · {t.provider}
+                  </div>
+                  <div className="text-xs text-slate-500">{formatUsdPrecise(t.amountUsd)}</div>
+                </div>
+                <a
+                  href={`/api/invoices/${t.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+                >
+                  <Download className="h-3.5 w-3.5" /> تحميل الفاتورة
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Interactive: top-up, calculator, ledger */}
       <WalletClient initialThreshold={wallet.lowBalanceThresholdUsd} payableMethods={JSON.parse(JSON.stringify(payableMethods))} />

@@ -9,6 +9,8 @@ const Body = z.object({
   supportWhatsapp: z.string().min(8).max(20),
   supportEmail: z.string().email(),
   paymentNote: z.string().max(2000).optional(),
+  maintenanceMode: z.boolean().optional(),
+  maintenanceMessage: z.string().max(500).optional(),
 });
 
 export async function POST(req: Request) {

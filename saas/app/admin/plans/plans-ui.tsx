@@ -37,7 +37,21 @@ const KNOWN_FLAGS = Array.from(
   ]),
 );
 
-export default function PlansUi({ initial }: { initial: PlanRow[] }) {
+interface PriceDrift {
+  slug: string;
+  catalogPrice: number;
+  dbPrice: number;
+}
+
+export default function PlansUi({
+  initial,
+  missingFromDb = [],
+  priceDrift = [],
+}: {
+  initial: PlanRow[];
+  missingFromDb?: string[];
+  priceDrift?: PriceDrift[];
+}) {
   const [editing, setEditing] = useState<string | null>(null);
   const [rows, setRows] = useState<PlanRow[]>(initial);
   const router = useRouter();
@@ -129,6 +143,28 @@ export default function PlansUi({ initial }: { initial: PlanRow[] }) {
 
   return (
     <div className="space-y-4">
+      {(missingFromDb.length > 0 || priceDrift.length > 0) && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm space-y-1.5">
+          <div className="font-bold text-amber-300">⚠️ فرق بين الكتالوج (catalog.ts) وقاعدة البيانات</div>
+          {missingFromDb.length > 0 && (
+            <div className="text-amber-200/90">
+              باقات موجودة في الكتالوج ومش موجودة في القاعدة: <span className="font-mono">{missingFromDb.join(", ")}</span> — استخدم زر "زرع باقات الكتالوج المفقودة" تحت.
+            </div>
+          )}
+          {priceDrift.length > 0 && (
+            <div className="text-amber-200/90">
+              باقات سعرها في القاعدة مختلف عن الكتالوج (ممكن يكون تعديل سعر متعمد من الأدمن — لسه محدش هيغيّره تلقائي):
+              <ul className="mt-1 list-inside list-disc">
+                {priceDrift.map((d) => (
+                  <li key={d.slug} className="font-mono">
+                    {d.slug}: كتالوج ${d.catalogPrice} ≠ قاعدة البيانات ${d.dbPrice}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={seedDefaults} className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-sm font-bold">
           ⚙️ زرع القيم الافتراضية لكل الباقات

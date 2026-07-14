@@ -1,11 +1,11 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth";
 import { getSiteConfig } from "@/lib/admin";
 import Image from "next/image";
 import { LayoutDashboard, ShieldCheck } from "lucide-react";
 import LogoutButton from "./logout-button";
-import MobileNav from "./mobile-nav";
 import { NavLinks, SidebarNav } from "./nav-items";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { getEntitlements } from "@/lib/membership/entitlements";
@@ -16,8 +16,13 @@ import type { Metadata } from "next";
 import CommandPalette from "./command-palette";
 import CommandTrigger from "./command-trigger";
 import HelpDrawer from "./help-drawer";
-import PageTransition from "./page-transition";
 import { ToastProvider } from "@/components/ui/toast";
+import { MaintenanceBanner } from "@/components/ui/maintenance-banner";
+
+// framer-motion is a heavy dependency; code-split it out of the shared
+// dashboard bundle instead of shipping it on every page via a static import.
+const MobileNav = dynamic(() => import("./mobile-nav"));
+const PageTransition = dynamic(() => import("./page-transition"));
 import DashboardTour from "./dashboard-tour";
 import ActivationGuard from "./activation-guard";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
@@ -140,6 +145,7 @@ export default async function DashboardLayout({
       <ConfirmProvider>
         <ActivationGuard activated={activated} />
         <CommandPalette role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} />
+        {(cfg as any).maintenanceMode ? <MaintenanceBanner message={(cfg as any).maintenanceMessage} /> : null}
         <div className="ai-page min-h-screen md:flex" style={brandColor ? ({ ["--wl-primary" as any]: brandColor } as React.CSSProperties) : undefined}>
           <MobileNav brandName={brand}>
             {Brand}

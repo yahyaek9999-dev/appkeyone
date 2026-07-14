@@ -50,6 +50,9 @@ const WAIVED = new Set([
   "api/internal/metrics/route.ts",
   "api/internal/queue-health/route.ts",
   "api/internal/wa-health/route.ts",
+  "api/bridge/v1/device/start/route.ts",
+  "api/bridge/v1/device/token/route.ts",
+  "api/bridge/v1/token/rotate/route.ts",
 ]);
 
 const GATE_RE =
