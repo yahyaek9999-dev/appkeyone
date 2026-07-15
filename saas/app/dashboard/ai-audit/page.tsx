@@ -1,7 +1,5 @@
 // AI Agent Auditor — merchant dashboard page (server). Gated on the smart-
 // assistant entitlement, same family as the Knowledge Brain.
-import { redirect } from "next/navigation";
-import { getUserId } from "@/lib/auth";
 import { pageGate } from "@/lib/membership/gate";
 import LockedFeature from "@/components/billing/LockedFeature";
 import AuditUi from "./audit-ui";
@@ -9,9 +7,9 @@ import AuditUi from "./audit-ui";
 export const dynamic = "force-dynamic";
 
 export default async function AiAuditPage() {
-  const uid = await getUserId();
-  if (!uid) redirect("/login");
-
+  // pageGate handles auth internally and returns allowed=false (not a throw)
+  // when unauthenticated — the layout already redirects to /login before we
+  // reach here, so g.uid will always be set for a real authenticated request.
   const g = await pageGate("smart_assistant");
   if (!g.allowed) {
     return (

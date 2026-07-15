@@ -63,8 +63,12 @@ export async function POST(
     convId = c.id;
   }
 
+  // WA send already succeeded — persist the message record best-effort.
+  // A DB failure here must not return 500 (which would prompt a retry send).
   await prisma.message.create({
     data: { conversationId: convId, role: "admin", content: text },
+  }).catch((e: any) => {
+    console.error("[inbox/send] message.create failed after successful WA send:", e?.message);
   });
 
   // Admin reply means a real human is active; keep AI paused until the admin
@@ -78,7 +82,12 @@ export async function POST(
         botPaused: true,
       } as any,
     })
-    .catch(() => {});
+    .catch((e: any) => {
+      // Log but do not throw — WA send already succeeded. However this failure
+      // is operationally significant: the AI bot will keep replying to this
+      // customer alongside the human agent until the handoff state is corrected.
+      console.error("[inbox/send] handoff state update failed — bot NOT paused for conv:", convId, e?.message);
+    });
   const ticketId = (customer.conversation as any)?.escalationTicketId;
   if (ticketId) {
     await (prisma as any).escalationTicket

@@ -133,14 +133,18 @@ async function processInbound(userId: string | null, value: any) {
     }
 
     try {
-      await fetch(INCOMING_URL, {
+      const res = await fetch(INCOMING_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-internal-secret": SECRET },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        throw new Error(`incoming endpoint returned ${res.status}`);
+      }
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("[meta-processor] forward failed:", (e as Error).message);
+      // Re-throw so the outer catch increments attempts and retries
+      // rather than marking this event processed with a dropped message.
+      throw e;
     }
   }
 }

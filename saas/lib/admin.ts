@@ -72,7 +72,11 @@ export function evaluateSubscription(
   const now = Date.now();
   if (sub.status === "expired" || sub.expiresAt.getTime() < now)
     return { allowed: false, reason: "expired" };
-  if (sub.msgsUsed >= sub.plan.monthlyMsgs)
+  // 0 means unlimited — skip quota check entirely
+  if (sub.plan.monthlyMsgs !== 0 && sub.msgsUsed >= sub.plan.monthlyMsgs)
     return { allowed: false, reason: "quota" };
-  return { allowed: true, remaining: sub.plan.monthlyMsgs - sub.msgsUsed };
+  return {
+    allowed: true,
+    remaining: sub.plan.monthlyMsgs === 0 ? Infinity : sub.plan.monthlyMsgs - sub.msgsUsed,
+  };
 }

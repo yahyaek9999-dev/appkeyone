@@ -3,42 +3,52 @@ import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
-  const uid = await getUserIdForPermission("settings");
-  if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  try {
+    const uid = await getUserIdForPermission("settings");
+    if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
-  const bot = await prisma.bot.findUnique({ where: { userId: uid }, select: { id: true } });
-  if (!bot) return NextResponse.json({ error: "no_bot" }, { status: 400 });
+    const bot = await prisma.bot.findUnique({ where: { userId: uid }, select: { id: true } });
+    if (!bot) return NextResponse.json({ error: "no_bot" }, { status: 400 });
 
-  const item = await prisma.quickReply.findFirst({
-    where: { id: ctx.params.id, botId: bot.id },
-  });
-  if (!item) return NextResponse.json({ error: "not found" }, { status: 404 });
+    const item = await prisma.quickReply.findFirst({
+      where: { id: ctx.params.id, botId: bot.id },
+    });
+    if (!item) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  let body: any = {};
-  try { body = await req.json(); } catch {}
+    let body: any = {};
+    try { body = await req.json(); } catch {}
 
-  const data: any = {};
-  if (Array.isArray(body.triggers)) {
-    data.triggers = JSON.stringify(
-      body.triggers.map((s: any) => String(s).trim()).filter(Boolean)
-    );
+    const data: any = {};
+    if (Array.isArray(body.triggers)) {
+      data.triggers = JSON.stringify(
+        body.triggers.map((s: any) => String(s).trim()).filter(Boolean)
+      );
+    }
+    if (typeof body.reply === "string") data.reply = body.reply.trim();
+    if (typeof body.enabled === "boolean") data.enabled = body.enabled;
+
+    await prisma.quickReply.update({ where: { id: ctx.params.id }, data });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error("[quick-replies PATCH]", e?.message);
+    return NextResponse.json({ error: "خطأ داخلي" }, { status: 500 });
   }
-  if (typeof body.reply === "string") data.reply = body.reply.trim();
-  if (typeof body.enabled === "boolean") data.enabled = body.enabled;
-
-  await prisma.quickReply.update({ where: { id: ctx.params.id }, data });
-  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
-  const uid = await getUserIdForPermission("settings");
-  if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
+  try {
+    const uid = await getUserIdForPermission("settings");
+    if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
-  const bot = await prisma.bot.findUnique({ where: { userId: uid }, select: { id: true } });
-  if (!bot) return NextResponse.json({ error: "no_bot" }, { status: 400 });
+    const bot = await prisma.bot.findUnique({ where: { userId: uid }, select: { id: true } });
+    if (!bot) return NextResponse.json({ error: "no_bot" }, { status: 400 });
 
-  await prisma.quickReply.deleteMany({
-    where: { id: ctx.params.id, botId: bot.id },
-  });
-  return NextResponse.json({ ok: true });
+    await prisma.quickReply.deleteMany({
+      where: { id: ctx.params.id, botId: bot.id },
+    });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error("[quick-replies DELETE]", e?.message);
+    return NextResponse.json({ error: "خطأ داخلي" }, { status: 500 });
+  }
 }

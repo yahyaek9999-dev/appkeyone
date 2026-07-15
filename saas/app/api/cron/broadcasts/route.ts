@@ -324,11 +324,23 @@ export async function POST(req: Request) {
       // schema.prisma) — link the WaMessage id so the reconciliation sweep
       // below can catch up if delivery ultimately fails asynchronously.
       const waMessageId = (r.data as any)?.id ? String((r.data as any).id) : null;
-      await prisma.broadcastItem.update({
-        where: { id: it.id },
-        data: { status: "sent", sentAt: new Date(), waMessageId },
-      });
-      sent++;
+      // Wrap separately: a DB failure here must not leave the item in
+      // "sending" with sentAt=null, which the stale-claim sweep would
+      // re-queue and re-send on the next cron tick (double-send risk).
+      try {
+        await prisma.broadcastItem.update({
+          where: { id: it.id },
+          data: { status: "sent", sentAt: new Date(), waMessageId },
+        });
+        sent++;
+      } catch (dbErr: any) {
+        console.error("[broadcasts] DB write failed after successful send — item stays 'sending':", it.id, dbErr?.message);
+        // Force sentAt so the stale-claim sweep won't re-queue this item.
+        await prisma.broadcastItem.update({
+          where: { id: it.id },
+          data: { sentAt: new Date() },
+        }).catch(() => {});
+      }
     } else {
       // Transient (network error / 5xx / 429) vs permanent (any other 4xx —
       // e.g. invalid number) failure. Previously every failure was permanent
@@ -346,12 +358,12 @@ export async function POST(req: Request) {
             retryCount: nextRetryCount,
             error: `retry ${nextRetryCount}/${MAX_SEND_RETRIES}: ${JSON.stringify(r.data).slice(0, 160)}`,
           },
-        });
+        }).catch(() => {});
       } else {
         await prisma.broadcastItem.update({
           where: { id: it.id },
           data: { status: "failed", error: JSON.stringify(r.data).slice(0, 200) },
-        });
+        }).catch(() => {});
         failed++;
       }
     }

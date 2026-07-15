@@ -6,9 +6,14 @@ import { runAudit } from "@/lib/ai-audit/auditor";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const uid = await getUserIdForPermission("settings");
-  if (!uid) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  try {
+    const uid = await getUserIdForPermission("settings");
+    if (!uid) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const result = await runAudit(uid);
-  return NextResponse.json({ ok: true, ...result });
+    const result = await runAudit(uid);
+    return NextResponse.json({ ok: true, ...result });
+  } catch (e: any) {
+    console.error("[ai-audit/run POST]", e?.message);
+    return NextResponse.json({ error: "تعذّر تشغيل التدقيق" }, { status: 500 });
+  }
 }

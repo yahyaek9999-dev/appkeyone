@@ -48,8 +48,9 @@ async function handle(req: Request) {
           await runImportJob(job); // runs to completion inline; frees its slot
           out.imports++;
         }
-      } catch (e) {
+      } catch (e: any) {
         out.errors++;
+        console.error("[qr-scheduler] job failed", { jobId: (job as any).id, type: (job as any).type, error: e?.message || String(e) });
       }
     }
   } catch (e: any) {

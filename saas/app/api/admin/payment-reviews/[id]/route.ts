@@ -21,27 +21,32 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const reviewerName = (actor?.name || actor?.email || "الفريق") as string;
   const reviewerEmail = actor?.email || "admin";
 
-  if (body.action === "start_review") {
-    return NextResponse.json(await startReview(id, reviewerName));
-  }
+  try {
+    if (body.action === "start_review") {
+      return NextResponse.json(await startReview(id, reviewerName));
+    }
 
-  if (body.action === "refund") {
-    if (!String(body.reason || "").trim()) return NextResponse.json({ error: "reason_required", message: "سبب الاسترداد مطلوب." }, { status: 400 });
-    return NextResponse.json(await refundProof(id, { actorId: actor?.id || null, actorEmail: reviewerEmail, actorRole: actor?.role || "admin", reason: body.reason }));
-  }
+    if (body.action === "refund") {
+      if (!String(body.reason || "").trim()) return NextResponse.json({ error: "reason_required", message: "سبب الاسترداد مطلوب." }, { status: 400 });
+      return NextResponse.json(await refundProof(id, { actorId: actor?.id || null, actorEmail: reviewerEmail, actorRole: actor?.role || "admin", reason: body.reason }));
+    }
 
-  const decision = body.decision === "approve" ? "approve" : body.decision === "reject" ? "reject" : null;
-  if (!decision) return NextResponse.json({ error: "bad_decision" }, { status: 400 });
-  if (decision === "reject" && !String(body.rejectionReason || body.note || "").trim()) {
-    return NextResponse.json({ error: "reason_required", message: "سبب الرفض مطلوب ليراه العميل." }, { status: 400 });
-  }
+    const decision = body.decision === "approve" ? "approve" : body.decision === "reject" ? "reject" : null;
+    if (!decision) return NextResponse.json({ error: "bad_decision" }, { status: 400 });
+    if (decision === "reject" && !String(body.rejectionReason || body.note || "").trim()) {
+      return NextResponse.json({ error: "reason_required", message: "سبب الرفض مطلوب ليراه العميل." }, { status: 400 });
+    }
 
-  const out = await reviewPaymentProof(id, {
-    decision,
-    reviewerEmail, reviewerName,
-    actorId: actor?.id || null, actorRole: actor?.role || "admin",
-    note: body.note,
-    rejectionReason: body.rejectionReason,
-  });
-  return NextResponse.json(out);
+    const out = await reviewPaymentProof(id, {
+      decision,
+      reviewerEmail, reviewerName,
+      actorId: actor?.id || null, actorRole: actor?.role || "admin",
+      note: body.note,
+      rejectionReason: body.rejectionReason,
+    });
+    return NextResponse.json(out);
+  } catch (e: any) {
+    console.error("[payment-reviews] action failed:", body.action || body.decision, id, e?.message);
+    return NextResponse.json({ error: "action_failed", detail: e?.message }, { status: 500 });
+  }
 }

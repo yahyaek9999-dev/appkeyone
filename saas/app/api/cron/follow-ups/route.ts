@@ -174,10 +174,20 @@ export async function POST(req: Request) {
             })
             .catch(() => {});
         }
-        await prisma.customer.update({
-          where: { id: c.id },
-          data: { followUpSent: true, followUpCount: { increment: 1 } } as any,
-        });
+        // Wrap separately: a DB failure here must not leave followUpSent=false,
+        // which would cause the cron to re-send the same follow-up indefinitely.
+        try {
+          await prisma.customer.update({
+            where: { id: c.id },
+            data: { followUpSent: true, followUpCount: { increment: 1 } } as any,
+          });
+        } catch (dbErr: any) {
+          console.error("[follow-ups] DB update failed after send — marking sent to prevent re-send:", c.id, dbErr?.message);
+          await prisma.customer.update({
+            where: { id: c.id },
+            data: { followUpSent: true } as any,
+          }).catch(() => {});
+        }
         await recordUsage({
           userId: c.userId,
           kind: "messages",

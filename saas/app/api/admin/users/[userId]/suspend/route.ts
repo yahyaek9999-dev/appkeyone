@@ -46,6 +46,9 @@ export async function DELETE(req: Request, { params }: { params: { userId: strin
   try { actor = await requireAdmin(); }
   catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
 
+  const existing = await prisma.user.findUnique({ where: { id: params.userId }, select: { id: true, email: true } });
+  if (!existing) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+
   const target = await prisma.user.update({
     where: { id: params.userId },
     data: { suspended: false, suspendedAt: null, suspendedReason: null } as any,
