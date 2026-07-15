@@ -148,11 +148,28 @@ export async function POST(req: Request) {
   const waMode: "qr" | "meta_cloud" = waElig.allowed ? "meta_cloud" : "qr";
 
   if (items.length === 0) {
-    await prisma.broadcast.update({
-      where: { id: bc.id },
-      data: { status: "done", finishedAt: new Date() },
+    // No `pending` items left — but a slower, still-running overlapping tick
+    // (BATCH_SIZE=20 * SEND_DELAY_MS=2.5s + LLM personalization latency can
+    // exceed the 60s cron interval) may still own items claimed `sending`.
+    // Marking "done" here would remove this broadcast from the
+    // status:{in:["queued","sending"]} query above forever — any item the
+    // other tick later re-queues to `pending` (a transient-failure retry)
+    // would then be permanently orphaned with no future tick able to see it.
+    // Only finalize once nothing is pending OR still being sent.
+    const inFlight = await prisma.broadcastItem.count({
+      where: { broadcastId: bc.id, status: { in: ["pending", "sending"] } },
     });
-    return NextResponse.json({ ok: true, finished: bc.id, reconciled });
+    if (inFlight === 0) {
+      await prisma.broadcast.update({
+        where: { id: bc.id },
+        data: { status: "done", finishedAt: new Date() },
+      });
+      return NextResponse.json({ ok: true, finished: bc.id, reconciled });
+    }
+    // Another tick still owns in-flight items — leave status as-is; the
+    // stale-claim sweep above will reclaim them within STALE_CLAIM_MS if
+    // that tick crashed, and a later tick will finalize once truly idle.
+    return NextResponse.json({ ok: true, waitingOnInFlight: bc.id, inFlight, reconciled });
   }
 
   let sent = 0, failed = 0;

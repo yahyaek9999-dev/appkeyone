@@ -168,16 +168,20 @@ export async function POST(req: Request) {
     // 24h auto-lock, lib/safety/kill-switch.ts) when this represents a real
     // WhatsApp-session state change, not a pure transport/infra blip. A
     // flaky Bridge<->Gateway socket ("bridge_offline"/"bridge_heartbeat_stale"),
-    // a gateway restart ("gateway_restart"), or our own health-probe/ephemeral
-    // housekeeping ("health_probe_stale"/"ephemeral_stale") says nothing
-    // about whether the customer's actual WhatsApp session is still valid —
-    // counting those toward the same threshold as a real disconnect let a
-    // customer's own flaky home network trigger a 24h send lockout on their
-    // own account (documented as a known false-positive risk in the Bridge
-    // support runbook; this closes the root cause).
+    // a gateway restart ("gateway_restart"), or our own health-probe/ephemeral/
+    // qr-timeout housekeeping ("health_probe_stale"/"ephemeral_stale"/
+    // "qr_pending_timeout") says nothing about whether the customer's actual
+    // WhatsApp session is still valid — counting those toward the same
+    // threshold as a real disconnect let a customer's own flaky home network
+    // trigger a 24h send lockout on their own account (documented as a known
+    // false-positive risk in the Bridge support runbook; this closes the
+    // root cause). A never-scanned QR in particular was never a connected
+    // session in the first place, so it can't be a "reconnect" at all.
     const isRealSessionDisconnect = fromBridge
       ? reason.startsWith("bridge:")
-      : reason !== "ephemeral_stale" && reason !== "health_probe_stale";
+      : reason !== "ephemeral_stale" &&
+        reason !== "health_probe_stale" &&
+        reason !== "qr_pending_timeout";
     if (isRealSessionDisconnect) {
       recordReconnect(userId).catch(() => {});
     }

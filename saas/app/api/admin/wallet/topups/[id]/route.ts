@@ -32,24 +32,63 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   try {
     if (action === "reject") {
-      await prisma.walletTopupRequest.update({
-        where: { id: reqRow.id },
+      // Guard the write with the status we read: two concurrent requests for
+      // the same top-up (double-click, stale second tab, or a genuine race
+      // with an approve call) both pass the findUnique check above before
+      // either writes. Without this WHERE clause, a reject that lands after
+      // an approve already credited the wallet would silently overwrite
+      // status to "rejected" — leaving the audit trail claiming a top-up
+      // was rejected when the money was in fact already credited.
+      const upd = await prisma.walletTopupRequest.updateMany({
+        where: { id: reqRow.id, status: "pending" },
         data: { status: "rejected", handledBy: adminEmail, handledAt: new Date(), note: body.note ? String(body.note).slice(0, 500) : reqRow.note },
       });
+      if (upd.count === 0) {
+        const now = await prisma.walletTopupRequest.findUnique({ where: { id: reqRow.id }, select: { status: true } });
+        return NextResponse.json({ error: "already_handled", status: now?.status || "unknown" }, { status: 409 });
+      }
       await audit({ userId: reqRow.userId, action: "wallet.topup_rejected", actorId: adminId, actorEmail: adminEmail, actorRole: "admin", targetType: "wallet_topup", targetId: reqRow.id, metadata: { amountUsd: reqRow.amountUsd }, req });
       return NextResponse.json({ ok: true, status: "rejected" });
     }
 
-    // Approve → credit wallet idempotently (key bound to the request id).
-    const res = await credit({
-      userId: reqRow.userId, kind: "topup", amountUsd: reqRow.amountUsd,
-      source: "topup", reason: `topup:${reqRow.method}`,
-      idempotencyKey: `topup:${reqRow.id}`, actorId: adminId, actorEmail: adminEmail,
-      metadata: { method: reqRow.method, paymentRef: reqRow.paymentRef || "" },
+    // Same race guard on the approve path: claim the row before crediting so
+    // a concurrent reject can't land after we've already paid out.
+    const claim = await prisma.walletTopupRequest.updateMany({
+      where: { id: reqRow.id, status: "pending" },
+      data: { status: "approved", handledBy: adminEmail, handledAt: new Date() },
     });
+    if (claim.count === 0) {
+      const now = await prisma.walletTopupRequest.findUnique({ where: { id: reqRow.id }, select: { status: true } });
+      return NextResponse.json({ error: "already_handled", status: now?.status || "unknown" }, { status: 409 });
+    }
+
+    // Credit wallet idempotently (key bound to the request id) — safe even
+    // though status is already "approved" above: credit()'s own idempotency
+    // key makes a retried/duplicate call to this branch a no-op replay.
+    let res: Awaited<ReturnType<typeof credit>>;
+    try {
+      res = await credit({
+        userId: reqRow.userId, kind: "topup", amountUsd: reqRow.amountUsd,
+        source: "topup", reason: `topup:${reqRow.method}`,
+        idempotencyKey: `topup:${reqRow.id}`, actorId: adminId, actorEmail: adminEmail,
+        metadata: { method: reqRow.method, paymentRef: reqRow.paymentRef || "" },
+      });
+    } catch (creditErr) {
+      // We already claimed the row as "approved" above so a concurrent
+      // reject can't race in — but if the credit itself fails, leaving it
+      // stuck "approved" with no money moved would be worse (looks done,
+      // customer never gets their credit, and no one retries because the
+      // pending-guarded endpoints above now both reject it as
+      // already_handled). Revert to "pending" so this is retryable.
+      await prisma.walletTopupRequest.update({
+        where: { id: reqRow.id },
+        data: { status: "pending", handledBy: null, handledAt: null },
+      }).catch(() => {});
+      throw creditErr;
+    }
     await prisma.walletTopupRequest.update({
       where: { id: reqRow.id },
-      data: { status: "approved", handledBy: adminEmail, handledAt: new Date(), ledgerId: res.ledgerId },
+      data: { ledgerId: res.ledgerId },
     });
     await audit({ userId: reqRow.userId, action: "wallet.topup_approved", actorId: adminId, actorEmail: adminEmail, actorRole: "admin", targetType: "wallet_topup", targetId: reqRow.id, metadata: { amountUsd: reqRow.amountUsd, balanceAfter: res.balanceAfter }, req });
 

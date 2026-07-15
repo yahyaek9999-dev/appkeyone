@@ -171,6 +171,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // auto-terminate. They never auto-reconnect, are never restored on boot, and
 // self-destruct after this TTL if the owning job never releases them.
 const EPHEMERAL_TTL_MS = Math.max(60_000, Number(process.env.WA_EPHEMERAL_TTL_MIN || 15) * 60_000);
+// Non-ephemeral QR/pairing sessions that are never scanned had NO expiry at
+// all — _sweepIdle() only evicts status==='connected'. A session stuck in
+// 'qr' holds a live Chromium (~300-500MB) + growing profile dir forever,
+// even after the owning bot/user is deleted. Reclaim after this TTL.
+const QR_PENDING_TTL_MS = Math.max(60_000, Number(process.env.WA_QR_PENDING_TTL_MIN || 10) * 60_000);
 
 function sendBackoffMs(attempt) {
   const base = Math.min(10_000, 750 * 2 ** Math.max(0, attempt - 1));
@@ -350,7 +355,27 @@ class SessionManager {
   async _sweepIdle() {
     const now = Date.now();
     for (const s of this._byOldest()) {
-      // Don't evict sessions that never finished connecting (QR/pairing).
+      // QR/pairing sessions that are never scanned/completed have no other
+      // expiry (ephemeral ones self-destruct via their own shorter TTL
+      // timer, so skip those here to avoid double-reclaiming). Left
+      // unattended these hold a live Chromium + growing profile dir forever
+      // — including after the owning bot/user record is deleted.
+      if ((s.status === "qr" || s.status === "pairing") && !s.ephemeral) {
+        const pendingSince = s.qrSetAt || 0;
+        if (pendingSince && now - pendingSince >= QR_PENDING_TTL_MS) {
+          console.warn(
+            `[wa] [${s.id}] QR/pairing pending ${Math.round((now - pendingSince) / 60000)}min with no scan — reclaiming session`,
+          );
+          notifySaas({
+            event: "disconnected",
+            userId: s.id,
+            reason: "qr_pending_timeout",
+          }).catch(() => {});
+          await this.logout(s.id).catch(() => {});
+        }
+        continue;
+      }
+      // Don't evict sessions that never finished connecting otherwise.
       if (s.status !== "connected") continue;
       const last = s.lastActivityAt || s.connectedAt || 0;
       if (now - last >= IDLE_EVICT_MS) {
@@ -779,6 +804,11 @@ class SessionManager {
           scale: 6,
         });
         session.status = "qr";
+        // Track only the FIRST QR shown for this connection attempt — WA
+        // itself re-emits a fresh QR string every ~20s while waiting for a
+        // scan, and each of those re-fires this handler. Resetting the
+        // clock on every refresh would mean an abandoned QR never expires.
+        if (!session.qrSetAt) session.qrSetAt = Date.now();
         console.log(`[wa] [${userId}] QR ready`);
       } catch (e) {
         console.error("[wa] qr encode error", e);
