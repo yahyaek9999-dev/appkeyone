@@ -1,3 +1,4 @@
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
@@ -5,7 +6,7 @@ import { wa } from "@/lib/wa";
 
 export async function POST(req: Request) {
   try { await requireAdmin(); }
-  catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "unauthorized" }, { status: authErrorStatus(e) }); }
 
   let body: any;
   try { body = await req.json(); } catch { body = {}; }

@@ -1,3 +1,4 @@
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
@@ -29,8 +30,8 @@ export async function POST(
   let actor;
   try {
     actor = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   const userId = ctx.params.userId;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, authErrorStatus } from "@/lib/auth";
 import { parsePdf, parseDocx } from "@/lib/knowledge-import";
 import { invalidateKnowledgeCache } from "@/lib/kb-cache";
 import { apiGate } from "@/lib/membership/gate";
@@ -134,8 +134,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, doc });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e.message },
-      { status: e.message === "UNAUTHORIZED" ? 401 : 500 },
+      { error: "حدث خطأ" },
+      { status: authErrorStatus(e) },
     );
   }
 }

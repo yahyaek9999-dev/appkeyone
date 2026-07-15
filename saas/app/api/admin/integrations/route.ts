@@ -5,6 +5,7 @@
 // admin UI — no env requirement. Secrets are AES-256-GCM encrypted at rest in
 // SiteConfig and never returned raw (GET returns a mask only).
 
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -37,8 +38,8 @@ function mask(enc: string | null | undefined): { mask: string; hasValue: boolean
 export async function GET() {
   try {
     await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   const cfg: any = await prisma.siteConfig.upsert({
@@ -68,8 +69,8 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));

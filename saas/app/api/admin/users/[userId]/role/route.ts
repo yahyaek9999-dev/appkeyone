@@ -11,6 +11,7 @@
  * Guard: refuses to demote the LAST remaining admin (prevents lock-out). Every
  * change is audited for accountability.
  */
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin, ASSIGNABLE_PLATFORM_ROLES } from "@/lib/admin";
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request, { params }: { params: { userId: string } }) {
   let actor;
   try { actor = await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const body = await req.json().catch(() => ({}));
   const role = String(body?.role || "");

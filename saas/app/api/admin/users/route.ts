@@ -1,3 +1,4 @@
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
@@ -7,8 +8,8 @@ import { audit } from "@/lib/audit/log";
 export async function GET() {
   try {
     await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   const users = await prisma.user.findMany({
@@ -70,8 +71,8 @@ export async function POST(req: Request) {
   let actor: any;
   try {
     actor = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   let body: any;

@@ -1,4 +1,5 @@
 // Meta analytics (admin). GET ?days=30 → JSON; &format=csv → CSV export.
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { getMetaAnalytics, analyticsToCsv } from "@/lib/meta";
@@ -8,8 +9,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
   const url = new URL(req.url);
   const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));

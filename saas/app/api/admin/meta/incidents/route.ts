@@ -1,5 +1,6 @@
 // Meta incident center (admin). GET → list (filter by status/userId).
 // POST { action: "resolve"|"ack"|"escalate", id, note? }.
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
@@ -10,8 +11,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
   const url = new URL(req.url);
   const status = url.searchParams.get("status") || undefined;
@@ -30,8 +31,8 @@ export async function POST(req: Request) {
   let admin;
   try {
     admin = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });

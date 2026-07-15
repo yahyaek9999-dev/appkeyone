@@ -7,6 +7,7 @@
  *        "force_start" → bump priority high so the scheduler claims it next.
  * Admin-only; audited. Does NOT touch the send pipeline — pure queue mechanics.
  */
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -19,7 +20,7 @@ const FORCE_PRIORITY = 1000;
 
 export async function GET(req: Request) {
   try { await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const url = new URL(req.url);
   const status = url.searchParams.get("status") || undefined;
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let admin: any;
   try { admin = await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   let body: any = {};
   try { body = await req.json(); } catch {}

@@ -7,6 +7,7 @@
 //            rollup  { day?, period? }       → recompute usage/invoice     (admin)
 //            derive  { days? }               → derive conversations from WaMessage (admin)
 // Reuses lib/meta + lib/wallet accounting (single-source balance).
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin, requireFinanceAccess } from "@/lib/admin";
@@ -35,8 +36,8 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: { userId: string } }) {
   try {
     await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
   const user = await prisma.user.findUnique({
     where: { id: params.userId },
@@ -116,8 +117,8 @@ export async function POST(req: Request, { params }: { params: { userId: string 
   let actor;
   try {
     actor = needsAdmin ? await requireAdmin() : await requireFinanceAccess();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   const exists = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });

@@ -4,6 +4,7 @@
  * 50 most recent transactions. Admin-gated by requireAdmin().
  * Read window via ?days= (default 30).
  */
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -12,7 +13,7 @@ import { getPaymentStats } from "@/lib/payments";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  try { await requireAdmin(); } catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  try { await requireAdmin(); } catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const days = Number(new URL(req.url).searchParams.get("days")) || 30;
   const stats = await getPaymentStats({ days });

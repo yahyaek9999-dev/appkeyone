@@ -8,6 +8,7 @@
  *
  * Admin-only.
  */
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try { await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   try {
     const sessions = await prisma.importSession.findMany({

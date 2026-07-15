@@ -4,6 +4,7 @@
  * uses adjust() with a negative signed amount (atomic guarded decrement → never
  * negative). Admin-only; audited. Idempotent per (action, userId, ts).
  */
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { audit } from "@/lib/audit/log";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request, { params }: { params: { userId: string } }) {
   let admin: any;
   try { admin = await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const userId = String(params.userId || "");
   if (!userId) return NextResponse.json({ error: "bad_request" }, { status: 400 });

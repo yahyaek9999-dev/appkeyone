@@ -9,6 +9,7 @@
  * touches billing/subscriptions.
  */
 
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request, { params }: { params: { userId: string } }) {
   let admin;
   try { admin = await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const target = await prisma.user.findUnique({ where: { id: params.userId }, select: { id: true, email: true } });
   if (!target) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
@@ -38,7 +39,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
 export async function DELETE(req: Request, { params }: { params: { userId: string } }) {
   let admin;
   try { admin = await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const body = await req.json().catch(() => ({}));
   const reason = String(body?.reason || "rejected_by_admin").slice(0, 200);

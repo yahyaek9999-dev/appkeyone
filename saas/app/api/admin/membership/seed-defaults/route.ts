@@ -8,6 +8,7 @@
  * POST /api/admin/membership/seed-defaults  → { updated, skipped }
  */
 
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { seedMembershipDefaults } from "@/lib/membership/seed-defaults";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   try { await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const r = await seedMembershipDefaults();
   return NextResponse.json({ ok: true, ...r });

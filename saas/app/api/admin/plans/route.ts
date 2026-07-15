@@ -18,6 +18,7 @@
  * Admin-only. Every mutation writes an audit row.
  */
 
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -52,7 +53,7 @@ const PutBody = z.object({
 
 export async function GET() {
   try { await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const plans = await prisma.plan.findMany({ orderBy: { sortOrder: "asc" } });
   return NextResponse.json({
@@ -82,7 +83,7 @@ export async function GET() {
 export async function PUT(req: Request) {
   let admin: any = null;
   try { admin = await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const body = await req.json().catch(() => null);
   const parsed = PutBody.safeParse(body);

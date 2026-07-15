@@ -2,6 +2,7 @@
  * GET /api/admin/wallet — platform-wide wallet + Meta billing analytics.
  * Admin-only. Query: ?days=7|30|90
  */
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { getWalletPlatformStats } from "@/lib/wallet/analytics";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try { await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const url = new URL(req.url);
   const days = url.searchParams.get("days") === "7" ? 7 : url.searchParams.get("days") === "90" ? 90 : 30;

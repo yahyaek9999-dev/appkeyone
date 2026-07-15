@@ -22,6 +22,15 @@ const DUMMY_HASH = bcrypt.hashSync("timing-equalization-placeholder", 10);
 const emailFailStore = new Map<string, { count: number; resetAt: number }>();
 const EMAIL_FAIL_WINDOW_MS = 15 * 60 * 1000;
 const EMAIL_FAIL_MAX = 20;
+
+// GC: prune expired entries so a credential-stuffing attack can't fill this Map
+// indefinitely. Runs every EMAIL_FAIL_WINDOW_MS (matches the window size).
+const _emailFailGcTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of emailFailStore) if (v.resetAt < now) emailFailStore.delete(k);
+}, EMAIL_FAIL_WINDOW_MS);
+if (typeof _emailFailGcTimer.unref === "function") _emailFailGcTimer.unref();
+
 function emailFailKey(email: string) {
   return "loginfail:" + createHash("sha256").update(email).digest("hex");
 }

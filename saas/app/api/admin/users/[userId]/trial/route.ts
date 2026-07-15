@@ -10,6 +10,7 @@
  * Granting a trial also approves the account so it can log in.
  */
 
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -25,8 +26,8 @@ export async function POST(req: Request, { params }: { params: { userId: string 
   let admin;
   try {
     admin = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -68,8 +69,8 @@ export async function DELETE(_req: Request, { params }: { params: { userId: stri
   let admin;
   try {
     admin = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
   void admin;
 

@@ -5,6 +5,7 @@
  * Read-only. Mutations go through /api/admin/qr-queue/[id]. Never touches the
  * WhatsApp send pipeline.
  */
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try { await requireAdmin(); }
-  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) }); }
 
   const url = new URL(req.url);
   const d = url.searchParams.get("days");

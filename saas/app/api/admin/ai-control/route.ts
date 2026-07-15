@@ -4,6 +4,7 @@
 // collects — ProviderUsage (calls/tokens/latency/failures per provider/day),
 // getTenantCosts (priced cost + per-tenant rows), Document/KnowledgeGap (brain),
 // EscalationTicket/Message (response quality). No fabricated values.
+import { authErrorStatus } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -30,8 +31,8 @@ function healthFor(successPct: number | null, calls: number): "green" | "yellow"
 export async function GET(req: Request) {
   try {
     await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: authErrorStatus(e) });
   }
 
   const win = new URL(req.url).searchParams.get("window") || "month";
