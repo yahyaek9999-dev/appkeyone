@@ -59,18 +59,18 @@ export async function getActivationFunnel(): Promise<ActivationFunnelResult> {
     ledgerRows,
   ] = await Promise.all([
     prisma.user.count().catch(() => 0),
-    distinctCount("SELECT COUNT(DISTINCT userId) AS n FROM Document"),
+    distinctCount(`SELECT COUNT(DISTINCT "userId") AS n FROM "Document"`),
     prisma.bot.count({ where: { whatsappStatus: "connected" } }).catch(() => 0),
     distinctCount(
-      `SELECT COUNT(DISTINCT cu.userId) AS n
-       FROM Message m
-       JOIN Conversation c ON c.id = m.conversationId
-       JOIN Customer cu ON cu.id = c.customerId
+      `SELECT COUNT(DISTINCT cu."userId") AS n
+       FROM "Message" m
+       JOIN "Conversation" c ON c.id = m."conversationId"
+       JOIN "Customer" cu ON cu.id = c."customerId"
        WHERE m.role = 'assistant'`,
     ),
-    distinctCount('SELECT COUNT(DISTINCT userId) AS n FROM "Order"'),
+    distinctCount(`SELECT COUNT(DISTINCT "userId") AS n FROM "Order"`),
     distinctCount(
-      "SELECT COUNT(DISTINCT userId) AS n FROM Broadcast WHERE sent > 0 OR status IN ('sending','done')",
+      `SELECT COUNT(DISTINCT "userId") AS n FROM "Broadcast" WHERE "sent" > 0 OR status IN ('sending','done')`,
     ),
     ledgerDelegate
       ? ledgerDelegate
