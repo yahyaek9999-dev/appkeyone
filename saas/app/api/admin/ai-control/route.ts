@@ -74,7 +74,7 @@ export async function GET(req: Request) {
     (prisma as any).knowledgeGap.count().catch(() => 0),
     (prisma as any).knowledgeConflict.count({ where: { resolved: false } }).catch(() => 0),
     prisma.document
-      .findMany({ distinct: ["userId"], select: { userId: true } })
+      .groupBy({ by: ["userId"], _count: true })
       .then((r: any[]) => r.length)
       .catch(() => 0),
     (prisma as any).escalationTicket.count().catch(() => 0),

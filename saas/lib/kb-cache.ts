@@ -109,6 +109,8 @@ async function buildEntry(userId: string): Promise<CacheEntry> {
   const docs = await prisma.document.findMany({
     where: { userId },
     select: { title: true, content: true },
+    orderBy: [{ priorityScore: "desc" }, { createdAt: "desc" }],
+    take: 200,
   });
   const chunks: Chunk[] = [];
   const kbParts: string[] = [];
