@@ -11,14 +11,14 @@ import { metaCloudAllowedForUser } from "@/lib/messaging/feature-flags";
 
 export const dynamic = "force-dynamic";
 
-// Cache the WhatsApp transport mode per merchant for this cron run.
-const _modeCache = new Map<string, "qr" | "meta_cloud">();
-async function waModeFor(userId: string): Promise<"qr" | "meta_cloud"> {
-  const hit = _modeCache.get(userId);
+// Per-invocation cache — scoped to each POST call so stale provider state
+// from a previous cron run never persists on the long-running AWS process.
+async function waModeFor(userId: string, cache: Map<string, "qr" | "meta_cloud">): Promise<"qr" | "meta_cloud"> {
+  const hit = cache.get(userId);
   if (hit) return hit;
   const e = await metaCloudAllowedForUser(userId).catch(() => ({ allowed: false } as any));
   const m: "qr" | "meta_cloud" = e.allowed ? "meta_cloud" : "qr";
-  _modeCache.set(userId, m);
+  cache.set(userId, m);
   return m;
 }
 
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
   }
 
   const now = new Date();
+  const modeCache = new Map<string, "qr" | "meta_cloud">();
 
   // New durable queue first. Legacy Customer.followUpAt fallback remains below
   // for rows created before this phase.
@@ -154,7 +155,7 @@ export async function POST(req: Request) {
       // Meta compliance: recovery follow-ups must obey the 24h window + template
       // rule on Meta Cloud (opt-out + revoked consent already enforced above). QR
       // is soft-allowed by the engine. Non-compliant recipients are skipped.
-      const decision = await evaluateOutbound({ userId: c.userId, customerPhone: c.phone, provider: await waModeFor(c.userId), isTemplate: false });
+      const decision = await evaluateOutbound({ userId: c.userId, customerPhone: c.phone, provider: await waModeFor(c.userId, modeCache), isTemplate: false });
       if (!decision.allowed) {
         await markSent(c.id);
         skipped++;

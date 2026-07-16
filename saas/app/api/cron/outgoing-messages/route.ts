@@ -23,6 +23,7 @@ export async function POST(req: Request) {
   const batchSize = Number(url.searchParams.get("batchSize") || 20);
   const perUserLimit = Number(url.searchParams.get("perUserLimit") || 6);
 
+  try {
   const before = await getOutgoingQueueHealth().catch(() => null);
   const result = await drainOutgoingQueue({ batchSize, perUserLimit });
   const after = await getOutgoingQueueHealth().catch(() => null);
@@ -34,6 +35,10 @@ export async function POST(req: Request) {
     after,
     timestamp: new Date().toISOString(),
   });
+  } catch (e: any) {
+    console.error("[cron/outgoing-messages]", e?.message || e);
+    return NextResponse.json({ ok: false, error: e?.message || "drain_failed" }, { status: 500 });
+  }
 }
 
 export async function GET(req: Request) {

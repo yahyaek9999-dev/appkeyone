@@ -16,6 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  try {
   const now = new Date();
   const result = await prisma.subscription.updateMany({
     where: { status: "trial", trialEndsAt: { lt: now } } as any,
@@ -23,4 +24,8 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ ok: true, expired: result.count });
+  } catch (e: any) {
+    console.error("[cron/trial-expiry]", e?.message || e);
+    return NextResponse.json({ ok: false, error: e?.message || "expiry_failed" }, { status: 500 });
+  }
 }

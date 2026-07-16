@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  try {
   const since = new Date(Date.now() - LOOKBACK_MS);
 
   const messages = await prisma.message.findMany({
@@ -91,4 +92,8 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true, scanned, flagged, tenants: byUser.size });
+  } catch (e: any) {
+    console.error("[cron/ai-catalog-guard]", e?.message || e);
+    return NextResponse.json({ ok: false, error: e?.message || "sweep_failed" }, { status: 500 });
+  }
 }
