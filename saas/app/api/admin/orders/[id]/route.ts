@@ -23,9 +23,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const order = await prisma.order.findUnique({ where: { id: params.id } });
   if (!order) return NextResponse.json({ error: "الطلب غير موجود" }, { status: 404 });
 
+  const data: any = { status };
+  if (status === "preparing") data.shippingStatus = "preparing";
+  if (status === "shipped") data.shippingStatus = "shipped";
+  if (status === "out_for_delivery") { data.shippingStatus = "shipped"; data.deliveryStatus = "out_for_delivery"; }
+  if (status === "delivered") { data.shippingStatus = "shipped"; data.deliveryStatus = "delivered"; }
+
   const updated = await prisma.order.update({
     where: { id: params.id },
-    data: { status },
+    data,
   });
 
   if (notes) {

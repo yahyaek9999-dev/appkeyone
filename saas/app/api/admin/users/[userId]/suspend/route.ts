@@ -46,11 +46,17 @@ export async function DELETE(req: Request, { params }: { params: { userId: strin
   try { actor = await requireAdmin(); }
   catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
 
-  const target = await prisma.user.update({
-    where: { id: params.userId },
-    data: { suspended: false, suspendedAt: null, suspendedReason: null } as any,
-    select: { id: true, email: true },
-  });
+  let target: { id: string; email: string | null };
+  try {
+    target = await prisma.user.update({
+      where: { id: params.userId },
+      data: { suspended: false, suspendedAt: null, suspendedReason: null } as any,
+      select: { id: true, email: true },
+    });
+  } catch (e: any) {
+    if (e?.code === "P2025") return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+    throw e;
+  }
   void audit({
     userId: target.id, action: "admin.user_reactivated", actorId: actor?.id || null, actorEmail: actor?.email || null, actorRole: "admin",
     targetType: "user", targetId: target.id, metadata: { email: target.email }, req,

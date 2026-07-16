@@ -87,8 +87,9 @@ export async function POST(req: Request) {
   const parsed = CreateBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });
 
-  const item = await (prisma as any).automationRule
-    .create({
+  let item: any;
+  try {
+    item = await (prisma as any).automationRule.create({
       data: {
         userId: user.id,
         name: parsed.data.name,
@@ -99,10 +100,10 @@ export async function POST(req: Request) {
         enabled: parsed.data.enabled,
         throttleSeconds: parsed.data.throttleSeconds,
       },
-    })
-    .catch(() => null);
-
-  if (!item) return NextResponse.json({ error: "create_failed" }, { status: 500 });
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: "create_failed", detail: e?.message?.slice(0, 200) }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, item });
 }
 
@@ -164,6 +165,10 @@ export async function DELETE(req: Request) {
     .catch(() => null);
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  await (prisma as any).automationRule.delete({ where: { id } }).catch(() => {});
+  try {
+    await (prisma as any).automationRule.delete({ where: { id } });
+  } catch (e: any) {
+    return NextResponse.json({ error: "delete_failed", detail: e?.message?.slice(0, 200) }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

@@ -45,8 +45,12 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
   const existing = await (prisma as any).escalationTicket.findFirst({ where: { id: ctx.params.id, userId: user.id }, select: { id: true } }).catch(() => null);
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  await (prisma as any).escalationTimeline.create({
-    data: { ticketId: ctx.params.id, userId: user.id, kind: "note", actor: "admin", message: parsed.data.note || "ملاحظة" },
-  }).catch(() => {});
+  try {
+    await (prisma as any).escalationTimeline.create({
+      data: { ticketId: ctx.params.id, userId: user.id, kind: "note", actor: "admin", message: parsed.data.note || "ملاحظة" },
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: "note_save_failed", detail: e?.message?.slice(0, 200) }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

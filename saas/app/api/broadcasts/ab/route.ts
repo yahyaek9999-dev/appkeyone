@@ -75,24 +75,24 @@ export async function POST(req: Request) {
   const groupB = reachable.slice(mid);
   const abGroupId = `ab_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-  const mk = (variant: "A" | "B", template: string, group: typeof reachable) =>
-    prisma.broadcast.create({
-      data: {
-        userId: uid,
-        title: `${baseTitle} — ${variant}`,
-        template: template.slice(0, 4000),
-        audience,
-        personalize: false,
-        couponCode,
-        imageUrl,
-        abGroupId,
-        abVariant: variant,
-        total: group.length,
-        items: { create: group.map((c) => ({ customerId: c.id, phone: c.phone as string, name: c.name })) },
-      } as any,
-    });
+  const mkData = (variant: "A" | "B", template: string, group: typeof reachable) => ({
+    userId: uid,
+    title: `${baseTitle} — ${variant}`,
+    template: template.slice(0, 4000),
+    audience,
+    personalize: false,
+    couponCode,
+    imageUrl,
+    abGroupId,
+    abVariant: variant,
+    total: group.length,
+    items: { create: group.map((c) => ({ customerId: c.id, phone: c.phone as string, name: c.name })) },
+  });
 
-  const [a, b] = await Promise.all([mk("A", templateA, groupA), mk("B", templateB, groupB)]);
+  const [a, b] = await prisma.$transaction([
+    (prisma as any).broadcast.create({ data: mkData("A", templateA, groupA) }),
+    (prisma as any).broadcast.create({ data: mkData("B", templateB, groupB) }),
+  ]);
 
   // Count the A/B test as one campaign against the monthly cap (best-effort).
   await incrementUsage(uid, "broadcast", 1).catch(() => {});

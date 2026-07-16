@@ -37,6 +37,9 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   if (!bc) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   if (action === "cancel") {
+    if (bc.status === "done" || bc.status === "canceled") {
+      return NextResponse.json({ error: "لا يمكن إلغاء حملة منتهية أو ملغاة مسبقاً" }, { status: 400 });
+    }
     await prisma.broadcast.update({
       where: { id: bc.id },
       data: { status: "canceled", finishedAt: new Date() },

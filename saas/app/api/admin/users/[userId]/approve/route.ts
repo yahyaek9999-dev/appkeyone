@@ -51,7 +51,7 @@ export async function DELETE(req: Request, { params }: { params: { userId: strin
 
   await prisma.user.update({
     where: { id: params.userId },
-    data: { approvalStatus: "rejected", approvedAt: new Date(), approvedBy: admin.email, suspendedReason: reason } as any,
+    data: { approvalStatus: "rejected", suspended: true, suspendedReason: reason } as any,
   });
   void audit({
     userId: target.id, action: "admin.user_rejected", actorId: (admin as any)?.id || null, actorEmail: admin.email || null, actorRole: "admin",
