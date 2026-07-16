@@ -358,13 +358,11 @@ export default async function ProjectsPage({
         { value: "3×", unit: "", label: "متوسط زيادة التحويل" },
         { value: "5", unit: "ثوانٍ", label: "متوسط زمن الرد" },
         { value: "15", unit: "دقيقة", label: "وقت التفعيل" },
-        { value: "7", unit: "أيام", label: "ضمان الاسترداد" },
       ]
     : [
         { value: "3×", unit: "", label: "Avg conversion increase" },
         { value: "5", unit: "sec", label: "Avg reply time" },
         { value: "15", unit: "min", label: "Activation time" },
-        { value: "7", unit: "days", label: "Refund guarantee" },
       ];
 
   const sectors = isRtl
