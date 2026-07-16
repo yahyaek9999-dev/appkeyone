@@ -473,10 +473,25 @@ export async function POST(req: Request) {
     include: { messages: { orderBy: { createdAt: "asc" }, take: 30 } },
   });
   if (!conv) {
-    conv = await prisma.conversation.create({
-      data: { customerId: customer.id },
-      include: { messages: true },
-    });
+    try {
+      conv = await prisma.conversation.create({
+        data: { customerId: customer.id },
+        include: { messages: true },
+      });
+    } catch (e: any) {
+      if (e?.code === "P2002") {
+        // Two concurrent messages raced — the other won; fetch what was created.
+        conv = await prisma.conversation.findUnique({
+          where: { customerId: customer.id },
+          include: { messages: { orderBy: { createdAt: "asc" }, take: 30 } },
+        });
+      } else {
+        throw e;
+      }
+    }
+  }
+  if (!conv) {
+    return NextResponse.json({ error: "conversation_unavailable" }, { status: 503 });
   }
 
   const isFirstMsg = conv.messages.length === 0;

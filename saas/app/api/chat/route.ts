@@ -79,10 +79,24 @@ export async function POST(req: Request) {
       include: { messages: { orderBy: { createdAt: "asc" }, take: 30 } },
     });
     if (!conv) {
-      conv = await prisma.conversation.create({
-        data: { customerId: customer.id },
-        include: { messages: true },
-      });
+      try {
+        conv = await prisma.conversation.create({
+          data: { customerId: customer.id },
+          include: { messages: true },
+        });
+      } catch (e: any) {
+        if (e?.code === "P2002") {
+          conv = await prisma.conversation.findUnique({
+            where: { customerId: customer.id },
+            include: { messages: { orderBy: { createdAt: "asc" }, take: 30 } },
+          });
+        } else {
+          throw e;
+        }
+      }
+    }
+    if (!conv) {
+      return NextResponse.json({ error: "conversation_unavailable" }, { status: 503 });
     }
 
     // ---- Subscription enforcement ----
