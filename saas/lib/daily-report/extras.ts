@@ -26,8 +26,8 @@ export async function buildDigestExtras(userId: string, now: Date = new Date()):
   const [bestSellerRows, lowStock, followUps, atRiskCount, recentBroadcasts] = await Promise.all([
     prisma.$queryRawUnsafe<{ name: string; qty: number }[]>(
       `SELECT oi.name AS name, SUM(oi.quantity) AS qty
-       FROM OrderItem oi JOIN "Order" o ON o.id = oi.orderId
-       WHERE o.userId = ? AND o.createdAt >= ? AND o.status != 'canceled'
+       FROM "OrderItem" oi JOIN "Order" o ON o.id = oi."orderId"
+       WHERE o."userId" = $1 AND o."createdAt" >= $2 AND o.status != 'canceled'
        GROUP BY oi.name ORDER BY qty DESC LIMIT 1`,
       userId,
       weekAgo,

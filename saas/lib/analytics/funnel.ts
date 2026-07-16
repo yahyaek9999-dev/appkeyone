@@ -79,11 +79,11 @@ export async function computeFunnel(userId: string, days = 30): Promise<FunnelRe
     // Top converting product in the window (paid orders only).
     prisma.$queryRawUnsafe<{ name: string; qty: number }[]>(
       `SELECT oi.name AS name, SUM(oi.quantity) AS qty
-       FROM OrderItem oi JOIN "Order" o ON o.id = oi.orderId
-       WHERE o.userId = ? AND o.createdAt >= ? AND o.status IN ${PAID_SQL}
+       FROM "OrderItem" oi JOIN "Order" o ON o.id = oi."orderId"
+       WHERE o."userId" = $1 AND o."createdAt" >= $2 AND o.status IN ${PAID_SQL}
        GROUP BY oi.name ORDER BY qty DESC LIMIT 1`,
       userId,
-      since, // Date object — works on SQLite (Int) and PostgreSQL (Timestamp)
+      since,
     ).catch(() => [] as { name: string; qty: number }[]),
   ]);
 
