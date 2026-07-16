@@ -82,12 +82,12 @@ export default async function DashboardOverview() {
       orderBy: { lastSeenAt: "desc" }, take: 5,
     }),
     prisma.$queryRawUnsafe<{ day: string; total: number }[]>(
-      `SELECT strftime('%Y-%m-%d', m.createdAt) AS day, COUNT(*) AS total
-       FROM Message m JOIN Conversation c ON c.id = m.conversationId
-       JOIN Customer cu ON cu.id = c.customerId
-       WHERE cu.userId = ? AND m.createdAt >= ?
+      `SELECT TO_CHAR(m."createdAt", 'YYYY-MM-DD') AS day, COUNT(*) AS total
+       FROM "Message" m JOIN "Conversation" c ON c.id = m."conversationId"
+       JOIN "Customer" cu ON cu.id = c."customerId"
+       WHERE cu."userId" = $1 AND m."createdAt" >= $2
        GROUP BY day ORDER BY day ASC`,
-      user.id, start30.toISOString(),
+      user.id, start30,
     ).catch(() => []),
     prisma.document.count({ where: { userId: user.id } }),
     (prisma as any).commerceIntegration.count({ where: { userId: user.id, enabled: true } }).catch(() => 0),
