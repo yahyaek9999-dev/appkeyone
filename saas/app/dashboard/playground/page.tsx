@@ -1,8 +1,7 @@
-import { requireUser } from "@/lib/auth";
 import Playground from "./playground-ui";
 
-export default async function PlaygroundPage() {
-  const user = await requireUser();
+// Auth is handled by the dashboard layout — no per-page auth call needed.
+export default function PlaygroundPage() {
   return (
     <div>
       <h1 className="text-3xl font-extrabold mb-2">جرب البوت</h1>
