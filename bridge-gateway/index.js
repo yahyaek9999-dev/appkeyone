@@ -81,6 +81,10 @@ const socketsByUser = new Map();
 const lastLinkArtifact = new Map();
 // pending outbound sends awaiting ack: frameId -> { resolve, timer }
 const pendingAcks = new Map();
+// bridgeId -> recent registration timestamps (dual-instance war detector)
+const registrationHistory = new Map();
+// bridgeId -> last time we audited a duplicate-instance storm (throttle)
+const lastDupAuditAt = new Map();
 
 /** sha256 hex — the exact hash the Cloud stores in BridgeToken.tokenHash. */
 function sha256(input) {
@@ -397,6 +401,72 @@ async function relayInbound(userId, payload) {
   });
 }
 
+/**
+ * Durable fallback for an AI reply whose live-socket push failed: hand it to the
+ * Cloud's existing outgoing queue (retry + idempotency live there) instead of
+ * dropping it. The reply already exists in the Dashboard conversation — losing
+ * the delivery leg silently is what made "AI never replied" untraceable.
+ */
+async function queueReplyFallback(userId, to, text, conversationId) {
+  if (!INTERNAL_SECRET || !userId || !to || !text) return false;
+  const base = CLOUD_INCOMING_URL.replace(/\/api\/whatsapp\/incoming\/?$/, "");
+  try {
+    const res = await fetch(`${base}/api/internal/bridge-reply-fallback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify({ userId, to, text, conversationId: conversationId || null }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("[bridge-gateway] reply fallback enqueue failed:", e.message);
+    return false;
+  }
+}
+
+/**
+ * Detect the dual-instance eviction war: two Bridge processes sharing one
+ * bridgeId evict each other's socket on every reconnect (observed in prod as a
+ * 2s connect/disconnect storm — ws#N and ws#M counters interleaved). The
+ * gateway cannot stop the second process from here, but it CAN tell the
+ * merchant exactly what is wrong in the Safety feed instead of leaving them
+ * with "connected but nothing works".
+ */
+function noteRegistration(bridgeId, userId) {
+  if (!bridgeId) return;
+  const now = Date.now();
+  const hist = (registrationHistory.get(bridgeId) || []).filter(
+    (t) => now - t < 5 * 60_000,
+  );
+  hist.push(now);
+  registrationHistory.set(bridgeId, hist);
+  if (hist.length < 8) return; // normal reconnects never re-register this fast
+  const lastAudit = lastDupAuditAt.get(bridgeId) || 0;
+  if (now - lastAudit < 30 * 60_000) return;
+  lastDupAuditAt.set(bridgeId, now);
+  console.warn(
+    `[bridge-gateway] bridge ${bridgeId} re-registered ${hist.length}× in 5min — likely TWO Bridge processes fighting over one identity`,
+  );
+  if (!pool) return;
+  pool
+    .query(
+      `INSERT INTO "SafetyAudit" ("id","userId","level","category","title","detail","payload","createdAt")
+       VALUES ($1,$2,'critical','bridge',$3,$4,$5, now())`,
+      [
+        crypto.randomUUID(),
+        userId || null,
+        "أكثر من نسخة من برنامج KEYONE Bridge تعمل على جهازك",
+        `اكتشفنا اتصالًا متكررًا (${hist.length} مرة خلال 5 دقائق) لنفس الجهاز — هذا يحدث عندما تعمل نسختان من برنامج Bridge في نفس الوقت (مثلاً: خدمة النظام + تشغيل يدوي). النتيجة: ردود متأخرة أو مفقودة وتنبيهات لا تصل. أغلق إحدى النسختين ثم أعد تشغيل البرنامج.`,
+        JSON.stringify({ bridgeId, registrations5min: hist.length }),
+      ],
+    )
+    .catch((err) =>
+      console.error("[bridge-gateway] dup-instance audit db error:", err.message),
+    );
+}
+
 // ---- HTTP server (health + internal outbound) ------------------------------
 
 const server = http.createServer((req, res) => {
@@ -578,6 +648,7 @@ function register(ws) {
     socketsByUser.set(ws.userId, set);
   }
   set.add(ws);
+  noteRegistration(ws.bridgeId, ws.userId);
 }
 
 function deregister(ws) {
@@ -663,21 +734,58 @@ wss.on("connection", (ws, req) => {
           // Fire-and-forget the reply (the Bridge acks it via outbound_ack).
           // Forward the Cloud's humanize delays + the exact reply chat (replyJid
           // answers @lid contacts correctly) — the same data the wa-service uses.
-          pushOutbound(ws, p.provider || "whatsapp", p.from?.phone || p.fromPhone, result.reply, {
+          //
+          // Reply generation can take 10-50s (LLM latency). The socket the
+          // inbound arrived on is often gone by then — a reconnect blip, or the
+          // dual-instance eviction war — and pushing to that stale `ws` dropped
+          // the reply on the floor ("AI never replied" while everything showed
+          // connected). Deliver to the CURRENT live socket, retry once against a
+          // re-picked socket (churn window), and if the live push still fails,
+          // hand the reply to the Cloud's durable outgoing queue instead of
+          // losing it.
+          const to = p.from?.phone || p.fromPhone;
+          const extra = {
             jid: p.replyJid || null,
             preDelayMs: Number(result.preDelayMs) || 0,
             typingDelayMs: Number(result.typingDelayMs) || 0,
-          }).then((ack) => {
-            if (!ack.ok) {
+          };
+          const provider = p.provider || "whatsapp";
+          const target =
+            ws.readyState === ws.OPEN ? ws : pickUserSocket(ws.userId) || ws;
+          pushOutbound(target, provider, to, result.reply, extra).then(
+            async (ack) => {
+              if (ack.ok) return;
+              // One retry on the freshest socket — under socket churn a new
+              // connection is typically live again within a few seconds.
+              await new Promise((r) => setTimeout(r, 4000));
+              const retryWs = pickUserSocket(ws.userId);
+              if (retryWs) {
+                const second = await pushOutbound(
+                  retryWs,
+                  provider,
+                  to,
+                  result.reply,
+                  extra,
+                );
+                if (second.ok) return;
+              }
+              const queued = await queueReplyFallback(
+                ws.userId,
+                to,
+                result.reply,
+                result.conversationId || null,
+              );
               notifyCloud({
                 event: "send_failed",
                 userId: ws.userId,
-                to: p.from?.phone || p.fromPhone || "unknown",
-                reason: ack.error || "bridge_send_failed",
+                to: to || "unknown",
+                reason:
+                  (ack.error || "bridge_send_failed") +
+                  (queued ? " (queued_for_retry)" : ""),
                 source_detail: "auto_reply",
               }).catch(() => {});
-            }
-          });
+            },
+          );
         }
         break;
       }

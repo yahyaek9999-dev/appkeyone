@@ -1183,6 +1183,10 @@ export async function POST(req: Request) {
       requireConfirmation: !!bot.orderRequireConfirmation,
       businessMode: bot.businessMode || "store",
     },
+    alert: {
+      enabled: !!bot.alertEnabled,
+      toPhone: bot.notifyPhone || (bot as any).whatsappPhone || null,
+    },
   }).catch((e) => console.error("[orders] extract failed:", e?.message || e));
 
   // ---- Fire-and-forget intelligence pipeline -------------------------------
@@ -1640,6 +1644,10 @@ async function extractAndStoreOrder(args: {
     requireConfirmation: boolean;
     businessMode: string;
   };
+  alert?: {
+    enabled: boolean;
+    toPhone: string | null;
+  };
 }) {
   try {
     const settings = args.orderSettings ?? {
@@ -1789,7 +1797,31 @@ async function extractAndStoreOrder(args: {
       conversationId: args.conversationId,
     });
 
-    // Notify the merchant when the order looks confident enough.
+    // Notify the merchant that a new order was auto-created. This comment sat
+    // here with no code behind it since the first commit — the only "new order"
+    // signal the merchant ever got was the keyword alert on the inbound message,
+    // which misses keyword-less orders entirely. Fire-and-forget; the dedup
+    // above guarantees at most one pending order (and thus one alert) per
+    // customer per 6h window.
+    if (args.alert?.enabled && args.alert.toPhone) {
+      const itemsBrief = draft.items
+        .slice(0, 3)
+        .map((it) => `${it.name} ×${it.quantity}`)
+        .join("، ");
+      notifyAdmin({
+        userId: args.userId,
+        toPhone: args.alert.toPhone,
+        text:
+          `🛒 طلب جديد من المحادثة\n` +
+          `العميل: ${draft.customerName || args.customerName || args.customerPhone}\n` +
+          `الرقم: ${args.customerPhone}\n` +
+          (itemsBrief ? `المنتجات: ${itemsBrief}\n` : "") +
+          `الإجمالي: ${draft.total} ${draft.currency}\n` +
+          `راجع الطلب وأكّده من لوحة التحكم ← الطلبات.`,
+        category: "orders",
+      }).catch(() => {});
+    }
+
     return order;
   } catch (e: any) {
     // Persist + log so the merchant can see in SafetyAudit why an order

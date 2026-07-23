@@ -54,6 +54,41 @@ export async function resolveNotifyPhone(userId: string): Promise<string | null>
   }
 }
 
+/**
+ * Normalize a merchant-typed alert destination to an internationally-routable
+ * number. Merchants enter their alert number in LOCAL format ("01097767079");
+ * WhatsApp JID resolution (wa-service and Bridge both call getNumberId with the
+ * raw digits) cannot resolve a trunk-0 national number, so every such alert
+ * failed with "number not registered on WhatsApp" — verified in production:
+ * 18/18 queued alerts to a local-format number failed. The merchant's own
+ * connected number (always stored international, e.g. "201227704155") tells us
+ * the country prefix: strip the trunk 0 and borrow the prefix.
+ *
+ * Already-international input ("+2010…", "2010…", "0020…") passes through
+ * unchanged (digits only). If we cannot derive a sane 1-3 digit prefix, the
+ * digits are returned as-is — never worse than the previous behavior.
+ */
+export function normalizeAlertPhone(
+  raw: string,
+  connectedWaPhone?: string | null,
+): string {
+  const phone = String(raw || "").trim();
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return phone;
+  if (phone.startsWith("+")) return digits;
+  if (digits.startsWith("00")) return digits.slice(2);
+  if (!digits.startsWith("0")) return digits; // already international
+  const wa = String(connectedWaPhone || "").replace(/\D/g, "");
+  const national = digits.replace(/^0+/, "");
+  if (national && wa.length > national.length) {
+    const cc = wa.slice(0, wa.length - national.length);
+    if (cc.length >= 1 && cc.length <= 3 && !cc.startsWith("0")) {
+      return cc + national;
+    }
+  }
+  return digits;
+}
+
 export async function notifyMerchant(opts: {
   userId?: string; // owner's user id (needed for multi-tenant whatsapp send)
   toPhone: string;
@@ -69,11 +104,13 @@ export async function notifyMerchant(opts: {
     return { ok: false, channel: "log" };
   }
 
+  const connectedPhone = await ownWhatsappPhone(opts.userId);
+  const toPhone = normalizeAlertPhone(opts.toPhone, connectedPhone);
+
   // Self-send guard: never try to deliver an alert to the same WhatsApp
   // number that's hosting the bot — whatsapp-web.js rejects self-sends and
   // the error surfaces as a confusing "send failed" with no destination.
-  const sameWaNumber = await isOwnWhatsappNumber(opts.userId, opts.toPhone);
-  if (sameWaNumber) {
+  if (samePhone(connectedPhone, toPhone)) {
     await audit({
       userId: opts.userId,
       level: "warn",
@@ -81,12 +118,12 @@ export async function notifyMerchant(opts: {
       detail:
         "رقم تنبيه الطلبات هو نفس رقم الواتساب المتصل بالبوت. واتساب لا يسمح بإرسال رسالة لنفس الرقم. " +
         "غيّر رقم التنبيهات في الإعدادات إلى رقمك الشخصي.",
-      payload: { toPhone: opts.toPhone, kind: "order_alert" },
+      payload: { toPhone, kind: "order_alert" },
     });
     return { ok: false, channel: "self" };
   }
 
-  const r = await wa.send(opts.userId, opts.toPhone, message, "order_update");
+  const r = await wa.send(opts.userId, toPhone, message, "order_update");
   if (r.ok) return { ok: true, channel: "whatsapp" };
 
   await audit({
@@ -94,7 +131,7 @@ export async function notifyMerchant(opts: {
     level: "warn",
     title: "فشل إرسال تنبيه الطلب",
     detail: typeof r.data === "string" ? r.data : JSON.stringify(r.data || {}).slice(0, 400),
-    payload: { toPhone: opts.toPhone, kind: "order_alert" },
+    payload: { toPhone, kind: "order_alert" },
   });
   console.warn("[notify] whatsapp send failed:", r.data);
   return { ok: false, channel: "log" };
@@ -118,8 +155,9 @@ export async function notifyAdmin(opts: {
     return { ok: false, channel: "none" };
   }
 
-  const sameWaNumber = await isOwnWhatsappNumber(opts.userId, opts.toPhone);
-  if (sameWaNumber) {
+  const connectedPhone = await ownWhatsappPhone(opts.userId);
+  const toPhone = normalizeAlertPhone(opts.toPhone, connectedPhone);
+  if (samePhone(connectedPhone, toPhone)) {
     await audit({
       userId: opts.userId,
       level: "warn",
@@ -127,12 +165,12 @@ export async function notifyAdmin(opts: {
       detail:
         "رقم التنبيهات هو نفس رقم الواتساب المتصل — واتساب لا يسمح بالإرسال لنفس الرقم. " +
         "غيّر رقم التنبيهات لرقم آخر.",
-      payload: { toPhone: opts.toPhone, kind: opts.category || "admin" },
+      payload: { toPhone, kind: opts.category || "admin" },
     });
     return { ok: false, channel: "self" };
   }
 
-  const r = await wa.send(opts.userId, opts.toPhone, opts.text, "system");
+  const r = await wa.send(opts.userId, toPhone, opts.text, "system");
   if (r.ok) return { ok: true, channel: "whatsapp" };
 
   await audit({
@@ -140,26 +178,29 @@ export async function notifyAdmin(opts: {
     level: "warn",
     title: "فشل إرسال تنبيه",
     detail: typeof r.data === "string" ? r.data : JSON.stringify(r.data || {}).slice(0, 400),
-    payload: { toPhone: opts.toPhone, kind: opts.category || "admin" },
+    payload: { toPhone, kind: opts.category || "admin" },
   });
   console.warn("[notifyAdmin] failed:", r.data);
   return { ok: false, channel: "log" };
 }
 
-/** True if `phone` matches the bot's connected whatsappPhone (digits only). */
-async function isOwnWhatsappNumber(userId: string, phone: string): Promise<boolean> {
+/** The bot's connected WhatsApp number for `userId` (null when unknown). */
+async function ownWhatsappPhone(userId: string): Promise<string | null> {
   try {
     const bot = await prisma.bot.findUnique({
       where: { userId },
       select: { whatsappPhone: true },
     });
-    if (!bot?.whatsappPhone || !phone) return false;
-    const a = bot.whatsappPhone.replace(/\D/g, "");
-    const b = phone.replace(/\D/g, "");
-    if (!a || !b) return false;
-    // Compare on the trailing 9 digits (covers + / country-code variance).
-    return a.slice(-9) === b.slice(-9);
+    return bot?.whatsappPhone || null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** True when two numbers match on their trailing 9 digits (+ / cc variance). */
+function samePhone(a: string | null, b: string | null): boolean {
+  const da = String(a || "").replace(/\D/g, "");
+  const db = String(b || "").replace(/\D/g, "");
+  if (!da || !db) return false;
+  return da.slice(-9) === db.slice(-9);
 }
