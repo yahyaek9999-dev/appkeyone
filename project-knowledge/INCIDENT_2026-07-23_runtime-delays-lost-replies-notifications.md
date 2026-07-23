@@ -99,3 +99,25 @@ DESKTOP-QW8E9T).
    `no_bridge_online`/`ack_timeout`/`bridge_socket_closed` as fast-retry (60s)
    in `lib/messaging/outgoing-queue.ts` — today they fall into the generic
    5-min retry bucket.
+
+## Verification appendix — 2026-07-23 15:12-15:35 UTC (post-deploy proof run)
+
+### Single-instance check: FAILED — duplicate process still active on DESKTOP-QW8E9T
+- Bridge identities (DB): exactly 1 non-revoked (`cmrm4dd49…`, v1.0.10); 5 older rows all revoked.
+- Gateway registry: `bridges:1` at sample; OS-level `ss` on :3002 caught a churn gap (0 external WS at that instant).
+- Heartbeat fresh (2.1s age) — whichever twin holds the socket heartbeats.
+- **Reconnect frequency: 167 link-ups/30min (~1 per 11s), peaking 71/min; still 162/10min during the test.** A healthy single instance connects once and stays.
+- Dup-instance detector fired at 15:02:58 (8 re-registrations in 19s).
+
+### 20-conversation pipeline test (synthetic inbound via internal webhook, real LLM, test data deleted after)
+- **Inbound→outbound: 20/20 exactly 1:1** (DB pairing; 20 distinct providerMessageIds).
+- **Dropped: 0. Duplicates: 0** — deliberate replay of message #20's providerMessageId rejected in 14ms (`duplicate_event`), no extra rows.
+- **Latency (webhook receive → reply generated, incl. LLM): avg 10.40s, median 9.23s, P95 14.86s, P99=max 36.59s** (n=20). Humanize adds preDelay 0.4-3.3s + typing 2.2-13.7s by design.
+- **LLM quality: 18/20 real replies, 2/20 provider-failure fallbacks** ("خلل تقني مؤقت") — OpenRouter free tier collapsed at the end of the burst. Confirms the paid-model recommendation.
+- **Order classifier: 16 casual questions → 0 orders; explicit confirmation flow → exactly 1 pending order.** 0 false anger/escalation audits.
+- **Notifications: both alert types fired** (keyword order alert + the newly implemented order-created alert) **to the normalized number 201097767079** (fix proven — was impossible-to-route `01097767079`). **Delivery still blocked by the duplicate-instance war**: each queue attempt hit the twin with the dead Chromium (`detached Frame`); rows are retrying (attempts ≤2/5), not lost.
+- Queue: 0 new failed rows; 0 stale.
+- Cleanup: test customer/conversation/messages/order/ledger/memory deleted; Subscription counters restored to exact baseline (31/56); the 2 real merchant alerts left queued intentionally.
+
+### Verdict
+Cloud pipeline: healthy and proven. **Incident NOT fully resolved** — two criteria fail, both outside server control: (1) the second Bridge process must be closed on DESKTOP-QW8E9T (notification delivery + first-attempt reply reliability remain hostage to the socket war), (2) the free-tier LLM model fails under burst and stalls up to 36s (switch to a paid model).
