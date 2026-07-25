@@ -47,7 +47,7 @@ const FORCE_SYSTEM_CHROME =
 // otherwise download into the Bridge home so it persists across restarts.
 const PUP_CACHE = process.env.PUPPETEER_CACHE_DIR || path.join(HOME, "chromium");
 let chromePath = null;
-const VERSION = "1.0.10-wweb";
+const VERSION = "1.0.11-wweb";
 // Pin a known-current WhatsApp Web build instead of trusting whatsapp-web.js's
 // bundled default (2.3000.1017054665, baked in at npm-publish time). Root cause
 // (2026-07-12, field report): a customer's phone confirmed the device as
@@ -240,19 +240,51 @@ async function acquireLock() {
   for (;;) {
     if (!lockHolder()) {
       try { fs.writeFileSync(LOCK, String(process.pid), { mode: 0o600 }); } catch {}
-      if (lockHolder() === 0) {
+      // TOCTOU settle window. Two copies CAN both pass the pre-check and write
+      // within the same moment — proven in production 2026-07-21 15:04:09-11Z:
+      // the KeepAlive respawn and a parked waiter both "won" the lock 1.2s
+      // apart, and the two runtimes then evicted each other's gateway socket
+      // every ~2s for 48 hours (4,600+ reconnects per process). Wait out the
+      // write skew, then claim ONLY if the file still holds OUR pid — last
+      // writer wins, the earlier writer falls back to waiting.
+      await sleep(1000 + Math.floor(Math.random() * 500));
+      let settled = 0;
+      try { settled = Number(fs.readFileSync(LOCK, "utf8").trim()); } catch {}
+      if (settled === process.pid) {
         clearInterval(lockBeat);
+        let foreignBeats = 0;
         lockBeat = setInterval(() => {
           try {
-            // keep ownership fresh; re-assert if something clobbered the file
-            if (Number(fs.readFileSync(LOCK, "utf8").trim()) === process.pid) {
+            const pid = Number(fs.readFileSync(LOCK, "utf8").trim());
+            if (pid === process.pid) {
+              foreignBeats = 0;
               const now = new Date(); fs.utimesSync(LOCK, now, now);
+              return;
+            }
+            // Someone else's pid is in OUR lock. If that pid is dead/stale,
+            // re-assert ourselves. If it is a LIVE process for two consecutive
+            // beats (60s), we genuinely lost ownership — exit so the service
+            // manager restarts us into the polite waiting branch, instead of
+            // running a second engine forever (the dual-runtime storm).
+            let foreignAlive = false;
+            if (pid) { try { process.kill(pid, 0); foreignAlive = true; } catch {} }
+            if (!foreignAlive) {
+              try { fs.writeFileSync(LOCK, String(process.pid), { mode: 0o600 }); } catch {}
+              foreignBeats = 0;
+              return;
+            }
+            foreignBeats++;
+            if (foreignBeats >= 2) {
+              log("error", `lost the single-instance lock to live pid ${pid} — exiting so exactly ONE runtime keeps this machine (the service manager will restart this copy into waiting mode)`);
+              releaseLock();
+              process.exit(1);
             }
           } catch {}
         }, 30_000);
         if (typeof lockBeat.unref === "function") lockBeat.unref();
-        return; // we own the file (last writer wins → loop converges to ONE owner)
+        return; // verified sole owner (post-settle re-read + live-pid beat guard)
       }
+      // Lost the settle race — another live copy owns it; wait politely below.
     } else if (Date.now() - warned > 60_000) {
       warned = Date.now();
       log("warn", `another keyone-wa-bridge (pid ${lockHolder()}) already runs on this machine — waiting (ONE runtime per machine; stop the other copy to hand over)`);

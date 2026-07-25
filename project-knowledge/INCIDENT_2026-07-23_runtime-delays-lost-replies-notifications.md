@@ -121,3 +121,62 @@ DESKTOP-QW8E9T).
 
 ### Verdict
 Cloud pipeline: healthy and proven. **Incident NOT fully resolved** — two criteria fail, both outside server control: (1) the second Bridge process must be closed on DESKTOP-QW8E9T (notification delivery + first-attempt reply reliability remain hostage to the socket war), (2) the free-tier LLM model fails under burst and stalls up to 36s (switch to a paid model).
+
+## Correction — 2026-07-25: OS-level process evidence (supersedes the "Windows duplicate" claim)
+
+The earlier conclusion "two Bridge processes on DESKTOP-QW8E9T (Windows)" was
+wrong. OS evidence from the operator's Mac proves the real topology:
+
+**The two warring processes were two launchd jobs on the operator's macOS
+machine, both launching the SAME bridge app with the same identity:**
+
+| | Job A (current) | Job B (legacy leftover) |
+|---|---|---|
+| Label | `com.keyone.wa-bridge` | `com.keyone.bridge` |
+| Plist | `~/Library/LaunchAgents/com.keyone.wa-bridge.plist` | `/Library/LaunchAgents/com.keyone.bridge.plist` (root-owned, Jul 6) |
+| Program | `/usr/local/keyone-wa-bridge/run start` | `/usr/local/bin/keyone-bridge start` — **a symlink (Jul 15 16:31) to the same `run` script** |
+| Log | `~/.keyone-wa-bridge/bridge.out.log` (1.5 MB) | `/tmp/keyone-bridge.out.log` (723 KB) |
+| War pids | 1712→10036→10210→10442→10504→**10750**→66809/66824→67040→67389 | 1714→11081→12289→… |
+
+Proof chain:
+1. Both logs carry the same bridgeId `cmrm4dd49…` banners; DB records
+   `os=darwin/arch=arm64` on every hello. The "DESKTOP-QW8E9T" name is a
+   label carried in the config from the original Windows-era login; no Windows
+   participation in this identity was ever recorded.
+2. The interleaved gateway socket counters are the two files side by side:
+   at 15:38:30-45Z Jul 23, log A shows ws#4297-4299 while log B shows
+   ws#4221-4224 — alternating eviction, and both logs record the **same
+   SIGTERM instant 15:38:47.106Z** (the operator's reinstall killed both).
+3. **The single-instance lock worked, then failed by TOCTOU**: log B waited
+   politely from 13:44Z Jul 21 ("another keyone-wa-bridge (pid 1712) already
+   runs — waiting"). At 15:04:09-11Z Jul 21 the owner died; the KeepAlive
+   respawn (log A, pid 10750, 15:04:10.4Z) and the parked waiter (log B, pid
+   1714, 15:04:11.7Z) both acquired the lock 1.2s apart — write→verify race
+   with no ownership re-verification afterward. The 48h war (log A: 4,606
+   link-ups; log B: 4,126) began at exactly that second.
+4. The storm ended 15:38Z Jul 23 (operator action killed both; one survivor
+   ran calm — 30 sockets/4h50m), and the survivor was manually stopped at
+   **20:34:27Z Jul 23**.
+
+**Current state (verified 2026-07-25): no bridge process exists anywhere** —
+Mac `ps`: none; both launchd jobs idle; server `ps`: only gateway/wa-service/
+next/prisma-studio; gateway `bridges` count 0-1 sample noise gone, Bridge row
+offline with heartbeat age >1d18h; `Bot.whatsappStatus=disconnected`. **The
+tenant's WhatsApp transport is fully offline since 20:34Z Jul 23.** The two
+test alerts from the proof run exhausted retries against the storm/DNS-flap
+windows and are terminal-failed.
+
+Fixes from this correction:
+- `bridge-node/keyone-wa-bridge.js` v1.0.11-wweb: `acquireLock()` now (a)
+  re-verifies ownership after a 1-1.5s settle window (last writer wins, the
+  loser parks), and (b) the 30s beat detects a live foreign owner for 2
+  consecutive beats and exits so the service manager restarts the copy into
+  the waiting branch — a dual-runtime can no longer persist past ~60s.
+  (Committed; publishing to customer machines via the bridge release pipeline
+  is a separate, approval-gated step.)
+- Operator remediation on the Mac: remove the legacy duplicate starter —
+  `launchctl bootout gui/$UID/com.keyone.bridge` and
+  `sudo rm /Library/LaunchAgents/com.keyone.bridge.plist`, and delete the
+  stale symlink `/usr/local/bin/keyone-bridge`; clear the corrupted
+  `~/.keyone-wa-bridge/chromium` so the engine re-downloads; then start ONE
+  job (`com.keyone.wa-bridge`).
