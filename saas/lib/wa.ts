@@ -92,7 +92,7 @@ async function enqueueSend(
     if (!queued.queued) {
       return { ok: false, status: 500, data: { error: queued.reason || "queue_failed" } };
     }
-    drainOutgoingQueue({ batchSize: 3, perUserLimit: 1 }).catch(() => {});
+    drainOutgoingQueue({ userId, batchSize: 3, perUserLimit: 1 }).catch(() => {});
     return {
       ok: true,
       status: 202,
