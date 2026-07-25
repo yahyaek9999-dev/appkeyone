@@ -627,7 +627,14 @@ async function sendMessage(to, text, opts = {}) {
     stopTyping(jid);
     if (!wa || !waReady) return { ok: false, error: "not linked" }; // engine died during the delay
     const m = await wa.sendMessage(jid, text);
-    return { ok: true, providerMessageId: m.id?._serialized || "" };
+    // whatsapp-web.js can RESOLVE with `m === undefined` on some cold-JID sends
+    // (LID-mapped contacts) even though the message was submitted. The
+    // wa-service treats that as success (`r?.key?.id` — index.js:216); reading
+    // `m.id` here instead threw, acked the send as FAILED, and made the queue
+    // retry an already-delivered message (observed in production 2026-07-25:
+    // every cold-path alert/broadcast to a LID-mapped contact failed this way
+    // while replyJid sends worked). Mirror the wa-service: resolved = sent.
+    return { ok: true, providerMessageId: (m && m.id && m.id._serialized) || "" };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 
