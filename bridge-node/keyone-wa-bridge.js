@@ -29,6 +29,32 @@ const https = require("https");
 const WebSocket = require("ws");
 const { Client, LocalAuth } = require("whatsapp-web.js");
 
+// ── Permanent fix: wweb v1.34.7 dead Runtime.addBinding after SPA context reset ──
+// Root cause (2026-07-27 production incident): after a DNS outage + reconnect, WA
+// Web syncs missed messages → SPA context reset → attachEventListeners re-runs →
+// exposeFunctionIfAbsent sees window[name] already defined (from evaluateOnNewDocument)
+// → skips page.exposeFunction → no new Runtime.addBinding registered → all inbound
+// messages silently dropped while status shows "connected".
+// Fix: upsert — always remove then re-register when the window function exists, so
+// Runtime.addBinding is always fresh on the active CDPSession.
+// This patches the EXPORTED OBJECT in-place so all callers inside whatsapp-web.js
+// get the fix regardless of which node_modules version is installed.
+(function patchExposeFunctionIfAbsent() {
+  try {
+    const PupUtils = require("whatsapp-web.js/src/util/Puppeteer");
+    PupUtils.exposeFunctionIfAbsent = async function exposeFunctionIfAbsent(page, name, fn) {
+      const exist = await page.evaluate((n) => !!window[n], name);
+      if (!exist) { await page.exposeFunction(name, fn); return; }
+      try { await page.removeExposedFunction(name); } catch (_) {}
+      try { await page.exposeFunction(name, fn); } catch (_) {}
+    };
+  } catch (e) {
+    // Non-fatal: if the path doesn't exist (future wweb refactor), log and continue.
+    // The bridge still works; it just won't have the upsert guard.
+    console.error("[binding-patch] failed to patch exposeFunctionIfAbsent:", e.message);
+  }
+})();
+
 const CLOUD_API = process.env.KEYONE_CLOUD_API || "https://w.keyone1.com";
 const CLOUD_WS = process.env.KEYONE_CLOUD_WS || "wss://w.keyone1.com/bridge";
 const HOME = process.env.KEYONE_BRIDGE_HOME || path.join(os.homedir(), ".keyone-wa-bridge");
@@ -304,6 +330,8 @@ function releaseLock() {
 // event fire exactly once per session. `waSeq`/`wsSeq` are object ids for logs.
 let wa = null, waInit = null, waSeq = 0, waReady = false, waIdentity = "", linking = false, connectedOnce = false;
 let authWatchdog = null; // cleared on destroy; fires if `ready` never follows `authenticated`
+let lastInboundAt = 0;  // epoch ms of last successfully relayed inbound message
+let bindingWatchdog = null; // cleared on destroy; detects and heals dead Puppeteer binding
 // Bounds the QR-during-restore suppression below — mirrors whatsapp-service/src/sessions.js
 // (the proven original QR implementation), reset to 0 once `ready` actually fires.
 let restoreRetries = 0;
@@ -355,11 +383,70 @@ function markConnected(identity, id) {
   log("info", `whatsapp: connected as ${waIdentity} [wa#${id}]`);
 }
 
+// ── Binding watchdog ─────────────────────────────────────────────────────────
+// Detects the case where the Puppeteer Runtime.addBinding is dead (inbound
+// messages arrive in Chromium but never reach Node.js) and proactively heals it.
+//
+// The permanent patchExposeFunctionIfAbsent() above prevents the root cause on
+// every normal session restore. This watchdog is the last line of defence for
+// any unknown trigger that leaves the binding dead while status shows "connected".
+//
+// Strategy:
+//   • Track lastInboundAt — updated every time a real message is relayed.
+//   • Every BINDING_WATCHDOG_INTERVAL_MS, if connected AND idle for
+//     BINDING_WATCHDOG_IDLE_MS: probe the browser, then refresh the binding.
+//   • If the browser page is gone → restart the WA engine (destroyWa+ensureWa).
+//   • If refresh throws → restart.
+const BINDING_WATCHDOG_INTERVAL_MS = 10 * 60_000; // probe every 10 min
+const BINDING_WATCHDOG_IDLE_MS = 25 * 60_000;     // trigger after 25 min of silence
+
+function startBindingWatchdog(client, id) {
+  if (bindingWatchdog) { clearInterval(bindingWatchdog); }
+  bindingWatchdog = setInterval(async () => {
+    if (!waReady || wa !== client) { clearInterval(bindingWatchdog); bindingWatchdog = null; return; }
+    const idle = Date.now() - lastInboundAt;
+    if (idle < BINDING_WATCHDOG_IDLE_MS) return; // recent traffic — binding is alive
+    log("info", `binding-watchdog: ${Math.round(idle / 60000)}min since last inbound — probing binding [wa#${id}]`);
+    try {
+      const page = client.pupPage;
+      if (!page || page.isClosed()) {
+        log("warn", `binding-watchdog: browser page gone — restarting WA engine [wa#${id}]`);
+        doControl("reconnect").catch(() => {});
+        return;
+      }
+      const fnExists = await page.evaluate(() => typeof window.onAddMessageEvent === "function").catch(() => null);
+      if (fnExists === null) {
+        log("warn", `binding-watchdog: page evaluate failed — restarting WA engine [wa#${id}]`);
+        doControl("reconnect").catch(() => {});
+        return;
+      }
+      if (!fnExists) {
+        log("warn", `binding-watchdog: onAddMessageEvent missing from window — restarting WA engine [wa#${id}]`);
+        doControl("reconnect").catch(() => {});
+        return;
+      }
+      // Function exists — the patch may have already fixed it; refresh bindings
+      // defensively by calling attachEventListeners (available as a method on Client).
+      if (typeof client.attachEventListeners === "function") {
+        await client.attachEventListeners();
+        log("info", `binding-watchdog: bindings refreshed [wa#${id}]`);
+        // Reset idle clock so the watchdog doesn't re-fire immediately.
+        lastInboundAt = Date.now();
+      }
+    } catch (e) {
+      log("warn", `binding-watchdog: heal attempt failed: ${e.message} [wa#${id}] — restarting WA engine`);
+      doControl("reconnect").catch(() => {});
+    }
+  }, BINDING_WATCHDOG_INTERVAL_MS);
+  if (typeof bindingWatchdog.unref === "function") bindingWatchdog.unref();
+}
+
 // The ONE place a Client is torn down: strip listeners (so a dying client can
 // never emit into shared state), destroy the browser, and reset ALL engine state
 // so the next ensureWa() builds a clean singleton. Never auto-recreates.
 async function destroyWa(reason) {
   if (authWatchdog) { clearTimeout(authWatchdog); authWatchdog = null; }
+  if (bindingWatchdog) { clearInterval(bindingWatchdog); bindingWatchdog = null; }
   const c = wa;
   wa = null; waInit = null; waReady = false; connectedOnce = false; linking = false;
   try { stopAllTyping(); } catch {}
@@ -463,6 +550,8 @@ function ensureWa(cfg) {
       if (qrRestoreTimer) { clearTimeout(qrRestoreTimer); qrRestoreTimer = null; }
       restoreRetries = 0;
       markConnected((client.info && client.info.wid && client.info.wid.user) || "", id);
+      lastInboundAt = Date.now(); // reset idle clock on every fresh READY
+      startBindingWatchdog(client, id);
     });
     client.on("disconnected", (r) => {
       const logout = String(r).toUpperCase().includes("LOGOUT");
@@ -553,6 +642,7 @@ async function relayInboundMsg(client, m, id) {
   // Typing indicator while the Cloud generates the reply (parity with the
   // wa-service). Auto-stops when the reply is sent, or after 90s regardless.
   startTyping(client, from).catch(() => {});
+  lastInboundAt = Date.now(); // binding is alive — reset watchdog idle clock
   log("info", `whatsapp: inbound from ${phone} (${mediaType}) → relaying to Cloud [wa#${id}]`);
   wsSend("inbound", {
     provider: PROVIDER, from: { phone, name },

@@ -150,6 +150,7 @@ model Bot {
   systemPrompt    String   @default("أنت مساعد المبيعات الرسمي للشركة. تكلم بالعربية باحترام واختصار. اعرض الخدمات والأسعار بدقة من معلومات الشركة المتوفرة فقط، ولا تخترع أي سعر. لو العميل أبدى نية شراء أو سأل عن طريقة الاشتراك أو الدفع، اطلب اسمه ورقم واتسابه ووجّهه يتواصل مع رقم الإدارة لإتمام التفعيل. لو السؤال خارج معلوماتك، اعتذر بصراحة واطلب التواصل مع الإدارة.")
   welcomeMessage  String   @default("أهلاً بك! كيف يمكنني مساعدتك؟")
   notifyPhone     String?  // Phone to receive order/payment alerts
+  notifyPhones    String  @default("[]") // JSON array of additional recipient phones
   orderKeywords   String   @default("اوردر,طلب,حولت,تحويل,دفعت,انستاباي,فودافون كاش,فيزا,ايصال")
   whatsappStatus  String   @default("disconnected") // disconnected | connecting | connected
   whatsappPhone   String?

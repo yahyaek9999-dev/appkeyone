@@ -37,9 +37,6 @@ async function audit(opts: {
  * Resolve the best phone to deliver an alert to. Uses the bot's notifyPhone
  * if set, then the connected WhatsApp number, then the merchant's account
  * phone. Returns null if no destination is available.
- *
- * The userId form is preferred — callers that already have a phone in hand
- * can use sendNotification() directly.
  */
 export async function resolveNotifyPhone(userId: string): Promise<string | null> {
   try {
@@ -51,6 +48,38 @@ export async function resolveNotifyPhone(userId: string): Promise<string | null>
     return u.bot?.notifyPhone || u.bot?.whatsappPhone || u.phone || null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Resolve ALL notification recipients for a user: notifyPhone (primary) +
+ * every phone in notifyPhones (JSON array). Deduped, normalized, non-empty.
+ * Falls back gracefully — a bad JSON in notifyPhones is ignored silently.
+ */
+export async function resolveAllNotifyPhones(userId: string): Promise<string[]> {
+  try {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        phone: true,
+        bot: { select: { notifyPhone: true, whatsappPhone: true, notifyPhones: true } },
+      },
+    });
+    if (!u) return [];
+    const primary = u.bot?.notifyPhone || u.bot?.whatsappPhone || u.phone || null;
+    let extras: string[] = [];
+    try { extras = JSON.parse((u.bot as any)?.notifyPhones || "[]"); } catch {}
+    const all = [primary, ...extras].filter((p): p is string => !!p && typeof p === "string");
+    // Deduplicate by trailing-9 digit signature (+ / cc variance)
+    const seen = new Set<string>();
+    return all.filter((p) => {
+      const sig = String(p).replace(/\D/g, "").slice(-9);
+      if (!sig || seen.has(sig)) return false;
+      seen.add(sig);
+      return true;
+    });
+  } catch {
+    return [];
   }
 }
 
@@ -137,14 +166,33 @@ export async function notifyMerchant(opts: {
   return { ok: false, channel: "log" };
 }
 
-/** Generic admin alert sender (anger, follow-up failures, etc). */
+/** Generic admin alert sender (anger, follow-up failures, etc).
+ *  Fans out to ALL recipients in notifyPhone + notifyPhones array.
+ *  Returns ok:true if at least one recipient received the message.
+ */
 export async function notifyAdmin(opts: {
   userId: string;
   toPhone: string;
   text: string;
-  category?: string; // free-form label for the audit log (e.g. "anger", "broadcast")
+  category?: string;
 }) {
-  if (!opts.toPhone) {
+  const connectedPhone = await ownWhatsappPhone(opts.userId);
+
+  // Build full recipient list: the caller-supplied phone PLUS any extras from
+  // the bot's notifyPhones array, deduped. If the caller passes an empty
+  // string (no primary set), we still try the extras array.
+  const primaryRaw = opts.toPhone || "";
+  let extras: string[] = [];
+  try {
+    const bot = await prisma.bot.findUnique({
+      where: { userId: opts.userId },
+      select: { notifyPhones: true } as any,
+    });
+    extras = JSON.parse((bot as any)?.notifyPhones || "[]");
+  } catch {}
+
+  const rawPhones = [primaryRaw, ...extras].filter(Boolean);
+  if (rawPhones.length === 0) {
     await audit({
       userId: opts.userId,
       level: "warn",
@@ -155,33 +203,45 @@ export async function notifyAdmin(opts: {
     return { ok: false, channel: "none" };
   }
 
-  const connectedPhone = await ownWhatsappPhone(opts.userId);
-  const toPhone = normalizeAlertPhone(opts.toPhone, connectedPhone);
-  if (samePhone(connectedPhone, toPhone)) {
-    await audit({
-      userId: opts.userId,
-      level: "warn",
-      title: "تعذّر إرسال تنبيه",
-      detail:
-        "رقم التنبيهات هو نفس رقم الواتساب المتصل — واتساب لا يسمح بالإرسال لنفس الرقم. " +
-        "غيّر رقم التنبيهات لرقم آخر.",
-      payload: { toPhone, kind: opts.category || "admin" },
+  // Normalize and deduplicate
+  const seen = new Set<string>();
+  const recipients = rawPhones
+    .map((p) => normalizeAlertPhone(p, connectedPhone))
+    .filter((p) => {
+      if (!p) return false;
+      const sig = p.replace(/\D/g, "").slice(-9);
+      if (!sig || seen.has(sig)) return false;
+      seen.add(sig);
+      return true;
     });
-    return { ok: false, channel: "self" };
-  }
 
-  const r = await wa.send(opts.userId, toPhone, opts.text, "system");
-  if (r.ok) return { ok: true, channel: "whatsapp" };
+  let anyOk = false;
+  await Promise.all(
+    recipients.map(async (toPhone) => {
+      if (samePhone(connectedPhone, toPhone)) {
+        await audit({
+          userId: opts.userId,
+          level: "warn",
+          title: "تعذّر إرسال تنبيه",
+          detail: "رقم التنبيهات هو نفس رقم الواتساب المتصل — غيّر رقم التنبيهات لرقم آخر.",
+          payload: { toPhone, kind: opts.category || "admin" },
+        });
+        return;
+      }
+      const r = await wa.send(opts.userId, toPhone, opts.text, "system");
+      if (r.ok) { anyOk = true; return; }
+      await audit({
+        userId: opts.userId,
+        level: "warn",
+        title: "فشل إرسال تنبيه",
+        detail: typeof r.data === "string" ? r.data : JSON.stringify(r.data || {}).slice(0, 400),
+        payload: { toPhone, kind: opts.category || "admin" },
+      });
+      console.warn("[notifyAdmin] failed for", toPhone, r.data);
+    }),
+  );
 
-  await audit({
-    userId: opts.userId,
-    level: "warn",
-    title: "فشل إرسال تنبيه",
-    detail: typeof r.data === "string" ? r.data : JSON.stringify(r.data || {}).slice(0, 400),
-    payload: { toPhone, kind: opts.category || "admin" },
-  });
-  console.warn("[notifyAdmin] failed:", r.data);
-  return { ok: false, channel: "log" };
+  return { ok: anyOk, channel: anyOk ? "whatsapp" : "log" };
 }
 
 /** The bot's connected WhatsApp number for `userId` (null when unknown). */
