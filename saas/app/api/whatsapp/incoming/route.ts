@@ -1178,7 +1178,7 @@ export async function POST(req: Request) {
     rawText: rawText || "",
     orderSettings: {
       enabled: bot.orderExtractionEnabled !== false,
-      confidenceThreshold: bot.orderConfidenceThreshold ?? 50,
+      confidenceThreshold: bot.orderConfidenceThreshold ?? 70,
       requireProduct: !!bot.orderRequireProduct,
       requireConfirmation: !!bot.orderRequireConfirmation,
       businessMode: bot.businessMode || "store",
@@ -1651,7 +1651,7 @@ async function extractAndStoreOrder(args: {
 }) {
   try {
     const settings = args.orderSettings ?? {
-      enabled: true, confidenceThreshold: 50, requireProduct: false, requireConfirmation: false, businessMode: "store",
+      enabled: true, confidenceThreshold: 70, requireProduct: false, requireConfirmation: false, businessMode: "store",
     };
 
     // Respect the merchant's extraction toggle
@@ -1773,13 +1773,19 @@ async function extractAndStoreOrder(args: {
           create: [
             {
               kind: "created",
-              message: "تم إنشاء الطلب تلقائياً من المحادثة.",
+              message: gate.needsReview
+                ? "تم إنشاء الطلب تلقائياً (ثقة متوسطة — يُفضّل المراجعة)."
+                : "تم إنشاء الطلب تلقائياً من المحادثة.",
             },
             {
               kind: "ai_extracted",
               message: draft.notes,
-              payload: JSON.stringify({ confidence: draft.confidence }),
+              payload: JSON.stringify({ confidence: draft.confidence, needsReview: gate.needsReview }),
             },
+            ...(gate.needsReview ? [{
+              kind: "note",
+              message: `ثقة الاستخراج ${draft.confidence}% (70-94) — راجع الطلب قبل تأكيده للتأكد من صحة التفاصيل.`,
+            }] : []),
           ],
         },
       },

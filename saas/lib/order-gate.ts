@@ -3,19 +3,28 @@
 // (BUG3). Used by the live inbound route AND the verification harness so the
 // tested logic IS the shipped logic (no drift).
 //
-// Rules (all additive, none touch the send pipeline):
+// Confidence tiers:
+//   HIGH   (≥ 95): auto-create order, no confirmation needed
+//   MEDIUM (≥ 70): create order but flag as needs-merchant-review
+//   LOW    (< 70): do not create; treat as a chat-only lead
+//
+// Additional hard rules (applied before confidence tiers):
 //   1. Media alone (image/voice/video with no typed words) + no purchase intent
 //      + no payment keyword  → NEVER an order.
 //   2. No genuine purchase intent AND no payment/order keyword → LEAD, not order
 //      (price/availability/location/greeting messages).
 //   3. No REAL product detected (the "منتج" placeholder doesn't count) and no
 //      payment keyword → LEAD, not order.
-//   4. Below the confidence threshold → skip (stays a lead).
-//   5. requireProduct on but no real product → skip.
-// Anything that passes all gates is a genuine order draft.
+//   4. requireProduct on but no real product → skip.
+// Anything that passes all hard rules is gated by confidence tier.
 
 import { classifyMessageIntent, type MessageIntent } from "./message-intent";
 import { extractOrderFast, type OrderDraft } from "./order-extractor";
+
+// Confidence thresholds — production-tuned, not merchant-configurable so
+// merchants can't accidentally lower them to junk-order territory.
+const HIGH_CONFIDENCE_THRESHOLD = 95;  // auto-create
+const MEDIUM_CONFIDENCE_THRESHOLD = 70; // create with merchant review flag
 
 export interface OrderGateInput {
   historyTail: { role: string; content: string }[];
@@ -27,7 +36,7 @@ export interface OrderGateInput {
   rawText?: string;            // the customer's actually-typed text (empty for pure media)
   /** what the customer actually TYPED (=== last message for text; rawText for media). Used to detect payment receipts. */
   typedText?: string;
-  confidenceThreshold: number; // merchant setting (default 50)
+  confidenceThreshold: number; // merchant setting — used only as a floor (clamped to MEDIUM_CONFIDENCE_THRESHOLD)
   requireProduct?: boolean;
 }
 
@@ -45,10 +54,13 @@ export type OrderDecision =
   | "no_real_product"
   | "low_confidence"
   | "require_product"
-  | "order";
+  | "order"
+  | "order_needs_review";  // medium confidence — create but flag for merchant
 
 export interface OrderGateResult {
   create: boolean;
+  /** true when the order was created but is in the 70-94 confidence range — merchant should review */
+  needsReview: boolean;
   decision: OrderDecision;
   reason: string;
   intent: MessageIntent;
@@ -82,23 +94,38 @@ export function decideOrder(input: OrderGateInput): OrderGateResult {
     fallbackCustomerPhone: input.customerPhone,
   });
 
-  const done = (create: boolean, decision: OrderDecision, reason: string): OrderGateResult =>
-    ({ create, decision, reason, intent: lastIntent.intent, draft });
+  const done = (
+    create: boolean,
+    decision: OrderDecision,
+    reason: string,
+    needsReview = false,
+  ): OrderGateResult => ({ create, needsReview, decision, reason, intent: lastIntent.intent, draft });
 
-  // 1) Media alone (image/voice/video with no typed words) never becomes an order
-  //    on the strength of the media itself — needs PRIOR purchase intent or a
-  //    typed payment receipt.
+  // Hard rule 1) Media alone never becomes an order without prior purchase intent or receipt.
   if (mediaOnly && !priorIntent.buyIntent && !strongPayment) return done(false, "media_only", "media sent alone with no prior purchase intent");
-  // 2) No genuine purchase intent and no payment receipt → LEAD, not order.
-  //    (A weak keyword like "طلب" in a question does NOT create an order.)
+  // Hard rule 2) No genuine purchase intent and no payment receipt → LEAD.
   if (!effectiveBuyIntent && !strongPayment) return done(false, "no_buy_intent", `intent=${lastIntent.intent}, no purchase intent / receipt`);
-  // 3) No REAL product (placeholder "منتج" doesn't count) and no receipt → LEAD.
+  // Hard rule 3) No REAL product and no receipt → LEAD.
   if (!draft.hasRealProduct && !strongPayment) return done(false, "no_real_product", "only the placeholder product");
-
-  // A genuine receipt or a merchant keyword lowers the confidence bar to 30.
-  const threshold = (strongPayment || weakFlag) ? Math.min(input.confidenceThreshold, 30) : input.confidenceThreshold;
-  if (draft.confidence < threshold) return done(false, "low_confidence", `confidence ${draft.confidence} < ${threshold}`);
+  // Hard rule 4) requireProduct on but no real product → skip.
   if (input.requireProduct && !draft.hasRealProduct) return done(false, "require_product", "requireProduct on, no real product");
 
-  return done(true, "order", "genuine purchase intent + product + confidence");
+  // A genuine receipt or a merchant keyword lowers the confidence floor to 30.
+  const receiptOrFlag = strongPayment || weakFlag;
+
+  // Effective minimum threshold: the higher of merchant's setting and MEDIUM floor,
+  // unless a receipt/keyword lowers to 30.
+  const effectiveMin = receiptOrFlag ? 30 : Math.max(input.confidenceThreshold, MEDIUM_CONFIDENCE_THRESHOLD);
+
+  if (draft.confidence < effectiveMin) {
+    return done(false, "low_confidence", `confidence ${draft.confidence} < ${effectiveMin}`);
+  }
+
+  // Confidence tiers
+  if (draft.confidence >= HIGH_CONFIDENCE_THRESHOLD) {
+    return done(true, "order", "high confidence — genuine purchase intent + product");
+  }
+
+  // Medium confidence (70-94): create but flag for merchant review
+  return done(true, "order_needs_review", `medium confidence ${draft.confidence} — create with review flag`, true);
 }
