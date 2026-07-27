@@ -688,6 +688,7 @@ model BroadcastItem {
   @@index([broadcastId, status])
   @@index([customerId, status])            // Customer 360: timeline shows received broadcasts
   @@index([status, waMessageId])           // delivery-status reconciliation sweep
+  @@index([status, claimedAt])             // stale-claim detection (health + cron)
 }
 
 /// Logs unanswerable questions. When the bot tells the user "I don't know",
@@ -1427,6 +1428,8 @@ model WaMessage {
   @@index([userId, status, queuedAt])
   @@index([userId, customerPhone, queuedAt])
   @@index([userId, provider, status])
+  @@index([status, queuedAt])    // admin-level cross-tenant status counts (no userId filter)
+  @@index([status, failedAt])    // admin-level failed-message counts
 }
 
 /// Webhook event ledger — idempotency + dead-letter for Meta Cloud webhooks.
@@ -3600,6 +3603,7 @@ model Bridge {
 
   @@index([userId, status])
   @@index([userId, isPrimary])
+  @@index([lastHeartbeatAt])     // health checks: count bridges online in last N minutes
 }
 
 model BridgeTransport {
