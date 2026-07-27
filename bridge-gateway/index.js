@@ -367,11 +367,13 @@ function pushOutbound(ws, provider, to, text, extra) {
 async function notifyCloud(body) {
   if (!INTERNAL_SECRET) return null;
   try {
+    const reqId = `gw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
     const res = await fetch(CLOUD_INCOMING_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-internal-secret": INTERNAL_SECRET,
+        "x-request-id": reqId,
       },
       body: JSON.stringify({ ...body, source: "bridge" }),
     });

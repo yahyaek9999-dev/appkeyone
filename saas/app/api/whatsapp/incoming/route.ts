@@ -96,6 +96,10 @@ function isHistoricalRuntimeInbound(value: unknown): boolean {
 }
 
 export async function POST(req: Request) {
+  // Correlation ID: bridge supplies x-request-id; fall back to a random suffix.
+  // Prefix "wa-" makes it grep-able across gateway ↔ SAAS logs.
+  const reqId = req.headers.get("x-request-id") || `wa-${Math.random().toString(36).slice(2, 10)}`;
+
   if (!checkInternalSecret(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -465,7 +469,7 @@ export async function POST(req: Request) {
       }
     }
   } catch (e: any) {
-    console.warn("[wa/incoming] contact capture failed:", e?.message || e);
+    console.warn("[wa/incoming] contact capture failed:", e?.message || e, { reqId });
   }
 
   let conv = await prisma.conversation.findUnique({
@@ -532,33 +536,45 @@ export async function POST(req: Request) {
 
   // Persist the inbound message immediately so the live inbox sees it.
   // Scores are server-derived and immutable for audit; client never provides them.
-  const inboundMessage = await prisma.message.create({
-    data: {
-      conversationId: conv.id,
-      role: "user",
-      content: messageText,
-      mediaType,
-      mediaUrl,
-      providerMessageId,
-      flagged,
-      createdAt: historicalInbound && providerTimestampMs((body as any).providerTimestamp)
-        ? new Date(providerTimestampMs((body as any).providerTimestamp)!)
-        : undefined,
-      intent: mapEmotionalIntent(emotional.intent),
-      sentiment: emotional.sentiment,
-      angerScore: emotional.angerScore,
-      confidenceScore: emotional.confidenceScore,
-      frustrationScore: emotional.frustrationScore,
-      urgencyScore: emotional.urgencyScore,
-      emotionalTone: emotional.toneHint.slice(0, 160),
-      metadataJson: JSON.stringify({
+  // Wrap create in P2002 guard: two concurrent requests (bridge retry or gateway
+  // double-delivery) may race past the duplicate check above and both attempt
+  // the insert. The second one hits the @@unique([conversationId, providerMessageId])
+  // constraint. Return duplicate_event instead of a 500.
+  let inboundMessage: Awaited<ReturnType<typeof prisma.message.create>>;
+  try {
+    inboundMessage = await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        role: "user",
+        content: messageText,
+        mediaType,
+        mediaUrl,
         providerMessageId,
-        emotional,
-        historicalInbound,
-        providerTimestamp: (body as any).providerTimestamp || null,
-      }),
-    } as any,
-  });
+        flagged,
+        createdAt: historicalInbound && providerTimestampMs((body as any).providerTimestamp)
+          ? new Date(providerTimestampMs((body as any).providerTimestamp)!)
+          : undefined,
+        intent: mapEmotionalIntent(emotional.intent),
+        sentiment: emotional.sentiment,
+        angerScore: emotional.angerScore,
+        confidenceScore: emotional.confidenceScore,
+        frustrationScore: emotional.frustrationScore,
+        urgencyScore: emotional.urgencyScore,
+        emotionalTone: emotional.toneHint.slice(0, 160),
+        metadataJson: JSON.stringify({
+          providerMessageId,
+          emotional,
+          historicalInbound,
+          providerTimestamp: (body as any).providerTimestamp || null,
+        }),
+      } as any,
+    });
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      return NextResponse.json({ ok: true, reply: null, blocked: "duplicate_event" });
+    }
+    throw e;
+  }
 
   if (historicalInbound) {
     return NextResponse.json({
@@ -997,7 +1013,7 @@ export async function POST(req: Request) {
       reply = r.text;
       replySource = r.source;
     } catch (e: any) {
-      console.error("[wa/incoming] generateBotReply failed:", e?.message || e);
+      console.error("[wa/incoming] generateBotReply failed:", e?.message || e, { reqId, userId });
       Sentry.captureException(e, { tags: { context: "wa_incoming_llm", replySource } });
       reply = "عذراً، يبدو أن هناك خلل تقني مؤقت. سأعود لك خلال لحظات.";
     }
