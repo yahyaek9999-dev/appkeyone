@@ -169,13 +169,14 @@ export default function SystemHealthUi() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
                 <SubsystemCard name="قاعدة البيانات" icon={<Database className="h-4 w-4" />} sub={data.subsystems.database} />
                 <SubsystemCard name="واتساب" icon={<Smartphone className="h-4 w-4" />} sub={data.subsystems.whatsapp} />
                 <SubsystemCard name="الطابور" icon={<Activity className="h-4 w-4" />} sub={data.subsystems.queue} />
                 <SubsystemCard name="مزود الذكاء الاصطناعي" icon={<Brain className="h-4 w-4" />} sub={data.subsystems.aiProvider} />
                 <SubsystemCard name="العامل (Worker)" icon={<Server className="h-4 w-4" />} sub={data.subsystems.worker} />
                 <SubsystemCard name="Redis" icon={<Zap className="h-4 w-4" />} sub={data.subsystems.redis} />
+                <SubsystemCard name="Bridge Gateway" icon={<Wifi className="h-4 w-4" />} sub={(data.subsystems as any).bridgeGateway} />
               </div>
             </div>
           )}
@@ -198,11 +199,19 @@ export default function SystemHealthUi() {
             <h3 className="section-title mb-4 flex items-center gap-2">
               <Database className="h-4 w-4 text-sky-400" /> قاعدة البيانات
             </h3>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5">
               <MiniCard icon={<Database className="h-4 w-4" />} label="حجم الملف" value={fmtBytes(data.database.sizeBytes)} />
               <MiniCard icon={<Database className="h-4 w-4" />} label="الرسائل" value={(data.database.messages || 0).toLocaleString("ar-EG")} />
               <MiniCard icon={<Server className="h-4 w-4" />} label="العملاء" value={(data.database.customers || 0).toLocaleString("ar-EG")} />
               <MiniCard icon={<Server className="h-4 w-4" />} label="الطلبات" value={(data.database.orders || 0).toLocaleString("ar-EG")} />
+              {(data.database as any).latencyMs != null && (
+                <MiniCard
+                  icon={<Clock className="h-4 w-4" />}
+                  label="زمن استجابة DB"
+                  value={`${(data.database as any).latencyMs}ms`}
+                  tone={(data.database as any).latencyMs > 200 ? "rose" : (data.database as any).latencyMs > 80 ? "amber" : "emerald"}
+                />
+              )}
             </div>
           </div>
 

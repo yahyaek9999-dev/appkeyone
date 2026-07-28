@@ -99,6 +99,18 @@ export async function GET() {
       const { getOutgoingQueueHealth } = await import("@/lib/messaging/outgoing-queue");
       return await getOutgoingQueueHealth();
     }, null),
+    /* 18 bridgeGateway   */ provider<any>("bridge-gateway", async () => {
+      const port = process.env.BRIDGE_GATEWAY_PORT || "3002";
+      const t0 = Date.now();
+      const r = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(3000) });
+      const j = await r.json();
+      return { ok: r.ok && j?.ok, bridges: j?.bridges ?? 0, latencyMs: Date.now() - t0 };
+    }, null),
+    /* 19 dbLatencyMs     */ provider<number>("db-latency", async () => {
+      const t0 = Date.now();
+      await prisma.$queryRaw`SELECT 1`;
+      return Date.now() - t0;
+    }, -1),
   ]);
 
   // allSettled never rejects; unwrap with a hard fallback just in case.
@@ -125,6 +137,8 @@ export async function GET() {
   const redisOk = val(15, false) as boolean;
   const aiUsage24h = val(16, { _sum: { calls: null, failures: null } } as any);
   const queueHealth = val<any>(17, null);
+  const bridgeGateway = val<any>(18, null);
+  const dbLatencyMs = val<number>(19, -1);
 
   // ---- Derive per-subsystem verdicts (honest signals only) ------------------
   const subsystems: Record<string, Subsystem> = {};
@@ -180,6 +194,13 @@ export async function GET() {
         ? { status: "degraded", detail: `أقدم رسالة منتظرة منذ ${Math.round(oldestAge / 60)}د` }
         : { status: "ok", detail: "يُفرّغ الطابور بانتظام" };
 
+  // Bridge gateway subsystem
+  subsystems.bridgeGateway = bridgeGateway === null
+    ? { status: "unknown", detail: "تعذّر الاتصال بالبوابة" }
+    : bridgeGateway.ok
+      ? { status: "ok", detail: `${bridgeGateway.bridges} جلسة · ${bridgeGateway.latencyMs}ms` }
+      : { status: "down", detail: "البوابة لا تستجيب" };
+
   const version = process.env.NEXT_PUBLIC_BUILD_ID || process.env.BUILD_ID || "dev";
 
   // Server metrics — os/process calls don't touch the DB but guard anyway so a
@@ -229,6 +250,7 @@ export async function GET() {
       messages: toSafeNumber(msgCount) ?? 0,
       customers: toSafeNumber(custCount) ?? 0,
       orders: toSafeNumber(ordCount) ?? 0,
+      latencyMs: dbLatencyMs >= 0 ? dbLatencyMs : null,
     },
     queue: { queued: queueDepth, failed24h, deadLetter },
     whatsapp: { activeSessions: waSessions },
