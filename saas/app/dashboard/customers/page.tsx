@@ -1,7 +1,7 @@
 import { requirePagePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { Users, MessageSquare, ArrowUpRight } from "lucide-react";
+import { Users, MessageSquare, ArrowUpRight, Download } from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -69,6 +69,10 @@ export default async function CustomersPage({
             />
             <button type="submit" className="btn-ghost h-9 text-[13px]">بحث</button>
           </form>
+          <a href="/api/export?type=customers&format=csv" download className="btn-ghost h-9 text-[13px] inline-flex items-center gap-1">
+            <Download className="h-3.5 w-3.5" />
+            تصدير CSV
+          </a>
           <Link href="/dashboard/customers/import" className="btn-ghost h-9 text-[13px]">استيراد</Link>
           <Link href="/dashboard/inbox" className="btn-ghost h-9 text-[13px]">
             <MessageSquare className="h-4 w-4" />

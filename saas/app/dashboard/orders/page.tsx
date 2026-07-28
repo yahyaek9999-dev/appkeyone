@@ -6,6 +6,7 @@ import InsightStrip from "@/components/insight-strip";
 import {
   ShoppingBag,
   ArrowUpRight,
+  Download,
 } from "lucide-react";
 import {
   OrderStatusPill,
@@ -98,6 +99,14 @@ export default async function OrdersPage({
             {totalOrders.toLocaleString()} طلب · {(revenue / 100).toLocaleString()} ج إيرادات مؤكدة
           </p>
         </div>
+        <a
+          href="/api/export?type=orders&format=csv"
+          download
+          className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-slate-300 transition hover:bg-white/[0.08]"
+        >
+          <Download className="h-3.5 w-3.5" />
+          تصدير CSV
+        </a>
       </div>
 
       {/* Status filter — limelight sliding indicator */}
