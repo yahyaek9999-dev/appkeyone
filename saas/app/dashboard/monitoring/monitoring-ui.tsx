@@ -55,6 +55,25 @@ const SEV: Record<string, { cls: string }> = {
   medium: { cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
   low: { cls: "bg-sky-500/15 text-sky-300 border-sky-500/30" },
 };
+
+const ALERT_TABS = [
+  { key: "all", label: "الكل" },
+  { key: "critical", label: "حرجة" },
+  { key: "orders", label: "الطلبات" },
+  { key: "customers", label: "العملاء" },
+  { key: "ai", label: "الذكاء" },
+  { key: "system", label: "النظام" },
+] as const;
+type AlertTab = (typeof ALERT_TABS)[number]["key"];
+
+function alertCategory(type: string, severity: string): AlertTab {
+  if (severity === "critical") return "critical";
+  if (type === "sales_drop" || type === "broadcast_failure") return "orders";
+  if (type === "lead_drop" || type === "churn_risk" || type === "escalation_spike") return "customers";
+  if (type === "ai_failure") return "ai";
+  if (type === "service_risk") return "system";
+  return "all";
+}
 function healthColor(s: number) {
   return s >= 75 ? "text-emerald-400" : s >= 50 ? "text-amber-400" : "text-rose-400";
 }
@@ -91,6 +110,7 @@ export default function MonitoringUi() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [alertTab, setAlertTab] = useState<AlertTab>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -229,42 +249,71 @@ export default function MonitoringUi() {
 
           {/* Alert center */}
           <section>
-            <h2 className="font-bold text-sm mb-2 inline-flex items-center gap-2">
-              <Bell className="h-4 w-4 text-amber-300" /> مركز التنبيهات ({data!.openAlerts.length})
-            </h2>
-            {data!.openAlerts.length === 0 ? (
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-6 text-center text-sm text-emerald-200 inline-flex items-center gap-2 w-full justify-center">
-                <CheckCircle2 className="h-4 w-4" /> لا توجد تنبيهات مفتوحة.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {data!.openAlerts.map((a) => (
-                  <div
-                    key={a.id}
-                    className={`rounded-2xl border p-4 flex flex-wrap items-start justify-between gap-2 ${SEV[a.severity]?.cls || SEV.medium.cls}`}
-                  >
-                    <div className="flex-1 min-w-[200px]">
-                      <div className="font-bold text-sm inline-flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" /> {a.title}
-                      </div>
-                      <div className="text-xs text-slate-200/80 mt-1">{a.message}</div>
-                    </div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-bold text-sm inline-flex items-center gap-2">
+                <Bell className="h-4 w-4 text-amber-300" /> مركز التنبيهات ({data!.openAlerts.length})
+              </h2>
+              <div className="flex flex-wrap gap-1">
+                {ALERT_TABS.map((tab) => {
+                  const count = tab.key === "all"
+                    ? data!.openAlerts.length
+                    : data!.openAlerts.filter((a) => alertCategory(a.type, a.severity) === tab.key).length;
+                  return (
                     <button
-                      onClick={() => resolve(a.id)}
-                      disabled={busy === a.id}
-                      className="px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/20 text-xs inline-flex items-center gap-1 disabled:opacity-50"
+                      key={tab.key}
+                      onClick={() => setAlertTab(tab.key)}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                        alertTab === tab.key
+                          ? "bg-amber-500/20 border border-amber-500/40 text-amber-200"
+                          : "bg-white/[0.04] border border-white/[0.06] text-slate-400 hover:text-slate-200"
+                      }`}
                     >
-                      {busy === a.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      )}{" "}
-                      معالجة
+                      {tab.label}
+                      {count > 0 && <span className="ms-1 tabular-nums opacity-70">({count})</span>}
                     </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            )}
+            </div>
+            {(() => {
+              const visible = alertTab === "all"
+                ? data!.openAlerts
+                : data!.openAlerts.filter((a) => alertCategory(a.type, a.severity) === alertTab);
+              if (visible.length === 0) return (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-6 text-center text-sm text-emerald-200 inline-flex items-center gap-2 w-full justify-center">
+                  <CheckCircle2 className="h-4 w-4" /> {data!.openAlerts.length === 0 ? "لا توجد تنبيهات مفتوحة." : "لا توجد تنبيهات في هذه الفئة."}
+                </div>
+              );
+              return (
+                <div className="space-y-2">
+                  {visible.map((a) => (
+                    <div
+                      key={a.id}
+                      className={`rounded-2xl border p-4 flex flex-wrap items-start justify-between gap-2 ${SEV[a.severity]?.cls || SEV.medium.cls}`}
+                    >
+                      <div className="flex-1 min-w-[200px]">
+                        <div className="font-bold text-sm inline-flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" /> {a.title}
+                        </div>
+                        <div className="text-xs text-slate-200/80 mt-1">{a.message}</div>
+                      </div>
+                      <button
+                        onClick={() => resolve(a.id)}
+                        disabled={busy === a.id}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/20 text-xs inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {busy === a.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        )}{" "}
+                        معالجة
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </section>
 
           {data!.resolvedAlerts.length > 0 && (
