@@ -1,33 +1,29 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/db";
 import PublicNav from "@/components/ui/public-nav";
-import { WhatsAppIcon } from "@/components/ui/marketing";
 import { getSiteConfig } from "@/lib/admin";
-import { getLocale, t } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n";
 import { PublicFooter } from "@/components/ui/public-footer";
-import TrustSection from "@/components/ui/trust-section";
-import SocialProof from "@/components/ui/social-proof";
-import IntegrationsWhatsApp from "@/components/ui/integrations-whatsapp";
 import FaqAccordion from "@/components/ui/faq-accordion";
 import PricingCards, { type PricingPlan } from "@/components/ui/pricing-cards";
-import RoiSection from "@/components/ui/roi-section";
-import HeroSection from "@/components/hero/hero-section";
+import HeroMockup from "@/components/hero/hero-mockup";
 import {
-  ArrowLeft, ArrowRight, BarChart3, Bell, Database, CheckCircle2, Users,
-  Zap, ShoppingCart, RefreshCw, Lock, Shield, TrendingUp,
+  ArrowLeft,
+  ArrowRight,
+  BrainCircuit,
+  ChartNoAxesCombined,
+  MessageSquareMore,
+  ShieldCheck,
+  Workflow,
 } from "lucide-react";
 import type { ComponentType } from "react";
-import { BentoFeatures } from "@/components/ui/bento-features";
-import { FadeInView, StaggerReveal, StaggerItem } from "@/components/ui/stagger-reveal";
-import { BorderBeam } from "@/components/ui/border-beam";
-import AnimatedStatsSection from "@/components/ui/animated-stats-section";
+import { t } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 async function getPlans() {
   try {
-    // Only the live public catalog — never the archived legacy plans (which carry
-    // stale names/prices/limits). Mirrors /pricing and /dashboard/billing.
     return await prisma.plan.findMany({
       where: { status: { not: "archived" } },
       orderBy: { sortOrder: "asc" },
@@ -37,108 +33,199 @@ async function getPlans() {
   }
 }
 
-const FEATURE_META: Array<{
-  icon: ComponentType<{ className?: string }>;
-  accent: string;
-}> = [
-  { icon: Zap, accent: "text-brand-300" },
-  { icon: ShoppingCart, accent: "text-gold-300" },
-  { icon: RefreshCw, accent: "text-brand-300" },
-  { icon: BarChart3, accent: "text-gold-300" },
-  { icon: Bell, accent: "text-brand-300" },
-  { icon: Shield, accent: "text-gold-300" },
-];
-
-function WhatsAppProductMockup({ dir, compact }: { dir?: string; compact?: boolean }) {
-  const isRtl = dir === "rtl";
-  return (
-    <div className={`relative ${compact ? "mx-auto max-w-sm" : ""}`}>
-      <div className="relative rounded-2xl border border-white/[0.09] bg-[#0d1117] shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#111a14] px-4 py-3">
-          <div className="h-9 w-9 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
-            <span className="text-brand-300 text-xs font-bold">ع</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-white">عميل جديد</div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-400 shrink-0" />
-              <span className="text-[11px] text-brand-300">يرد خلال 5 ثوانٍ</span>
-            </div>
-          </div>
-          <div className="flex gap-1">
-            <div className="h-2 w-2 rounded-full bg-white/10" />
-            <div className="h-2 w-2 rounded-full bg-white/10" />
-            <div className="h-2 w-2 rounded-full bg-white/10" />
-          </div>
-        </div>
-
-        <div className="space-y-3 px-4 py-4 text-sm" dir={isRtl ? "rtl" : "ltr"}>
-          <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white/[0.07] px-3.5 py-2.5 text-slate-200 leading-relaxed">
-              <p>عايز أعرف الأسعار واللي عندكم من منتجات</p>
-              <p className="text-[10px] text-slate-500 mt-1">09:14</p>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-brand-600/25 border border-brand-500/20 px-3.5 py-2.5 text-slate-100 leading-relaxed">
-              <p>أهلاً بيك! 👋 عندنا 3 باقات:</p>
-              <p className="mt-1">• الأساسية: 199 ج/شهر</p>
-              <p>• الاحترافية: 399 ج/شهر ⭐</p>
-              <p>• المؤسسية: تواصل للسعر</p>
-              <p className="mt-1 text-brand-300 text-xs">أي باقة تناسبك؟</p>
-              <p className="text-[10px] text-slate-500 mt-1">09:14 ✓✓</p>
-            </div>
-          </div>
-
-          <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white/[0.07] px-3.5 py-2.5 text-slate-200 leading-relaxed">
-              <p>عايز الاحترافية ✅</p>
-              <p className="text-[10px] text-slate-500 mt-1">09:15</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/8 px-3 py-2">
-            <ShoppingCart className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-            <span className="text-xs font-medium text-amber-300">طلب جديد مكتشف — باقة احترافية</span>
-          </div>
-        </div>
-
-        <div className="border-t border-white/[0.06] bg-[#111a14] px-4 py-3">
-          <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2 text-slate-500 text-xs">
-            <span className="flex-1">KEYONE يكمل المتابعة تلقائياً…</span>
-            <Zap className="h-3.5 w-3.5 text-brand-400" />
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -bottom-4 -start-4 rounded-xl border border-white/[0.09] bg-[#0d1117]/95 p-3 shadow-xl backdrop-blur-sm">
-        <div className="flex items-center gap-2 mb-1.5">
-          <TrendingUp className="h-3.5 w-3.5 text-brand-400 shrink-0" />
-          <span className="text-[11px] font-semibold text-white">اليوم</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <div className="text-base font-bold text-brand-300">24</div>
-            <div className="text-[9px] text-slate-500">محادثة نشطة</div>
-          </div>
-          <div>
-            <div className="text-base font-bold text-white">12</div>
-            <div className="text-[9px] text-slate-500">طلب جديد</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -top-3 -end-3 rounded-lg border border-white/[0.09] bg-[#0d1117]/95 px-2.5 py-1.5 shadow-xl backdrop-blur-sm">
-        <div className="flex items-center gap-1.5">
-          <Zap className="h-3 w-3 text-amber-400" />
-          <span className="text-[11px] font-bold text-white">5 ثوانٍ</span>
-        </div>
-        <div className="text-[9px] text-slate-500">متوسط الرد</div>
-      </div>
-    </div>
-  );
+async function getSiteConfigSafe() {
+  try {
+    return await getSiteConfig();
+  } catch {
+    return { brandName: "KEYONE", brandTagline: null, supportWhatsapp: null, supportEmail: null };
+  }
 }
+
+// ── Landing-page-specific copy (en/ar) ───────────────────────────────────────
+const LP = {
+  ar: {
+    heroTitle: "أعمالك تستحق محادثات أذكى.",
+    heroSub:
+      "بِع على واتساب باحترافية. ردود ذكية، إدارة عملاء، طلبات، وتحليلات — كلها موحّدة في نظام تشغيل عملاء واحد وذكي.",
+    getStarted: "ابدأ الآن",
+    explore: "استكشف المنصة",
+    metrics: [
+      { value: "24/7", label: "عمليات عملاء لا تتوقف" },
+      { value: "1", label: "مصدر موحّد للحقيقة" },
+      { value: "5", label: "أنظمة رئيسية في الواجهة" },
+    ],
+    modules: [
+      { key: "customer", label: "إدارة العملاء" },
+      { key: "automation", label: "الأتمتة" },
+      { key: "knowledge", label: "المعرفة" },
+      { key: "analytics", label: "التحليلات" },
+      { key: "security", label: "الأمان" },
+    ],
+    platformEyebrow: "المنصة",
+    platformTitle: "نظام ذكي واحد. لكل عمليات العملاء.",
+    platformBody:
+      "خلفية داكنة، طباعة دقيقة، مخططات نظام مضاءة، ومسافات منضبطة — نفس اللغة البصرية في كل جزء من المنتج.",
+    story: [
+      {
+        eyebrow: "المشكلة",
+        title: "الأعمال تفقد عملاءها قبل أن تدرك ذلك.",
+        body: "الردود المفقودة، البطء في الرد، فرق منفصلة، وفرص ضائعة — كلها تكاليف خفيّة في كل محادثة.",
+        img: "/problem-flow.png",
+      },
+      {
+        eyebrow: "منصة ذكية واحدة",
+        title: "كل ما يحتاجه فريقك في مكان واحد.",
+        body: "طبقة تشغيل واحدة تجمع بريدك الوارد، المعرفة، الأتمتة، التحليلات، إدارة العملاء، والأمان.",
+        img: "/one-platform.png",
+      },
+      {
+        eyebrow: "فهم بالذكاء الاصطناعي",
+        title: "الذكاء الاصطناعي يفهم قبل أن يرد.",
+        body: "كشف النية، معرفة عملك، اتخاذ القرار، والمراجعة البشرية — كلها تعمل معًا قبل أي إجراء.",
+        img: "/ai-understands.png",
+      },
+      {
+        eyebrow: "تنسيق الفريق",
+        title: "فريق واحد. تنسيق مثالي.",
+        body: "توجيه كل محادثة تلقائيًا إلى الشخص المناسب في المبيعات، الدعم، الفوترة، الإدارة، والفنيين.",
+        img: "/team-coordination.png",
+      },
+      {
+        eyebrow: "ثقة في الطلبات",
+        title: "طلبات تُنشأ بثقة.",
+        body: "يتم تقييم كل محادثة وتوجيهها نحو النتيجة الصحيحة بدل التخمين والمتابعة اليدوية.",
+        img: "/orders-confidence.png",
+      },
+      {
+        eyebrow: "نظام المعرفة",
+        title: "معرفة تتطوّر مع نموّ أعمالك.",
+        body: "الخدمات والمنتجات والأسعار والسياسات والوثائق والأسئلة الشائعة في مكان واحد يزداد ذكاءً مع الوقت.",
+        img: "/knowledge-evolves.png",
+      },
+      {
+        eyebrow: "ذكاء القرار",
+        title: "قرارات مدعومة بالبيانات.",
+        body: "كل محادثة تتراكم لتمنحك رؤية تشغيلية حقيقية عن زمن الرد، الأداء، النمو، والإنتاجية.",
+        img: "/decisions-data.png",
+      },
+      {
+        eyebrow: "الأمان",
+        title: "مبني على الأمان أولًا.",
+        body: "حماية بمستوى الشركات: صلاحيات، سجلات تدقيق، تشفير، عزل، مراقبة، ونسخ احتياطي.",
+        img: "/security-first.png",
+      },
+      {
+        eyebrow: "الموثوقية",
+        title: "مبني ليكون موثوقًا.",
+        body: "بنية مرنة تربط الرسائل والمعالجة والبيانات والإشعارات والمراقبة والعمّال في نواة واحدة يمكن الاعتماد عليها.",
+        img: "/reliability.png",
+      },
+    ],
+    finalTitle: "منصة واحدة. فريق واحد. كل محادثة.",
+    finalSub:
+      "تجمع KEYONE بين التواصل مع العملاء، ذكاء القرار، وتنسيق الفرق في نظام إنتاجي واحد.",
+    pricingHeading: "خطط تنمو معك",
+    pricingSubheading: "اشترك في دقائق عبر واتساب. ترقية أو إلغاء في أي وقت.",
+    pricingViewAll: "مقارنة كل الخطط",
+    pricingPerMonth: "/شهر",
+    faqHeading: "الأسئلة الشائعة",
+  },
+  en: {
+    heroTitle: "Your business deserves smarter conversations.",
+    heroSub:
+      "Sell on WhatsApp, professionally. AI replies, CRM, orders, and analytics — unified into one intelligent customer operating system.",
+    getStarted: "Get started",
+    explore: "Explore the platform",
+    metrics: [
+      { value: "24/7", label: "Always-on customer operations" },
+      { value: "1", label: "Unified source of truth" },
+      { value: "5", label: "Core systems shown in the hero" },
+    ],
+    modules: [
+      { key: "customer", label: "Customer management" },
+      { key: "automation", label: "Automation" },
+      { key: "knowledge", label: "Knowledge" },
+      { key: "analytics", label: "Analytics" },
+      { key: "security", label: "Security" },
+    ],
+    platformEyebrow: "Platform",
+    platformTitle: "One intelligent system. All customer operations.",
+    platformBody:
+      "A dark stage, precise typography, illuminated system diagrams and disciplined spacing — the same design language across every surface of the product.",
+    story: [
+      {
+        eyebrow: "The problem",
+        title: "Businesses lose customers before they even realize it.",
+        body: "Missed replies, slow responses, disconnected teams, and lost opportunities create hidden cost in every conversation.",
+        img: "/problem-flow.png",
+      },
+      {
+        eyebrow: "One intelligent platform",
+        title: "Everything your team needs in one place.",
+        body: "A single operating layer unifies shared inbox, knowledge, automation, analytics, customer management, and security.",
+        img: "/one-platform.png",
+      },
+      {
+        eyebrow: "AI understanding",
+        title: "AI understands before it responds.",
+        body: "Intent detection, business knowledge, decisioning, and human approval work together before any action is taken.",
+        img: "/ai-understands.png",
+      },
+      {
+        eyebrow: "Team coordination",
+        title: "One team. Perfect coordination.",
+        body: "Route each conversation to the right person automatically across sales, support, billing, management, and technical teams.",
+        img: "/team-coordination.png",
+      },
+      {
+        eyebrow: "Order confidence",
+        title: "Orders created with confidence.",
+        body: "Conversations are evaluated, scored, and guided toward the right outcome instead of guesswork or manual follow-up.",
+        img: "/orders-confidence.png",
+      },
+      {
+        eyebrow: "Knowledge system",
+        title: "Knowledge that evolves with your business.",
+        body: "Centralized services, products, pricing, policies, documentation, and FAQs create a smarter system over time.",
+        img: "/knowledge-evolves.png",
+      },
+      {
+        eyebrow: "Decision intelligence",
+        title: "Decisions backed by data.",
+        body: "Every conversation compounds into real operational visibility across response time, performance, growth, and productivity.",
+        img: "/decisions-data.png",
+      },
+      {
+        eyebrow: "Security",
+        title: "Built with security first.",
+        body: "Enterprise-grade protection with role permissions, audit logs, encryption, isolation, monitoring, and backups.",
+        img: "/security-first.png",
+      },
+      {
+        eyebrow: "Reliability",
+        title: "Built for reliability.",
+        body: "A resilient architecture connects messaging, processing, data, notifications, monitoring, and workers into one dependable core.",
+        img: "/reliability.png",
+      },
+    ],
+    finalTitle: "One platform. One team. Every conversation.",
+    finalSub:
+      "KEYONE brings customer communication, decision intelligence, and team coordination into one production-ready system.",
+    pricingHeading: "Plans that scale with you",
+    pricingSubheading: "Subscribe in minutes via WhatsApp. Upgrade or cancel anytime.",
+    pricingViewAll: "Compare all plans",
+    pricingPerMonth: "/mo",
+    faqHeading: "Frequently asked questions",
+  },
+} as const;
+
+const MODULE_ICONS: ComponentType<{ className?: string }>[] = [
+  MessageSquareMore,
+  Workflow,
+  BrainCircuit,
+  ChartNoAxesCombined,
+  ShieldCheck,
+];
 
 export default async function LandingPage({
   searchParams,
@@ -146,15 +233,13 @@ export default async function LandingPage({
   searchParams: { lang?: string };
 }) {
   const locale = getLocale(searchParams.lang);
+  const lp = LP[locale];
   const m = t(locale);
-  const isRtl = m.dir === "rtl";
+  const isRtl = locale === "ar";
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
-  const [plans, cfg] = await Promise.all([getPlans(), getSiteConfig()]);
+  const [plans, cfg] = await Promise.all([getPlans(), getSiteConfigSafe()]);
   const brandName = cfg.brandName || "KEYONE";
-  // Self-serve signup is the primary conversion path (the WhatsApp-to-founder
-  // handoff is gone). Logged-out visitors land on /signup; Enterprise still has
-  // a "contact sales" WhatsApp CTA on /pricing.
   const signupHref = `/signup${locale === "en" ? "?lang=en" : ""}`;
 
   const previewPlans: PricingPlan[] = plans.map((p: any) => ({
@@ -167,161 +252,240 @@ export default async function LandingPage({
     features: JSON.parse(p.features || "[]"),
   }));
 
-  const featureItems = m.features.items.map(
-    (item: { title: string; desc: string }, idx: number) => {
-      const meta = FEATURE_META[idx % FEATURE_META.length];
-      const Icon = meta.icon;
-      return {
-        title: item.title,
-        desc: item.desc,
-        // Pre-render the icon element here (Server Component) so only a
-        // serializable React node crosses into the client grid — never the
-        // component function itself.
-        icon: <Icon className={`h-5 w-5 ${meta.accent}`} />,
-      };
-    }
-  );
-
   return (
-    <main className="ai-page" dir={m.dir}>
-      <PublicNav brandName={brandName} supportWhatsapp={cfg.supportWhatsapp} locale={locale} />
+    <main className="bg-canvas text-slate-200" dir={isRtl ? "rtl" : "ltr"}>
+      {/* ══════════════════ HERO ══════════════════ */}
+      <section className="relative overflow-hidden border-b border-white/[0.06]">
+        <div className="lp-hero-ambient" aria-hidden="true" />
+        <div className="lp-hero-stage-lines" aria-hidden="true" />
 
-      {/* ───────── Video hero ───────── */}
-      <HeroSection
-        brandName={brandName}
-        supportWhatsapp={cfg.supportWhatsapp}
-        locale={locale}
-        videoSrc="/vedio.mp4"
-        mobileVideoSrc="/mobile.mp4"
-        ctaPrimary={m.hero.ctaPrimary}
-        ctaSecondary={m.hero.ctaSecondary}
-      />
+        {/* Nav sits inside the hero section — same visual field */}
+        <div className="relative z-10 mx-auto max-w-[1600px] px-6 pt-6 sm:px-8 lg:px-12">
+          <PublicNav
+            brandName={brandName}
+            supportWhatsapp={cfg.supportWhatsapp}
+            locale={locale}
+            variant="inline"
+          />
+        </div>
 
-      {/* ───────── Stats strip ───────── */}
-      <AnimatedStatsSection stats={m.stats} />
-
-      {/* ───────── Features — bento grid (21st.dev features-8) ───────── */}
-      <section id="features" className="px-5 py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl">
-          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
-            <div className="eyebrow mb-3">{m.features.eyebrow}</div>
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
-              {m.features.heading}
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              {m.features.subheading}
+        <div className="relative z-10 mx-auto flex max-w-[1600px] flex-col px-6 pb-16 pt-8 sm:px-8 sm:pt-12 lg:px-12 lg:pt-16">
+          {/* Headline + CTAs */}
+          <div className="mx-auto w-full max-w-[1240px] text-center">
+            <h1 className="mx-auto max-w-[14ch] text-balance text-[2.8rem] font-semibold leading-[1.02] tracking-tight text-white sm:text-[4rem] md:text-[5rem] lg:text-[5.6rem]">
+              {lp.heroTitle}
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-8 text-slate-400 sm:text-lg">
+              {lp.heroSub}
             </p>
-          </FadeInView>
 
-          <BentoFeatures items={featureItems} />
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href={signupHref}
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-brand-500 px-6 text-sm font-medium text-white shadow-[0_0_28px_rgba(12,122,108,0.28)] transition-colors hover:bg-brand-400"
+              >
+                {lp.getStarted}
+                <Arrow className="h-4 w-4" />
+              </Link>
+              <a
+                href="#platform"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/[0.14] bg-white/[0.04] px-6 text-sm text-white backdrop-blur-md transition-colors hover:bg-white/[0.08]"
+              >
+                {lp.explore}
+              </a>
+            </div>
+          </div>
+
+          {/* Hero mockup */}
+          <div className="relative z-10 mt-16 w-full lg:mt-20">
+            <HeroMockup locale={locale} />
+          </div>
+
+          {/* Metrics strip */}
+          <div className="relative z-10 mx-auto w-full max-w-[1120px]">
+            <dl className="mt-14 grid w-full gap-4 border-t border-white/[0.08] pt-6 sm:grid-cols-3 sm:gap-8">
+              {lp.metrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="flex flex-col items-center gap-1 text-center sm:items-start sm:text-start"
+                >
+                  <dt className="text-xs uppercase tracking-[0.26em] text-slate-400/75">
+                    {metric.label}
+                  </dt>
+                  <dd className="text-3xl font-semibold tracking-normal text-white sm:text-[2.1rem]">
+                    {metric.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </div>
       </section>
 
-      {/* ───────── Integrations (WhatsApp) ───────── */}
-      <IntegrationsWhatsApp m={m.integrations} dir={m.dir} />
+      {/* ══════════════════ PLATFORM MODULES ══════════════════ */}
+      <section
+        id="platform"
+        className="relative overflow-hidden border-b border-white/[0.06] py-20 sm:py-24 lg:py-28"
+      >
+        <div className="lp-crescent lp-crescent-left" aria-hidden="true" />
+        <div className="lp-crescent lp-crescent-right" aria-hidden="true" />
 
-      {/* ───────── ROI / outcome estimator ───────── */}
-      <RoiSection
-        locale={locale}
-        dir={m.dir}
-        ctaHref={signupHref}
-        ctaLabel={locale === "ar" ? "ابدأ وحوّل رسائلك لمبيعات" : "Turn messages into sales"}
-      />
+        <div className="mx-auto max-w-[1480px] px-6 sm:px-8 lg:px-12">
+          <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="lp-section-eyebrow">{lp.platformEyebrow}</p>
+              <h2 className="mt-4 max-w-[14ch] text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                {lp.platformTitle}
+              </h2>
+            </div>
+            <p className="max-w-xl text-lg leading-8 text-slate-400">{lp.platformBody}</p>
+          </div>
 
-      {/* ───────── How it works ───────── */}
-      <section id="how" className="px-5 py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl">
-          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
-              {m.howItWorks.heading}
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              {m.howItWorks.subheading}
-            </p>
-          </FadeInView>
-
-          <StaggerReveal className="space-y-3" stagger={0.12}>
-            {m.howItWorks.steps.map((step: { num: string; title: string; desc: string }) => (
-              <StaggerItem key={step.num}>
-                <div className="surface flex gap-4 p-5 sm:p-6">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-500/20 bg-brand-500/[0.05] text-xs font-semibold text-brand-300">
-                    {step.num}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {lp.modules.map((mod, i) => {
+              const Icon = MODULE_ICONS[i % MODULE_ICONS.length];
+              return (
+                <article key={mod.key} className="lp-module-card min-h-[210px] p-6">
+                  <div className="mb-10 flex h-12 w-12 items-center justify-center rounded-[14px] border border-white/[0.10] bg-brand-500/[0.08]">
+                    <Icon className="h-6 w-6 text-brand-400" />
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="mb-1 text-sm font-semibold text-white">{step.title}</h3>
-                    <p className="text-sm leading-relaxed text-slate-400">{step.desc}</p>
+                  <h3 className="max-w-[10ch] text-2xl font-medium leading-tight text-white">
+                    {mod.label}
+                  </h3>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════ STORY SECTIONS ══════════════════ */}
+      <div id="intelligence">
+        {lp.story.map((section, index) => {
+          const reversed = index % 2 === 1;
+          return (
+            <section
+              key={index}
+              className="relative overflow-hidden border-b border-white/[0.06] py-16 sm:py-20 lg:py-24"
+            >
+              <div
+                className={
+                  reversed
+                    ? "lp-crescent lp-crescent-left"
+                    : "lp-crescent lp-crescent-right"
+                }
+                aria-hidden="true"
+              />
+              <div className="mx-auto max-w-[1520px] px-6 sm:px-8 lg:px-12">
+                <div
+                  className={`grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16 ${
+                    reversed
+                      ? "lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1"
+                      : ""
+                  }`}
+                >
+                  <div className="max-w-xl">
+                    <p className="lp-section-eyebrow">{section.eyebrow}</p>
+                    <h2 className="mt-4 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-[4.2rem] lg:leading-[1.02]">
+                      {section.title}
+                    </h2>
+                    <p className="mt-6 text-lg leading-8 text-slate-400 sm:text-xl">
+                      {section.body}
+                    </p>
+                  </div>
+
+                  <div className="lp-image-panel">
+                    <Image
+                      src={section.img}
+                      alt=""
+                      width={900}
+                      height={560}
+                      className="h-auto w-full rounded-[26px] border border-white/[0.08] object-cover shadow-[0_18px_90px_rgba(0,0,0,0.48)]"
+                      loading="lazy"
+                    />
                   </div>
                 </div>
-              </StaggerItem>
-            ))}
-          </StaggerReveal>
-        </div>
-      </section>
+              </div>
+            </section>
+          );
+        })}
+      </div>
 
-      {/* ───────── Trust ───────── */}
-      <TrustSection m={m.trust} dir={m.dir} />
-
-      {/* ───────── Social proof ───────── */}
-      <SocialProof locale={locale} dir={m.dir} />
-
-      {/* ───────── Pricing preview ───────── */}
-      <section id="pricing" className="border-t border-white/[0.06] px-5 py-16 sm:py-20">
+      {/* ══════════════════ PRICING ══════════════════ */}
+      <section
+        id="pricing"
+        className="relative border-b border-white/[0.06] px-5 py-16 sm:py-20"
+      >
         <div className="mx-auto max-w-6xl">
-          <FadeInView className="mx-auto mb-12 max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.pricing.heading}</h2>
-            <p className="mt-2 text-sm text-slate-500">{m.pricing.subheading}</p>
-          </FadeInView>
+          <div className="mx-auto mb-12 max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+              {lp.pricingHeading}
+            </h2>
+            <p className="mt-2 text-sm text-slate-400">{lp.pricingSubheading}</p>
+          </div>
 
           <PricingCards
             plans={previewPlans}
             variant="preview"
             locale={locale}
-            labels={{ perMonth: m.pricing.perMonth }}
+            labels={{ perMonth: lp.pricingPerMonth }}
           />
 
-          <FadeInView delay={0.2} className="mt-8 text-center">
+          <div className="mt-8 text-center">
             <Link
               href={`/pricing${locale === "en" ? "?lang=en" : ""}`}
               className="btn-outline h-11"
             >
-              {m.pricing.viewAll} <Arrow className="h-4 w-4" />
+              {lp.pricingViewAll} <Arrow className="h-4 w-4" />
             </Link>
-          </FadeInView>
+          </div>
         </div>
       </section>
 
-      {/* ───────── FAQ ───────── */}
-      <section id="faq" className="border-y border-white/[0.06] bg-white/[0.012] px-5 py-16 sm:py-20">
+      {/* ══════════════════ FAQ ══════════════════ */}
+      <section
+        id="faq"
+        className="border-b border-white/[0.06] bg-white/[0.012] px-5 py-16 sm:py-20"
+      >
         <div className="mx-auto max-w-3xl">
-          <FadeInView>
-            <h2 className="mb-10 text-center text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{m.faq.heading}</h2>
-          </FadeInView>
+          <h2 className="mb-10 text-center text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+            {lp.faqHeading}
+          </h2>
           <FaqAccordion items={m.faq.items} />
         </div>
       </section>
 
-      {/* ───────── CTA ───────── */}
-      <section className="px-5 py-20">
-        <div className="mx-auto max-w-3xl">
-          <FadeInView>
-            <div className="surface relative overflow-hidden px-8 py-14 text-center sm:px-12">
-              <BorderBeam colorFrom="rgba(12,122,108,0.9)" colorTo="rgba(201,162,75,0.35)" size={180} duration={6} />
-              <h2 className="display-heading relative text-3xl sm:text-4xl">{m.cta.heading}</h2>
-              <p className="relative mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-slate-400">{m.cta.subheading}</p>
-              <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link href={signupHref} className="btn-premium h-11 px-5 text-sm">
-                  {m.cta.primary} <Arrow className="h-4 w-4" />
-                </Link>
-                <Link href={`/pricing${locale === "en" ? "?lang=en" : ""}`} className="btn-outline h-11 text-sm">
-                  {m.cta.secondary}
-                </Link>
-              </div>
-            </div>
-          </FadeInView>
+      {/* ══════════════════ FINAL CTA ══════════════════ */}
+      <section className="relative overflow-hidden py-24 sm:py-28">
+        <div className="lp-hero-ambient opacity-70" aria-hidden="true" />
+        <div className="relative z-10 mx-auto max-w-[1200px] px-6 text-center sm:px-8 lg:px-12">
+          <Image
+            src="/wkeyone-logo.png"
+            alt={brandName}
+            width={80}
+            height={80}
+            className="mx-auto h-20 w-20 rounded-full border border-white/[0.12] object-cover shadow-[0_0_48px_rgba(12,122,108,0.24)]"
+            loading="lazy"
+          />
+          <h2 className="mx-auto mt-10 max-w-[11ch] text-balance text-4xl font-semibold leading-tight text-white sm:text-6xl lg:text-[5.4rem] lg:leading-[0.98]">
+            {lp.finalTitle}
+          </h2>
+          <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-400 sm:text-xl">
+            {lp.finalSub}
+          </p>
+          <div className="mt-10 flex justify-center">
+            <Link
+              href={signupHref}
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-brand-500 px-7 text-sm font-medium text-white shadow-[0_0_28px_rgba(12,122,108,0.28)] transition-colors hover:bg-brand-400"
+            >
+              {lp.getStarted}
+              <Arrow className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* ───────── Footer ───────── */}
+      {/* ══════════════════ FOOTER ══════════════════ */}
       <PublicFooter
         locale={locale}
         m={{
