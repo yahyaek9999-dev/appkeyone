@@ -5,6 +5,7 @@ import MobileNav from "@/app/dashboard/mobile-nav";
 import { AdminNavLinks } from "./nav-links";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { AdminBreadcrumb } from "@/components/ui/breadcrumb";
+import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   );
 
   return (
+    <ConfirmProvider>
     <div className="ai-page min-h-screen text-white md:flex">
       {/* Mobile header + drawer */}
       <MobileNav>
@@ -61,5 +63,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {children}
       </main>
     </div>
+    </ConfirmProvider>
   );
 }
