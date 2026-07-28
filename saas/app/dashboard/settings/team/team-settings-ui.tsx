@@ -5,6 +5,7 @@ import {
   Users, Shield, Eye, ShoppingBag, Headphones,
   Plus, Trash2, ChevronDown, Info, Crown, Copy, Check, Link2,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const ROLES = [
@@ -215,7 +216,12 @@ export function TeamSettingsUi({
         ))}
 
         {members.length === 0 && (
-          <p className="py-4 text-center text-sm text-slate-500">لم يُضَف أي عضو بعد.</p>
+          <EmptyState
+            icon={<Users className="h-full w-full" />}
+            title="لا يوجد أعضاء بعد"
+            description="أضِف أول عضو لفريقك عبر نموذج الدعوة أدناه."
+            size="sm"
+          />
         )}
       </div>
 

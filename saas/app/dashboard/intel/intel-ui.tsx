@@ -14,6 +14,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 
 type Kind = "lost_customer" | "upsell" | "hot_lead" | "follow_up_op";
@@ -188,13 +189,13 @@ export default function IntelUi() {
       )}
 
       {!loading && !error && items.length === 0 && (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center">
-          <div className="text-slate-300 font-medium">
-            لا يوجد اقتراحات في هذه الفئة الآن
-          </div>
-          <div className="text-xs text-slate-500 mt-1">
-            جرّب تاب آخر — أو ارجع بعد ساعات لمّا تتجمع إشارات جديدة.
-          </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+          <EmptyState
+            icon={<Brain className="h-full w-full" />}
+            title="لا توجد اقتراحات في هذه الفئة الآن"
+            description="جرّب تاب آخر — أو ارجع بعد ساعات لمّا تتجمع إشارات جديدة."
+            size="md"
+          />
         </div>
       )}
 
