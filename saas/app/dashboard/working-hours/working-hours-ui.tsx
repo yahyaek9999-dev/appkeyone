@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Clock, Save, Loader2, Bell, Flame, AlertTriangle, Sunrise } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Slot = { day: number; from: string; to: string; enabled: boolean };
 
@@ -79,7 +80,21 @@ export default function WorkingHoursUi() {
     }
   }
 
-  if (loading) return <div className="text-slate-400">جاري التحميل...</div>;
+  if (loading) return (
+    <div className="space-y-3">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-3.5 w-16" />
+          <div className="flex flex-1 items-center gap-2">
+            <Skeleton className="h-8 w-24 rounded-lg" />
+            <Skeleton className="h-3 w-4" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-6">

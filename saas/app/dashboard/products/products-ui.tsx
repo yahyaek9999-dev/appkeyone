@@ -8,6 +8,7 @@ import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Product = {
   id: string;
@@ -151,8 +152,17 @@ export default function ProductsUi() {
       </div>
 
       {loading && items.length === 0 ? (
-        <div className="flex items-center justify-center py-24 text-slate-500">
-          <Loader2 className="h-7 w-7 animate-spin" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card overflow-hidden">
+              <Skeleton className="aspect-[16/10] w-full rounded-none" />
+              <div className="space-y-2 p-3">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-3 w-1/4" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : items.length === 0 ? (
         <div className="card">
