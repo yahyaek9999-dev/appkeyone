@@ -43,6 +43,7 @@ export default function ProductsUi() {
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [saving, setSaving] = useState(false);
   const [imgBusy, setImgBusy] = useState(false);
+  const [q, setQ] = useState("");
   const { error: toastError } = useToast();
   const confirm = useConfirm();
 
@@ -132,6 +133,9 @@ export default function ProductsUi() {
   }
 
   const lowStock = items.filter((p) => p.active && p.stock <= 3).length;
+  const filtered = q.trim()
+    ? items.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || (p.category || "").toLowerCase().includes(q.toLowerCase()))
+    : items;
 
   return (
     <div className="space-y-6">
@@ -146,9 +150,19 @@ export default function ProductsUi() {
             {lowStock > 0 && <span className="text-amber-300"> · {lowStock} مخزون منخفض</span>}
           </p>
         </div>
-        <button onClick={() => setEditing({ ...EMPTY })} className="ai-btn ai-btn-primary px-4 py-2 text-sm">
-          <Plus className="h-4 w-4" /> منتج جديد
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="بحث في المنتجات..."
+            className="input h-9 w-48 px-3 text-sm"
+            dir="rtl"
+          />
+          <button onClick={() => setEditing({ ...EMPTY })} className="ai-btn ai-btn-primary px-4 py-2 text-sm">
+            <Plus className="h-4 w-4" /> منتج جديد
+          </button>
+        </div>
       </div>
 
       {loading && items.length === 0 ? (
@@ -172,9 +186,18 @@ export default function ProductsUi() {
             description="أضف أول منتج ليبدأ المساعد بعرضه للعملاء."
           />
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={<Package className="h-full w-full" />}
+            title="لا توجد نتائج مطابقة"
+            description={`لا يوجد منتج يطابق "${q}". جرّب كلمة أخرى.`}
+            size="md"
+          />
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((p) => (
+          {filtered.map((p) => (
             <div key={p.id} className={`card-hover overflow-hidden ${!p.active ? "opacity-60" : ""}`}>
               <div className="relative aspect-[16/10] w-full overflow-hidden bg-white/[0.03]">
                 {p.imageUrl ? (

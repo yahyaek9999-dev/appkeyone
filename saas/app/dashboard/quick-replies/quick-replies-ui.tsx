@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Zap, Plus, Trash2, Save, Loader2, Power, PowerOff } from "lucide-react";
+import { Zap, Plus, Trash2, Save, Loader2, Power, PowerOff, Search } from "lucide-react";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -20,6 +20,7 @@ export default function QuickRepliesUi() {
   const [adding, setAdding] = useState(false);
   const [newTriggers, setNewTriggers] = useState("");
   const [newReply, setNewReply] = useState("");
+  const [q, setQ] = useState("");
   const confirm = useConfirm();
   const { error: toastError } = useToast();
 
@@ -139,6 +140,21 @@ export default function QuickRepliesUi() {
 
       {/* List */}
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        {!loading && items.length > 0 && (
+          <div className="border-b border-white/[0.06] p-3">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="بحث في الردود والكلمات المفتاحية..."
+                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] py-2 pr-9 pl-3 text-sm focus:outline-none focus:border-brand-500"
+                dir="rtl"
+              />
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="p-8 text-center text-slate-400 text-sm">جاري التحميل...</div>
         )}
@@ -149,9 +165,17 @@ export default function QuickRepliesUi() {
             description="ابدأ بإضافة الأسئلة المتكررة من أعلى."
           />
         )}
-        {!loading && items.map((q) => (
-          <QuickReplyRow key={q.id} q={q} onUpdate={update} onDelete={remove} />
-        ))}
+        {!loading && items.length > 0 && (() => {
+          const filtered = q.trim()
+            ? items.filter((r) => r.triggers.some((t) => t.includes(q)) || r.reply.includes(q))
+            : items;
+          if (filtered.length === 0) return (
+            <EmptyState icon={<Search className="h-full w-full" />} title="لا نتائج مطابقة" description={`لا يوجد رد يطابق "${q}".`} size="sm" />
+          );
+          return filtered.map((r) => (
+            <QuickReplyRow key={r.id} q={r} onUpdate={update} onDelete={remove} />
+          ));
+        })()}
       </div>
     </div>
   );
