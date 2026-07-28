@@ -5,6 +5,7 @@ import { Zap, Plus, Trash2, Save, Loader2, Power, PowerOff, Search } from "lucid
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type QR = {
   id: string;
@@ -156,7 +157,18 @@ export default function QuickRepliesUi() {
           </div>
         )}
         {loading && (
-          <div className="p-8 text-center text-slate-400 text-sm">جاري التحميل...</div>
+          <div className="divide-y divide-white/[0.04]">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-2">
+                <div className="flex gap-1.5">
+                  <Skeleton className="h-5 w-16 rounded-md" />
+                  <Skeleton className="h-5 w-12 rounded-md" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            ))}
+          </div>
         )}
         {!loading && items.length === 0 && (
           <EmptyState
