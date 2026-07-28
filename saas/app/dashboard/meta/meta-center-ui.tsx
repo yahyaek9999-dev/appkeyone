@@ -16,6 +16,7 @@ import {
   HeartPulse,
 } from "lucide-react";
 import { Sparkline } from "@/components/ui/sparkline";
+import { useToast } from "@/components/ui/toast";
 
 type Snap = {
   balanceUsd: number;
@@ -53,6 +54,7 @@ export default function MetaCenterUi() {
   const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,12 +72,16 @@ export default function MetaCenterUi() {
   async function refresh() {
     setRefreshing(true);
     try {
-      await fetch("/api/meta/me", {
+      const r = await fetch("/api/meta/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "refresh" }),
       });
+      if (!r.ok) { toast.error("فشل تحديث بيانات Meta"); return; }
       await load();
+      toast.success("تم تحديث بيانات Meta");
+    } catch {
+      toast.error("خطأ في الاتصال");
     } finally {
       setRefreshing(false);
     }
@@ -84,12 +90,16 @@ export default function MetaCenterUi() {
   async function checkHealth() {
     setRefreshing(true);
     try {
-      await fetch("/api/meta/me", {
+      const r = await fetch("/api/meta/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "health" }),
       });
+      if (!r.ok) { toast.error("فشل فحص الصحة"); return; }
       await load();
+      toast.success("تم فحص الصحة وتحديث البيانات");
+    } catch {
+      toast.error("خطأ في الاتصال");
     } finally {
       setRefreshing(false);
     }
