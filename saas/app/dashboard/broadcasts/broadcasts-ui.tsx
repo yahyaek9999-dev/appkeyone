@@ -34,6 +34,7 @@ import { useToast } from "@/components/ui/toast";
 import UpgradeModal, { type UpgradeVariant } from "@/components/billing/UpgradeModal";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Bc = {
   id: string;
@@ -503,7 +504,20 @@ export default function BroadcastsUi() {
 
       {/* List */}
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-        {loading && <div className="p-8 text-center text-slate-400 text-sm">جاري التحميل...</div>}
+        {loading && (
+          <div className="space-y-0 divide-y divide-white/[0.06]">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-2/5" />
+                  <Skeleton className="h-3 w-3/5" />
+                </div>
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-7 w-7 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        )}
         {!loading && items.length === 0 && (
           <EmptyState
             icon={<Megaphone className="h-full w-full" />}
