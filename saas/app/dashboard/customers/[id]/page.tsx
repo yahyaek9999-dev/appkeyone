@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Phone } from "lucide-react";
 import ChatView from "./chat-view";
 import CustomerTabs from "./customer-tabs";
+import CopyPhoneButton from "./copy-phone-button";
 import { formatCustomerPhone } from "@/lib/phone";
 import DeleteCustomerButton from "./delete-button";
 import MergeCustomerButton from "./merge-button";
@@ -96,7 +97,10 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
               return p.isLid ? (
                 <span className="text-slate-500 italic" title={p.raw}>{p.display}</span>
               ) : (
-                <bdi dir="ltr" className="font-mono">{p.display}</bdi>
+                <>
+                  <bdi dir="ltr" className="font-mono">{p.display}</bdi>
+                  <CopyPhoneButton phone={p.raw} />
+                </>
               );
             })()}
           </div>
