@@ -20,6 +20,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { Sparkline } from "@/components/ui/sparkline";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Tenant = {
   userId: string;
@@ -724,6 +725,7 @@ function DetailPanel({
   busyKey: string | null;
   userId: string;
 }) {
+  const confirm = useConfirm();
   const snap = detail.snapshot;
   return (
     <div className="space-y-3">
@@ -753,9 +755,9 @@ function DetailPanel({
           تدوير الرمز
         </button>
         <button
-          onClick={() => {
-            if (window.confirm("إعادة ضبط رمز التحقق للـ Webhook؟ سيتولّد رمز جديد."))
-              onAct({ action: "reset_webhook" }, "webhook");
+          onClick={async () => {
+            const ok = await confirm({ title: "إعادة ضبط Webhook؟", body: "سيتولّد رمز تحقق جديد — الرمز القديم يصبح غير صالح فوراً.", confirmLabel: "إعادة ضبط", danger: true });
+            if (ok) onAct({ action: "reset_webhook" }, "webhook");
           }}
           className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-xs hover:bg-white/10"
         >
@@ -801,9 +803,9 @@ function DetailPanel({
           renderCell={(c: string) =>
             c.startsWith("remove:") ? (
               <button
-                onClick={() => {
-                  if (window.confirm("حذف هذا الرقم؟"))
-                    onAct({ action: "remove_phone", phoneId: c.slice(7) }, "rmphone");
+                onClick={async () => {
+                  const ok = await confirm({ title: "حذف هذا الرقم؟", body: "لا يمكن التراجع عن هذه العملية.", confirmLabel: "حذف", danger: true });
+                  if (ok) onAct({ action: "remove_phone", phoneId: c.slice(7) }, "rmphone");
                 }}
                 className="text-rose-300 hover:underline"
               >
