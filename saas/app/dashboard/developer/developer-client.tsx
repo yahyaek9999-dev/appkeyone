@@ -12,6 +12,7 @@ import {
   KeyRound, Plus, RotateCw, Trash2, Loader2, Copy, Check, AlertTriangle,
   Activity, AlertCircle, Gauge, BookOpen, Webhook, ShieldCheck, X,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
@@ -183,7 +184,12 @@ function ApiKeysSection({
       {loading ? (
         <div className="py-8 text-center text-slate-500"><Loader2 className="h-5 w-5 animate-spin inline" /></div>
       ) : keys.length === 0 ? (
-        <div className="text-slate-500 text-sm py-8 text-center">لا توجد مفاتيح بعد. أنشئ مفتاحك الأول للبدء.</div>
+        <EmptyState
+          icon={<KeyRound className="h-full w-full" />}
+          title="لا توجد مفاتيح API بعد"
+          description="أنشئ مفتاحك الأول للوصول إلى API أو تكامل خدماتك الخارجية."
+          size="sm"
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
