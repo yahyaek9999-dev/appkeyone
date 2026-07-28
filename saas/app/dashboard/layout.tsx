@@ -18,6 +18,7 @@ import CommandTrigger from "./command-trigger";
 import HelpDrawer from "./help-drawer";
 import { ToastProvider } from "@/components/ui/toast";
 import { MaintenanceBanner } from "@/components/ui/maintenance-banner";
+import { DashboardBreadcrumb } from "@/components/ui/breadcrumb";
 
 // framer-motion is a heavy dependency; code-split it out of the shared
 // dashboard bundle instead of shipping it on every page via a static import.
@@ -171,6 +172,7 @@ export default async function DashboardLayout({
 
           <main className="min-h-screen min-w-0 flex-1">
             <div className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-safe pt-6 md:px-8 md:pt-8 lg:pt-10">
+              <DashboardBreadcrumb />
               <PageTransition>{children}</PageTransition>
             </div>
             <HelpDrawer />

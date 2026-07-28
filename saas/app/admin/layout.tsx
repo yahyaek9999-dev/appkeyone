@@ -4,6 +4,7 @@ import { getAuthContext } from "@/lib/auth";
 import MobileNav from "@/app/dashboard/mobile-nav";
 import { AdminNavLinks } from "./nav-links";
 import { ShieldCheck, LogOut } from "lucide-react";
+import { AdminBreadcrumb } from "@/components/ui/breadcrumb";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* Page content — always rendered */}
       <main className="min-h-screen flex-1 px-4 pb-safe pt-20 md:px-6 md:pt-8 lg:px-8 lg:pt-10">
+        <AdminBreadcrumb />
         {children}
       </main>
     </div>
