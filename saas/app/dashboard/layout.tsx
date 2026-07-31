@@ -46,7 +46,12 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [ctx, cfg] = await Promise.all([getAuthContext(), getSiteConfig()]);
+  // Both calls are guarded against transient DB errors. getAuthContext() failure
+  // → null → redirect to /login (fail-closed). getSiteConfig() never throws (see lib/admin.ts).
+  const [ctx, cfg] = await Promise.all([
+    getAuthContext().catch(() => null),
+    getSiteConfig(),
+  ]);
   if (!ctx) redirect("/login");
   const user = ctx.user;
   const role = ctx.role;

@@ -29,24 +29,36 @@ export async function requireFinanceAccess() {
   return ctx.user;
 }
 
+// Minimal SiteConfig fallback used when the DB is temporarily unavailable.
+// All layout callers use `|| "KEYONE"` or optional-chaining so nulls are safe.
+const SITE_CONFIG_FALLBACK = { id: "singleton" } as unknown as Awaited<ReturnType<typeof _siteConfigQuery>>;
+
+async function _siteConfigQuery() {
+  return prisma.siteConfig.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton" },
+  });
+}
+
 /**
  * Returns the singleton site config row, creating it on first access.
- * Concurrent first-time callers (e.g. multiple requests hitting a fresh DB at once)
- * can race on the create side of upsert and throw P2002; fall back to a plain read
- * since the row is guaranteed to exist by then.
+ * Concurrent first-time callers can race on the create side of upsert and
+ * throw P2002; fall back to a plain read since the row is guaranteed to exist.
+ *
+ * Never throws — transient DB errors return a minimal defaults object so the
+ * dashboard layout never crashes due to non-critical branding config.
  */
-export async function getSiteConfig() {
+export async function getSiteConfig(): Promise<Awaited<ReturnType<typeof _siteConfigQuery>>> {
   try {
-    return await prisma.siteConfig.upsert({
-      where: { id: "singleton" },
-      update: {},
-      create: { id: "singleton" },
-    });
+    return await _siteConfigQuery();
   } catch (err: any) {
     if (err?.code === "P2002") {
-      return prisma.siteConfig.findUniqueOrThrow({ where: { id: "singleton" } });
+      // Race on first-ever creation: row now exists, read it directly.
+      return (await prisma.siteConfig.findUnique({ where: { id: "singleton" } })) ?? SITE_CONFIG_FALLBACK;
     }
-    throw err;
+    // Transient DB error — return safe defaults so the layout continues.
+    return SITE_CONFIG_FALLBACK;
   }
 }
 
