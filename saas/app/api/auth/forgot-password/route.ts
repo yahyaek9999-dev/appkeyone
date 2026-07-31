@@ -24,6 +24,7 @@ import { randomBytes, createHash } from "crypto";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { sendPlatformEmail, PlatformEmailNotConfiguredError } from "@/lib/platform-email";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -96,8 +97,8 @@ export async function POST(req: Request) {
       data: { resetTokenHash: sha256(rawToken), resetExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
     });
 
-    const origin = new URL(req.url).origin;
-    const resetUrl = `${origin}/reset-password?token=${rawToken}`;
+    const siteOrigin = env.siteUrl.replace(/\/$/, "");
+    const resetUrl = `${siteOrigin}/reset-password?token=${rawToken}`;
 
     try {
       await sendPlatformEmail({

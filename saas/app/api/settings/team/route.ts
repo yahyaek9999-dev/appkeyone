@@ -18,6 +18,7 @@ import { prisma } from "@/lib/db";
 import { ASSIGNABLE_ROLES } from "@/lib/rbac";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { getEntitlements } from "@/lib/membership/entitlements";
+import { env } from "@/lib/env";
 import { auditCtx } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
@@ -116,8 +117,11 @@ export async function POST(req: Request) {
     select: { id: true, email: true, name: true, role: true, status: true },
   });
 
-  const origin = new URL(req.url).origin;
-  const acceptUrl = `${origin}/team/accept?token=${rawToken}`;
+  // Use the configured production domain, not req.url origin which resolves to
+  // localhost:3000 behind a reverse proxy (the invitation link must work for
+  // the invited user's browser, not the server's internal address).
+  const siteOrigin = env.siteUrl.replace(/\/$/, "");
+  const acceptUrl = `${siteOrigin}/team/accept?token=${rawToken}`;
 
   void auditCtx(await getAuthContext(), "team.member_invited", {
     userId: user.id,
