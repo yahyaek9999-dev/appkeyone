@@ -25,7 +25,7 @@ import { checkInternalSecret } from "@/lib/internal-auth";
 
 export const dynamic = "force-dynamic";
 
-const SECRET = process.env.SAAS_INTERNAL_SECRET || "dev-internal-secret-change-me";
+const SECRET = process.env.SAAS_INTERNAL_SECRET ?? "";
 const INCOMING_URL = (process.env.NEXT_PUBLIC_BASE_URL || "http://127.0.0.1:3000") + "/api/whatsapp/incoming";
 const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 25;

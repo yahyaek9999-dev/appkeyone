@@ -51,9 +51,7 @@ export async function GET() {
         "/sessions/stats",
       {
         headers: {
-          "X-Internal-Secret":
-            process.env.SAAS_INTERNAL_SECRET ||
-            "dev-internal-secret-change-me",
+          "X-Internal-Secret": process.env.SAAS_INTERNAL_SECRET ?? "",
         },
         cache: "no-store",
         signal: AbortSignal.timeout(5000),
