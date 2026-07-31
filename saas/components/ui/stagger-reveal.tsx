@@ -1,6 +1,6 @@
 "use client";
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 interface StaggerRevealProps {
@@ -17,6 +17,13 @@ const DIRECTIONS = {
   down: { y: -24, x: 0 },
   left: { x: 24, y: 0 },
   right: { x: -24, y: 0 },
+};
+
+const CSS_OFFSETS: Record<string, string> = {
+  up: "translateY(24px)",
+  down: "translateY(-24px)",
+  left: "translateX(24px)",
+  right: "translateX(-24px)",
 };
 
 export function StaggerReveal({
@@ -91,21 +98,45 @@ export function FadeInView({
   once?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once, margin: "0px 0px -60px 0px" });
-  const offset = DIRECTIONS[direction];
+  const [isInView, setIsInView] = useState(false);
   const prefersReduced = useReducedMotion();
+
+  // Use IntersectionObserver directly — avoids framer-motion's useInView/motion.div
+  // cleanup returning a non-function value that React 18.3 canary rejects.
+  // Cleanup is always () => observer.disconnect(), a guaranteed function.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || prefersReduced) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            if (once) observer.disconnect();
+          } else if (!once) {
+            setIsInView(false);
+          }
+        }
+      },
+      { rootMargin: "0px 0px -60px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [once, prefersReduced]);
 
   if (prefersReduced) return <div className={cn(className)}>{children}</div>;
 
   return (
-    <motion.div
+    <div
       ref={ref}
       className={cn(className)}
-      initial={{ opacity: 0, ...offset }}
-      animate={isInView ? { opacity: 1, x: 0, y: 0 } : { opacity: 0, ...offset }}
-      transition={{ duration: 0.6, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
+      style={{
+        opacity: isInView ? 1 : 0,
+        transform: isInView ? "translate(0,0)" : CSS_OFFSETS[direction],
+        transition: `opacity 0.6s ${delay}s cubic-bezier(0.21,0.47,0.32,0.98), transform 0.6s ${delay}s cubic-bezier(0.21,0.47,0.32,0.98)`,
+      }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
