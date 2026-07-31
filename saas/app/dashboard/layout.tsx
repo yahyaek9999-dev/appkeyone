@@ -126,7 +126,7 @@ export default async function DashboardLayout({
             </span>
           </div>
         )}
-        {ctx.isOwner && user.subscription && (
+        {ctx.isOwner && user.subscription?.plan && (
           <div className="mt-2">
             <span className="inline-flex items-center gap-1 rounded-md border border-brand-500/20 bg-brand-500/8 px-2 py-0.5 text-[10px] font-medium text-brand-300">
               <LayoutDashboard className="h-2.5 w-2.5" />
