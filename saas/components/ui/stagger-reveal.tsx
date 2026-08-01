@@ -1,6 +1,6 @@
 "use client";
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { createContext, useContext, useRef, useState, useEffect } from "react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { cn } from "@/lib/utils";
 
 interface StaggerRevealProps {
@@ -12,13 +12,6 @@ interface StaggerRevealProps {
   once?: boolean;
 }
 
-const DIRECTIONS = {
-  up: { y: 24, x: 0 },
-  down: { y: -24, x: 0 },
-  left: { x: 24, y: 0 },
-  right: { x: -24, y: 0 },
-};
-
 const CSS_OFFSETS: Record<string, string> = {
   up: "translateY(24px)",
   down: "translateY(-24px)",
@@ -26,33 +19,59 @@ const CSS_OFFSETS: Record<string, string> = {
   right: "translateX(-24px)",
 };
 
+interface StaggerCtx {
+  inView: boolean;
+  stagger: number;
+  baseDelay: number;
+  nextIndex: () => number;
+}
+
+const StaggerContext = createContext<StaggerCtx | null>(null);
+
 export function StaggerReveal({
   children,
   className,
   delay = 0,
   stagger = 0.08,
-  direction = "up",
   once = true,
 }: StaggerRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once, margin: "0px 0px -80px 0px" });
+  const [isInView, setIsInView] = useState(false);
   const prefersReduced = useReducedMotion();
+  const counterRef = useRef(0);
+
+  // Reset per render so children receive monotonically increasing indices
+  // on each render pass. Ref mutation in render body is safe — no re-render triggered.
+  counterRef.current = 0;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || prefersReduced) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          if (once) observer.disconnect();
+        } else if (!once) {
+          setIsInView(false);
+        }
+      },
+      { rootMargin: "0px 0px -80px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [once, prefersReduced]);
 
   if (prefersReduced) return <div className={className}>{children}</div>;
 
   return (
-    <motion.div
-      ref={ref}
-      className={className}
-      initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
-      variants={{
-        hidden: {},
-        visible: { transition: { staggerChildren: stagger, delayChildren: delay } },
-      }}
+    <StaggerContext.Provider
+      value={{ inView: isInView, stagger, baseDelay: delay, nextIndex: () => counterRef.current++ }}
     >
-      {children}
-    </motion.div>
+      <div ref={ref} className={className}>
+        {children}
+      </div>
+    </StaggerContext.Provider>
   );
 }
 
@@ -65,22 +84,30 @@ export function StaggerItem({
   className?: string;
   direction?: "up" | "down" | "left" | "right";
 }) {
-  const offset = DIRECTIONS[direction];
+  const ctx = useContext(StaggerContext);
+  const prefersReduced = useReducedMotion();
+  const myIndex = useRef<number | null>(null);
+
+  // Claim index once at first render; never again (stable across re-renders).
+  if (myIndex.current === null && ctx) {
+    myIndex.current = ctx.nextIndex();
+  }
+
+  if (prefersReduced || !ctx) return <div className={className}>{children}</div>;
+
+  const delay = ctx.baseDelay + (myIndex.current ?? 0) * ctx.stagger;
+
   return (
-    <motion.div
+    <div
       className={className}
-      variants={{
-        hidden: { opacity: 0, ...offset },
-        visible: {
-          opacity: 1,
-          x: 0,
-          y: 0,
-          transition: { duration: 0.55, ease: [0.21, 0.47, 0.32, 0.98] },
-        },
+      style={{
+        opacity: ctx.inView ? 1 : 0,
+        transform: ctx.inView ? "none" : CSS_OFFSETS[direction],
+        transition: `opacity 0.55s ${delay}s cubic-bezier(0.21,0.47,0.32,0.98), transform 0.55s ${delay}s cubic-bezier(0.21,0.47,0.32,0.98)`,
       }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -101,9 +128,6 @@ export function FadeInView({
   const [isInView, setIsInView] = useState(false);
   const prefersReduced = useReducedMotion();
 
-  // Use IntersectionObserver directly — avoids framer-motion's useInView/motion.div
-  // cleanup returning a non-function value that React 18.3 canary rejects.
-  // Cleanup is always () => observer.disconnect(), a guaranteed function.
   useEffect(() => {
     const el = ref.current;
     if (!el || prefersReduced) return;

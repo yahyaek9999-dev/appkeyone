@@ -1,13 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
-/**
- * Global dashboard page transition — CSS keyframe, no framer-motion motion.div.
- * Replacing motion.div eliminates framer-motion's internal useEffect cleanup
- * returning non-function values (TypeError: n is not a function) that React
- * 18.3-canary logs as recoverable errors on every navigation.
- */
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const prefersReduced = useReducedMotion();
