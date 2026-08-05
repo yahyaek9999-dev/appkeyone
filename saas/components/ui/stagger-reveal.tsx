@@ -46,7 +46,7 @@ export function StaggerReveal({
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || prefersReduced) return;
+    if (!el || prefersReduced) return () => {};
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -130,7 +130,7 @@ export function FadeInView({
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || prefersReduced) return;
+    if (!el || prefersReduced) return () => {};
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
