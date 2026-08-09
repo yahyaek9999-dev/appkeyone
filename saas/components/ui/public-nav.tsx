@@ -57,7 +57,7 @@ export default function PublicNav({
         className={cn(
           "flex items-center justify-between py-3.5 sm:py-5",
           variant === "fixed" &&
-            "fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-canvas/85 px-4 backdrop-blur-xl sm:px-8",
+            "fixed inset-x-0 top-0 z-40 border-b border-white/[0.06] bg-canvas/85 px-4 backdrop-blur-xl sm:px-8",
           className,
         )}
       >
@@ -143,7 +143,7 @@ export default function PublicNav({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 bg-black/65 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm lg:hidden"
             onClick={() => setOpen(false)}
           />
         )}
@@ -158,7 +158,7 @@ export default function PublicNav({
             exit={{ x: locale === "ar" ? "100%" : "-100%" }}
             transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
             className={cn(
-              "fixed inset-y-0 z-50 flex w-[min(82vw,320px)] flex-col bg-canvas-deep lg:hidden",
+              "fixed inset-y-0 z-[51] flex w-[min(88vw,340px)] flex-col bg-canvas-deep lg:hidden",
               locale === "ar" ? "right-0 border-l border-white/[0.08]" : "left-0 border-r border-white/[0.08]",
             )}
           >
