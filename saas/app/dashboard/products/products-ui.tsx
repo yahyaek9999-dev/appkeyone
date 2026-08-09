@@ -3,6 +3,7 @@
 // Growth Suite — Product Catalog management (premium, mobile responsive).
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Package, Plus, Loader2, Pencil, Trash2, X, ImageIcon, Boxes, Tag as TagIcon, Link as LinkIcon } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
@@ -244,8 +245,8 @@ export default function ProductsUi() {
         </div>
       )}
 
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setEditing(null)}>
+      {editing && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setEditing(null)}>
           <div className="card max-h-[90vh] w-full max-w-lg overflow-y-auto p-5" onClick={(e) => e.stopPropagation()} dir="rtl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="section-title flex items-center gap-2">
@@ -305,7 +306,8 @@ export default function ProductsUi() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

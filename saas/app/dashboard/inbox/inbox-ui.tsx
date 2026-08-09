@@ -457,13 +457,13 @@ export default function InboxUi({
                   </div>
                   {c.leadScore > 0 && (
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                         <div
-                          className={`h-full ${hot ? "bg-orange-400" : c.leadScore >= 40 ? "bg-amber-400" : "bg-slate-500"}`}
+                          className={`h-full rounded-full ${hot ? "bg-orange-400" : c.leadScore >= 40 ? "bg-brand-400" : "bg-slate-600"}`}
                           style={{ width: `${c.leadScore}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-slate-500">
+                      <span className={`text-[10px] tabular-nums font-medium ${hot ? "text-orange-400" : c.leadScore >= 40 ? "text-brand-400" : "text-slate-500"}`}>
                         {c.leadScore}
                       </span>
                     </div>
