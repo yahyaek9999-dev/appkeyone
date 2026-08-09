@@ -88,20 +88,18 @@ export default async function DashboardLayout({
   const modules = bizCtx?.modules;
 
   const Brand = (
-    <Link href="/dashboard" className="flex items-center gap-2.5 px-3.5 py-4">
-      <span className="relative h-7 w-11 shrink-0 overflow-hidden">
+    <Link href="/dashboard" className="group flex items-center gap-3 px-3.5 py-4">
+      <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/[0.12] shadow-[0_0_20px_rgba(12,122,108,0.30)] transition-shadow duration-300 group-hover:shadow-[0_0_28px_rgba(12,122,108,0.45)]">
         {brandLogo ? (
-          // White-label logo is an arbitrary/remote/data URL — plain <img> avoids
-          // next/image remote-domain config (safe, additive).
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={brandLogo} alt={brand} className="h-full w-full object-contain" />
+          <img src={brandLogo} alt={brand} className="h-full w-full object-cover" />
         ) : (
           <Image
-            src="/logo.png"
+            src="/wkeyone-logo.png"
             alt={brand}
             fill
-            quality={100}
-            className="object-contain drop-shadow-[0_0_8px_rgba(201,162,75,0.22)]"
+            quality={95}
+            className="object-cover"
             priority
           />
         )}
@@ -113,28 +111,43 @@ export default async function DashboardLayout({
     </Link>
   );
 
+  const displayName = ctx.member?.name || ctx.member?.email || user.name || user.email || "";
+  const initials = displayName
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   const UserFooter = (
     <div className="border-t border-white/[0.06] p-2.5">
-      <div className="mb-2 px-2.5 py-1.5">
-        <div className="truncate text-[13px] font-medium text-white">{ctx.member?.name || ctx.member?.email || user.name || user.email}</div>
-        <div className="truncate text-xs text-slate-500">{ctx.principalEmail}</div>
-        {!ctx.isOwner && (
-          <div className="mt-2">
-            <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/20 bg-sky-500/8 px-2 py-0.5 text-[10px] font-medium text-sky-300">
-              <ShieldCheck className="h-2.5 w-2.5" />
-              عضو فريق — {role}
-            </span>
-          </div>
-        )}
-        {ctx.isOwner && user.subscription?.plan && (
-          <div className="mt-2">
-            <span className="inline-flex items-center gap-1 rounded-md border border-brand-500/20 bg-brand-500/8 px-2 py-0.5 text-[10px] font-medium text-brand-300">
-              <LayoutDashboard className="h-2.5 w-2.5" />
-              {user.subscription.plan.name}
-            </span>
-          </div>
-        )}
+      <div className="mb-2 flex items-center gap-2.5 rounded-lg px-2 py-2">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand-500/30 bg-brand-500/10 text-[10px] font-semibold text-brand-300 shadow-[0_0_10px_rgba(12,122,108,0.2)]">
+          {initials || "؟"}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[12px] font-medium text-white leading-tight">{displayName}</div>
+          {ctx.principalEmail && displayName !== ctx.principalEmail && (
+            <div className="truncate text-[10px] text-slate-500 leading-tight mt-0.5">{ctx.principalEmail}</div>
+          )}
+        </div>
       </div>
+      {!ctx.isOwner && (
+        <div className="mb-2 px-2">
+          <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/20 bg-sky-500/[0.08] px-2 py-0.5 text-[10px] font-medium text-sky-300">
+            <ShieldCheck className="h-2.5 w-2.5" />
+            عضو فريق — {role}
+          </span>
+        </div>
+      )}
+      {ctx.isOwner && user.subscription && (
+        <div className="mb-2 px-2">
+          <span className="inline-flex items-center gap-1 rounded-md border border-brand-500/20 bg-brand-500/[0.08] px-2 py-0.5 text-[10px] font-medium text-brand-300">
+            <LayoutDashboard className="h-2.5 w-2.5" />
+            {user.subscription.plan.name}
+          </span>
+        </div>
+      )}
       <LogoutButton />
     </div>
   );
@@ -163,8 +176,10 @@ export default async function DashboardLayout({
             {UserFooter}
           </MobileNav>
 
-          <aside data-tour="sidebar" className="hidden w-64 shrink-0 flex-col border-l border-white/[0.06] bg-canvas-deep md:flex">
-            <div className="border-b border-white/[0.06]">
+          <aside data-tour="sidebar" className="hidden w-64 shrink-0 flex-col border-l border-white/[0.06] bg-canvas-deep md:flex relative overflow-hidden">
+            {/* Ambient top glow — purely decorative */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_50%_0%,rgba(12,122,108,0.10),transparent_70%)]" />
+            <div className="border-b border-white/[0.06] relative">
               {Brand}
               <div className="px-2.5 pb-2.5" data-tour="search">
                 <CommandTrigger />

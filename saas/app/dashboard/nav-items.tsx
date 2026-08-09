@@ -412,8 +412,11 @@ function useNavMode(): [boolean, () => void] {
 
 function NavModeToggle({ simple, toggle }: { simple: boolean; toggle: () => void }) {
   return (
-    <button onClick={toggle} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2 text-[11px] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200">
-      {simple ? "⚙ عرض كل الأدوات" : "↩ الأساسيات فقط"}
+    <button
+      onClick={toggle}
+      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2 py-2 text-[11px] font-medium text-slate-500 transition-all duration-150 hover:border-white/[0.10] hover:bg-white/[0.04] hover:text-slate-300"
+    >
+      {simple ? "عرض كل الأدوات" : "الأساسيات فقط"}
     </button>
   );
 }
@@ -463,12 +466,18 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
               aria-label={w.label}
               aria-current={isCurrent ? "page" : undefined}
               className={cn(
-                "group flex w-12 flex-col items-center gap-1 rounded-lg py-2 transition-colors",
-                isViewed ? "bg-white/[0.06] text-white" : "text-slate-500 hover:bg-white/[0.03] hover:text-slate-200",
+                "group relative flex w-12 flex-col items-center gap-1 rounded-xl py-2.5 transition-all duration-150",
+                isViewed
+                  ? "bg-white/[0.07] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200",
               )}
             >
-              <Icon className={cn("h-[18px] w-[18px]", isCurrent && "text-brand-300")} />
-              <span className="text-[9px] font-medium leading-none">{w.short}</span>
+              {/* Active workspace indicator dot */}
+              {isCurrent && (
+                <span className="absolute end-1.5 top-1.5 h-1 w-1 rounded-full bg-brand-400 shadow-[0_0_4px_rgba(47,147,132,0.8)]" />
+              )}
+              <Icon className={cn("h-[18px] w-[18px] transition-colors", isCurrent ? "text-brand-300" : "")} />
+              <span className={cn("text-[9px] font-medium leading-none transition-colors", isCurrent ? "text-brand-300" : "")}>{w.short}</span>
             </button>
           );
         })}
