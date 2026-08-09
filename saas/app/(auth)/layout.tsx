@@ -135,7 +135,7 @@ export default async function AuthLayout({
         </div>
 
         {/* Centered form */}
-        <div className="relative z-10 flex flex-1 items-center justify-center px-5 py-10 sm:px-8">
+        <div className="relative z-10 flex flex-1 items-center justify-center px-5 py-4 sm:py-8 sm:px-8">
           <div className="w-full max-w-[420px]">
             {children}
           </div>

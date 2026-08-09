@@ -162,6 +162,9 @@ export default async function DashboardOverview() {
   const waNum = (cfg.supportWhatsapp || "").replace(/[^\d]/g, "");
   const hasOrders = orders7d > 0 || (pendingOrderCount as number) > 0;
 
+  const hour = now.getHours();
+  const timeGreeting = hour < 12 ? "صباح الخير" : hour < 17 ? "مساء النور" : "مساء الخير";
+
   // ── "What needs attention" — derived from the same data, no extra queries.
   // The executive lead: surface only the items that need a decision today.
   const attention: { label: string; href: string; tone: "amber" | "rose" | "brand"; count?: number }[] = [];
@@ -178,29 +181,44 @@ export default async function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-white">
-            أهلاً، {user.name || "صديقي"}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            آخر تحديث {new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
-          {bot.whatsappStatus === "connected" ? (
-            <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-2.5 py-1.5 text-xs">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-              <span className="font-medium text-emerald-300">واتساب متصل</span>
+      {/* ── Header card ──────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-canvas-deep">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(ellipse_at_50%_0%,rgba(12,122,108,0.14),transparent_65%)]" />
+        <div className="relative p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                {timeGreeting} · {now.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" })}
+              </p>
+              <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-white sm:text-[26px]">
+                أهلاً، {user.name || "صديقي"}
+              </h1>
             </div>
-          ) : (
-            <Link href="/dashboard/whatsapp" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-xs text-amber-300 transition-colors hover:bg-amber-500/15">
-              <Phone className="h-3 w-3 shrink-0" />
-              اربط واتساب
-            </Link>
-          )}
+            <div className="flex flex-wrap items-center gap-2">
+              <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
+              {bot.whatsappStatus === "connected" ? (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-2.5 py-1.5 text-xs">
+                  <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-400" />
+                  <span className="font-medium text-emerald-300">واتساب متصل</span>
+                </div>
+              ) : (
+                <Link href="/dashboard/whatsapp" className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-xs text-amber-300 transition-colors hover:bg-amber-500/15">
+                  <Phone className="h-3 w-3 shrink-0" />
+                  اربط واتساب
+                </Link>
+              )}
+            </div>
+          </div>
+          {/* Quick KPI strip */}
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <QuickKpi label="إجمالي العملاء" value={customerCount.toLocaleString("ar-EG")} />
+            <QuickKpi label="رسائل هذا الأسبوع" value={msgs7d.toLocaleString("ar-EG")} trend={msgs7dDelta} />
+            <QuickKpi label="استدعاءات الذكاء" value={aiCalls.toLocaleString("ar-EG")} />
+            {modules.orders
+              ? <QuickKpi label="طلبات معلّقة" value={(pendingOrderCount as number).toLocaleString("ar-EG")} tone={(pendingOrderCount as number) > 0 ? "amber" : "normal"} />
+              : <QuickKpi label="حملات البث" value={(broadcastCount as number).toLocaleString("ar-EG")} />
+            }
+          </div>
         </div>
       </div>
 
@@ -289,10 +307,10 @@ export default async function DashboardOverview() {
             <span className="text-[11px] tabular-nums text-slate-500">{msgs30dToday} اليوم</span>
           </div>
           <div className="flex h-28 items-end gap-0.5">
-            {last30.map((d) => (
+            {last30.map((d, i) => (
               <div key={d.day} className="group relative flex flex-1 items-end justify-center" title={`${d.day}: ${d.total}`}>
                 <div
-                  className="min-h-[2px] w-full rounded-t-sm bg-brand-500/30 transition-colors group-hover:bg-brand-400/60"
+                  className={`min-h-[2px] w-full rounded-t-sm transition-colors group-hover:bg-brand-400/70 ${i >= 23 ? "bg-brand-500/55" : "bg-brand-500/22"}`}
                   style={{ height: `${Math.max((d.total / maxDaily) * 100, 2)}%` }}
                 />
               </div>
@@ -409,7 +427,7 @@ export default async function DashboardOverview() {
       {/* ── Why — trend insights ───────────────────────────────────────────── */}
       {/* Messages always shown; orders/revenue/conversion are commerce-only. */}
       <FadeInView delay={0.15}>
-      <div className={`grid gap-4 ${modules.orders ? "sm:grid-cols-4" : "sm:grid-cols-2"}`}>
+      <div className={`grid gap-4 ${modules.orders ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"}`}>
         <InsightCard
           icon={<MessageSquare className="h-3.5 w-3.5" />}
           label="حركة الرسائل"
@@ -445,6 +463,27 @@ export default async function DashboardOverview() {
         )}
       </div>
       </FadeInView>
+    </div>
+  );
+}
+
+// ── Quick KPI — compact metric tile in the header strip. ─────────────────────
+function QuickKpi({ label, value, trend, tone = "normal" }: {
+  label: string; value: string; trend?: number | null; tone?: "normal" | "amber";
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 sm:p-3.5">
+      <div className="truncate text-[10px] font-medium text-slate-500">{label}</div>
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className={`text-[18px] font-semibold leading-none tabular-nums tracking-tight ${tone === "amber" ? "text-amber-300" : "text-white"}`}>
+          {value}
+        </span>
+        {trend !== undefined && trend !== null && (
+          <span className={`text-[9px] tabular-nums ${trend >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+            {trend >= 0 ? "+" : ""}{Math.round(trend)}%
+          </span>
+        )}
+      </div>
     </div>
   );
 }
