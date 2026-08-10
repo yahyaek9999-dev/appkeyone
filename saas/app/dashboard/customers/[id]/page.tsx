@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Phone, ShoppingBag, MessageSquare, Calendar, TrendingUp } from "lucide-react";
+import { ArrowRight, Phone, ShoppingBag, MessageSquare, Calendar, TrendingUp, ArrowUpRight, Send, Package } from "lucide-react";
 import ChatView from "./chat-view";
 import CustomerTabs from "./customer-tabs";
 import CopyPhoneButton from "./copy-phone-button";
@@ -10,6 +10,7 @@ import { formatCustomerPhone } from "@/lib/phone";
 import DeleteCustomerButton from "./delete-button";
 import MergeCustomerButton from "./merge-button";
 import { timeAgo } from "@/lib/utils";
+import { OrderStatusPill, type OrderStatus } from "@/components/ui/order-status-pill";
 
 export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
   const user = await requireUser();
@@ -85,6 +86,15 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
   const lastInteraction = customer.lastSeenAt || customer.createdAt;
   const currency = (orders as any[])[0]?.currency || "ج";
   const orderCount = (orders as any[]).length;
+
+  // Pending orders needing action
+  const pendingOrders = (orders as any[]).filter((o) =>
+    ["pending", "confirmed", "preparing"].includes(o.status)
+  );
+  // Days since last contact
+  const daysSinceLast = Math.floor(
+    (Date.now() - new Date(lastInteraction).getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   // Customer stage based on behavior
   const stage = completedOrders.length >= 3
@@ -201,6 +211,95 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           </div>
         </div>
       </div>
+
+      {/* ── Recommended next action ─────────────────────────────────────── */}
+      {(() => {
+        // Compute the single most relevant action
+        if (pendingOrders.length > 0) {
+          const o = pendingOrders[0];
+          const firstItem = o.items?.[0]?.name;
+          return (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
+              <Package className="h-4 w-4 shrink-0 text-amber-400" />
+              <div className="min-w-0 flex-1 text-[13px]">
+                <span className="text-amber-200 font-medium">طلب معلّق</span>
+                {firstItem && <span className="text-amber-300/70 mr-1.5">— {firstItem}</span>}
+                {pendingOrders.length > 1 && <span className="text-amber-300/50 mr-1"> و{pendingOrders.length - 1} آخر</span>}
+              </div>
+              <Link
+                href={`/dashboard/orders/${o.id}`}
+                className="shrink-0 inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium text-amber-200 hover:bg-amber-500/20 transition-colors"
+              >
+                معالجة الطلب <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          );
+        }
+        if (daysSinceLast >= 7 && msgCount > 0) {
+          return (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-sky-500/20 bg-sky-500/[0.05] px-4 py-3">
+              <MessageSquare className="h-4 w-4 shrink-0 text-sky-400" />
+              <div className="min-w-0 flex-1 text-[13px]">
+                <span className="text-sky-200 font-medium">لا تواصل منذ {daysSinceLast} يوم</span>
+                <span className="text-sky-300/60 mr-1.5">— أرسل رسالة متابعة</span>
+              </div>
+              <Link
+                href={`/dashboard/inbox?c=${customer.id}`}
+                className="shrink-0 inline-flex items-center gap-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-[11px] font-medium text-sky-200 hover:bg-sky-500/20 transition-colors"
+              >
+                فتح المحادثة <Send className="h-3 w-3" />
+              </Link>
+            </div>
+          );
+        }
+        if (stage === "محادثة فقط") {
+          return (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-brand-500/20 bg-brand-500/[0.04] px-4 py-3">
+              <ShoppingBag className="h-4 w-4 shrink-0 text-brand-400" />
+              <div className="min-w-0 flex-1 text-[13px]">
+                <span className="text-brand-200 font-medium">عميل محتمل</span>
+                <span className="text-brand-300/60 mr-1.5">— تواصل ولم يطلب بعد</span>
+              </div>
+              <Link
+                href={`/dashboard/inbox?c=${customer.id}`}
+                className="shrink-0 inline-flex items-center gap-1 rounded-md border border-brand-500/25 bg-brand-500/10 px-3 py-1.5 text-[11px] font-medium text-brand-200 hover:bg-brand-500/20 transition-colors"
+              >
+                تواصل معه <Send className="h-3 w-3" />
+              </Link>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* ── Pending orders (if any, above tabs) ─────────────────────────── */}
+      {pendingOrders.length > 0 && (
+        <div className="mb-5 overflow-hidden rounded-xl border border-white/[0.07]">
+          <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-2.5">
+            <span className="text-[12px] font-semibold text-white">طلبات تحتاج إجراء</span>
+            <Link href="/dashboard/orders?status=pending" className="text-[11px] text-slate-500 hover:text-slate-200 transition-colors">
+              كل الطلبات
+            </Link>
+          </div>
+          {pendingOrders.slice(0, 3).map((o: any) => (
+            <div key={o.id} className="flex items-center gap-3 border-b border-white/[0.03] px-4 py-2.5 last:border-0">
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] text-white">{o.items?.[0]?.name || "طلب"}</div>
+                <div className="text-[11px] text-slate-500">
+                  {(o.total / 100 || 0).toLocaleString("ar-EG")} {o.currency || "ج"}
+                </div>
+              </div>
+              <OrderStatusPill status={(o.status === "canceled" ? "cancelled" : o.status) as OrderStatus} size="sm" />
+              <Link
+                href={`/dashboard/orders/${o.id}`}
+                className="shrink-0 inline-flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              >
+                فتح <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Customer workspace tabs ──────────────────────────────────────── */}
       <CustomerTabs

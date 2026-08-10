@@ -29,10 +29,9 @@ export default async function ProvidersHubPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div>
-        <div className="text-xs text-slate-500 mb-1">الإعدادات</div>
+      <div className="border-b border-white/[0.05] pb-5">
         <h1 className="page-title">المزوّدون</h1>
-        <p className="page-desc mt-1">اربط مفاتيحك الخاصة لكل خدمة. كل حساب معزول تماماً، والمفاتيح مشفّرة بالكامل، مع تبديل احتياطي تلقائي عند تعطّل أي مزوّد.</p>
+        <p className="page-desc mt-1">اربط مفاتيحك الخاصة لكل خدمة — المفاتيح مشفّرة وكل حساب معزول تماماً.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

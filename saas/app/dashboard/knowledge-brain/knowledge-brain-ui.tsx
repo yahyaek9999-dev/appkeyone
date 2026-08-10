@@ -168,12 +168,9 @@ function BrainConsole() {
 
 function Header() {
   return (
-    <div className="flex items-center gap-3">
-      <Brain className="h-6 w-6 text-brand-400" />
-      <div>
-        <h1 className="page-title">العقل المعرفي</h1>
-        <p className="page-desc mt-1">ارفع معرفتك، قِس جودتها، واسأل بحثاً ذكياً بمصادر موثّقة</p>
-      </div>
+    <div className="border-b border-white/[0.05] pb-5">
+      <h1 className="page-title">عقل المعرفة</h1>
+      <p className="page-desc mt-1">ارفع معرفتك، قِس جودتها، وابحث في مصادرك الموثّقة</p>
     </div>
   );
 }

@@ -37,16 +37,18 @@ export default async function BridgePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="page-title mb-1">KEYONE Bridge</h1>
-          <p className="page-desc">
-            موصّل تستضيفه بنفسك يربط واتساب بمساحة عملك. تدير كل شيء من هنا — لا حاجة لفتح تطبيق Bridge بعد التثبيت.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <a href="/dashboard/settings/bridge/download" className="btn-primary">تنزيل Bridge</a>
-          <a href="/dashboard/settings/bridge/link" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-slate-200 hover:bg-white/10">ربط جهاز</a>
+      <div className="border-b border-white/[0.05] pb-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="page-title">KEYONE Bridge</h1>
+            <p className="page-desc mt-1">
+              موصّل تستضيفه بنفسك يربط واتساب بمساحة عملك — تدير كل شيء من هنا.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href="/dashboard/settings/bridge/download" className="btn-primary">تنزيل Bridge</a>
+            <a href="/dashboard/settings/bridge/link" className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm font-bold text-slate-200 hover:bg-white/[0.06]">ربط جهاز</a>
+          </div>
         </div>
       </div>
 

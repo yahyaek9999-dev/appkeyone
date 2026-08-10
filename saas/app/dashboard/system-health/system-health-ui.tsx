@@ -111,13 +111,10 @@ export default function SystemHealthUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Activity className="h-6 w-6 text-brand-400" />
-          <div>
-            <h1 className="page-title">صحة النظام والمراقبة</h1>
-            <p className="page-desc mt-1">مؤشرات أداء فورية للخادم وقاعدة البيانات والواتساب والمساعد</p>
-          </div>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
+        <div>
+          <h1 className="page-title">صحة النظام</h1>
+          <p className="page-desc mt-1">مؤشرات أداء فورية للخادم وقاعدة البيانات والواتساب.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {lastUpdated && (
