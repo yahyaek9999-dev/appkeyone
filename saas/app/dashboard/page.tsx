@@ -6,7 +6,7 @@ import {
   Crown, Clock, DollarSign, ArrowUpRight,
   TrendingUp, Phone, CheckCircle2, ShoppingBag,
   MessageSquare, Users, AlertTriangle, AlertCircle,
-  ArrowRight, RotateCcw,
+  ArrowRight, RotateCcw, Flame, ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import { timeAgo } from "@/lib/utils";
@@ -59,6 +59,9 @@ export default async function DashboardOverview() {
     recentOrders,
     aiCalls7d,
     businessContext,
+    escalationCount,
+    humanActiveCount,
+    hotLeadCount,
   ] = await Promise.all([
     prisma.customer.count({ where: { userId: user.id } }),
     prisma.message.count({ where: { conversation: { customer: { userId: user.id } } } }),
@@ -95,6 +98,9 @@ export default async function DashboardOverview() {
     prisma.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 5, select: { id: true, customerName: true, customerPhone: true, total: true, currency: true, status: true, createdAt: true } }).catch(() => []),
     prisma.providerUsage.aggregate({ where: { userId: user.id, day: { gte: start7.toISOString().slice(0, 10) } }, _sum: { calls: true } }).catch(() => ({ _sum: { calls: null } })),
     resolveBusinessContext(user.id).catch(() => null),
+    (prisma as any).escalationTicket.count({ where: { userId: user.id, status: { in: ["open", "acknowledged"] } } }).catch(() => 0),
+    prisma.conversation.count({ where: { handoffState: "human_active", customer: { userId: user.id } } }).catch(() => 0),
+    prisma.customer.count({ where: { userId: user.id, leadScore: { gte: 75 } } }).catch(() => 0),
   ]);
 
   const vertical = businessContext?.vertical ?? DEFAULT_VERTICAL;
@@ -179,6 +185,15 @@ export default async function DashboardOverview() {
       action: "ترقية الباقة",
       href: "/dashboard/usage",
       tone: "rose",
+    });
+  if ((escalationCount as number) > 0)
+    attention.push({
+      label: "تصعيدات مفتوحة",
+      why: "محادثات تحتاج تدخلاً فورياً من الفريق",
+      action: "فتح التصعيدات",
+      href: "/dashboard/escalations",
+      tone: "rose",
+      count: escalationCount as number,
     });
   if (modules.orders && (pendingOrderCount as number) > 0)
     attention.push({
@@ -304,6 +319,34 @@ export default async function DashboardOverview() {
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {/* ══ OPPORTUNITY SIGNALS ══════════════════════════════════════════════ */}
+      {((humanActiveCount as number) > 0 || (hotLeadCount as number) > 0) && (
+        <section className="py-4 border-b border-white/[0.05]">
+          <div className="mb-2.5 flex items-center gap-2">
+            <Flame className="h-3 w-3 text-amber-400" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.10em] text-slate-600">فرص نشطة</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(humanActiveCount as number) > 0 && (
+              <Link href="/dashboard/my-work" className="inline-flex items-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/[0.05] px-3.5 py-2 hover:bg-sky-500/10 transition-colors">
+                <ClipboardList className="h-3.5 w-3.5 text-sky-400" />
+                <span className="text-[12px] font-semibold text-sky-200">{(humanActiveCount as number).toLocaleString("ar-EG")} محادثة نشطة</span>
+                <span className="text-[10px] text-slate-500">بانتظار الرد</span>
+                <ArrowUpRight className="h-3 w-3 text-slate-600" />
+              </Link>
+            )}
+            {(hotLeadCount as number) > 0 && (
+              <Link href="/dashboard/leads" className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] px-3.5 py-2 hover:bg-amber-500/10 transition-colors">
+                <Flame className="h-3.5 w-3.5 text-amber-400" />
+                <span className="text-[12px] font-semibold text-amber-200">{(hotLeadCount as number).toLocaleString("ar-EG")} عميل ساخن</span>
+                <span className="text-[10px] text-slate-500">فرص إيرادات</span>
+                <ArrowUpRight className="h-3 w-3 text-slate-600" />
+              </Link>
+            )}
           </div>
         </section>
       )}

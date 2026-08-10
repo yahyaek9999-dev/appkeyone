@@ -52,6 +52,7 @@ import {
   Code2,
   Send,
   CalendarClock,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -103,6 +104,7 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard",
     items: [
       { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
+      { href: "/dashboard/my-work", label: "عملي اليوم", icon: ClipboardList, perm: "inbox" },
       { href: "/dashboard/analytics", label: "التحليلات", icon: BarChart3, perm: "analytics" },
       { href: "/dashboard/command-center", label: "مركز القيادة", icon: Gauge, perm: "analytics" },
     ],
@@ -270,6 +272,7 @@ function isActivePath(pathname: string, href: string) {
 // Everything else is "advanced" and hidden until the user flips to "كل الأدوات".
 const CORE_HREFS = new Set<string>([
   "/dashboard",
+  "/dashboard/my-work",
   "/dashboard/orders", "/dashboard/products", "/dashboard/broadcasts",
   "/dashboard/customers", "/dashboard/inbox", "/dashboard/leads",
   "/dashboard/bot", "/dashboard/knowledge", "/dashboard/quick-replies",
