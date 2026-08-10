@@ -415,7 +415,7 @@ function AskBox() {
                         {rs.docTitle || "مصدر غير معنون"}
                       </span>
                       <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${tone.border} ${tone.text}`}>
-                        ثقة {pct}%
+                        {pct >= 75 ? "تطابق قوي" : pct >= 50 ? "تطابق متوسط" : "تطابق جزئي"}
                       </span>
                     </div>
                     <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400">{rs.text}</p>

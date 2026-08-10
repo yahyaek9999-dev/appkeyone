@@ -28,7 +28,7 @@ export default function EscalationActions({
       const res = await fetch(`/api/escalations/${ticketId}/draft-reply`, { method: "POST" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setErr(json.error === "no_provider_configured" ? "لم يتم إعداد مزوّد ذكاء اصطناعي لهذا الحساب بعد." : "تعذّر توليد رد مقترح.");
+        setErr(json.error === "no_provider_configured" ? "لم يتم إعداد مزوّد الخدمة لهذا الحساب بعد." : "تعذّر توليد رد مقترح.");
         return;
       }
       setDraft(json.draft);

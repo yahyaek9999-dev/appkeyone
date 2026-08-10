@@ -116,7 +116,7 @@ export default function SystemHealthUi() {
           <Activity className="h-6 w-6 text-brand-400" />
           <div>
             <h1 className="page-title">صحة النظام والمراقبة</h1>
-            <p className="page-desc mt-1">مؤشرات أداء فورية للخادم وقاعدة البيانات والواتساب والذكاء الاصطناعي</p>
+            <p className="page-desc mt-1">مؤشرات أداء فورية للخادم وقاعدة البيانات والواتساب والمساعد</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -173,7 +173,7 @@ export default function SystemHealthUi() {
                 <SubsystemCard name="قاعدة البيانات" icon={<Database className="h-4 w-4" />} sub={data.subsystems.database} />
                 <SubsystemCard name="واتساب" icon={<Smartphone className="h-4 w-4" />} sub={data.subsystems.whatsapp} />
                 <SubsystemCard name="الطابور" icon={<Activity className="h-4 w-4" />} sub={data.subsystems.queue} />
-                <SubsystemCard name="مزود الذكاء الاصطناعي" icon={<Brain className="h-4 w-4" />} sub={data.subsystems.aiProvider} />
+                <SubsystemCard name="مزوّد المساعد" icon={<Brain className="h-4 w-4" />} sub={data.subsystems.aiProvider} />
                 <SubsystemCard name="العامل (Worker)" icon={<Server className="h-4 w-4" />} sub={data.subsystems.worker} />
                 <SubsystemCard name="Redis" icon={<Zap className="h-4 w-4" />} sub={data.subsystems.redis} />
                 <SubsystemCard name="Bridge Gateway" icon={<Wifi className="h-4 w-4" />} sub={(data.subsystems as any).bridgeGateway} />
@@ -251,7 +251,7 @@ export default function SystemHealthUi() {
           {/* AI */}
           <div className="card p-5">
             <h3 className="section-title mb-4 flex items-center gap-2">
-              <Brain className="h-4 w-4 text-gold-400" /> الذكاء الاصطناعي (آخر 7 أيام)
+              <Brain className="h-4 w-4 text-gold-400" /> المساعد (آخر 7 أيام)
             </h3>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MiniCard icon={<Brain className="h-4 w-4" />} label="استدعاءات" value={(data.ai.calls7d || 0).toLocaleString("ar-EG")} />
