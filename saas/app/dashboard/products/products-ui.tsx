@@ -140,14 +140,11 @@ export default function ProductsUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Package className="h-6 w-6 text-brand-400" />
-            كتالوج المنتجات
-          </h1>
+          <h1 className="page-title">كتالوج المنتجات</h1>
           <p className="page-desc mt-1">
-            أضف منتجاتك ليعرضها المساعد للعملاء كبطاقات داخل واتساب — {items.length} منتج
+            {items.length} منتج
             {lowStock > 0 && <span className="text-amber-300"> · {lowStock} مخزون منخفض</span>}
           </p>
         </div>

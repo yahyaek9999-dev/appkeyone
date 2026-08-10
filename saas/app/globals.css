@@ -239,6 +239,59 @@
         @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400/90;
     }
 
+    /* ── Business OS primitives ──────────────────────────────────────── */
+
+    /* Status sentence — the business health line in dashboard header */
+    .status-line {
+        @apply text-[13px] leading-relaxed text-slate-400;
+    }
+
+    /* Metric band cell — borderless, part of a connected group */
+    .metric-band-cell {
+        @apply bg-canvas-deep px-5 py-4 transition-colors hover:bg-white/[0.025];
+    }
+
+    /* Section divider — used between hierarchy levels */
+    .section-divider {
+        @apply border-b border-white/[0.05] pb-6 mb-6;
+    }
+
+    /* Attention item — contextual action card with left severity border */
+    .attention-item {
+        @apply flex items-center gap-4 rounded-lg px-4 py-3;
+        background: rgba(255,255,255,0.018);
+    }
+
+    /* Priority badge — count + label for attention items */
+    .priority-count {
+        @apply shrink-0 text-2xl font-black tabular-nums leading-none;
+    }
+
+    /* Operational table — tighter than data-table, no card wrapper */
+    .ops-table {
+        @apply w-full border-collapse;
+    }
+    .ops-table thead th {
+        @apply border-b border-white/[0.05] px-4 py-2.5 text-start text-[10px] font-medium uppercase tracking-[0.06em] text-slate-600;
+    }
+    .ops-table tbody tr {
+        @apply border-b border-white/[0.03] transition-colors hover:bg-white/[0.015];
+    }
+    .ops-table tbody tr:last-child {
+        @apply border-b-0;
+    }
+    .ops-table tbody td {
+        @apply px-4 py-3 text-[13px] text-slate-300;
+    }
+
+    /* Page section header — label + optional action */
+    .page-section-header {
+        @apply mb-4 flex items-center justify-between;
+    }
+    .page-section-title {
+        @apply flex items-center gap-2 text-[13px] font-semibold text-white;
+    }
+
     /* ── Public-site primitives ──────────────────────────────────────  */
 
     /* Soft-glass surface — top light edge + gold hover ring. */

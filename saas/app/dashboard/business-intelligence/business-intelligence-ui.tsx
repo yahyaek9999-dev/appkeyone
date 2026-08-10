@@ -103,13 +103,10 @@ export default function BusinessIntelligenceUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Activity className="h-6 w-6 text-brand-400" />
-          <div>
-            <h1 className="page-title">رصد الأعمال اللحظي</h1>
-            <p className="page-desc mt-1">رصد تلقائي للشذوذ والفرص: قفزات وهبوط الإيراد، تراجع النشاط، تجمّع المخاطر، والفرص الجاهزة</p>
-          </div>
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.05] pb-5">
+        <div>
+          <h1 className="page-title">رصد الأعمال</h1>
+          <p className="page-desc mt-1">قفزات وهبوط الإيراد، تراجع النشاط، تجمّع المخاطر، والفرص الجاهزة</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {lastUpdated && (

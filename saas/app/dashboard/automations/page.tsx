@@ -2,7 +2,6 @@ import { requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AutomationBuilderUi from "./automation-builder-ui";
 import RuleBuilderUi from "./rule-builder-ui";
-import InsightStrip from "@/components/insight-strip";
 import { pageGate } from "@/lib/membership/gate";
 import LockedFeature from "@/components/billing/LockedFeature";
 
@@ -29,7 +28,6 @@ export default async function AutomationsPage() {
   return (
     <div className="space-y-10">
       {/* Phase 3: AI Copilot — one insight + recommendation + action for this page */}
-      <InsightStrip context="automations" />
       {/* Section 1: Commerce automations (existing — order-event → WA/email) */}
       <AutomationBuilderUi />
       {/* Section 2: Intelligent rule builder (Agent 3 — if-this-then-that) */}

@@ -143,23 +143,17 @@ export default function RevenueCopilotUi() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-brand-400" />
-            فرص الإيرادات
-          </h1>
-          <p className="page-desc mt-1">
-            قائمة مرتّبة بأعلى الفرص قيمةً — لكل عميل الخطوة التالية المقترحة والقيمة المتوقعة.
-          </p>
+          <h1 className="page-title">فرص الإيرادات</h1>
+          <p className="page-desc mt-1">أعلى الفرص قيمةً — لكل عميل الخطوة التالية والقيمة المتوقعة.</p>
         </div>
         <button
           onClick={() => load(true)}
           disabled={refreshing}
-          className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-sm inline-flex items-center gap-2 disabled:opacity-50"
-          title="تحديث"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
         >
-          {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           تحديث
         </button>
       </div>

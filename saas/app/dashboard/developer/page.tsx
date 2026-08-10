@@ -23,9 +23,7 @@ export default async function DeveloperPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="page-title mb-1 flex items-center gap-2">
-            <Code2 className="h-6 w-6 text-brand-300" /> مركز المطوّرين
-          </h1>
+          <h1 className="page-title mb-1">مركز المطوّرين</h1>
           <p className="page-desc">
             مفاتيح API، مراقبة الاستخدام، حدود المعدّل، وتوثيق الواجهات البرمجية والويب هوك — لبناء تكاملاتك الخاصة فوق KEYONE.
           </p>

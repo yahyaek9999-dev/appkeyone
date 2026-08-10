@@ -57,12 +57,9 @@ export default function ForecastUi() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <TrendingUp className="h-6 w-6 text-emerald-400" />
-          توقّع الإيرادات
-        </h1>
-        <p className="page-desc mt-1">تنبؤ ذكي بالمبيعات القادمة ورؤى يومية لاتخاذ القرار</p>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">توقّع الإيرادات</h1>
+        <p className="page-desc mt-1">مبيعات الأيام القادمة ورؤى لاتخاذ القرار</p>
       </div>
 
       {loading && !data ? (

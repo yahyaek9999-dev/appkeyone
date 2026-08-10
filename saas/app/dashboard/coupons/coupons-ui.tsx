@@ -83,15 +83,12 @@ export default function CouponsUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Ticket className="h-6 w-6 text-gold-400" />
-            الكوبونات والخصومات
-          </h1>
-          <p className="page-desc mt-1">أنشئ كوبونات يقدّمها النظام تلقائيًا للعملاء المترددين وفي حملات الاستعادة</p>
+          <h1 className="page-title">الكوبونات</h1>
+          <p className="page-desc mt-1">كوبونات تُقدَّم تلقائياً للعملاء المترددين وفي حملات الاستعادة</p>
         </div>
-        <button onClick={() => setCreating({ ...EMPTY })} className="ai-btn ai-btn-primary px-4 py-2 text-sm">
+        <button onClick={() => setCreating({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
           <Plus className="h-4 w-4" /> كوبون جديد
         </button>
       </div>

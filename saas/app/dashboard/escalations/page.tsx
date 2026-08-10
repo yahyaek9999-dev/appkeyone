@@ -70,15 +70,9 @@ export default async function EscalationsPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <MessageSquareWarning className="h-5 w-5 text-amber-400" />
-          التصعيدات والتدخل البشري
-        </h1>
-        <p className="mt-1 text-sm text-slate-400">
-          تذاكر حقيقية من المحادثات الغاضبة، طلبات الاسترجاع، أو سوء الفهم
-          المتكرر.
-        </p>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">التصعيدات</h1>
+        <p className="page-desc mt-1">محادثات تحتاج تدخلاً بشرياً — غضب، استرجاع، أو سوء فهم متكرر.</p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">

@@ -107,13 +107,10 @@ export default function DemoUi() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <FlaskConical className="h-5 w-5 text-amber-400" />
-            جرّب KEYONE — بيانات تجريبية
-          </h1>
-          <p className="page-desc">استعرض الواجهة الكاملة مع عملاء نموذجيين قبل ربط واتساب.</p>
+          <h1 className="page-title">جرّب KEYONE</h1>
+          <p className="page-desc mt-1">استعرض الواجهة الكاملة مع عملاء نموذجيين قبل ربط واتساب.</p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
           <FlaskConical className="h-3 w-3" /> تجريبي

@@ -94,13 +94,10 @@ export default function FunnelUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Filter className="h-6 w-6 text-brand-400" />
-            مسار البيع
-          </h1>
-          <p className="page-desc mt-1">تحليل كامل لرحلة العميل من أول تواصل حتى التكرار</p>
+          <h1 className="page-title">مسار البيع</h1>
+          <p className="page-desc mt-1">رحلة العميل من أول تواصل حتى الشراء المتكرر</p>
         </div>
         <div className="flex gap-1.5">
           {[7, 30, 90].map((d) => (

@@ -97,16 +97,13 @@ export default function SafetyDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Shield className="w-5 h-5 text-emerald-400" />
-            مركز الأمان والحماية من الحظر
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">يتحدث كل 10 ثوانٍ</p>
+          <h1 className="page-title">الأمان والحماية</h1>
+          <p className="page-desc mt-1">مؤشرات الجودة والحماية من الحظر — يتحدّث كل 10 ثوانٍ</p>
         </div>
-        <button onClick={load} className="text-sm text-slate-400 hover:text-white flex items-center gap-1.5">
-          <RefreshCw className="w-4 h-4" /> تحديث
+        <button onClick={load} className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white">
+          <RefreshCw className="w-3.5 h-3.5" /> تحديث
         </button>
       </div>
 

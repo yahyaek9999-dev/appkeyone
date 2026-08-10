@@ -60,18 +60,16 @@ export default function BusinessUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-brand-400" /> تحليلات الأعمال
-          </h1>
+          <h1 className="page-title">تحليلات الأعمال</h1>
           <p className="page-desc">الاحتفاظ بالعملاء، معدل التكرار، الإيراد بالشريحة، وعائد الحملات.</p>
         </div>
         <button
           onClick={() => load(true)} disabled={refreshing}
-          className="btn-ghost px-3 py-2 text-sm gap-2"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
         >
-          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           تحديث
         </button>
       </div>

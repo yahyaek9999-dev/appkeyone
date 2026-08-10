@@ -82,11 +82,8 @@ export default function WhiteLabelUi() {
 
   return (
     <div className="space-y-6 p-1">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Palette className="h-6 w-6 text-brand-400" />
-          العلامة البيضاء
-        </h1>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">العلامة البيضاء</h1>
         <p className="page-desc mt-1">اعرض المنصة بهوية علامتك التجارية لعملائك.</p>
       </div>
 

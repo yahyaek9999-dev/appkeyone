@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FadeInView } from "@/components/ui/stagger-reveal";
 import { LimelightTabs } from "@/components/ui/limelight-tabs";
 
 type Analytics = {
@@ -68,32 +67,29 @@ export default function AnalyticsUi() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
           <h1 className="page-title">التحليلات</h1>
-          <p className="page-desc mt-1">نظرة شاملة على أداء عملك</p>
+          <p className="page-desc mt-1">أداء نشاطك التجاري — آخر {days} يوم</p>
         </div>
         <LimelightTabs
           activeKey={String(days)}
           onChange={(k) => setDays(Number(k))}
-          tabs={[7, 30, 90].map((d) => ({ key: String(d), label: `آخر ${d} يوم` }))}
+          tabs={[7, 30, 90].map((d) => ({ key: String(d), label: `${d} يوم` }))}
         />
       </div>
 
       {/* Key metrics — flat, dense, data-first */}
-      <FadeInView delay={0.05}>
-      <div className="metric-group grid-cols-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] sm:grid-cols-4">
         <MetricCell label="إجمالي العملاء" value={data.totals.customers.toLocaleString()} sub={`+${data.today.newCustomers} اليوم`} />
         <MetricCell label={`الرسائل (${data.days} يوم)`} value={data.totals.messages.toLocaleString()} sub={`${data.today.messages} اليوم`} />
-        <MetricCell label="عملاء ساخنون" value={data.totals.leadsHot.toLocaleString()} sub={`${data.totals.leadsWarm} دافئين`} />
-        <MetricCell label="توفير LLM" value={`~${data.savings.estUsdSaved}$`} sub={`${data.savings.estLlmCallsSaved} استدعاء`} />
+        <MetricCell label="عملاء ساخنون" value={data.totals.leadsHot.toLocaleString()} sub={`${data.totals.leadsWarm} دافئ`} />
+        <MetricCell label="ردود تلقائية" value={data.savings.estLlmCallsSaved.toLocaleString()} sub={`توفير ${data.savings.estUsdSaved}$`} />
       </div>
-      </FadeInView>
 
       {/* Daily message chart */}
-      <FadeInView delay={0.1}>
       <div className="card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title">حركة الرسائل اليومية</h2>
@@ -110,10 +106,8 @@ export default function AnalyticsUi() {
         </div>
         <DailyChart data={data.messagesDaily} />
       </div>
-      </FadeInView>
 
       {/* Two-column: intent + sentiment */}
-      <FadeInView delay={0.15}>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">
           <h2 className="section-title mb-3">نوايا العملاء</h2>
@@ -124,7 +118,6 @@ export default function AnalyticsUi() {
           <DistRows data={data.sentiment} labels={SENTIMENT_LABEL} colors={{ positive: "bg-emerald-500", neutral: "bg-slate-500", negative: "bg-amber-500", angry: "bg-rose-500" }} />
         </div>
       </div>
-      </FadeInView>
 
       {/* Two-column: lead distribution + top tags */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -198,7 +191,7 @@ export default function AnalyticsUi() {
         <div className="card p-4">
           <h2 className="section-title mb-1">الردود السريعة</h2>
           <p className="text-xs text-slate-500 mb-3">
-            كل استخدام = استدعاء LLM موفّر
+            كل استخدام يوفّر ردًا يدويًا ويُسرّع خدمة العميل
           </p>
           {data.quickReplies.topTriggers.length === 0 ? (
             <EmptyState icon={<Zap className="h-full w-full" />} title="لا توجد ردود سريعة بعد" description="أنشئ ردوداً سريعة لتوفير استدعاءات الذكاء." size="sm" />
@@ -219,11 +212,11 @@ export default function AnalyticsUi() {
               })}
               <div className="mt-2 pt-2 border-t border-white/[0.06] space-y-1">
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">إجمالي استدعاءات LLM موفّرة:</span>
+                  <span className="text-slate-500">إجمالي ردود تلقائية:</span>
                   <span className="font-medium text-white tabular-nums">{data.quickReplies.totalHits}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">نسبة الرسائل بدون LLM:</span>
+                  <span className="text-slate-500">نسبة الردود التلقائية:</span>
                   <span className="font-medium text-white tabular-nums">{Math.round(data.savings.quickReplyShare * 100)}%</span>
                 </div>
               </div>

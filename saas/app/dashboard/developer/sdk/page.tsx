@@ -44,7 +44,7 @@ export default async function SdkPage() {
   }
   return (
     <div className="space-y-6 max-w-4xl">
-      <h1 className="page-title mb-1 flex items-center gap-2"><Code2 className="h-6 w-6 text-brand-300" /> مولّد SDK</h1>
+      <h1 className="page-title mb-1">مولّد SDK</h1>
       <p className="page-desc">مكتبات عميل جاهزة للصق لواجهة KEYONE العامة (/api/v1). استبدل المفتاح والنطاق.</p>
       <Snippet title="cURL" code={CURL} />
       <Snippet title="JavaScript (fetch)" code={JS} />

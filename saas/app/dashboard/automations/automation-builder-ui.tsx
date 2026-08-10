@@ -144,13 +144,10 @@ export default function AutomationBuilderUi() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title mb-1 flex items-center gap-2">
-            <Zap className="h-5 w-5 text-amber-400" />
-            أتمتة التجارة
-          </h1>
-          <p className="page-desc">قواعد no-code تُرسِل إشعارات واتساب أو بريد إلكتروني تلقائياً عند أحداث الطلبات.</p>
+          <h1 className="page-title mb-1">أتمتة التجارة</h1>
+          <p className="page-desc">قواعد إشعارات تلقائية لأحداث الطلبات عبر واتساب أو البريد.</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-primary shrink-0">
           <Plus className="h-4 w-4" /> قاعدة جديدة
