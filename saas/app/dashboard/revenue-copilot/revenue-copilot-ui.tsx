@@ -270,6 +270,19 @@ function OpportunityRow({ o }: { o: Opportunity }) {
       await navigator.clipboard.writeText(o.suggestedMessage);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
+      // Seed the self-learning loop so the copilot learns which actions convert.
+      fetch("/api/intel/track-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: o.customerId,
+          action: o.action,
+          reason: o.reason,
+          suggestedMessage: o.suggestedMessage,
+          estimatedValue: o.estimatedValue,
+          confidence: o.confidence,
+        }),
+      }).catch(() => {});
     } catch {}
   }
 

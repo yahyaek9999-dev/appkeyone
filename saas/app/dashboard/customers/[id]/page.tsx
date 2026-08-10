@@ -2,7 +2,10 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Phone, ShoppingBag, MessageSquare, Calendar, TrendingUp, ArrowUpRight, Send, Package } from "lucide-react";
+import {
+  ArrowRight, Phone, ShoppingBag, MessageSquare, Calendar, TrendingUp,
+  ArrowUpRight, Send, Package, AlertTriangle, Zap, RotateCcw, Shield, Tag,
+} from "lucide-react";
 import ChatView from "./chat-view";
 import CustomerTabs from "./customer-tabs";
 import CopyPhoneButton from "./copy-phone-button";
@@ -11,13 +14,71 @@ import DeleteCustomerButton from "./delete-button";
 import MergeCustomerButton from "./merge-button";
 import { timeAgo } from "@/lib/utils";
 import { OrderStatusPill, type OrderStatus } from "@/components/ui/order-status-pill";
+import { decideNextBestAction } from "@/lib/intelligence/next-best-action";
+import { classifyValueTier, valueTierLabel } from "@/lib/intelligence/value-tier";
+import {
+  computeChurnProbability, churnBand, churnBandLabel,
+  computeSentimentTrend,
+} from "@/lib/intelligence/churn";
+import { readNegotiation } from "@/lib/sales-engine";
+import type { NbaAction, ValueTier } from "@/lib/intelligence/types";
+
+// ── Static UI helpers (pure) ───────────────────────────────────────────────
+
+function tierBadgeStyle(tier: ValueTier): string {
+  switch (tier) {
+    case "platinum": return "text-yellow-200 bg-yellow-500/10 border-yellow-500/20";
+    case "gold":     return "text-amber-200 bg-amber-500/10 border-amber-500/20";
+    case "silver":   return "text-slate-300 bg-white/[0.06] border-white/[0.10]";
+    case "bronze":   return "text-orange-300 bg-orange-500/10 border-orange-500/20";
+    default:         return "text-slate-400 bg-white/[0.04] border-white/[0.08]";
+  }
+}
+
+function nbaBannerStyle(action: NbaAction) {
+  switch (action) {
+    case "escalate":     return { border: "border-rose-500/25",  bg: "bg-rose-500/[0.06]",  text: "text-rose-200" };
+    case "close_now":
+    case "upsell":       return { border: "border-brand-500/25", bg: "bg-brand-500/[0.05]", text: "text-brand-200" };
+    case "win_back":     return { border: "border-amber-500/25", bg: "bg-amber-500/[0.06]", text: "text-amber-200" };
+    case "answer_fast":
+    case "nudge_followup":
+    case "build_trust":  return { border: "border-sky-500/20",   bg: "bg-sky-500/[0.05]",   text: "text-sky-200" };
+    default:             return { border: "border-white/[0.07]", bg: "bg-white/[0.02]",     text: "text-slate-200" };
+  }
+}
+
+function nbaIcon(action: NbaAction) {
+  switch (action) {
+    case "escalate":   return <AlertTriangle className="h-4 w-4 text-rose-400" />;
+    case "close_now":
+    case "answer_fast": return <Zap className="h-4 w-4 text-brand-400" />;
+    case "win_back":   return <RotateCcw className="h-4 w-4 text-amber-400" />;
+    case "upsell":     return <TrendingUp className="h-4 w-4 text-brand-400" />;
+    case "build_trust": return <Shield className="h-4 w-4 text-sky-400" />;
+    case "offer_value":
+    case "reduce_friction": return <Tag className="h-4 w-4 text-sky-400" />;
+    default:           return <MessageSquare className="h-4 w-4 text-slate-400" />;
+  }
+}
+
+function nbaCta(action: NbaAction, customerId: string): { href: string; label: string } {
+  if (action === "escalate")    return { href: "/dashboard/escalations", label: "فتح التصعيدات" };
+  if (action === "win_back")    return { href: "/dashboard/recovery",    label: "إرسال رسالة" };
+  return { href: `/dashboard/inbox?c=${customerId}`, label: "فتح المحادثة" };
+}
+
+// ── Page component ─────────────────────────────────────────────────────────
 
 export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
   const user = await requireUser();
   const [customer, orders, broadcastItems, knowledgeGaps] = await Promise.all([
     prisma.customer.findUnique({
       where: { id: params.id },
-      include: { conversation: { include: { messages: { orderBy: { createdAt: "asc" } } } } },
+      include: {
+        conversation: { include: { messages: { orderBy: { createdAt: "asc" } } } },
+        memory: true,
+      },
     }),
     (prisma as any).order.findMany({
       where: { customerId: params.id, userId: user.id },
@@ -115,6 +176,89 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
     ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
     : "text-slate-400 bg-white/[0.04] border-white/[0.08]";
 
+  // ── Intelligence layer (read-only derivations) ────────────────────────────
+  const DAY = 24 * 60 * 60 * 1000;
+  const lastInboundTs = (customer as any).lastInboundAt || customer.lastSeenAt;
+  const daysSinceLastInbound = lastInboundTs
+    ? Math.floor((Date.now() - new Date(lastInboundTs).getTime()) / DAY)
+    : 999;
+
+  // Non-canceled orders for value classification
+  const nonCanceledOrders = (orders as any[]).filter(
+    (o) => o.status !== "canceled" && o.status !== "cancelled"
+  );
+  const nonCanceledRevenue = nonCanceledOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+  const nonCanceledCount = nonCanceledOrders.length;
+
+  const sortedOrders = [...nonCanceledOrders].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const daysSinceLastOrder = sortedOrders[0]
+    ? Math.floor((Date.now() - new Date(sortedOrders[0].createdAt).getTime()) / DAY)
+    : null;
+
+  const msgs = customer.conversation?.messages || [];
+  const lastMsg = msgs[msgs.length - 1];
+  const awaitingReply = !!lastMsg && (lastMsg as any).role === "user";
+
+  const valueTier = classifyValueTier({
+    revenue: nonCanceledRevenue,
+    orderCount: nonCanceledCount,
+    daysSinceLastOrder,
+    leadScore: customer.leadScore || 0,
+  });
+
+  const churnProbability = computeChurnProbability({
+    churnRiskScore: customer.churnRiskScore || 0,
+    retentionScore: customer.retentionScore ?? 50,
+    loyaltyScore: customer.loyaltyScore || 0,
+    daysSinceLastInbound,
+    orderCount: nonCanceledCount,
+    hesitationScore: customer.hesitationScore || 0,
+  });
+  const cBand = churnBand(churnProbability);
+
+  const sentimentTrend = computeSentimentTrend(
+    (customer as any).memory?.sentimentHistory
+  );
+
+  // Parse objections from CustomerMemory.factsJson
+  let memObjections: { price?: boolean; trust?: boolean; shipping?: boolean; quality?: boolean } = {};
+  let memDiscountAsks = 0;
+  try {
+    const facts = JSON.parse((customer as any).memory?.factsJson || "{}");
+    const objArr: string[] = Array.isArray(facts.objections) ? facts.objections : [];
+    memObjections = {
+      price: objArr.includes("price"),
+      trust: objArr.includes("trust"),
+      shipping: objArr.includes("shipping"),
+      quality: objArr.includes("quality"),
+    };
+    memDiscountAsks = readNegotiation(facts).discountAsks || 0;
+  } catch {}
+
+  const nba = decideNextBestAction({
+    customerName: customer.name,
+    leadScore: customer.leadScore || 0,
+    conversionScore: customer.conversionScore || 0,
+    hesitationScore: customer.hesitationScore || 0,
+    churnRiskScore: churnProbability,
+    loyaltyScore: customer.loyaltyScore || 0,
+    purchaseProb: customer.purchaseProb || 0,
+    frustrationScore: customer.frustrationScore || 0,
+    lastIntent: customer.lastIntent,
+    lastSentiment: customer.lastSentiment,
+    orderCount: nonCanceledCount,
+    daysSinceLastInbound,
+    awaitingReply,
+    valueTier,
+    objections: memObjections,
+    discountAsks: memDiscountAsks,
+  });
+
+  const nbaStyle = nbaBannerStyle(nba.action);
+  const cta = nbaCta(nba.action, customer.id);
+
   const initials = (customer.name || customer.phone || "؟")[0]?.toUpperCase();
   const phoneInfo = formatCustomerPhone(customer.phone);
 
@@ -143,9 +287,22 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-[22px] font-bold text-white">{customer.name || "بدون اسم"}</h1>
+                {/* Stage badge */}
                 <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold ${stageColor}`}>
                   {stage}
                 </span>
+                {/* Value tier badge — only for actual buyers */}
+                {valueTier !== "lead" && (
+                  <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold ${tierBadgeStyle(valueTier)}`}>
+                    {valueTierLabel(valueTier)}
+                  </span>
+                )}
+                {/* Churn risk badge — only when elevated */}
+                {(cBand === "at_risk" || cBand === "critical") && (
+                  <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold ${cBand === "critical" ? "text-rose-300 bg-rose-500/10 border-rose-500/20" : "text-amber-300 bg-amber-500/10 border-amber-500/20"}`}>
+                    {churnBandLabel(cBand)}
+                  </span>
+                )}
               </div>
               <div className="mt-1 flex items-center gap-2 text-[13px] text-slate-500">
                 <Phone className="h-3.5 w-3.5 shrink-0" />
@@ -212,65 +369,49 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
         </div>
       </div>
 
-      {/* ── Recommended next action ─────────────────────────────────────── */}
-      {(() => {
-        // Compute the single most relevant action
-        if (pendingOrders.length > 0) {
-          const o = pendingOrders[0];
-          const firstItem = o.items?.[0]?.name;
-          return (
-            <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
-              <Package className="h-4 w-4 shrink-0 text-amber-400" />
-              <div className="min-w-0 flex-1 text-[13px]">
-                <span className="text-amber-200 font-medium">طلب معلّق</span>
-                {firstItem && <span className="text-amber-300/70 mr-1.5">— {firstItem}</span>}
-                {pendingOrders.length > 1 && <span className="text-amber-300/50 mr-1"> و{pendingOrders.length - 1} آخر</span>}
+      {/* ── NBA action banner ────────────────────────────────────────────── */}
+      {nba.action !== "hold" && (
+        <div className={`mb-5 rounded-xl border ${nbaStyle.border} ${nbaStyle.bg} px-4 py-4`}>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0">{nbaIcon(nba.action)}</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`text-[13px] font-semibold ${nbaStyle.text}`}>{nba.title}</span>
+                {nba.confidence >= 70 && (
+                  <span className="rounded border border-white/[0.07] bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-slate-500">إشارة قوية</span>
+                )}
+                {sentimentTrend === "declining" && (
+                  <span className="rounded border border-rose-500/20 bg-rose-500/[0.05] px-1.5 py-0.5 text-[10px] text-rose-400">المزاج يسوء</span>
+                )}
+                {sentimentTrend === "improving" && (
+                  <span className="rounded border border-brand-500/20 bg-brand-500/[0.05] px-1.5 py-0.5 text-[10px] text-brand-400">المزاج يتحسّن</span>
+                )}
               </div>
-              <Link
-                href={`/dashboard/orders/${o.id}`}
-                className="shrink-0 inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium text-amber-200 hover:bg-amber-500/20 transition-colors"
-              >
-                معالجة الطلب <ArrowUpRight className="h-3 w-3" />
-              </Link>
+              <p className="mt-0.5 text-[12px] text-slate-400">{nba.reason}</p>
+              {/* Ready-to-paste Arabic message */}
+              {nba.suggestedMessage && (
+                <div className="mt-2.5 rounded-lg border border-white/[0.06] bg-black/20 p-2.5 text-[12px] leading-relaxed text-slate-300" dir="rtl">
+                  {nba.suggestedMessage}
+                </div>
+              )}
+              {/* Signal factors — collapsed but readable */}
+              {nba.factors && nba.factors.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {nba.factors.filter(f => f.weight === "high").map((f, i) => (
+                    <span key={i} className="text-[10px] text-slate-600">{f.labelAr}: {f.value}</span>
+                  ))}
+                </div>
+              )}
             </div>
-          );
-        }
-        if (daysSinceLast >= 7 && msgCount > 0) {
-          return (
-            <div className="mb-5 flex items-center gap-3 rounded-xl border border-sky-500/20 bg-sky-500/[0.05] px-4 py-3">
-              <MessageSquare className="h-4 w-4 shrink-0 text-sky-400" />
-              <div className="min-w-0 flex-1 text-[13px]">
-                <span className="text-sky-200 font-medium">لا تواصل منذ {daysSinceLast} يوم</span>
-                <span className="text-sky-300/60 mr-1.5">— أرسل رسالة متابعة</span>
-              </div>
-              <Link
-                href={`/dashboard/inbox?c=${customer.id}`}
-                className="shrink-0 inline-flex items-center gap-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-[11px] font-medium text-sky-200 hover:bg-sky-500/20 transition-colors"
-              >
-                فتح المحادثة <Send className="h-3 w-3" />
-              </Link>
-            </div>
-          );
-        }
-        if (stage === "محادثة فقط") {
-          return (
-            <div className="mb-5 flex items-center gap-3 rounded-xl border border-brand-500/20 bg-brand-500/[0.04] px-4 py-3">
-              <ShoppingBag className="h-4 w-4 shrink-0 text-brand-400" />
-              <div className="min-w-0 flex-1 text-[13px]">
-                <span className="text-brand-200 font-medium">عميل محتمل</span>
-                <span className="text-brand-300/60 mr-1.5">— تواصل ولم يطلب بعد</span>
-              </div>
-              <Link
-                href={`/dashboard/inbox?c=${customer.id}`}
-                className="shrink-0 inline-flex items-center gap-1 rounded-md border border-brand-500/25 bg-brand-500/10 px-3 py-1.5 text-[11px] font-medium text-brand-200 hover:bg-brand-500/20 transition-colors"
-              >
-                تواصل معه <Send className="h-3 w-3" />
-              </Link>
-            </div>
-          );
-        }
-        return null;
-      })()}
+            <Link
+              href={cta.href}
+              className="shrink-0 inline-flex items-center gap-1 rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-white/[0.08] transition-colors"
+            >
+              {cta.label} <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* ── Pending orders (if any, above tabs) ─────────────────────────── */}
       {pendingOrders.length > 0 && (

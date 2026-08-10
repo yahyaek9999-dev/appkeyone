@@ -12,10 +12,19 @@ import {
   UserX,
   HelpCircle,
   ArrowUpRight,
+  BarChart2,
 } from "lucide-react";
 import { formatCustomerPhone } from "@/lib/phone";
 import { useToast } from "@/components/ui/toast";
 import { EmptyState } from "@/components/ui/empty-state";
+
+interface Outcomes {
+  sentLast30: number;
+  repliedWithin7d: number;
+  orderedWithin7d: number;
+  replyRate: number;
+  orderRate: number;
+}
 
 type Kind = "lost_customer" | "follow_up_op";
 
@@ -62,6 +71,7 @@ function urgencyLabel(u: number): { text: string; cls: string } {
 
 export default function RecoveryUi() {
   const [data, setData] = useState<Resp | null>(null);
+  const [outcomes, setOutcomes] = useState<Outcomes | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,9 +81,13 @@ export default function RecoveryUi() {
     else setLoading(true);
     setError(null);
     try {
-      const r = await fetch("/api/recovery", { cache: "no-store" });
+      const [r, o] = await Promise.all([
+        fetch("/api/recovery", { cache: "no-store" }),
+        fetch("/api/recovery/outcomes", { cache: "no-store" }),
+      ]);
       if (!r.ok) throw new Error("فشل تحميل البيانات");
       setData((await r.json()) as Resp);
+      if (o.ok) setOutcomes((await o.json()) as Outcomes);
     } catch (e: any) {
       setError(e?.message || "خطأ غير متوقع");
     } finally {
@@ -116,6 +130,38 @@ export default function RecoveryUi() {
           تحديث
         </button>
       </div>
+
+      {/* Recovery outcomes — 30-day attribution band */}
+      {outcomes && outcomes.sentLast30 > 0 && (
+        <div className="overflow-hidden rounded-xl border border-white/[0.07]">
+          <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-2.5">
+            <BarChart2 className="h-3.5 w-3.5 text-slate-600" />
+            <span className="text-[11px] font-medium text-slate-500">نتائج آخر 30 يوم</span>
+            <span className="mr-auto text-[10px] text-slate-600">نافذة الإسناد: 7 أيام بعد الإرسال</span>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-x-reverse divide-white/[0.05]">
+            <div className="px-4 py-3 text-center">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">أُرسلت</div>
+              <div className="mt-1.5 text-2xl font-bold tabular-nums text-white">{outcomes.sentLast30}</div>
+              <div className="text-[10px] text-slate-600">رسالة استعادة</div>
+            </div>
+            <div className="px-4 py-3 text-center">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">استجاب</div>
+              <div className={`mt-1.5 text-2xl font-bold tabular-nums ${outcomes.repliedWithin7d > 0 ? "text-brand-300" : "text-slate-600"}`}>
+                {outcomes.replyRate}%
+              </div>
+              <div className="text-[10px] text-slate-600">{outcomes.repliedWithin7d} عميل</div>
+            </div>
+            <div className="px-4 py-3 text-center">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">طلب بعدها</div>
+              <div className={`mt-1.5 text-2xl font-bold tabular-nums ${outcomes.orderedWithin7d > 0 ? "text-emerald-400" : "text-slate-600"}`}>
+                {outcomes.orderRate}%
+              </div>
+              <div className="text-[10px] text-slate-600">{outcomes.orderedWithin7d} طلب</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Priority summary band */}
       {data && data.count > 0 && (
