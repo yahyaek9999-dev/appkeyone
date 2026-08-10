@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   // Verify this customer belongs to the authenticated merchant
   const customer = await prisma.customer.findFirst({
     where: { id: customerId, userId: uid },
-    select: { id: true, conversationId: true },
+    select: { id: true },
   }).catch(() => null);
 
   if (!customer) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -70,7 +70,6 @@ export async function POST(req: Request) {
     create: {
       userId: uid,
       customerId,
-      conversationId: customer.conversationId || undefined,
       kind,
       status: "sent",
       sentAt: new Date(),

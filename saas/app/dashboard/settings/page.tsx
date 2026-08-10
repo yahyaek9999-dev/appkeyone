@@ -52,7 +52,6 @@ export default async function SettingsPage() {
               </div>
             </div>
           </div>
-        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
