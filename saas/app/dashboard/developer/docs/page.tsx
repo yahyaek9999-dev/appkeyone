@@ -32,9 +32,7 @@ export default async function DeveloperDocsPage() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="page-title mb-1 flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-brand-300" /> مركز توثيق المطوّرين
-          </h1>
+          <h1 className="page-title mb-1">توثيق المطوّرين</h1>
           <p className="page-desc">
             مرجع كامل لواجهة KEYONE البرمجية العامة (REST API v1) والويب هوك — مع أمثلة جاهزة بـ cURL.
           </p>

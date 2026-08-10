@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Sparkles, ArrowLeft, ArrowRight, Check, Loader2,
+  Rocket, ArrowLeft, ArrowRight, Check, Loader2,
   ShoppingBag, UtensilsCrossed, Megaphone, Code2, Stethoscope,
   GraduationCap, Briefcase, Building2, Factory, Shapes,
   type LucideIcon,
@@ -67,7 +67,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
     <div className="space-y-6">
       <header className="text-center">
         <div className="ai-badge">
-          <Sparkles className="w-3 h-3" />
+          <Rocket className="w-3 h-3" />
           إعداد سريع · أقل من 5 دقائق
         </div>
         <h1 className="ai-heading mt-3 text-3xl">أهلاً {userName.split("@")[0]} 👋</h1>
@@ -286,7 +286,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
             disabled={submitting || !!result}
             className="ai-btn ai-btn-primary px-5 py-2.5 text-sm disabled:opacity-40"
           >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
             {submitting ? "جاري الإعداد…" : result ? "تم" : "تفعيل البوت"}
           </button>
         )}

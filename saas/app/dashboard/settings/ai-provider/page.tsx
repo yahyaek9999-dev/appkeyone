@@ -40,9 +40,9 @@ export default async function AIProviderPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-2">مزوّد الذكاء الاصطناعي</h1>
-      <p className="text-slate-400 mb-8">
-        اختر مزوّد الذكاء الاصطناعي اللي بوتك يستخدمه. لو متاركتش الإعدادات هتشتغل
+      <h1 className="page-title mb-1">مزوّد الخدمة</h1>
+      <p className="page-desc mb-8">
+        اختر مزوّد الخدمة اللي بوتك يستخدمه. لو متاركتش الإعدادات هتشتغل
         بـ <span className="font-bold text-brand-300">KEYONE AI</span> الافتراضي.
       </p>
 

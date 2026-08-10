@@ -89,16 +89,9 @@ export default function QuickRepliesUi() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Zap className="w-6 h-6 text-yellow-400" />
-          الردود السريعة
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          الأسئلة المتكررة ترد عليها قوالبك مباشرة بدون استهلاك إضافي = توفير في الاستهلاك وسرعة فائقة.
-          <br/>
-          عندما يكتب العميل أحد الكلمات المفتاحية، يرد البوت تلقائياً بالنص المحفوظ.
-        </p>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">الردود السريعة</h1>
+        <p className="page-desc mt-1">الكلمات المفتاحية تُشغّل ردوداً جاهزة — أسرع للعميل وأوفر لك.</p>
       </div>
 
       {/* Add new */}

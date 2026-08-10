@@ -91,7 +91,7 @@ export default function BenchmarkUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">معيار العقل + جاهزية الذكاء</h1>
+          <h1 className="page-title mb-1">جاهزية المساعد</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يقيس قوة عقل المعرفة (TA-7) ويحسب درجة جاهزية الذكاء الموحّدة (TA-9) من كل أنظمتك
             الفعلية.
@@ -170,7 +170,7 @@ export default function BenchmarkUi() {
           {data.readiness && (
             <section className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
               <h2 className="font-bold inline-flex items-center gap-2">
-                <Gauge className="h-4 w-4 text-brand-300" /> جاهزية الذكاء (AI Readiness)
+                <Gauge className="h-4 w-4 text-brand-300" /> جاهزية المساعد
               </h2>
               <div className="flex items-end gap-3">
                 <div

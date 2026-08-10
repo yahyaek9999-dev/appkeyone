@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Play, CheckCircle2, AlertTriangle, XCircle, Lightbulb, Bot } from "lucide-react";
+import { Loader2, Play, CheckCircle2, AlertTriangle, XCircle, Lightbulb, MessageSquare } from "lucide-react";
 
 type Check = { key: string; label: string; status: "ok" | "warn" | "fail"; detail: string; recommendation: string; fixHref?: string };
 type Scenario = { key: string; label: string; message: string; reply: string; score: number; addressed: boolean; responded: boolean; weaknesses: string[]; suggestions: string[] };
@@ -40,7 +40,7 @@ export default function TestingArenaClient() {
     <div className="space-y-5">
       <div className="card flex flex-wrap items-center justify-between gap-3 p-5">
         <div className="text-sm text-slate-400">
-          يشغّل الفحص ٥ سيناريوهات حقيقية عبر نفس محرّك ردود البوت، ويراجع جاهزية الإعداد.
+          يشغّل الفحص ٥ سيناريوهات حقيقية عبر نظام الردود التلقائية، ويراجع جاهزية الإعداد.
         </div>
         <button onClick={run} disabled={busy} className="ai-btn ai-btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
@@ -63,7 +63,7 @@ export default function TestingArenaClient() {
               <div className={`text-4xl font-extrabold ${tone(res.auditScore)}`}>{res.auditScore}</div>
             </div>
             <div className="kpi-card text-center">
-              <div className="kpi-label mb-1">جودة ردود الذكاء</div>
+              <div className="kpi-label mb-1">جودة الردود</div>
               <div className={`text-4xl font-extrabold ${tone(res.scenarioScore)}`}>{res.scenarioScore}</div>
             </div>
           </div>
@@ -103,8 +103,8 @@ export default function TestingArenaClient() {
                     <span className="text-slate-500">رسالة العميل:</span> {s.message}
                   </div>
                   <div className="mb-2 flex items-start gap-2 rounded-lg bg-white/[0.03] p-2.5 text-xs text-slate-200">
-                    <Bot className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-300" />
-                    <span><span className="text-slate-500">ردّ البوت:</span> {s.reply}</span>
+                    <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-300" />
+                    <span><span className="text-slate-500">الرد التلقائي:</span> {s.reply}</span>
                   </div>
                   {s.weaknesses.length > 0 && (
                     <ul className="space-y-1">

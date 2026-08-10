@@ -9,7 +9,7 @@ import {
   Crown,
   Repeat,
   Flame,
-  Sparkles,
+  TrendingUp,
   ShoppingCart,
   Tag,
   AlertTriangle,
@@ -41,7 +41,7 @@ const ICON: Record<string, React.ReactNode> = {
   vip: <Crown className="h-4 w-4" />,
   repeat_buyers: <Repeat className="h-4 w-4" />,
   high_intent: <Flame className="h-4 w-4" />,
-  likely_again: <Sparkles className="h-4 w-4" />,
+  likely_again: <TrendingUp className="h-4 w-4" />,
   abandoned_cart: <ShoppingCart className="h-4 w-4" />,
   discount_hunters: <Tag className="h-4 w-4" />,
   at_risk: <AlertTriangle className="h-4 w-4" />,
@@ -96,14 +96,9 @@ export default function SegmentsUi() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Users className="h-6 w-6 text-gold-400" />
-          شرائح العملاء الذكية
-        </h1>
-        <p className="page-desc mt-1">
-          تجميع تلقائي لعملائك إلى شرائح قابلة للتنفيذ — {fmtNumber(total)} عميل
-        </p>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">شرائح العملاء</h1>
+        <p className="page-desc mt-1">تصنيف تلقائي لعملائك حسب السلوك والقيمة — {fmtNumber(total)} عميل</p>
       </div>
 
       {loading && !data ? (

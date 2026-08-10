@@ -6,8 +6,6 @@ import { timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
-import InsightStrip from "@/components/insight-strip";
-import { FadeInView } from "@/components/ui/stagger-reveal";
 
 const PAGE_SIZE = 30;
 
@@ -51,13 +49,16 @@ export default async function CustomersPage({
 
   return (
     <div className="space-y-5">
-      {/* Header — title + contextual counts */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.05] pb-5">
         <div>
           <h1 className="page-title">العملاء</h1>
-          <p className="page-desc mt-1">
-            {total.toLocaleString("ar-EG")} سجل · {active7d.toLocaleString("ar-EG")} نشط هذا الأسبوع
-          </p>
+          <div className="mt-2 flex items-center gap-3 text-[12px]">
+            <span className="text-slate-400">{total.toLocaleString("ar-EG")} إجمالي</span>
+            <span className="text-white/20">·</span>
+            <span className="text-emerald-400">{active7d.toLocaleString("ar-EG")} نشط هذا الأسبوع</span>
+            {q && <span className="text-slate-500">· نتائج "{q}"</span>}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <form action="/dashboard/customers" method="get" className="flex items-center gap-2">
@@ -81,9 +82,6 @@ export default async function CustomersPage({
         </div>
       </div>
 
-      <InsightStrip context="customers" />
-
-      <FadeInView delay={0.05}>
       {customers.length === 0 ? (
         <div className="card">
           <EmptyState
@@ -190,7 +188,6 @@ export default async function CustomersPage({
           )}
         </div>
       )}
-      </FadeInView>
     </div>
   );
 }

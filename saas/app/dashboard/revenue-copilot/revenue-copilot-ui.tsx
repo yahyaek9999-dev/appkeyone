@@ -15,18 +15,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Sparkles,
+  TrendingUp,
   RefreshCw,
   Loader2,
   Wallet,
   Target,
   Crown,
   AlertTriangle,
-  TrendingUp,
   Copy,
   Check,
   Phone,
-  GraduationCap,
+  BarChart2,
   Inbox,
 } from "lucide-react";
 
@@ -84,7 +83,7 @@ interface Resp {
 const egp = (n: number) => `${(n || 0).toLocaleString("en-US")} ج`;
 
 const TIER_META: Record<ValueTier, { label: string; cls: string }> = {
-  platinum: { label: "بلاتيني", cls: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" },
+  platinum: { label: "بلاتيني", cls: "border-brand-400/40 bg-brand-400/10 text-brand-200" },
   gold: { label: "ذهبي", cls: "border-amber-400/40 bg-amber-400/10 text-amber-200" },
   silver: { label: "فضي", cls: "border-slate-300/30 bg-slate-300/10 text-slate-200" },
   bronze: { label: "برونزي", cls: "border-orange-700/40 bg-orange-700/10 text-orange-300" },
@@ -144,25 +143,17 @@ export default function RevenueCopilotUi() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-brand-400" />
-            مساعد الإيرادات
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            قائمة واحدة مرتّبة بأعلى الفرص قيمةً — لكل عميل الخطوة التالية الأفضل،
-            نسبة الثقة، والقيمة المتوقعة. كله مبني على بياناتك الحالية بدون أي
-            تكلفة إضافية.
-          </p>
+          <h1 className="page-title">فرص الإيرادات</h1>
+          <p className="page-desc mt-1">أعلى الفرص قيمةً — لكل عميل الخطوة التالية والقيمة المتوقعة.</p>
         </div>
         <button
           onClick={() => load(true)}
           disabled={refreshing}
-          className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-sm inline-flex items-center gap-2 disabled:opacity-50"
-          title="تحديث"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
         >
-          {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           تحديث
         </button>
       </div>
@@ -181,38 +172,46 @@ export default function RevenueCopilotUi() {
 
       {data && !loading && (
         <>
-          {/* Headline KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Kpi icon={<Target className="w-4 h-4" />} label="فرص نشطة" value={`${data.opportunityCount}`} tone="brand" />
-            <Kpi icon={<Wallet className="w-4 h-4" />} label="قيمة الفرص المتوقعة" value={egp(data.totalPipelineValue)} tone="emerald" />
-            <Kpi icon={<TrendingUp className="w-4 h-4" />} label="قيمة عالية الثقة" value={egp(data.highConfidenceValue)} tone="sky" />
-            <Kpi
-              icon={<Crown className="w-4 h-4" />}
-              label="عملاء ذهبي+"
-              value={`${(data.tierCounts.platinum || 0) + (data.tierCounts.gold || 0)}`}
-              tone="amber"
-            />
+          {/* Headline KPIs — metric band */}
+          <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] sm:grid-cols-4">
+            {[
+              { label: "فرص نشطة", value: `${data.opportunityCount}`, cls: "text-brand-300" },
+              { label: "القيمة المتوقعة", value: egp(data.totalPipelineValue), cls: "text-emerald-300" },
+              { label: "الفرص المرتفعة", value: egp(data.highConfidenceValue), cls: "text-sky-300" },
+              { label: "عملاء ذهبي+", value: `${(data.tierCounts.platinum || 0) + (data.tierCounts.gold || 0)}`, cls: "text-amber-300" },
+            ].map((m) => (
+              <div key={m.label} className="px-4 py-3">
+                <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">{m.label}</div>
+                <div className={`mt-1.5 text-[22px] font-bold tabular-nums ${m.cls}`}>{m.value}</div>
+              </div>
+            ))}
           </div>
 
-          {/* Self-learning summary */}
+          {/* Follow-up performance summary */}
           {learn && learn.totalSent > 0 && (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <GraduationCap className="w-4 h-4 text-gold-300" />
-                <h2 className="text-sm font-bold text-slate-200">التعلّم من النتائج</h2>
+            <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.015]">
+              <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-3">
+                <BarChart2 className="w-4 h-4 text-slate-400" />
+                <h2 className="text-[13px] font-semibold text-white">نتائج المتابعات</h2>
                 <span className="text-[11px] text-slate-500">
-                  آخر {learn.windowDays} يوم · {learn.totalSent} متابعة · دقة العيّنة:{" "}
-                  {learn.sampleConfidence === "high" ? "عالية" : learn.sampleConfidence === "medium" ? "متوسطة" : "منخفضة"}
+                  آخر {learn.windowDays} يوم · {learn.totalSent} رسالة
                 </span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                <MiniKpi label="نسبة الرد" value={`${Math.round(learn.overallReplyRate * 100)}%`} />
-                <MiniKpi label="نسبة التحويل" value={`${Math.round(learn.overallConversionRate * 100)}%`} />
-                <MiniKpi label="إيراد منسوب" value={egp(learn.totalRevenue)} />
-                <MiniKpi label="أفضل نوع متابعة" value={learn.bestKind ? KIND_AR[learn.bestKind] || learn.bestKind : "—"} />
+              <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] sm:grid-cols-4">
+                {[
+                  { label: "معدل الرد", value: `${Math.round(learn.overallReplyRate * 100)}%` },
+                  { label: "معدل التحويل", value: `${Math.round(learn.overallConversionRate * 100)}%` },
+                  { label: "إيراد من متابعات", value: egp(learn.totalRevenue) },
+                  { label: "أنجح نوع", value: learn.bestKind ? KIND_AR[learn.bestKind] || learn.bestKind : "—" },
+                ].map((m) => (
+                  <div key={m.label} className="px-4 py-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">{m.label}</div>
+                    <div className="mt-1 text-[15px] font-bold text-white">{m.value}</div>
+                  </div>
+                ))}
               </div>
               {learn.byKind.filter((k) => k.sent >= 1).length > 0 && (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 border-t border-white/[0.05] px-4 py-3">
                   {learn.byKind
                     .filter((k) => k.sent >= 1)
                     .slice(0, 6)
@@ -221,7 +220,7 @@ export default function RevenueCopilotUi() {
                         <span className="w-28 shrink-0 text-slate-300">{KIND_AR[k.kind] || k.kind}</span>
                         <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-gold-400/70"
+                            className="h-full rounded-full bg-brand-400/70"
                             style={{ width: `${Math.round(k.conversionRate * 100)}%` }}
                           />
                         </div>
@@ -271,15 +270,34 @@ function OpportunityRow({ o }: { o: Opportunity }) {
       await navigator.clipboard.writeText(o.suggestedMessage);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
+      // Seed the self-learning loop so the copilot learns which actions convert.
+      fetch("/api/intel/track-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: o.customerId,
+          action: o.action,
+          reason: o.reason,
+          suggestedMessage: o.suggestedMessage,
+          estimatedValue: o.estimatedValue,
+          confidence: o.confidence,
+        }),
+      }).catch(() => {});
     } catch {}
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 hover:border-white/[0.12] transition">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+    <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.015] transition hover:border-white/[0.12]">
+      {/* Row summary */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-white truncate">{o.customerName || o.customerPhone}</span>
+            <Link
+              href={`/dashboard/customers/${o.customerId}`}
+              className="text-[13px] font-semibold text-white hover:text-brand-300 transition-colors"
+            >
+              {o.customerName || o.customerPhone}
+            </Link>
             <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${tier.cls}`}>
               <Crown className="w-2.5 h-2.5" /> {tier.label}
             </span>
@@ -289,66 +307,45 @@ function OpportunityRow({ o }: { o: Opportunity }) {
               </span>
             )}
           </div>
-          <div className={`mt-1.5 inline-flex items-center rounded-lg border px-2 py-0.5 text-[12px] font-bold ${actionCls}`}>
-            {o.title}
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-bold ${actionCls}`}>
+              {o.title}
+            </span>
+            <span className="text-[12px] text-slate-400">{o.reason}</span>
           </div>
-          <p className="mt-1.5 text-[13px] text-slate-300 leading-relaxed">{o.reason}</p>
         </div>
         <div className="shrink-0 text-left">
-          <div className="text-emerald-300 font-bold text-sm">{egp(o.estimatedValue)}</div>
-          <div className="text-[11px] text-slate-500">ثقة {o.confidence}%</div>
+          <div className="text-[15px] font-bold tabular-nums text-emerald-300">{egp(o.estimatedValue)}</div>
+          <div className="text-[10px] text-slate-600">
+            {o.confidence >= 75 ? "احتمالية عالية" : o.confidence >= 50 ? "متوسطة" : "منخفضة"}
+          </div>
         </div>
       </div>
 
+      {/* Suggested message + actions */}
       {o.suggestedMessage && (
-        <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-          <div className="text-[13px] leading-relaxed text-slate-200">{o.suggestedMessage}</div>
+        <div className="border-t border-white/[0.04] px-4 pb-3 pt-2.5">
+          <div className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2 text-[13px] leading-relaxed text-slate-200 mb-2.5">
+            {o.suggestedMessage}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyMsg}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-slate-400 transition hover:text-white hover:bg-white/[0.06]"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? "تم النسخ" : "نسخ الرسالة"}
+            </button>
+            <Link
+              href={`/dashboard/inbox?c=${o.customerId}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-slate-400 transition hover:text-white hover:bg-white/[0.06]"
+            >
+              <Phone className="w-3.5 h-3.5" /> فتح المحادثة
+            </Link>
+          </div>
         </div>
       )}
-
-      <div className="mt-2.5 flex items-center gap-2">
-        <button
-          onClick={copyMsg}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[12px] font-semibold text-slate-200 transition hover:bg-white/[0.08]"
-        >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-          {copied ? "تم النسخ" : "نسخ الرسالة"}
-        </button>
-        <Link
-          href={`/dashboard/inbox?c=${o.customerId}`}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[12px] font-semibold text-slate-200 transition hover:bg-white/[0.08]"
-        >
-          <Phone className="w-3.5 h-3.5" /> فتح المحادثة
-        </Link>
-      </div>
     </div>
   );
 }
 
-const KPI_TONE: Record<string, string> = {
-  brand: "text-brand-300",
-  emerald: "text-emerald-300",
-  sky: "text-sky-300",
-  amber: "text-amber-300",
-};
-
-function Kpi({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: string }) {
-  return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-      <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${KPI_TONE[tone] || "text-slate-300"}`}>
-        {icon}
-        {label}
-      </div>
-      <div className="mt-1.5 text-lg font-black text-white">{value}</div>
-    </div>
-  );
-}
-
-function MiniKpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5">
-      <div className="text-[10px] text-slate-500">{label}</div>
-      <div className="mt-0.5 text-sm font-bold text-slate-100">{value}</div>
-    </div>
-  );
-}

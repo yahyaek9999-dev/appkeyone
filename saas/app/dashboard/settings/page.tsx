@@ -1,10 +1,9 @@
 import { getAuthContext } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/rbac";
-import { CreditCard, Mail, User, Phone, Sparkles, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug, ShoppingBag, Building2, Server } from "lucide-react";
+import { CreditCard, Mail, User, Phone, Settings, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug, ShoppingBag, Building2, Server } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
-import { FadeInView } from "@/components/ui/stagger-reveal";
 import { bridgeEnabled } from "@/lib/bridge/flags";
 
 export default async function SettingsPage() {
@@ -23,14 +22,13 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="border-b border-white/[0.05] pb-5">
         <h1 className="page-title mb-1">حسابي</h1>
         <p className="page-desc">معلومات الحساب والاشتراك</p>
       </div>
 
       {/* Hero identity card */}
-      <FadeInView>
-        <div className="surface relative overflow-hidden p-5 sm:p-6">
+      <div className="surface relative overflow-hidden p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-4">
             <Avatar name={displayName} size="xl" />
             <div className="min-w-0 flex-1">
@@ -55,9 +53,8 @@ export default async function SettingsPage() {
             </div>
           </div>
         </div>
-      </FadeInView>
+      </div>
 
-      <FadeInView delay={0.05}>
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="card p-5">
           <h2 className="section-title mb-4">المعلومات الشخصية</h2>
@@ -111,18 +108,16 @@ export default async function SettingsPage() {
         </div>
         )}
       </div>
-      </FadeInView>
 
       {(showSettingsLinks || showTeam) && (
-      <FadeInView delay={0.1}>
       <div className="card divide-y divide-white/[0.04] overflow-hidden">
         {showSettingsLinks && (
         <>
         <SettingLink href="/dashboard/settings/business-profile" icon={<Building2 className="h-5 w-5 text-indigo-300" />}
           title="نوع النشاط والوحدات"
           desc="اختر نوع نشاطك (متجر، مطعم، خدمات، برمجيات...) وفعّل أو عطّل وحدات مساحة العمل لتناسب عملك." />
-        <SettingLink href="/dashboard/settings/ai-provider" icon={<Sparkles className="h-5 w-5 text-brand-300" />}
-          title="مزوّد الذكاء الاصطناعي"
+        <SettingLink href="/dashboard/settings/ai-provider" icon={<Settings className="h-5 w-5 text-brand-300" />}
+          title="مزوّد الخدمة"
           desc="اشتغل بـ KEYONE AI أو اربط مزوّدك الخاص (OpenAI / Gemini / Claude / Groq / OpenRouter)" />
         <SettingLink href="/dashboard/settings/providers" icon={<Plug className="h-5 w-5 text-violet-300" />}
           title="المزوّدون (ذكاء، صوت، صور، SMS، بريد)"
@@ -150,7 +145,6 @@ export default async function SettingsPage() {
           desc="أضف أعضاء الفريق وحدد صلاحياتهم: مدير، مبيعات، دعم، أو مشاهد." />
         )}
       </div>
-      </FadeInView>
       )}
     </div>
   );

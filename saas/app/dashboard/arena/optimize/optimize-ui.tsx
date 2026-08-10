@@ -75,7 +75,7 @@ export default function OptimizeUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">محرّك التحسين التلقائي</h1>
+          <h1 className="page-title mb-1">التحسين التلقائي</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             مهام تحسين حقيقية (إعادة فهرسة، بناء المخطط) تُقاس قبل/بعد عبر إعادة تشغيل ساحة
             الاختبار.

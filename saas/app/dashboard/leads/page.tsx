@@ -9,7 +9,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { LeadStatusBadge, type LeadStatus } from "@/components/ui/lead-status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusDot } from "@/components/ui/status-dot";
-import { FadeInView, StaggerReveal, StaggerItem } from "@/components/ui/stagger-reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -85,30 +84,18 @@ export default async function LeadsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-orange-500/20 to-rose-500/10 ring-1 ring-inset ring-orange-500/25">
-            <Flame className="h-5 w-5 text-orange-300" />
-          </div>
-          <div>
-            <h1 className="page-title">العملاء المحتملون</h1>
-            <p className="page-desc mt-1">
-              مرتّبون حسب احتمالية الشراء — أعلى نقاط = أقرب للشراء.
-            </p>
-          </div>
-        </div>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">العملاء المحتملون</h1>
+        <p className="page-desc mt-1">مرتّبون حسب احتمالية الشراء — الأعلى نقاطاً هم الأقرب للشراء.</p>
       </div>
 
       {/* Stat band */}
-      <FadeInView>
-        <div className="metric-group grid-cols-3">
-          <LeadStat icon={<Flame className="h-4 w-4" />} label="ساخن · 70+" value={hot} tone="text-orange-300" />
-          <LeadStat icon={<TrendingUp className="h-4 w-4" />} label="دافئ · 40–69" value={warm} tone="text-amber-300" />
-          <LeadStat icon={<Activity className="h-4 w-4" />} label="إجمالي العملاء" value={leads.length} tone="text-white" />
-        </div>
-      </FadeInView>
+      <div className="metric-group grid-cols-3">
+        <LeadStat icon={<Flame className="h-4 w-4" />} label="ساخن · 70+" value={hot} tone="text-orange-300" />
+        <LeadStat icon={<TrendingUp className="h-4 w-4" />} label="دافئ · 40–69" value={warm} tone="text-amber-300" />
+        <LeadStat icon={<Activity className="h-4 w-4" />} label="إجمالي العملاء" value={leads.length} tone="text-white" />
+      </div>
 
-      <FadeInView delay={0.05}>
       {leads.length === 0 ? (
         <div className="card">
           <EmptyState
@@ -121,13 +108,13 @@ export default async function LeadsPage() {
       ) : (
         <>
           {/* Mobile cards */}
-          <StaggerReveal className="space-y-3 md:hidden" stagger={0.05}>
+          <div className="space-y-3 md:hidden">
             {leads.map((c: any) => {
               const sent = SENTIMENT_BADGE[c.lastSentiment || "neutral"] || SENTIMENT_BADGE.neutral;
               const intent = INTENT_BADGE[c.lastIntent || "other"] || INTENT_BADGE.other;
               const lastMsg = c.conversation?.messages[0]?.content || "—";
               return (
-                <StaggerItem key={c.id}>
+                <div key={c.id}>
                 <div className="card-hover p-4">
                   <div className="flex items-center gap-3">
                     <div className="relative shrink-0">
@@ -166,10 +153,10 @@ export default async function LeadsPage() {
                     </Link>
                   )}
                 </div>
-                </StaggerItem>
+                </div>
               );
             })}
-          </StaggerReveal>
+          </div>
 
           {/* Desktop table */}
           <div className="card mobile-scroll-x hidden overflow-hidden md:block">
@@ -247,7 +234,6 @@ export default async function LeadsPage() {
           </div>
         </>
       )}
-      </FadeInView>
     </div>
   );
 }

@@ -61,7 +61,7 @@ function EventBody({ ev }: { ev: TimelineEvent }) {
     return (
       <div>
         <span className={`text-[11px] font-semibold ${ev.role === "user" ? "text-sky-300" : "text-emerald-300"}`}>
-          {ev.role === "user" ? "العميل" : "البوت"}
+          {ev.role === "user" ? "العميل" : "تلقائي"}
         </span>
         <p className="mt-0.5 text-xs text-slate-300 line-clamp-2 leading-relaxed">{ev.content}</p>
       </div>

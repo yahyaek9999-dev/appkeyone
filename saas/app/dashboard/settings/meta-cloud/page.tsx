@@ -45,7 +45,7 @@ export default async function MetaCloudPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold mb-2">واتساب — وضع الاتصال</h1>
+        <h1 className="page-title mb-1">واتساب — وضع الاتصال</h1>
         <p className="text-slate-400">
           اختر طريقة الاتصال بواتساب: <b className="text-emerald-300">QR Code</b> (السلوك الحالي، شغّال للجميع)
           أو <b className="text-brand-300">Meta Cloud API</b> (الربط الرسمي عبر Meta Business).

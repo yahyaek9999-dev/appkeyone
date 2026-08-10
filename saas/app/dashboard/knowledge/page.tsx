@@ -13,8 +13,8 @@ export default async function KnowledgePage() {
         <LockedFeature
           locale="ar"
           recommendedTier={g.recommendedTier}
-          title="مركز تدريب المساعد (قاعدة المعرفة)"
-          description="درّب البوت على منتجاتك وأسعارك وسياساتك ليردّ بدقّة من مصدرك أنت. متاحة في باقة Pro فأعلى."
+          title="مركز المعرفة"
+          description="أضف منتجاتك وأسعارك وسياساتك لتحسين دقة الردود التلقائية. متاحة في باقة Pro فأعلى."
         />
       </div>
     );
@@ -35,9 +35,9 @@ export default async function KnowledgePage() {
   });
   return (
     <div>
-      <h1 className="page-title mb-1">مركز تدريب المساعد</h1>
+      <h1 className="page-title mb-1">مركز المعرفة</h1>
       <p className="page-desc mb-6">
-        أضف منتجاتك وأسعارك وسياساتك وأسئلتك الشائعة — البوت يستخدمها كمصدر رئيسي للإجابة.
+        أضف منتجاتك وأسعارك وسياساتك وأسئلتك الشائعة — تُستخدم كمصدر رئيسي للردود التلقائية.
       </p>
       <KnowledgeUI docs={JSON.parse(JSON.stringify(docs))} />
     </div>

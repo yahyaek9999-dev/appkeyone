@@ -3,7 +3,7 @@
 // Growth Suite — Coupon / Discount engine (premium, mobile responsive).
 
 import { useEffect, useState } from "react";
-import { Ticket, Plus, Loader2, Trash2, X, Sparkles, Percent, BadgeDollarSign, CalendarClock } from "lucide-react";
+import { Ticket, Plus, Loader2, Trash2, X, Zap, Percent, BadgeDollarSign, CalendarClock } from "lucide-react";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -83,15 +83,12 @@ export default function CouponsUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Ticket className="h-6 w-6 text-gold-400" />
-            الكوبونات والخصومات
-          </h1>
-          <p className="page-desc mt-1">أنشئ كوبونات يقدّمها النظام تلقائيًا للعملاء المترددين وفي حملات الاستعادة</p>
+          <h1 className="page-title">الكوبونات</h1>
+          <p className="page-desc mt-1">كوبونات تُقدَّم تلقائياً للعملاء المترددين وفي حملات الاستعادة</p>
         </div>
-        <button onClick={() => setCreating({ ...EMPTY })} className="ai-btn ai-btn-primary px-4 py-2 text-sm">
+        <button onClick={() => setCreating({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
           <Plus className="h-4 w-4" /> كوبون جديد
         </button>
       </div>
@@ -130,7 +127,7 @@ export default function CouponsUi() {
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {c.autoOffer && (
                     <span className="inline-flex items-center gap-1 rounded-md border border-brand-500/30 bg-brand-500/10 px-1.5 py-0.5 text-[10px] text-brand-300">
-                      <Sparkles className="h-3 w-3" /> عرض تلقائي AI
+                      <Zap className="h-3 w-3" /> عرض تلقائي
                     </span>
                   )}
                   {c.oneTime && <span className="chip px-2 py-0.5 text-[10px]">مرة واحدة/عميل</span>}
@@ -214,7 +211,7 @@ export default function CouponsUi() {
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 text-xs text-slate-300">
                   <input type="checkbox" checked={creating.autoOffer} onChange={(e) => setCreating({ ...creating, autoOffer: e.target.checked })} className="accent-brand-500" />
-                  <Sparkles className="h-3.5 w-3.5 text-brand-400" /> اسمح للذكاء الاصطناعي بعرضه تلقائيًا (للمترددين / الباحثين عن خصم)
+                  <Zap className="h-3.5 w-3.5 text-brand-400" /> اسمح بعرضه تلقائيًا (للمترددين / الباحثين عن خصم)
                 </label>
                 <label className="flex items-center gap-2 text-xs text-slate-300">
                   <input type="checkbox" checked={creating.oneTime} onChange={(e) => setCreating({ ...creating, oneTime: e.target.checked })} className="accent-brand-500" />

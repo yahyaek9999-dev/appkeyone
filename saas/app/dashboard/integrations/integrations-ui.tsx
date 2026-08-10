@@ -326,17 +326,12 @@ export default function IntegrationsUi() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Plug className="w-6 h-6 text-brand-400" />
-            تكاملات التجارة
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            اربط متجرك الإلكتروني ليصلك تنبيهات الطلبات تلقائياً على واتساب.
-          </p>
+          <h1 className="page-title">التكاملات</h1>
+          <p className="page-desc mt-1">اربط متجرك الإلكتروني لاستقبال تنبيهات الطلبات تلقائياً.</p>
         </div>
-        <LiveBadge state={liveState} label={`${activeCount} تكامل نشط`} />
+        <LiveBadge state={liveState} label={`${activeCount} نشط`} />
       </div>
 
       {error && (

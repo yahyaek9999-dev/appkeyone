@@ -98,14 +98,9 @@ export default function WorkingHoursUi() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Clock className="w-6 h-6 text-sky-400" />
-          ساعات العمل والذكاء التشغيلي
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          تحكم في متى يرد البوت، ومتى يبعث رسالة "خارج الدوام"، وفي تنبيهات العملاء الغاضبين، والمتابعة التلقائية.
-        </p>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">ساعات العمل</h1>
+        <p className="page-desc mt-1">تحكم في مواعيد الرد — خارج الدوام، التنبيهات، والمتابعة التلقائية.</p>
       </div>
 
       {/* Timezone — applies to working hours + daily report scheduling */}
@@ -210,7 +205,7 @@ export default function WorkingHoursUi() {
               تنبيهات العملاء الغاضبين
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              لو رصد البوت رسالة بنبرة غاضبة أو سلبية، ترسل لك تنبيه واتساب فوراً على رقم الإشعارات.
+              لو رُصدت رسالة بنبرة غاضبة أو سلبية، ترسل لك تنبيه واتساب فوراً على رقم الإشعارات.
             </p>
           </div>
           <Toggle on={alertEnabled} onChange={setAlertEnabled} />
@@ -226,7 +221,7 @@ export default function WorkingHoursUi() {
               المتابعة الذكية
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              لو سأل عميل عن سعر/منتج ولم يكمل، البوت يبعت له رسالة متابعة بعد عدد من الساعات تختاره.
+              لو سأل عميل عن سعر/منتج ولم يكمل، تُرسل له رسالة متابعة تلقائية بعد عدد من الساعات تختاره.
             </p>
           </div>
           <Toggle on={followUpsEnabled} onChange={setFollowUpsEnabled} />

@@ -28,8 +28,10 @@ export default async function BrainPage() {
   const s = await getBrainTenantStats(g.uid);
   return (
     <div className="space-y-6">
-      <h1 className="page-title mb-1 flex items-center gap-2"><Brain className="h-6 w-6 text-brand-300" /> مركز الدماغ</h1>
-      <p className="page-desc">ذاكرة عملائك، تصنيفاتهم، درجات الأهلية، الاستهلاك، والكريدت.</p>
+      <div className="border-b border-white/[0.05] pb-5 mb-6">
+        <h1 className="page-title mb-1">مركز البيانات</h1>
+        <p className="page-desc">ذاكرة عملائك، تصنيفاتهم، درجات الأهلية، الاستهلاك، والرصيد.</p>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Tile label="سجلات الذاكرة" value={s.memoryRecords} />

@@ -89,12 +89,9 @@ export default function FlowBuilderUi() {
 
   return (
     <div className="space-y-6 p-1">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Workflow className="h-6 w-6 text-brand-400" />
-          منشئ المسارات
-        </h1>
-        <p className="page-desc mt-1">صمّم رحلات أتمتة: محفّز ← شروط ← إجراءات. كل مسار يعمل في الخلفية تلقائياً.</p>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">منشئ المسارات</h1>
+        <p className="page-desc mt-1">صمّم رحلات أتمتة: محفّز ← شروط ← إجراءات.</p>
       </div>
 
       {pending && (

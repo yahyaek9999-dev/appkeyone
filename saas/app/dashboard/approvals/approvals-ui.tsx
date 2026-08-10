@@ -105,11 +105,8 @@ export default function ApprovalsUi() {
 
   return (
     <div className="space-y-6 p-1">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <CheckSquare className="h-6 w-6 text-brand-400" />
-          مسارات الموافقات
-        </h1>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">الموافقات</h1>
         <p className="page-desc mt-1">اطلب موافقة قبل تنفيذ إجراء حسّاس — المالك أو المدير يوافق أو يرفض.</p>
       </div>
 

@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LifeBuoy, X, ArrowLeft, Sparkles, BookOpen, MessageCircle,
+  LifeBuoy, X, ArrowLeft, Gauge, BookOpen, MessageCircle,
   Rocket, ChevronLeft,
 } from "lucide-react";
 
@@ -52,15 +52,15 @@ const HELP: { prefix: string; topic: HelpTopic }[] = [
     prefix: "/dashboard/whatsapp",
     topic: {
       title: "ربط واتساب",
-      summary: "اربط رقم واتساب الخاص بك ليبدأ البوت بالرد على عملائك تلقائياً.",
+      summary: "اربط رقم واتساب الخاص بك لتبدأ الردود التلقائية على عملائك.",
       steps: [
         "افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز.",
         "امسح رمز QR الظاهر على الشاشة.",
         "انتظر حتى تتحول الحالة إلى «متصل» — ثم جرّب من Playground.",
       ],
       links: [
-        { label: "تجربة البوت", href: "/dashboard/playground" },
-        { label: "إعدادات البوت", href: "/dashboard/bot" },
+        { label: "تجربة المحادثة", href: "/dashboard/playground" },
+        { label: "إعدادات الردود", href: "/dashboard/bot" },
       ],
     },
   },
@@ -68,15 +68,15 @@ const HELP: { prefix: string; topic: HelpTopic }[] = [
     prefix: "/dashboard/knowledge",
     topic: {
       title: "مركز التدريب (المعرفة)",
-      summary: "علّم البوت معلومات متجرك: المنتجات، الأسعار، السياسات، والأسئلة الشائعة.",
+      summary: "أضف معلومات متجرك: المنتجات، الأسعار، السياسات، والأسئلة الشائعة.",
       steps: [
         "أضف معلومات منتجاتك وأسعارك نصياً أو استورد من رابط/ملف.",
-        "كلما زادت المعرفة، قلّت أخطاء البوت وزادت دقته.",
+        "كلما زادت المعرفة، زادت دقة الردود التلقائية.",
         "راجع «اقتراحات المعرفة» لسدّ الفجوات التي رصدها النظام.",
       ],
       links: [
         { label: "اقتراحات المعرفة", href: "/dashboard/suggestions" },
-        { label: "تجربة البوت", href: "/dashboard/playground" },
+        { label: "تجربة المحادثة", href: "/dashboard/playground" },
       ],
     },
   },
@@ -148,7 +148,7 @@ const DEFAULT_TOPIC: HelpTopic = {
   summary: "كل ما تحتاجه لإدارة متجرك موجود داخل المنصة. ابدأ من مركز القيادة لرؤية أهم الإجراءات.",
   steps: [
     "أكمل خطوات التفعيل من الصفحة الرئيسية للوصول لأول قيمة بسرعة.",
-    "اربط واتساب ودرّب البوت على معلومات متجرك.",
+    "اربط واتساب وأضف معلومات متجرك لتحسين الردود التلقائية.",
     "تابع مركز القيادة يومياً لأهم الفرص والتوصيات.",
   ],
   links: [
@@ -226,7 +226,7 @@ export default function HelpDrawer() {
               {/* Contextual topic */}
               <div>
                 <div className="mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-brand-400">
-                  <Sparkles className="h-3.5 w-3.5" /> هذه الصفحة
+                  <Gauge className="h-3.5 w-3.5" /> هذه الصفحة
                 </div>
                 <h3 className="text-base font-semibold text-white">{topic.title}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-slate-400">{topic.summary}</p>
@@ -279,7 +279,7 @@ export default function HelpDrawer() {
                 onClick={() => setOpen(false)}
                 className="btn-primary flex w-full items-center justify-center gap-2 text-sm"
               >
-                <Sparkles className="h-4 w-4" />
+                <Gauge className="h-4 w-4" />
                 افتح مركز القيادة
                 <ArrowLeft className="h-4 w-4" />
               </Link>

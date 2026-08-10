@@ -105,7 +105,7 @@ export default function ArenaUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">ساحة الاختبار 2.0</h1>
+          <h1 className="page-title mb-1">اختبار أداء المساعد</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يشغّل {data?.corpus.total || 120}+ سيناريو عميل عبر محرّك الاسترجاع الحقيقي ليقيس جاهزية
             معرفتك، يكشف نقاط الضعف، ويقترح إصلاحات.
@@ -245,7 +245,7 @@ export default function ArenaUi() {
                           <th className="text-right p-3">ناجح</th>
                           <th className="text-right p-3">ضعيف</th>
                           <th className="text-right p-3">فاشل</th>
-                          <th className="text-right p-3">متوسط الثقة</th>
+                          <th className="text-right p-3">متوسط الجودة</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -274,7 +274,7 @@ export default function ArenaUi() {
                             {s.verdict}
                           </span>
                           <span className="text-slate-300">«{s.message}»</span>
-                          <span className="text-slate-500">· ثقة {s.confidence}%</span>
+                          <span className="text-slate-500">· جودة {s.confidence}%</span>
                         </div>
                       ))}
                     </div>

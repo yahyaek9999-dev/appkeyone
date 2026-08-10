@@ -111,13 +111,10 @@ export default function SystemHealthUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Activity className="h-6 w-6 text-cyan-400" />
-          <div>
-            <h1 className="page-title">صحة النظام والمراقبة</h1>
-            <p className="page-desc mt-1">مؤشرات أداء فورية للخادم وقاعدة البيانات والواتساب والذكاء الاصطناعي</p>
-          </div>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
+        <div>
+          <h1 className="page-title">صحة النظام</h1>
+          <p className="page-desc mt-1">مؤشرات أداء فورية للخادم وقاعدة البيانات والواتساب.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {lastUpdated && (
@@ -161,7 +158,7 @@ export default function SystemHealthUi() {
             <div className="card p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="section-title flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-cyan-400" /> حالة الأنظمة الفرعية
+                  <Activity className="h-4 w-4 text-brand-400" /> حالة الأنظمة الفرعية
                 </h3>
                 {data.version && (
                   <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-[11px] text-slate-400">
@@ -173,7 +170,7 @@ export default function SystemHealthUi() {
                 <SubsystemCard name="قاعدة البيانات" icon={<Database className="h-4 w-4" />} sub={data.subsystems.database} />
                 <SubsystemCard name="واتساب" icon={<Smartphone className="h-4 w-4" />} sub={data.subsystems.whatsapp} />
                 <SubsystemCard name="الطابور" icon={<Activity className="h-4 w-4" />} sub={data.subsystems.queue} />
-                <SubsystemCard name="مزود الذكاء الاصطناعي" icon={<Brain className="h-4 w-4" />} sub={data.subsystems.aiProvider} />
+                <SubsystemCard name="مزوّد المساعد" icon={<Brain className="h-4 w-4" />} sub={data.subsystems.aiProvider} />
                 <SubsystemCard name="العامل (Worker)" icon={<Server className="h-4 w-4" />} sub={data.subsystems.worker} />
                 <SubsystemCard name="Redis" icon={<Zap className="h-4 w-4" />} sub={data.subsystems.redis} />
                 <SubsystemCard name="Bridge Gateway" icon={<Wifi className="h-4 w-4" />} sub={(data.subsystems as any).bridgeGateway} />
@@ -184,7 +181,7 @@ export default function SystemHealthUi() {
           {/* Server */}
           <div className="card p-5">
             <h3 className="section-title mb-4 flex items-center gap-2">
-              <Server className="h-4 w-4 text-cyan-400" /> الخادم
+              <Server className="h-4 w-4 text-brand-400" /> الخادم
             </h3>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MiniCard icon={<Zap className="h-4 w-4" />} label="المعالج" value={(data.server.cpuModel || "—").replace(/\(R\)|\(TM\)|Processor/gi, "").trim().slice(0, 28) || "—"} sub={`${data.server.cpuCores || 0} نواة`} />
@@ -251,7 +248,7 @@ export default function SystemHealthUi() {
           {/* AI */}
           <div className="card p-5">
             <h3 className="section-title mb-4 flex items-center gap-2">
-              <Brain className="h-4 w-4 text-gold-400" /> الذكاء الاصطناعي (آخر 7 أيام)
+              <Brain className="h-4 w-4 text-gold-400" /> المساعد (آخر 7 أيام)
             </h3>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MiniCard icon={<Brain className="h-4 w-4" />} label="استدعاءات" value={(data.ai.calls7d || 0).toLocaleString("ar-EG")} />

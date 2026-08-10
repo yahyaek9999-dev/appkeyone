@@ -2,11 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import InsightStrip from "@/components/insight-strip";
 import {
   ShoppingBag,
   ArrowUpRight,
   Download,
+  AlertTriangle,
 } from "lucide-react";
 import {
   OrderStatusPill,
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/order-status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
-import { FadeInView } from "@/components/ui/stagger-reveal";
 import { LimelightTabs } from "@/components/ui/limelight-tabs";
 
 function toOrderStatus(s: string): OrderStatus {
@@ -91,22 +90,35 @@ export default async function OrdersPage({
 
   return (
     <div className="space-y-5">
-      {/* Header — clean summary bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="page-title">الطلبات</h1>
-          <p className="page-desc mt-1">
-            {totalOrders.toLocaleString()} طلب · {(revenue / 100).toLocaleString()} ج إيرادات مؤكدة
-          </p>
+      {/* Header */}
+      <div className="border-b border-white/[0.05] pb-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="page-title">الطلبات</h1>
+            <div className="mt-2 flex items-center gap-3 text-[12px]">
+              <span className="text-slate-400">{totalOrders.toLocaleString()} إجمالي</span>
+              <span className="text-white/20">·</span>
+              <span className="text-emerald-400">{(revenue / 100).toLocaleString()} ج مؤكد</span>
+              {(countByStatus["pending"] || 0) > 0 && (
+                <>
+                  <span className="text-white/20">·</span>
+                  <span className="inline-flex items-center gap-1 text-amber-400">
+                    <AlertTriangle className="h-3 w-3" />
+                    {countByStatus["pending"]} معلّق
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+          <a
+            href="/api/export?type=orders&format=csv"
+            download
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            <Download className="h-3.5 w-3.5" />
+            تصدير CSV
+          </a>
         </div>
-        <a
-          href="/api/export?type=orders&format=csv"
-          download
-          className="inline-flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-slate-300 transition hover:bg-white/[0.08]"
-        >
-          <Download className="h-3.5 w-3.5" />
-          تصدير CSV
-        </a>
       </div>
 
       {/* Status filter — limelight sliding indicator */}
@@ -124,11 +136,8 @@ export default async function OrdersPage({
         ]}
       />
 
-      <InsightStrip context="orders" />
-
       {/* Desktop table */}
-      <FadeInView delay={0.05}>
-      <div className="card mobile-scroll-x overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-white/[0.07] mobile-scroll-x">
         <div className="hidden sm:block">
           <table className="data-table">
             <thead>
@@ -185,8 +194,8 @@ export default async function OrdersPage({
                         <div className="text-sm font-semibold tabular-nums text-white">
                           {(o.total || 0).toLocaleString()} {o.currency || "ج"}
                         </div>
-                        <div className={`text-[10px] tabular-nums ${o.aiConfidence >= 70 ? "text-emerald-500" : o.aiConfidence >= 40 ? "text-amber-500" : "text-slate-500"}`}>
-                          {o.aiConfidence || 0}% ثقة
+                        <div className={`text-[10px] ${(o.aiConfidence || 0) >= 70 ? "text-emerald-500" : (o.aiConfidence || 0) >= 40 ? "text-amber-500" : "text-slate-500"}`}>
+                          {(o.aiConfidence || 0) >= 70 ? "استخراج دقيق" : (o.aiConfidence || 0) >= 40 ? "استخراج جزئي" : "يحتاج مراجعة"}
                         </div>
                       </td>
                       <td className="text-center">
@@ -261,7 +270,6 @@ export default async function OrdersPage({
           )}
         </div>
       )}
-      </FadeInView>
     </div>
   );
 }

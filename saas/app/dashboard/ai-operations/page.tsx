@@ -33,7 +33,7 @@ export default async function AiOperationsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="page-title mb-1">عمليات الذكاء الاصطناعي</h1>
+      <h1 className="page-title mb-1">عمليات المساعد</h1>
       <p className="page-desc">المزوّد الحالي، الاستخدام، الأعطال، زمن الاستجابة وتجاوز المزوّد (failover) — مع تبديل المزوّد واختباره.</p>
       <AiOperationsClient
         current={{ provider: bot?.aiProvider || "keyone", label: (PROVIDER_LABELS as any)[bot?.aiProvider || "keyone"] || bot?.aiProvider || "KeyOne", model: bot?.aiModel || "", hasKey: !!bot?.aiApiKeyEnc }}

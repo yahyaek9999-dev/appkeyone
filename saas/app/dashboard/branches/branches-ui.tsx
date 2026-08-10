@@ -84,11 +84,8 @@ export default function BranchesUi() {
 
   return (
     <div className="space-y-6 p-1">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-brand-400" />
-          الفروع
-        </h1>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">الفروع</h1>
         <p className="page-desc mt-1">أدِر فروعك المتعدّدة — كل فرع برقمه ومديره وتقاريره.</p>
       </div>
 

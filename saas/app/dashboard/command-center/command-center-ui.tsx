@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Sparkles, RefreshCw, Wallet, TrendingUp, TrendingDown, Target,
+  Gauge, RefreshCw, Wallet, TrendingUp, TrendingDown, Target,
   AlertTriangle, Crown, ShoppingCart, ArrowLeft, Lightbulb, Users,
   Loader2, Activity, ChevronLeft, Flame,
 } from "lucide-react";
@@ -85,7 +85,7 @@ const SEV_META: Record<Severity, { ring: string; chip: string; label: string }> 
 };
 
 const TIER_META: Record<ValueTier, { label: string; cls: string }> = {
-  platinum: { label: "بلاتيني", cls: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" },
+  platinum: { label: "بلاتيني", cls: "border-brand-400/40 bg-brand-400/10 text-brand-200" },
   gold: { label: "ذهبي", cls: "border-amber-400/40 bg-amber-400/10 text-amber-200" },
   silver: { label: "فضي", cls: "border-slate-300/30 bg-slate-300/10 text-slate-200" },
   bronze: { label: "برونزي", cls: "border-orange-700/40 bg-orange-700/10 text-orange-300" },
@@ -128,10 +128,10 @@ export default function CommandCenterUi() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-500/30 bg-brand-500/10">
-            <Sparkles className="h-5 w-5 text-brand-300" />
+            <Gauge className="h-5 w-5 text-brand-300" />
           </div>
           <div>
-            <h1 className="page-title">مركز القيادة الذكي</h1>
+            <h1 className="page-title">مركز القيادة</h1>
             <p className="page-desc mt-1">كل ما يحتاجه عملك للنمو في شاشة واحدة — رؤى، فرص، وإجراءات بضغطة واحدة</p>
           </div>
         </div>
@@ -245,7 +245,7 @@ export default function CommandCenterUi() {
                       </div>
                       <div className="shrink-0 text-left">
                         <div className="text-xs font-semibold text-emerald-300">{egp(o.estimatedValue)}</div>
-                        <div className="text-[10px] text-slate-500">{ACTION_AR[o.action] || o.action} · {o.confidence}%</div>
+                        <div className="text-[10px] text-slate-500">{ACTION_AR[o.action] || o.action} · {o.confidence >= 75 ? "عالي" : o.confidence >= 50 ? "متوسط" : "منخفض"}</div>
                       </div>
                     </Link>
                   ))}
@@ -320,7 +320,7 @@ export default function CommandCenterUi() {
 
             <div className="card p-5">
               <h3 className="section-title mb-4 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-cyan-400" /> رؤى اليوم
+                <Activity className="h-4 w-4 text-brand-400" /> نبضات اليوم
               </h3>
               {data.insights.length > 0 ? (
                 <ul className="space-y-2.5">

@@ -28,7 +28,7 @@ const SEV: Record<string, { label: string; cls: string }> = {
 };
 const TYPE_LABEL: Record<string, string> = {
   missing_source: "مصدر مفقود",
-  low_confidence: "ثقة منخفضة",
+  low_confidence: "جودة منخفضة",
   knowledge_conflict: "تعارض معرفة",
   contradiction: "تناقض",
   outdated: "معلومة قديمة",
@@ -85,7 +85,7 @@ export default function HallucinationsUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">كشف الهلوسة</h1>
+          <h1 className="page-title mb-1">اختبار دقة الردود</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يكتشف مخاطر الهلوسة من إشارات حقيقية: مصادر مفقودة، ثقة منخفضة، تعارضات، ومعلومات قديمة
             — مع سير عمل للمراجعة والمعالجة.
@@ -196,7 +196,7 @@ export default function HallucinationsUi() {
                       <span className="text-[10px] rounded-full bg-white/10 px-2 py-0.5 text-slate-300">
                         {TYPE_LABEL[e.type] || e.type}
                       </span>
-                      <span className="text-[10px] text-slate-500">ثقة {e.confidence}%</span>
+                      <span className="text-[10px] text-slate-500">جودة {e.confidence}%</span>
                     </div>
                     <div className="text-sm text-slate-200">{e.message}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5">المصدر: {e.source}</div>

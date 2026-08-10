@@ -125,7 +125,7 @@ export default function WhatsappUI({ initial }: { initial: any }) {
           <div className="w-20 h-20 mx-auto rounded-full bg-brand-500/20 flex items-center justify-center mb-4">
             <CheckCircle className="w-10 h-10 text-brand-400" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">متصل ✓</h2>
+          <h2 className="text-xl font-bold mb-2">واتساب متصل</h2>
           <p className="text-slate-400 mb-6">
             رقم البوت: <span className="font-mono text-white" dir="ltr">+{state.phone}</span>
           </p>

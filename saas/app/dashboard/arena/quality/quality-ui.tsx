@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Play, Gauge, Lightbulb, ArrowRight, TrendingUp, Sparkles } from "lucide-react";
+import { Loader2, Play, Gauge, Lightbulb, ArrowRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 type Q = {
@@ -78,7 +78,7 @@ export default function QualityUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">معيار جودة المحادثة</h1>
+          <h1 className="page-title mb-1">جودة المحادثة</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             درجات حقيقية من محادثات ساحة الاختبار والنتائج وأحداث الهلوسة وعقل المعرفة.
           </p>
@@ -123,7 +123,7 @@ export default function QualityUi() {
               <Bar label="معدّل الحل" val={q.resolution} />
               <Bar label="الاكتمال" val={q.completeness} />
               <Bar label="تغطية المعرفة" val={q.knowledge} />
-              <Bar label="الثقة" val={q.confidence} />
+              <Bar label="الجودة" val={q.confidence} />
               <Bar label="انسياب المحادثة" val={q.flow} />
               <Bar label="خطر الهلوسة" val={q.hallucinationRisk} invert />
             </div>
@@ -150,7 +150,7 @@ export default function QualityUi() {
             {(q.tone != null || q.accuracy != null || q.csatProxy != null) && (
               <section className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.05] p-4">
                 <h2 className="font-bold text-sm mb-2 inline-flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-violet-300" /> تقييم النموذج (نبرة / دقة / رضا متوقع)
+                  <TrendingUp className="h-4 w-4 text-violet-300" /> تقييم الأداء (نبرة / دقة / رضا متوقع)
                 </h2>
                 <div className="space-y-1.5">
                   <Bar label="نبرة الرد" val={q.tone ?? 0} />

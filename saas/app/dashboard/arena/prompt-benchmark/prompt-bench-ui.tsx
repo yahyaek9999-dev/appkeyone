@@ -74,7 +74,7 @@ export default function PromptBenchUi() {
   const ctx = r
     ? [
         { label: "تغطية المعرفة", val: r.knowledgeCoverage },
-        { label: "الثقة", val: r.confidence },
+        { label: "الجودة", val: r.confidence },
         { label: "معدّل الحل", val: r.resolution },
         { label: "درجة الساحة", val: r.arenaScore },
         { label: "درجة العقل", val: r.brainScore },
@@ -86,7 +86,7 @@ export default function PromptBenchUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">معيار البرومبت (A/B/C)</h1>
+          <h1 className="page-title mb-1">مقارنة نصوص الردود</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يقارن 3 نسخ برومبت على معيار جودة حتمي (دقة الأسعار، التقاط العميل، التصعيد، النبرة،
             اللغة، النطاق) + سياق الساحة المشترك.

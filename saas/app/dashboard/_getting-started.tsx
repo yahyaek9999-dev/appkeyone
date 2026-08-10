@@ -24,7 +24,7 @@ interface StepDef {
 }
 
 const BASE_STEPS: StepDef[] = [
-  { key: "whatsapp", title: "اربط واتساب", desc: "امسح كود QR لتفعيل البوت على رقمك.", href: "/dashboard/whatsapp", cta: "ربط" },
+  { key: "whatsapp", title: "اربط واتساب", desc: "امسح كود QR لتفعيل الردود التلقائية على رقمك.", href: "/dashboard/whatsapp", cta: "ربط" },
   { key: "aiBot", title: "اضبط الإعدادات", desc: "اسم المتجر والأسلوب ورسالة الترحيب.", href: "/dashboard/bot", cta: "ضبط" },
   { key: "knowledge", title: "أضف منتجاتك", desc: "المنتجات، الأسعار، والأسئلة الشائعة.", href: "/dashboard/knowledge", cta: "إضافة" },
   { key: "store", title: "اربط متجرك", desc: "Shopify أو WooCommerce أو Salla أو Zid لمزامنة الطلبات.", href: "/dashboard/integrations", cta: "ربط", optional: true },

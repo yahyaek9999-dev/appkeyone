@@ -244,7 +244,7 @@ export default function KnowledgeUI({ docs }: { docs: Doc[] }) {
         <div className="card p-12 text-center">
           <FileText className="mx-auto mb-3 h-12 w-12 text-slate-600" />
           <h3 className="mb-1 font-bold">لسه ما رفعتش حاجة</h3>
-          <p className="text-sm text-slate-400">أضف منتجاتك، أسعارك، أو أسئلة شائعة حتى يعرف البوت كيف يجاوب.</p>
+          <p className="text-sm text-slate-400">أضف منتجاتك، أسعارك، أو أسئلة شائعة لتحسين دقة الردود التلقائية.</p>
         </div>
       )}
 
@@ -376,7 +376,7 @@ function FaqModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
         </div>
-        <p className="mb-4 text-sm text-slate-400">كل سؤال وجواب يُضاف كمصدر معرفة يستخدمه البوت تلقائياً عند الإجابة.</p>
+        <p className="mb-4 text-sm text-slate-400">كل سؤال وجواب يُضاف كمصدر معرفة يُستخدم تلقائياً عند الإجابة.</p>
         <div className="space-y-3">
           {pairs.map((p, i) => (
             <div key={i} className="card bg-white/[0.03] p-4 space-y-2">

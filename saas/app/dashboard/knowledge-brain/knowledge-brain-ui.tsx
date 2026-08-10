@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Brain, Loader2, RefreshCw, Wifi, Shield, AlertTriangle, Lock,
-  Upload, FileText, Search, Sparkles, CheckCircle2, XCircle,
+  Upload, FileText, Search, BarChart3, CheckCircle2, XCircle,
   Gauge, ShieldCheck, HelpCircle, Package, Tag, Database, Crown,
 } from "lucide-react";
 
@@ -168,12 +168,9 @@ function BrainConsole() {
 
 function Header() {
   return (
-    <div className="flex items-center gap-3">
-      <Brain className="h-6 w-6 text-brand-400" />
-      <div>
-        <h1 className="page-title">العقل المعرفي</h1>
-        <p className="page-desc mt-1">ارفع معرفتك، قِس جودتها، واسأل بحثاً ذكياً بمصادر موثّقة</p>
-      </div>
+    <div className="border-b border-white/[0.05] pb-5">
+      <h1 className="page-title">عقل المعرفة</h1>
+      <p className="page-desc mt-1">ارفع معرفتك، قِس جودتها، وابحث في مصادرك الموثّقة</p>
     </div>
   );
 }
@@ -183,7 +180,7 @@ function ScoreCards({ health }: { health: Health }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <GaugeCard icon={<Gauge className="h-4 w-4" />} label="صحة المعرفة" value={health.healthScore} hint="حجم + عمق + حداثة المستندات" />
-      <GaugeCard icon={<Sparkles className="h-4 w-4" />} label="تغطية المواضيع" value={health.coverageScore} hint="أسعار · سياسات · أسئلة · منتجات" />
+      <GaugeCard icon={<BarChart3 className="h-4 w-4" />} label="تغطية المواضيع" value={health.coverageScore} hint="أسعار · سياسات · أسئلة · منتجات" />
       <div className="card p-5">
         <div className="mb-3 flex items-center gap-1.5 text-[11px] text-slate-500">
           <Database className="h-4 w-4" /> ملخص المعرفة
@@ -371,7 +368,7 @@ function AskBox() {
   return (
     <div className="card p-5">
       <h3 className="section-title mb-4 flex items-center gap-2">
-        <Search className="h-4 w-4 text-cyan-400" /> اسأل معرفتك
+        <Search className="h-4 w-4 text-amber-400" /> اسأل معرفتك
       </h3>
       <form onSubmit={ask} className="flex items-center gap-2">
         <input
@@ -415,7 +412,7 @@ function AskBox() {
                         {rs.docTitle || "مصدر غير معنون"}
                       </span>
                       <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${tone.border} ${tone.text}`}>
-                        ثقة {pct}%
+                        {pct >= 75 ? "تطابق قوي" : pct >= 50 ? "تطابق متوسط" : "تطابق جزئي"}
                       </span>
                     </div>
                     <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400">{rs.text}</p>

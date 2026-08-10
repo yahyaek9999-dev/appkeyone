@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const INTRO: Record<ProviderDomain, { title: string; desc: string; steps: string[] }> = {
   ai: {
-    title: "مزوّدو الذكاء الاصطناعي",
+    title: "مزوّدو المساعد",
     desc: "اربط مفاتيحك الخاصة (OpenAI، Claude، Gemini، Groq، OpenRouter، Grok، أو Endpoint مخصّص). رتّب الأولوية ليتم التبديل التلقائي عند تعطّل مزوّد.",
     steps: ["أنشئ مفتاح API من لوحة المزوّد.", "ألصقه هنا ثم اضغط اختبار الاتصال.", "رتّب المزوّدين — الأعلى يُجرَّب أولاً، والباقي احتياطي تلقائي."],
   },
@@ -18,7 +18,7 @@ const INTRO: Record<ProviderDomain, { title: string; desc: string; steps: string
     steps: ["اختر مزوّدك وألصق المفتاح.", "اختبر الاتصال.", "تُحوَّل الرسائل الصوتية تلقائياً إلى نص ثم رد ذكي."],
   },
   image: {
-    title: "الذكاء الاصطناعي للصور",
+    title: "تحليل الصور والتوليد",
     desc: "ولّد وحلّل الصور (إيصالات، منتجات، تسويق) عبر OpenAI أو Gemini أو Claude أو Replicate أو Stability أو خدمة مخصّصة.",
     steps: ["اختر مزوّداً يدعم التوليد و/أو التحليل.", "ألصق المفتاح واختبر.", "ابدأ بتوليد أو تحليل الصور من القنوات."],
   },

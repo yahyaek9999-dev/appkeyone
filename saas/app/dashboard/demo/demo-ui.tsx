@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Sparkles, MessageSquare, Users, TrendingUp, Wallet,
+  MessageSquare, Users, TrendingUp, Wallet,
   Crown, AlertTriangle, Copy, Check, ArrowLeft, Phone, Loader2,
   FlaskConical, X,
 } from "lucide-react";
@@ -36,7 +36,7 @@ const ORDER_STATUS_AR: Record<string, string> = {
   delivered: "تم التوصيل", canceled: "ملغي",
 };
 const TIER_CLS: Record<string, string> = {
-  platinum: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200",
+  platinum: "border-brand-400/40 bg-brand-400/10 text-brand-200",
   gold: "border-amber-400/40 bg-amber-400/10 text-amber-200",
   silver: "border-slate-300/30 bg-slate-300/10 text-slate-200",
   bronze: "border-orange-700/40 bg-orange-700/10 text-orange-300",
@@ -107,13 +107,10 @@ export default function DemoUi() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <FlaskConical className="h-5 w-5 text-amber-400" />
-            جرّب KEYONE — بيانات تجريبية
-          </h1>
-          <p className="page-desc">استعرض الواجهة الكاملة مع عملاء نموذجيين قبل ربط واتساب.</p>
+          <h1 className="page-title">جرّب KEYONE</h1>
+          <p className="page-desc mt-1">استعرض الواجهة الكاملة مع عملاء نموذجيين قبل ربط واتساب.</p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
           <FlaskConical className="h-3 w-3" /> تجريبي
@@ -188,9 +185,9 @@ export default function DemoUi() {
               <div className="rounded-2xl border border-brand-500/30 bg-gradient-to-b from-brand-500/[0.08] to-transparent p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-300 flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" /> الخطوة التالية الأفضل
+                    <TrendingUp className="h-3.5 w-3.5" /> الإجراء المقترح
                   </span>
-                  <span className="text-[11px] font-bold text-brand-200">ثقة {activeNba.confidence}%</span>
+                  <span className="text-[11px] font-bold text-brand-200">{activeNba.confidence >= 75 ? "احتمالية عالية" : activeNba.confidence >= 50 ? "احتمالية متوسطة" : "احتمالية منخفضة"}</span>
                 </div>
                 <div className="text-sm font-bold text-white mb-1">{activeNba.title}</div>
                 <p className="text-xs text-slate-300 mb-3">{activeNba.reason}</p>
@@ -269,7 +266,7 @@ export default function DemoUi() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-emerald-300 font-bold text-sm">{c.leadScore * 50} ج</div>
-                    <div className="text-[11px] text-slate-500">ثقة {nba.confidence}%</div>
+                    <div className="text-[11px] text-slate-500">{nba.confidence >= 75 ? "احتمالية عالية" : nba.confidence >= 50 ? "احتمالية متوسطة" : "احتمالية منخفضة"}</div>
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-slate-400">{nba.reason}</p>

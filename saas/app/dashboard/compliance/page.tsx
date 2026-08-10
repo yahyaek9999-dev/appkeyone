@@ -62,7 +62,7 @@ export default async function CompliancePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold mb-2">صحة الإرسال والامتثال</h1>
+        <h1 className="page-title mb-1">صحة الإرسال والامتثال</h1>
         <p className="text-slate-400 text-sm">كل الأرقام تأتي من قاعدة البيانات مباشرةً. آخر 24 ساعة.</p>
       </div>
 

@@ -55,16 +55,9 @@ export default async function AuditLogPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gold-500 to-teal-500 shadow-lg shadow-gold-500/20">
-          <ScrollText className="h-5 w-5 text-white" />
-        </span>
-        <div>
-          <h1 className="page-title">سجل النشاط</h1>
-          <p className="text-sm text-slate-400">
-            سجل غير قابل للتعديل لكل الإجراءات الحساسة داخل مساحة العمل — من فعل ماذا ومتى.
-          </p>
-        </div>
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">سجل النشاط</h1>
+        <p className="page-desc mt-1">سجل غير قابل للتعديل لكل الإجراءات الحساسة — من فعل ماذا ومتى.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">

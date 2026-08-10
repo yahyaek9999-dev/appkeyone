@@ -129,22 +129,15 @@ export default function SalesBrainUi() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="w-6 h-6 text-teal-400" />
-            عقل المبيعات
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            مركز القيادة — أداء اليوم، أهم الفرص، وتوصية اليوم. كل الأرقام من
-            بياناتك الحالية بدون أي تكلفة إضافية.
-          </p>
+          <h1 className="page-title">المبيعات</h1>
+          <p className="page-desc mt-1">أداء اليوم، أهم الفرص، والخطوة التالية — من بياناتك الحالية.</p>
         </div>
         <button
           onClick={() => load(true)}
           disabled={refreshing}
-          className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-sm inline-flex items-center gap-2 disabled:opacity-50"
-          title="تحديث"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
         >
           {refreshing ? (
             <Loader2 className="w-4 h-4 animate-spin" />

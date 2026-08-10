@@ -28,7 +28,7 @@ export default function EscalationActions({
       const res = await fetch(`/api/escalations/${ticketId}/draft-reply`, { method: "POST" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setErr(json.error === "no_provider_configured" ? "لم يتم إعداد مزوّد ذكاء اصطناعي لهذا الحساب بعد." : "تعذّر توليد رد مقترح.");
+        setErr(json.error === "no_provider_configured" ? "لم يتم إعداد مزوّد الخدمة لهذا الحساب بعد." : "تعذّر توليد رد مقترح.");
         return;
       }
       setDraft(json.draft);
@@ -76,10 +76,10 @@ export default function EscalationActions({
         )}
         <button disabled={pending || busy !== null} onClick={() => act("resolve", true)} className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200 disabled:opacity-50 inline-flex items-center gap-1">
           {busy === "resolve" ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-          حل وإعادة البوت
+          حل واستئناف التلقائي
         </button>
         <button disabled={pending || busy !== null} onClick={() => act("resolve", false)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-200 disabled:opacity-50">
-          إغلاق دون إعادة البوت
+          إغلاق بدون استئناف تلقائي
         </button>
         <button
           disabled={draftBusy}
@@ -97,7 +97,7 @@ export default function EscalationActions({
       )}
       {draft && (
         <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-3 space-y-2">
-          <div className="text-[11px] font-medium text-violet-300">رد مقترح من الذكاء الاصطناعي — راجعه وأرسله يدوياً</div>
+          <div className="text-[11px] font-medium text-violet-300">رد مقترح — راجعه وأرسله يدوياً</div>
           <div className="text-slate-200 whitespace-pre-wrap">{draft}</div>
           <button onClick={copyDraft} className="text-[11px] text-violet-300 hover:text-violet-200 inline-flex items-center gap-1">
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "تم النسخ" : "نسخ"}

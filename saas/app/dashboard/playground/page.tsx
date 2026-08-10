@@ -4,9 +4,9 @@ import Playground from "./playground-ui";
 export default function PlaygroundPage() {
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-2">جرب البوت</h1>
-      <p className="text-slate-400 mb-6">
-        محاكاة محادثة عميل. اختار رقم تجريبي وكلم البوت كأنك العميل.
+      <h1 className="page-title mb-1">تجربة المحادثة</h1>
+      <p className="page-desc mb-6">
+        محاكاة محادثة عميل. اختر رقماً تجريبياً وجرّب الردود التلقائية كأنك العميل.
       </p>
       <Playground />
     </div>
