@@ -25,8 +25,8 @@ export default async function KnowledgeBrainPage() {
         <LockedFeature
           locale="ar"
           recommendedTier={g.recommendedTier}
-          title="المساعد الذكي (Knowledge Brain)"
-          description="بحث دلالي ذكي داخل معرفتك يمنح عملاءك إجابات فورية دقيقة. متاح في باقة Pro فأعلى."
+          title="عقل المعرفة"
+          description="بحث فوري داخل محتوى معرفتك — إجابات دقيقة لعملائك من مصادر موثوقة. متاح في باقة Pro فأعلى."
         />
       </div>
     );

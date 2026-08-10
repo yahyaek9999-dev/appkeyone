@@ -434,7 +434,7 @@ export default function InboxUi({
                   )}
                   {c.botPaused && !hot && (
                     <span className="absolute -top-0.5 -left-0.5">
-                      <StatusDot tone="warning" size="sm" label="البوت متوقف" />
+                      <StatusDot tone="warning" size="sm" label="تحتاج متابعة" />
                     </span>
                   )}
                 </div>
@@ -455,16 +455,14 @@ export default function InboxUi({
                         : ""}
                     {c.lastMessage.slice(0, 60)}
                   </div>
-                  {c.leadScore > 0 && (
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
-                        <div
-                          className={`h-full rounded-full ${hot ? "bg-orange-400" : c.leadScore >= 40 ? "bg-brand-400" : "bg-slate-600"}`}
-                          style={{ width: `${c.leadScore}%` }}
-                        />
-                      </div>
-                      <span className={`text-[10px] tabular-nums font-medium ${hot ? "text-orange-400" : c.leadScore >= 40 ? "text-brand-400" : "text-slate-500"}`}>
-                        {c.leadScore}
+                  {c.leadScore >= 40 && (
+                    <div className="mt-1.5">
+                      <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
+                        hot
+                          ? "border-orange-500/30 bg-orange-500/10 text-orange-300"
+                          : "border-brand-500/25 bg-brand-500/[0.08] text-brand-300"
+                      }`}>
+                        {hot ? "عميل ساخن" : "اهتمام عالٍ"}
                       </span>
                     </div>
                   )}
@@ -516,16 +514,16 @@ export default function InboxUi({
                       size="sm"
                       label={
                         active.conversation?.botPaused
-                          ? "البوت متوقف"
-                          : "البوت نشط"
+                          ? "معك الآن"
+                          : "تلقائي"
                       }
                     />
                     {(() => {
                       const hs = (active.conversation as any)?.handoffState || "ai_active";
                       const map: Record<string, { l: string; c: string }> = {
-                        ai_active: { l: "المساعد الذكي نشط", c: "text-brand-300 border-brand-500/30 bg-brand-500/10" },
-                        human_active: { l: "تدخل بشري", c: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" },
-                        escalation_pending: { l: "بانتظار البشر", c: "text-amber-300 border-amber-500/30 bg-amber-500/10" },
+                        ai_active: { l: "استجابة تلقائية", c: "text-brand-300 border-brand-500/30 bg-brand-500/10" },
+                        human_active: { l: "يُعالَج الآن", c: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" },
+                        escalation_pending: { l: "بانتظار موظف", c: "text-amber-300 border-amber-500/30 bg-amber-500/10" },
                         human_required: { l: "تصعيد", c: "text-rose-300 border-rose-500/30 bg-rose-500/10" },
                       };
                       const m = map[hs] || map.ai_active;
@@ -560,8 +558,8 @@ export default function InboxUi({
                     sending
                       ? "إرسال مباشر"
                       : snapshot?.activeConversation?.botPaused
-                        ? "المساعد متوقف"
-                        : "المساعد يراقب"
+                        ? "الاستجابة متوقفة"
+                        : "استجابة تلقائية"
                   }
                 />
                 {active.customer.leadScore > 0 && (
@@ -586,7 +584,7 @@ export default function InboxUi({
                 >
                   {active.conversation?.botPaused ? (
                     <>
-                      <Play className="w-3 h-3" /> إرجاع للمساعد الذكي
+                      <Play className="w-3 h-3" /> استئناف الاستجابة التلقائية
                     </>
                   ) : (
                     <>
@@ -627,8 +625,7 @@ export default function InboxUi({
             <div className="border-t border-brand-500/10 bg-[#06100d]/80 p-4 backdrop-blur-xl">
               {active.conversation?.botPaused && (
                 <div className="text-xs text-amber-300 mb-2 flex items-center gap-1.5">
-                  <Pause className="w-3 h-3" /> البوت متوقف لهذه المحادثة. ردودك
-                  ستُرسل مباشرة.
+                  <Pause className="w-3 h-3" /> الاستجابة التلقائية متوقفة — ردودك ستُرسل مباشرةً.
                 </div>
               )}
 
@@ -898,7 +895,7 @@ function MessageBubble({ m }: { m: Msg }) {
       >
         <div className="flex items-center gap-1.5 mb-1 text-[10px] opacity-70">
           <Icon className={`w-3 h-3 ${iconClass}`} />
-          <span>{isUser ? "العميل" : isAdmin ? "أنت" : "البوت"}</span>
+          <span>{isUser ? "العميل" : isAdmin ? "أنت" : "تلقائي"}</span>
           <span>· {timeShort(m.createdAt)}</span>
           {m.sentiment && m.sentiment !== "neutral" && (
             <span

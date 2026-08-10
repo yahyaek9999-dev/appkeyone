@@ -141,7 +141,7 @@ export const WORKSPACES: Workspace[] = [
     icon: Brain,
     home: "/dashboard/bot",
     items: [
-      { href: "/dashboard/bot", label: "المساعد الذكي", icon: Bot, perm: "settings" },
+      { href: "/dashboard/bot", label: "الردود التلقائية", icon: Bot, perm: "settings" },
       { href: "/dashboard/knowledge", label: "المعرفة", icon: BookOpen, perm: "settings" },
       { href: "/dashboard/knowledge-brain", label: "عقل المعرفة", icon: Brain, perm: "settings" },
       { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
