@@ -28,7 +28,7 @@ const SEV: Record<string, { label: string; cls: string }> = {
 };
 const TYPE_LABEL: Record<string, string> = {
   missing_source: "مصدر مفقود",
-  low_confidence: "ثقة منخفضة",
+  low_confidence: "جودة منخفضة",
   knowledge_conflict: "تعارض معرفة",
   contradiction: "تناقض",
   outdated: "معلومة قديمة",
@@ -196,7 +196,7 @@ export default function HallucinationsUi() {
                       <span className="text-[10px] rounded-full bg-white/10 px-2 py-0.5 text-slate-300">
                         {TYPE_LABEL[e.type] || e.type}
                       </span>
-                      <span className="text-[10px] text-slate-500">ثقة {e.confidence}%</span>
+                      <span className="text-[10px] text-slate-500">جودة {e.confidence}%</span>
                     </div>
                     <div className="text-sm text-slate-200">{e.message}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5">المصدر: {e.source}</div>

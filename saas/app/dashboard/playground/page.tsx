@@ -6,7 +6,7 @@ export default function PlaygroundPage() {
     <div>
       <h1 className="page-title mb-1">تجربة المحادثة</h1>
       <p className="page-desc mb-6">
-        محاكاة محادثة عميل. اختار رقم تجريبي وكلم البوت كأنك العميل.
+        محاكاة محادثة عميل. اختر رقماً تجريبياً وجرّب الردود التلقائية كأنك العميل.
       </p>
       <Playground />
     </div>

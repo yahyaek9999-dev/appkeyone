@@ -12,11 +12,11 @@ export default async function TestingArenaPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title mb-1">ساحة الاختبار</h1>
-        <p className="page-desc">
-          فحص حقيقي لجاهزية متجرك والمساعد. يختبر ردّ البوت على ٥ سيناريوهات حقيقية،
-          يقيّم كل ردّ، ويكشف نقاط الضعف ويقترح الحلول — بدون بيانات وهمية.
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title">ساحة الاختبار</h1>
+        <p className="page-desc mt-1">
+          فحص حقيقي لجاهزية نظام الردود التلقائية. يختبر ٥ سيناريوهات حقيقية،
+          يقيّم كل رد، ويكشف نقاط الضعف ويقترح الحلول — بدون بيانات وهمية.
         </p>
       </div>
       <TestingArenaClient />

@@ -245,7 +245,7 @@ export default function ArenaUi() {
                           <th className="text-right p-3">ناجح</th>
                           <th className="text-right p-3">ضعيف</th>
                           <th className="text-right p-3">فاشل</th>
-                          <th className="text-right p-3">متوسط الثقة</th>
+                          <th className="text-right p-3">متوسط الجودة</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -274,7 +274,7 @@ export default function ArenaUi() {
                             {s.verdict}
                           </span>
                           <span className="text-slate-300">«{s.message}»</span>
-                          <span className="text-slate-500">· ثقة {s.confidence}%</span>
+                          <span className="text-slate-500">· جودة {s.confidence}%</span>
                         </div>
                       ))}
                     </div>

@@ -163,7 +163,7 @@ export default function SimulateUi() {
                       {m.content}
                       {m.role === "assistant" && (
                         <span className="block mt-1 text-[10px] text-slate-500">
-                          ثقة {m.confidence}%
+                          جودة {m.confidence}%
                         </span>
                       )}
                     </div>

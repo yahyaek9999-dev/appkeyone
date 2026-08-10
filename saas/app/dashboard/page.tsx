@@ -165,7 +165,7 @@ export default async function DashboardOverview() {
   if (bot.whatsappStatus !== "connected")
     attention.push({
       label: "واتساب غير متصل",
-      why: "البوت لا يستطيع استقبال أو إرسال رسائل",
+      why: "النظام التلقائي لا يستطيع استقبال أو إرسال رسائل",
       action: "ربط الآن",
       href: "/dashboard/whatsapp",
       tone: "rose",
@@ -544,7 +544,7 @@ export default async function DashboardOverview() {
             </div>
             {recentMsgs.length === 0 ? (
               <div className="rounded-xl border border-white/[0.06] p-8">
-                <EmptyState icon={<MessageSquare className="h-full w-full" />} title="لا رسائل بعد" description="اربط واتساب أو جرّب البوت." size="sm" />
+                <EmptyState icon={<MessageSquare className="h-full w-full" />} title="لا رسائل بعد" description="اربط واتساب وابدأ استقبال الرسائل." size="sm" />
               </div>
             ) : (
               <div className="overflow-hidden rounded-xl border border-white/[0.06] divide-y divide-white/[0.04]">

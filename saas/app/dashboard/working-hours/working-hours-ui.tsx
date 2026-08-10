@@ -205,7 +205,7 @@ export default function WorkingHoursUi() {
               تنبيهات العملاء الغاضبين
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              لو رصد البوت رسالة بنبرة غاضبة أو سلبية، ترسل لك تنبيه واتساب فوراً على رقم الإشعارات.
+              لو رُصدت رسالة بنبرة غاضبة أو سلبية، ترسل لك تنبيه واتساب فوراً على رقم الإشعارات.
             </p>
           </div>
           <Toggle on={alertEnabled} onChange={setAlertEnabled} />
@@ -221,7 +221,7 @@ export default function WorkingHoursUi() {
               المتابعة الذكية
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              لو سأل عميل عن سعر/منتج ولم يكمل، البوت يبعت له رسالة متابعة بعد عدد من الساعات تختاره.
+              لو سأل عميل عن سعر/منتج ولم يكمل، تُرسل له رسالة متابعة تلقائية بعد عدد من الساعات تختاره.
             </p>
           </div>
           <Toggle on={followUpsEnabled} onChange={setFollowUpsEnabled} />

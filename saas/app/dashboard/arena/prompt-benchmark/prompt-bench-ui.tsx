@@ -74,7 +74,7 @@ export default function PromptBenchUi() {
   const ctx = r
     ? [
         { label: "تغطية المعرفة", val: r.knowledgeCoverage },
-        { label: "الثقة", val: r.confidence },
+        { label: "الجودة", val: r.confidence },
         { label: "معدّل الحل", val: r.resolution },
         { label: "درجة الساحة", val: r.arenaScore },
         { label: "درجة العقل", val: r.brainScore },

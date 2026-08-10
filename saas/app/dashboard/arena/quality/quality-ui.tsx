@@ -123,7 +123,7 @@ export default function QualityUi() {
               <Bar label="معدّل الحل" val={q.resolution} />
               <Bar label="الاكتمال" val={q.completeness} />
               <Bar label="تغطية المعرفة" val={q.knowledge} />
-              <Bar label="الثقة" val={q.confidence} />
+              <Bar label="الجودة" val={q.confidence} />
               <Bar label="انسياب المحادثة" val={q.flow} />
               <Bar label="خطر الهلوسة" val={q.hallucinationRisk} invert />
             </div>

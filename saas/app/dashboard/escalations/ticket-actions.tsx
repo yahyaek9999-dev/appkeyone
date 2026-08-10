@@ -76,10 +76,10 @@ export default function EscalationActions({
         )}
         <button disabled={pending || busy !== null} onClick={() => act("resolve", true)} className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200 disabled:opacity-50 inline-flex items-center gap-1">
           {busy === "resolve" ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-          حل وإعادة البوت
+          حل واستئناف التلقائي
         </button>
         <button disabled={pending || busy !== null} onClick={() => act("resolve", false)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-200 disabled:opacity-50">
-          إغلاق دون إعادة البوت
+          إغلاق بدون استئناف تلقائي
         </button>
         <button
           disabled={draftBusy}

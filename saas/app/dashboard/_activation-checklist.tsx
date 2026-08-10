@@ -39,7 +39,7 @@ const BASE_STEPS: ChecklistStep[] = [
   },
   {
     key: "onboarding_completed",
-    title: "إعداد البوت",
+    title: "إعداد الردود التلقائية",
     desc: "حدّد اسم متجرك وأسلوب الرد وأضف معلومات منتجاتك.",
     href: "/dashboard/bot",
     cta: "إعداد",
@@ -48,7 +48,7 @@ const BASE_STEPS: ChecklistStep[] = [
   {
     key: "whatsapp_connected",
     title: "ربط واتساب",
-    desc: "امسح QR code في 30 ثانية لتفعيل البوت على رقمك.",
+    desc: "امسح QR code في 30 ثانية لتفعيل الردود التلقائية على رقمك.",
     href: "/dashboard/whatsapp",
     cta: "ربط",
     required: true,
@@ -56,7 +56,7 @@ const BASE_STEPS: ChecklistStep[] = [
   {
     key: "first_ai_reply_sent",
     title: "أول رد آلي",
-    desc: "جرّب البوت من الـ Playground أو انتظر أول رسالة من عميل.",
+    desc: "جرّب الردود من الـ Playground أو انتظر أول رسالة من عميل.",
     href: "/dashboard/playground",
     cta: "تجربة",
     required: true,
@@ -64,7 +64,7 @@ const BASE_STEPS: ChecklistStep[] = [
   {
     key: "first_order_extracted",
     title: "أول طلب",
-    desc: "البوت بيرصد طلبات الشراء تلقائياً من المحادثات.",
+    desc: "يُرصد طلبات الشراء تلقائياً من المحادثات.",
     href: "/dashboard/orders",
     cta: "الطلبات",
     required: false,
