@@ -3,8 +3,10 @@ import { prisma } from "@/lib/db";
 import { evaluateSubscription, getSiteConfig } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import {
-  Crown, Clock, Inbox, ShoppingCart, DollarSign, ArrowUpRight,
-  TrendingUp, Phone, AlertCircle, CheckCircle2,
+  Crown, Clock, DollarSign, ArrowUpRight,
+  TrendingUp, Phone, CheckCircle2, ShoppingBag,
+  MessageSquare, Users, AlertTriangle, AlertCircle,
+  ArrowRight, RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
 import { timeAgo } from "@/lib/utils";
@@ -16,8 +18,6 @@ import ActivationChecklist from "./_activation-checklist";
 import { syncUserMilestones } from "@/lib/activation/track";
 import { resolveBusinessContext } from "@/lib/business-context";
 import { DEFAULT_VERTICAL, moduleMap } from "@/lib/modules";
-import InsightStrip from "@/components/insight-strip";
-import { FadeInView } from "@/components/ui/stagger-reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -92,7 +92,7 @@ export default async function DashboardOverview() {
     prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start7 }, status: { not: "canceled" } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
     prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start14, lt: start7 }, status: { not: "canceled" } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
     prisma.order.count({ where: { userId: user.id, status: { in: ["pending", "confirmed"] } } }).catch(() => 0),
-    prisma.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 4, select: { id: true, customerName: true, customerPhone: true, total: true, currency: true, status: true, createdAt: true } }).catch(() => []),
+    prisma.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 5, select: { id: true, customerName: true, customerPhone: true, total: true, currency: true, status: true, createdAt: true } }).catch(() => []),
     prisma.providerUsage.aggregate({ where: { userId: user.id, day: { gte: start7.toISOString().slice(0, 10) } }, _sum: { calls: true } }).catch(() => ({ _sum: { calls: null } })),
     resolveBusinessContext(user.id).catch(() => null),
   ]);
@@ -131,8 +131,6 @@ export default async function DashboardOverview() {
   const revPrior = (revenueResultPrior7d as any)?._sum?.total ?? 0;
   const revDelta = revPrior > 0 ? ((rev7d - revPrior) / revPrior) * 100 : rev7d > 0 ? 100 : null;
 
-  const aiCalls = (aiCalls7d as any)?._sum?.calls ?? 0;
-
   const conversionPct = msgs7d > 0 && orders7d > 0
     ? Math.min(99, Math.round((orders7d / Math.max(1, customerCount)) * 100))
     : null;
@@ -151,465 +149,434 @@ export default async function DashboardOverview() {
   const hour = now.getHours();
   const timeGreeting = hour < 12 ? "صباح الخير" : hour < 17 ? "مساء النور" : "مساء الخير";
 
-  const attention: { label: string; href: string; tone: "amber" | "rose" | "brand"; count?: number }[] = [];
+  // ── Attention items — ordered by severity ──────────────────────────────────
+  type AttentionTone = "rose" | "amber" | "brand";
+  const attention: {
+    label: string; why: string; action: string; href: string;
+    tone: AttentionTone; count?: number;
+  }[] = [];
+
   if (bot.whatsappStatus !== "connected")
-    attention.push({ label: "واتساب غير متصل — اربطه لاستقبال الرسائل", href: "/dashboard/whatsapp", tone: "rose" });
+    attention.push({
+      label: "واتساب غير متصل",
+      why: "البوت لا يستطيع استقبال أو إرسال رسائل",
+      action: "ربط الآن",
+      href: "/dashboard/whatsapp",
+      tone: "rose",
+    });
   if (!sub.active)
-    attention.push({ label: "الاشتراك غير نشط — فعّل أو رقّي باقتك", href: "/pricing", tone: "amber" });
-  if (modules.orders && (pendingOrderCount as number) > 0)
-    attention.push({ label: "طلبات بانتظار المراجعة", href: "/dashboard/orders", tone: "amber", count: pendingOrderCount as number });
-  if (flaggedCount > 0)
-    attention.push({ label: "رسائل تحتاج متابعة", href: "/dashboard/inbox", tone: "amber", count: flaggedCount });
+    attention.push({
+      label: "الاشتراك غير نشط",
+      why: "الخدمة موقوفة مؤقتاً حتى تجديد الباقة",
+      action: "تفعيل الباقة",
+      href: "/pricing",
+      tone: "amber",
+    });
   if (usagePct >= 90)
-    attention.push({ label: "اقتربت من حد رسائل باقتك", href: "/dashboard/usage", tone: "rose" });
+    attention.push({
+      label: "اقتربت من حد الرسائل",
+      why: `استخدمت ${usagePct}% من رسائل باقتك الشهرية`,
+      action: "ترقية الباقة",
+      href: "/dashboard/usage",
+      tone: "rose",
+    });
+  if (modules.orders && (pendingOrderCount as number) > 0)
+    attention.push({
+      label: "طلبات بانتظار المراجعة",
+      why: "طلبات وردت ولم تُحدَّث حالتها بعد",
+      action: "مراجعة الطلبات",
+      href: "/dashboard/orders",
+      tone: "amber",
+      count: pendingOrderCount as number,
+    });
+  if (flaggedCount > 0)
+    attention.push({
+      label: "رسائل تحتاج متابعة",
+      why: "محادثات تم تمييزها تحتاج رداً",
+      action: "فتح المحادثات",
+      href: "/dashboard/inbox",
+      tone: "amber",
+      count: flaggedCount,
+    });
+
+  // ── Business status summary ────────────────────────────────────────────────
+  const criticalCount = attention.filter((a) => a.tone === "rose").length;
+  const warningCount = attention.filter((a) => a.tone === "amber").length;
+  const statusOk = criticalCount === 0;
+  const statusLabel = criticalCount > 0
+    ? `${criticalCount} مشكلة تحتاج تدخلاً فورياً`
+    : warningCount > 0
+    ? `${warningCount} ${warningCount === 1 ? "تنبيه" : "تنبيهات"} تحتاج انتباهك`
+    : "النشاط يسير بشكل طبيعي";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-0">
 
-      {/* ══ COMMAND CENTER ════════════════════════════════════════════════════ */}
-      <div className="relative overflow-hidden rounded-2xl" style={{
-        background: "linear-gradient(145deg,rgba(12,122,108,0.08) 0%,rgba(10,10,12,0.95) 55%,rgba(201,162,75,0.03) 100%)",
-        border: "1px solid rgba(255,255,255,0.07)",
-      }}>
-        {/* top hairline */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-brand-500/40 via-white/[0.06] to-transparent" />
-        {/* left-side ambient only */}
-        <div className="pointer-events-none absolute inset-y-0 start-0 w-1/3 bg-[radial-gradient(ellipse_80%_60%_at_0%_50%,rgba(12,122,108,0.10),transparent_80%)]" />
-
-        <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_190px]">
-          {/* Left: identity */}
+      {/* ══ HEADER — Executive greeting + status ════════════════════════════ */}
+      <div className="border-b border-white/[0.05] pb-7">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="mb-4 flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-brand-500" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
-                {timeGreeting} · {now.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" })}
-              </span>
-            </div>
-            <h1 className="text-[28px] sm:text-[34px] font-bold leading-[1.1] tracking-[-0.03em] text-white">
-              أهلاً،{" "}
-              <span className="text-brand-300">{user.name || "صديقي"}</span>
-            </h1>
-            <p className="mt-2.5 text-[13px] leading-relaxed text-slate-500">
-              {msgs30dToday > 0
-                ? `وصلك ${msgs30dToday.toLocaleString("ar-EG")} رسالة اليوم`
-                : "لا رسائل بعد اليوم"}
-              {modules.orders && (pendingOrderCount as number) > 0 &&
-                ` · ${(pendingOrderCount as number).toLocaleString("ar-EG")} طلب ينتظرك`}
+            <p className="eyebrow mb-3">
+              {timeGreeting} · {now.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <SubscriptionBadge sub={sub} daysLeft={daysLeft} waNum={waNum} />
-              {bot.whatsappStatus === "connected" ? (
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-1.5 text-xs">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                  <span className="font-semibold text-emerald-300">واتساب متصل</span>
-                </div>
-              ) : (
-                <Link href="/dashboard/whatsapp" className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/[0.07] px-3 py-1.5 text-xs text-amber-300 transition-colors hover:bg-amber-500/15">
-                  <Phone className="h-3 w-3 shrink-0" />
-                  اربط واتساب
-                </Link>
-              )}
+            <h1 className="text-[30px] font-bold leading-[1.1] tracking-[-0.03em] text-white sm:text-[36px]">
+              {user.name || "صديقي"}
+            </h1>
+            {/* Business status sentence */}
+            <div className="mt-3 flex items-center gap-2">
+              <span className={`inline-block h-2 w-2 rounded-full ${statusOk ? "bg-emerald-400" : criticalCount > 0 ? "bg-rose-400" : "bg-amber-400"}`} />
+              <p className="text-[13px] text-slate-400">{statusLabel}
+                {msgs30dToday > 0 && ` · ${msgs30dToday.toLocaleString("ar-EG")} رسالة اليوم`}
+                {modules.orders && (pendingOrderCount as number) > 0 && ` · ${(pendingOrderCount as number)} طلب ينتظر`}
+              </p>
             </div>
           </div>
 
-          {/* Right: headline metric tile */}
-          <div className="flex items-center justify-center rounded-2xl border border-white/[0.06] bg-black/25 px-5 py-6 text-center">
-            <div>
-              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-600">
-                {modules.orders ? "إيرادات ٧ أيام" : "رسائل ٧ أيام"}
+          {/* Status cluster */}
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+            {bot.whatsappStatus === "connected" ? (
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1.5 text-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="font-medium text-emerald-300">واتساب متصل</span>
               </div>
-              <div className="mt-2 text-[44px] font-black leading-none tracking-[-0.05em] text-white tabular-nums">
-                {modules.orders
-                  ? (rev7d > 0 ? (rev7d / 100).toLocaleString("ar-EG") : "—")
-                  : msgs7d.toLocaleString("ar-EG")}
+            ) : (
+              <Link href="/dashboard/whatsapp" className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/[0.07] px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-500/15 transition-colors">
+                <Phone className="h-3 w-3" />
+                اربط واتساب
+              </Link>
+            )}
+            {sub.active ? (
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
+                <span className="font-medium text-white">{plan?.name || "نشط"}</span>
+                {daysLeft > 0 && <span className="text-slate-500">· {daysLeft}ي</span>}
               </div>
-              {modules.orders && rev7d > 0 && <div className="mt-0.5 text-[10px] text-slate-600">جنيه</div>}
-              {(() => {
-                const d = modules.orders ? revDelta : msgs7dDelta;
-                return d !== null ? (
-                  <div className={`mt-2.5 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${(d ?? 0) >= 0 ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>
-                    {(d ?? 0) >= 0 ? "▲" : "▼"} {Math.abs(Math.round(d ?? 0))}%
-                  </div>
-                ) : null;
-              })()}
-            </div>
+            ) : sub.subscription?.status === "pending" ? (
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-3 py-1.5 text-xs">
+                <Clock className="h-3.5 w-3.5 text-amber-400" />
+                <span className="font-medium text-white">بانتظار التفعيل</span>
+              </div>
+            ) : (
+              <Link href="/pricing" className="inline-flex items-center gap-1.5 rounded-lg border border-brand-500/20 bg-brand-500/[0.07] px-3 py-1.5 text-xs text-brand-300 hover:bg-brand-500/15 transition-colors">
+                <Crown className="h-3.5 w-3.5" />
+                اختر باقتك
+              </Link>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ══ KPI BENTO ══════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        <BigKPI label="إجمالي العملاء" value={customerCount} color="sky" />
-        <BigKPI label="رسائل هذا الأسبوع" value={msgs7d} delta={msgs7dDelta} color="brand" spark={last7Series} />
-        <BigKPI label="تفاعلات المساعد" value={aiCalls} color="purple" />
-        {modules.orders
-          ? <BigKPI label="طلبات معلّقة" value={pendingOrderCount as number} color={(pendingOrderCount as number) > 0 ? "amber" : "brand"} urgent={(pendingOrderCount as number) > 0} />
-          : <BigKPI label="حملات البث" value={broadcastCount as number} color="sky" />
-        }
-      </div>
-
-      {/* ══ ATTENTION ════════════════════════════════════════════════════════ */}
+      {/* ══ ATTENTION QUEUE ══════════════════════════════════════════════════ */}
       {attention.length > 0 && (
-        <section>
-          <div className="mb-2.5 flex items-center gap-1.5 text-[10px] font-medium tracking-[0.06em] text-slate-600">
-            <span className="h-px flex-1 bg-white/[0.05]" />
-            يحتاج انتباهك
-            <span className="h-px flex-1 bg-white/[0.05]" />
+        <section className="py-6 border-b border-white/[0.05]">
+          <div className="mb-4 flex items-center gap-2">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.10em] text-slate-500">يحتاج انتباهك</h2>
           </div>
-          <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-            {attention.map((a) => (
-              <Link
-                key={a.href + a.label}
-                href={a.href}
-                className="group flex items-center gap-3 rounded-lg px-3.5 py-2.5 transition-colors hover:bg-white/[0.03]"
-                style={{
-                  borderLeft: `3px solid ${a.tone === "rose" ? "rgba(239,68,68,0.5)" : a.tone === "amber" ? "rgba(245,158,11,0.5)" : "rgba(12,122,108,0.5)"}`,
-                  background: "rgba(255,255,255,0.015)",
-                }}
-              >
-                {a.count !== undefined && (
-                  <span className={`shrink-0 text-[13px] font-bold tabular-nums leading-none ${
-                    a.tone === "rose" ? "text-rose-300" : "text-amber-300"
-                  }`}>{a.count}</span>
-                )}
-                <span className="min-w-0 flex-1 text-[12px] text-slate-300">{a.label}</span>
-                <ArrowUpRight className="h-3 w-3 shrink-0 text-slate-700 transition-all group-hover:text-slate-400 group-hover:translate-x-[-1px] group-hover:translate-y-[-1px]" />
-              </Link>
-            ))}
+          <div className="space-y-2">
+            {attention.map((a) => {
+              const borderColor = a.tone === "rose"
+                ? "rgba(239,68,68,0.45)"
+                : a.tone === "amber"
+                ? "rgba(245,158,11,0.45)"
+                : "rgba(47,147,132,0.45)";
+              const countColor = a.tone === "rose" ? "text-rose-300" : "text-amber-300";
+              return (
+                <div
+                  key={a.href + a.label}
+                  className="flex items-center gap-4 rounded-lg px-4 py-3"
+                  style={{ borderRight: `3px solid ${borderColor}`, background: "rgba(255,255,255,0.018)" }}
+                >
+                  {a.count !== undefined && (
+                    <span className={`shrink-0 text-2xl font-black tabular-nums leading-none ${countColor}`}>{a.count}</span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-semibold text-white">{a.label}</div>
+                    <div className="mt-0.5 text-[11px] text-slate-500">{a.why}</div>
+                  </div>
+                  <Link
+                    href={a.href}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-slate-200 transition-colors hover:bg-white/[0.08] hover:text-white"
+                  >
+                    {a.action}
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {milestones && !Object.values(milestones.reached).every(Boolean) && <ActivationChecklist milestones={milestones} vertical={vertical} modules={modules} />}
-
-      <InsightStrip context="dashboard" />
-
-      {/* ══ REVENUE BAND (commerce only) ══════════════════════════════════════ */}
-      {modules.orders && (
-        <FadeInView>
-          <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.018]">
-            <div className="grid gap-px bg-white/[0.05] sm:grid-cols-2 lg:grid-cols-4">
-              <Link href="/dashboard/orders" className="group bg-canvas-deep p-6 transition-colors hover:bg-white/[0.02] sm:col-span-2">
-                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  الإيرادات · آخر 7 أيام
-                </div>
-                <div className="flex items-end gap-3">
-                  <span className="text-[42px] font-black leading-none tracking-[-0.04em] text-white tabular-nums">
-                    {rev7d > 0 ? (rev7d / 100).toLocaleString("ar-EG") : "—"}
-                    {rev7d > 0 && <span className="ms-2 text-lg font-normal text-slate-500">ج</span>}
-                  </span>
-                  {revDelta !== null && <TrendBadge delta={revDelta} size="sm" />}
-                </div>
-                <div className="mt-4"><Sparkline data={last7Series} className="h-10 w-full text-brand-400" /></div>
-              </Link>
-              <MoneyCell icon={<ShoppingCart className="h-4 w-4" />} label="الطلبات" value={orders7d.toLocaleString("ar-EG")} delta={ordersDelta} sub={pendingOrderCount > 0 ? `${pendingOrderCount} معلّق` : undefined} href="/dashboard/orders" />
-              <MoneyCell icon={<TrendingUp className="h-4 w-4" />} label="معدل التحويل" value={conversionPct !== null ? `${conversionPct}%` : "—"} href="/dashboard/analytics" />
-            </div>
-          </section>
-        </FadeInView>
+      {/* ══ ACTIVATION CHECKLIST ══════════════════════════════════════════════ */}
+      {milestones && !Object.values(milestones.reached).every(Boolean) && (
+        <div className="py-6 border-b border-white/[0.05]">
+          <ActivationChecklist milestones={milestones} vertical={vertical} modules={modules} />
+        </div>
       )}
 
-      {/* ══ ACTIVITY + DRIVERS ════════════════════════════════════════════════ */}
-      <FadeInView delay={0.05}>
-        <div className="grid gap-4 lg:grid-cols-5">
-          <div className="card p-5 lg:col-span-3">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="section-title">نشاط المحادثات</h2>
-                <p className="mt-0.5 text-[11px] text-slate-500">آخر 30 يوم · {msgs7d.toLocaleString("ar-EG")} هذا الأسبوع</p>
-              </div>
-              <span className="text-[11px] tabular-nums text-slate-500">{msgs30dToday} اليوم</span>
-            </div>
-            <div className="relative h-32">
-              {/* Bars */}
-              <div className="absolute inset-0 flex items-end gap-[2px]">
-                {last30.map((d, i) => (
-                  <div key={d.day} className="flex flex-1 items-end" title={`${d.day}: ${d.total}`}>
-                    <div
-                      className="min-h-[3px] w-full rounded-sm"
-                      style={{
-                        height: `${Math.max((d.total / maxDaily) * 100, 3)}%`,
-                        background: i >= 23 ? "rgba(47,147,132,0.55)" : "rgba(47,147,132,0.14)",
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* SVG line overlay connecting bar peaks */}
-              <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 290 128" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="rgba(47,147,132,0.15)" />
-                    <stop offset="75%" stopColor="rgba(47,147,132,0.5)" />
-                    <stop offset="100%" stopColor="rgba(47,147,132,0.9)" />
-                  </linearGradient>
-                </defs>
-                <polyline
-                  points={last30.map((d, i) => `${(i / 29) * 290},${128 - Math.max((d.total / maxDaily) * 120, 4)}`).join(" ")}
-                  fill="none"
-                  stroke="url(#lineGrad)"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Today dot */}
-                {(() => {
-                  const last = last30[last30.length - 1];
-                  const y = 128 - Math.max((last.total / maxDaily) * 120, 4);
-                  return last.total > 0 ? <circle cx="290" cy={y} r="2.5" fill="#2f9384" /> : null;
-                })()}
-              </svg>
-            </div>
-            <div className="mt-2 flex justify-between text-[9px] text-slate-700 tabular-nums">
-              <span>٣٠ي</span><span>٢١ي</span><span>١٤ي</span><span>٧ي</span><span>اليوم</span>
-            </div>
-          </div>
+      {/* ══ BUSINESS PERFORMANCE ══════════════════════════════════════════════ */}
+      <section className="py-6 border-b border-white/[0.05]">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-[13px] font-semibold text-white">أداء النشاط</h2>
+          <span className="text-[11px] text-slate-600">آخر 7 أيام مقارنةً بالأسبوع السابق</span>
+        </div>
 
-          <div className="card p-5 lg:col-span-2">
-            <h2 className="section-title mb-4">المحركات</h2>
-            <div className="space-y-0.5">
-              <DriverRow label="العملاء" value={customerCount.toLocaleString("ar-EG")} sub={`${topCustomers.length} نشط`} href="/dashboard/customers" barPct={100} />
-              {modules.orders && <DriverRow label="الطلبات" value={orders7d.toLocaleString("ar-EG")} sub={pendingOrderCount > 0 ? `${pendingOrderCount} معلّق` : undefined} href="/dashboard/orders" delta={ordersDelta} barPct={customerCount > 0 ? Math.min((orders7d / customerCount) * 100 * 5, 100) : 0} />}
-              <DriverRow label="تفاعلات المساعد" value={aiCalls.toLocaleString("ar-EG")} sub="هذا الأسبوع" href="/dashboard/analytics" barPct={msgs7d > 0 ? Math.min((aiCalls / msgs7d) * 100, 100) : 0} />
-              <DriverRow label="المعرفة" value={docCount.toLocaleString("ar-EG")} sub="مستند" href="/dashboard/knowledge" barPct={Math.min(docCount * 10, 100)} />
+        {/* Metric band — not isolated cards */}
+        <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] lg:grid-cols-4">
+          {modules.orders && (
+            <Link href="/dashboard/orders" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">الإيرادات</div>
+              <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">
+                {rev7d > 0 ? `${(rev7d / 100).toLocaleString("ar-EG")}` : "—"}
+              </div>
+              {rev7d > 0 && <div className="text-[10px] text-slate-600">جنيه</div>}
+              {revDelta !== null && (
+                <div className={`mt-2 text-[11px] font-semibold tabular-nums ${revDelta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {revDelta >= 0 ? "▲" : "▼"} {Math.abs(Math.round(revDelta))}%
+                </div>
+              )}
+            </Link>
+          )}
+          {modules.orders && (
+            <Link href="/dashboard/orders" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">الطلبات</div>
+              <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">{orders7d}</div>
+              {(pendingOrderCount as number) > 0 && (
+                <div className="mt-1 text-[11px] text-amber-400">{pendingOrderCount as number} معلّق</div>
+              )}
+              {ordersDelta !== null && (
+                <div className={`mt-2 text-[11px] font-semibold tabular-nums ${ordersDelta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {ordersDelta >= 0 ? "▲" : "▼"} {Math.abs(Math.round(ordersDelta))}%
+                </div>
+              )}
+            </Link>
+          )}
+          <Link href="/dashboard/customers" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
+            <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">العملاء</div>
+            <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">{customerCount.toLocaleString("ar-EG")}</div>
+            <div className="mt-1 text-[11px] text-slate-600">{topCustomers.length} نشط مؤخراً</div>
+          </Link>
+          <Link href="/dashboard/inbox" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
+            <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">الرسائل</div>
+            <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">{msgs7d.toLocaleString("ar-EG")}</div>
+            <div className="mt-1 text-[11px] text-slate-600">{msgs30dToday} اليوم</div>
+            {msgs7dDelta !== null && (
+              <div className={`mt-2 text-[11px] font-semibold tabular-nums ${msgs7dDelta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                {msgs7dDelta >= 0 ? "▲" : "▼"} {Math.abs(Math.round(msgs7dDelta))}%
+              </div>
+            )}
+          </Link>
+        </div>
+
+        {/* Activity trend — 30-day bar chart */}
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between text-[10px] text-slate-600">
+            <span>نشاط المحادثات · 30 يوم</span>
+            <span className="tabular-nums">{msgs30dToday} اليوم</span>
+          </div>
+          <div className="relative h-20">
+            <div className="absolute inset-0 flex items-end gap-[2px]">
+              {last30.map((d, i) => (
+                <div key={d.day} className="flex flex-1 items-end" title={`${d.day}: ${d.total}`}>
+                  <div
+                    className="min-h-[2px] w-full rounded-[1px] transition-all"
+                    style={{
+                      height: `${Math.max((d.total / maxDaily) * 100, 2)}%`,
+                      background: i >= 23
+                        ? `rgba(47,147,132,${0.3 + (i - 23) * 0.1})`
+                        : "rgba(47,147,132,0.12)",
+                    }}
+                  />
+                </div>
+              ))}
             </div>
+            <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 290 80" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="lg2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="rgba(47,147,132,0.1)" />
+                  <stop offset="70%" stopColor="rgba(47,147,132,0.4)" />
+                  <stop offset="100%" stopColor="rgba(47,147,132,0.8)" />
+                </linearGradient>
+              </defs>
+              <polyline
+                points={last30.map((d, i) => `${(i / 29) * 290},${80 - Math.max((d.total / maxDaily) * 72, 3)}`).join(" ")}
+                fill="none" stroke="url(#lg2)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+              />
+              {(() => {
+                const last = last30[last30.length - 1];
+                const y = 80 - Math.max((last.total / maxDaily) * 72, 3);
+                return last.total > 0 ? <circle cx="290" cy={y} r="2" fill="#2f9384" /> : null;
+              })()}
+            </svg>
+          </div>
+          <div className="mt-1.5 flex justify-between text-[9px] text-slate-700 tabular-nums">
+            <span>30 يوم</span><span>21 يوم</span><span>14 يوم</span><span>7 أيام</span><span>اليوم</span>
           </div>
         </div>
-      </FadeInView>
+      </section>
 
-      {/* ══ RECENT ACTIVITY ═══════════════════════════════════════════════════ */}
-      <FadeInView delay={0.1}>
-        <div className={`grid gap-4 ${modules.orders ? "lg:grid-cols-2" : "grid-cols-1"}`}>
+      {/* ══ RECENT WORK ══════════════════════════════════════════════════════ */}
+      <section className="py-6">
+        <div className={`grid gap-6 ${modules.orders ? "lg:grid-cols-2" : "grid-cols-1"}`}>
+
+          {/* Recent orders */}
           {modules.orders && (
-            <div className="card p-5">
+            <div>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="section-title">آخر الطلبات</h2>
-                <Link href="/dashboard/orders" className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-white">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4 text-slate-500" />
+                  <h2 className="text-[13px] font-semibold text-white">آخر الطلبات</h2>
+                  {(pendingOrderCount as number) > 0 && (
+                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                      {pendingOrderCount as number} معلّق
+                    </span>
+                  )}
+                </div>
+                <Link href="/dashboard/orders" className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-white transition-colors">
                   الكل <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>
               {!hasOrders || (recentOrders as any[]).length === 0 ? (
-                <EmptyState icon={<ShoppingCart className="h-full w-full" />} title="لا طلبات بعد" description="الطلبات المستخرجة من محادثات واتساب تظهر هنا." size="sm" />
+                <div className="rounded-xl border border-white/[0.06] p-8">
+                  <EmptyState icon={<ShoppingBag className="h-full w-full" />} title="لا طلبات بعد" description="الطلبات المستخرجة من محادثات واتساب تظهر هنا." size="sm" />
+                </div>
               ) : (
-                <div className="space-y-0.5">
-                  {(recentOrders as any[]).map((o) => (
-                    <div key={o.id} className="flex items-center gap-3 rounded-xl p-2.5 transition-colors hover:bg-white/[0.03]">
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold ${
-                        o.status === "delivered" ? "bg-emerald-500/12 text-emerald-300" :
-                        o.status === "canceled" ? "bg-rose-500/12 text-rose-300" :
-                        "bg-amber-500/12 text-amber-300"
-                      }`}>
-                        {o.status === "delivered" ? "✓" : o.status === "canceled" ? "✕" : "•"}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] font-medium leading-tight text-white">{o.customerName || o.customerPhone || "—"}</div>
-                        <div className="text-[10px] text-slate-500">{timeAgo(o.createdAt)}</div>
-                      </div>
-                      <div className="shrink-0 text-[13px] font-bold tabular-nums text-white">
-                        {o.total > 0 ? `${(o.total / 100).toLocaleString("ar-EG")} ج` : "—"}
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/[0.05]">
+                        <th className="px-4 py-2.5 text-start text-[10px] font-medium uppercase tracking-[0.06em] text-slate-600">العميل</th>
+                        <th className="px-4 py-2.5 text-end text-[10px] font-medium uppercase tracking-[0.06em] text-slate-600">القيمة</th>
+                        <th className="px-4 py-2.5 text-center text-[10px] font-medium uppercase tracking-[0.06em] text-slate-600">الحالة</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(recentOrders as any[]).map((o, i) => (
+                        <tr key={o.id} className={`border-b border-white/[0.03] transition-colors hover:bg-white/[0.015] ${i === (recentOrders as any[]).length - 1 ? "border-b-0" : ""}`}>
+                          <td className="px-4 py-3">
+                            <Link href={`/dashboard/orders/${o.id}`} className="group flex items-center gap-2.5">
+                              <div className={`h-2 w-2 shrink-0 rounded-full ${
+                                o.status === "delivered" ? "bg-emerald-400" :
+                                o.status === "canceled" ? "bg-rose-400" : "bg-amber-400"
+                              }`} />
+                              <div>
+                                <div className="text-[13px] font-medium text-white group-hover:text-brand-300 transition-colors">{o.customerName || "—"}</div>
+                                <div className="text-[10px] text-slate-600">{timeAgo(o.createdAt)}</div>
+                              </div>
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-end">
+                            <div className="text-[13px] font-semibold tabular-nums text-white">
+                              {o.total > 0 ? `${(o.total / 100).toLocaleString("ar-EG")} ج` : "—"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <OrderStatusChip status={o.status} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           )}
 
-          <div className="card p-5">
+          {/* Recent conversations */}
+          <div>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="section-title">آخر الرسائل</h2>
-              <Link href="/dashboard/inbox" className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-white">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-slate-500" />
+                <h2 className="text-[13px] font-semibold text-white">آخر المحادثات</h2>
+                {flaggedCount > 0 && (
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                    {flaggedCount} للمتابعة
+                  </span>
+                )}
+              </div>
+              <Link href="/dashboard/inbox" className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-white transition-colors">
                 الكل <ArrowUpRight className="h-3 w-3" />
               </Link>
             </div>
             {recentMsgs.length === 0 ? (
-              <EmptyState icon={<Inbox className="h-full w-full" />} title="لا رسائل بعد" description="اربط واتساب أو جرّب البوت." size="sm" />
-            ) : (
-              <div className="space-y-0.5">
-                {recentMsgs.slice(0, 4).map((m) => (
-                  <div key={m.id} className="flex items-start gap-2.5 rounded-xl p-2.5 transition-colors hover:bg-white/[0.03]">
-                    <Avatar name={m.role === "user" ? m.conversation.customer.name || m.conversation.customer.phone : bot.name || "AI"} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                        <span className="max-w-[100px] truncate font-medium text-slate-300">{m.conversation.customer.name || m.conversation.customer.phone}</span>
-                        <span>·</span>
-                        <span className="shrink-0">{timeAgo(m.createdAt)}</span>
-                        {m.flagged && <span className="shrink-0 rounded bg-amber-500/15 px-1 text-[9px] font-medium text-amber-300">طلب</span>}
-                      </div>
-                      <div className="mt-0.5 truncate text-[13px] text-slate-400">{m.content}</div>
-                    </div>
-                  </div>
-                ))}
+              <div className="rounded-xl border border-white/[0.06] p-8">
+                <EmptyState icon={<MessageSquare className="h-full w-full" />} title="لا رسائل بعد" description="اربط واتساب أو جرّب البوت." size="sm" />
               </div>
-            )}
-            {sub.subscription && plan && (
-              <div className="mt-4 border-t border-white/[0.05] pt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-slate-500">{plan.name}</span>
-                  <Link href="/dashboard/usage" className="text-[10px] text-slate-400 transition-colors hover:text-white">التفاصيل</Link>
-                </div>
-                <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`} style={{ width: `${usagePct}%` }} />
-                </div>
-                <div className="mt-1.5 flex items-center justify-between text-[10px] tabular-nums text-slate-500">
-                  <span>{sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()}</span>
-                  <span>{daysLeft} يوم متبقي</span>
-                </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-white/[0.06] divide-y divide-white/[0.04]">
+                {recentMsgs.slice(0, 5).map((m) => (
+                  <Link
+                    key={m.id}
+                    href="/dashboard/inbox"
+                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/[0.015]"
+                  >
+                    <Avatar
+                      name={m.conversation.customer.name || m.conversation.customer.phone}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-[13px] font-medium text-white">
+                          {m.conversation.customer.name || m.conversation.customer.phone}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-slate-600">{timeAgo(m.createdAt)}</span>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        {m.flagged && (
+                          <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-amber-300">للمتابعة</span>
+                        )}
+                        <span className="truncate text-[12px] text-slate-500">{m.content}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
         </div>
-      </FadeInView>
-    </div>
-  );
-}
+      </section>
 
-// ── Mini sparkline — 7-bar inline chart ──────────────────────────────────────
-function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data, 1);
-  return (
-    <div className="flex h-6 items-end gap-[1.5px]">
-      {data.map((v, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-[1px]"
-          style={{
-            height: `${Math.max((v / max) * 100, 8)}%`,
-            background: i === data.length - 1 ? color : `${color}60`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ── Big KPI — flat left-border stat card ──────────────────────────────────────
-function BigKPI({ label, value, delta, color, spark, urgent }: {
-  label: string; value: number; delta?: number | null;
-  color: "brand" | "sky" | "purple" | "amber";
-  spark?: number[];
-  urgent?: boolean;
-}) {
-  const palette: Record<string, { accent: string; numColor: string }> = {
-    brand:  { accent: "rgba(47,147,132,0.65)",  numColor: "#2f9384" },
-    sky:    { accent: "rgba(56,189,248,0.55)",  numColor: "#38bdf8" },
-    purple: { accent: "rgba(192,132,252,0.50)", numColor: "#c084fc" },
-    amber:  { accent: "rgba(251,191,36,0.60)",  numColor: "#fbbf24" },
-  };
-  const p = palette[color];
-  return (
-    <div
-      className="flex flex-col justify-between overflow-hidden rounded-xl p-4"
-      style={{
-        background: "rgba(255,255,255,0.022)",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        borderRight: "1px solid rgba(255,255,255,0.04)",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-        borderLeft: `3px solid ${urgent ? "rgba(251,191,36,0.8)" : p.accent}`,
-      }}
-    >
-      <div className="text-[9px] font-medium tracking-[0.05em] text-slate-500">{label}</div>
-      <div className="mt-2 text-[36px] font-black leading-none tabular-nums tracking-[-0.04em]" style={{ color: p.numColor }}>
-        {value.toLocaleString("ar-EG")}
-      </div>
-      {spark && spark.length > 0 && (
-        <div className="mt-3">
-          <MiniSparkline data={spark} color={p.numColor} />
-        </div>
-      )}
-      {delta !== undefined && delta !== null && !spark && (
-        <div className="mt-2.5 flex items-center gap-1.5">
-          <span className={`text-[10px] font-bold tabular-nums ${delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-            {delta >= 0 ? "+" : ""}{Math.round(delta)}%
-          </span>
-          <span className="text-[9px] text-slate-700">7d</span>
-        </div>
-      )}
-      {delta !== undefined && delta !== null && spark && (
-        <div className="mt-1 text-[9px] tabular-nums" style={{ color: delta >= 0 ? "#34d399" : "#f87171" }}>
-          {delta >= 0 ? "+" : ""}{Math.round(delta)}% vs الأسبوع
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Money cell ────────────────────────────────────────────────────────────────
-function MoneyCell({ icon, label, value, delta, sub, href }: {
-  icon: React.ReactNode; label: string; value: string; delta?: number | null; sub?: string; href?: string;
-}) {
-  const inner = (
-    <>
-      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-        <span className="text-slate-400">{icon}</span>
-        <span>{label}</span>
-      </div>
-      <div className="text-[26px] font-black leading-none tracking-[-0.03em] text-white tabular-nums">{value}</div>
-      {(delta !== undefined || sub) && (
-        <div className="mt-2 flex items-center gap-1.5">
-          {delta !== undefined && <TrendBadge delta={delta ?? null} size="sm" />}
-          {sub && <span className="text-[10px] text-slate-500">{sub}</span>}
-        </div>
-      )}
-    </>
-  );
-  const cls = "bg-canvas-deep p-6 transition-colors hover:bg-white/[0.02]";
-  return href ? <Link href={href} className={cls}>{inner}</Link> : <div className={cls}>{inner}</div>;
-}
-
-// ── Driver row ────────────────────────────────────────────────────────────────
-function DriverRow({ label, value, sub, href, delta, barPct }: {
-  label: string; value: string; sub?: string; href?: string; delta?: number | null; barPct?: number;
-}) {
-  return (
-    <Link href={href || "#"} className="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.025]">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className="text-[15px] font-bold tabular-nums text-white">{value}</span>
-          {delta !== undefined && delta !== null && (
-            <span className={`text-[10px] tabular-nums ${delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-              {delta >= 0 ? "+" : ""}{Math.round(delta)}%
-            </span>
-          )}
-        </div>
-        <div className="mt-0.5 flex items-center gap-2">
-          {barPct !== undefined && (
-            <div className="h-[2px] w-16 overflow-hidden rounded-full bg-white/[0.07]">
-              <div className="h-full rounded-full bg-brand-500/60" style={{ width: `${Math.min(barPct, 100)}%` }} />
+      {/* ══ USAGE FOOTER (subtle, not a card) ════════════════════════════════ */}
+      {sub.subscription && plan && (
+        <div className="border-t border-white/[0.05] pt-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="shrink-0 text-[11px] font-medium text-slate-500">{plan.name}</div>
+              <div className="flex-1 h-1 overflow-hidden rounded-full bg-white/[0.06] max-w-[160px]">
+                <div
+                  className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`}
+                  style={{ width: `${usagePct}%` }}
+                />
+              </div>
+              <span className="shrink-0 text-[10px] tabular-nums text-slate-600">
+                {sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()} رسالة
+              </span>
             </div>
-          )}
-          <span className="text-[10px] text-slate-600">{label}{sub ? ` · ${sub}` : ""}</span>
+            <div className="shrink-0 flex items-center gap-3 text-[10px] text-slate-600">
+              <span>{daysLeft} يوم متبقي</span>
+              <Link href="/dashboard/usage" className="hover:text-slate-300 transition-colors">التفاصيل</Link>
+            </div>
+          </div>
         </div>
-      </div>
-      <ArrowUpRight className="h-3 w-3 shrink-0 text-slate-700 opacity-0 transition-opacity group-hover:opacity-100" />
-    </Link>
+      )}
+
+    </div>
   );
 }
 
-// ── Subscription badge ────────────────────────────────────────────────────────
-function SubscriptionBadge({ sub, daysLeft, waNum }: { sub: any; daysLeft: number; waNum: string }) {
-  if (sub.active)
-    return (
-      <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.07] px-2.5 py-1.5">
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-        <div className="text-xs">
-          <span className="font-medium text-white">{sub.subscription?.plan?.name || "نشط"}</span>
-          <span className="mr-1.5 text-emerald-400/70">· {daysLeft} يوم</span>
-        </div>
-      </div>
-    );
-  if (sub.subscription?.status === "pending")
-    return (
-      <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/[0.07] px-2.5 py-1.5">
-        <Clock className="h-3.5 w-3.5 text-amber-400" />
-        <span className="text-xs font-medium text-white">بانتظار التفعيل</span>
-      </div>
-    );
+// ── Order status chip ──────────────────────────────────────────────────────────
+function OrderStatusChip({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    delivered:  { label: "مُسلَّم",  cls: "text-emerald-300 bg-emerald-500/10" },
+    shipped:    { label: "شُحن",     cls: "text-blue-300 bg-blue-500/10" },
+    confirmed:  { label: "مؤكد",    cls: "text-brand-300 bg-brand-500/10" },
+    pending:    { label: "معلّق",   cls: "text-amber-300 bg-amber-500/10" },
+    canceled:   { label: "ملغي",    cls: "text-rose-300 bg-rose-500/10" },
+    cancelled:  { label: "ملغي",    cls: "text-rose-300 bg-rose-500/10" },
+  };
+  const s = map[status] ?? { label: status, cls: "text-slate-400 bg-white/[0.06]" };
   return (
-    <Link href="/pricing" className="inline-flex items-center gap-2 rounded-lg border border-brand-500/15 bg-brand-500/[0.07] px-2.5 py-1.5 transition-colors hover:bg-brand-500/15">
-      <Crown className="h-3.5 w-3.5 text-brand-400" />
-      <span className="text-xs font-medium text-white">اختر باقتك</span>
-    </Link>
+    <span className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-medium ${s.cls}`}>{s.label}</span>
   );
 }
