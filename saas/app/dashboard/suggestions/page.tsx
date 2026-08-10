@@ -17,7 +17,7 @@ export default async function SuggestionsPage() {
           locale="ar"
           recommendedTier={g.recommendedTier}
           title="الاقتراحات الذكية"
-          description="اقتراحات مدعومة بالذكاء الاصطناعي لتحسين ردودك ورفع تحويلاتك. متاحة في باقة Pro فأعلى."
+          description="اقتراحات آلية لتحسين ردودك ورفع تحويلاتك. متاحة في باقة Pro فأعلى."
         />
       </div>
     );

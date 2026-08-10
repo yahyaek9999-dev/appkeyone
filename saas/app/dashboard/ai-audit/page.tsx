@@ -19,7 +19,7 @@ export default async function AiAuditPage() {
         <LockedFeature
           locale="ar"
           recommendedTier={g.recommendedTier}
-          title="مدقّق الذكاء الاصطناعي"
+          title="جاهزية المساعد"
           description="يفحص إعداد مساعدك بالكامل — البرومبت، المعرفة، الردود، الكتالوج، ملف النشاط — ويعطيك درجة جاهزية وقائمة إصلاحات. متاح في باقة Pro فأعلى."
         />
       </div>

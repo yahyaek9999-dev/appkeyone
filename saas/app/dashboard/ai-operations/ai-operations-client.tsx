@@ -60,7 +60,7 @@ export default function AiOperationsClient({ current, providers, providerStats, 
   return (
     <div className="space-y-4 max-w-3xl">
       <HealthHero
-        title="صحة عمليات الذكاء الاصطناعي"
+        title="صحة عمليات المساعد"
         score={score}
         summary={summary}
         trend={trend as any}
@@ -73,7 +73,7 @@ export default function AiOperationsClient({ current, providers, providerStats, 
         </>}
       />
       <div className="grid grid-cols-3 gap-3">
-        <div className="card p-4"><div className="text-slate-400 text-xs mb-1">إجمالي الاستدعاءات</div><div className="text-2xl font-extrabold">{totals.calls}</div></div>
+        <div className="card p-4"><div className="text-slate-400 text-xs mb-1">إجمالي التفاعلات</div><div className="text-2xl font-extrabold">{totals.calls}</div></div>
         <div className="card p-4"><div className="text-slate-400 text-xs mb-1">الأعطال</div><div className={`text-2xl font-extrabold ${totals.failures > 0 ? "text-rose-300" : "text-emerald-300"}`}>{totals.failures}</div></div>
         <div className="card p-4"><div className="text-slate-400 text-xs mb-1">تجاوز المزوّد (failover)</div><div className="text-2xl font-extrabold">{totals.failovers}</div></div>
       </div>

@@ -145,7 +145,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/knowledge", label: "المعرفة", icon: BookOpen, perm: "settings" },
       { href: "/dashboard/knowledge-brain", label: "عقل المعرفة", icon: Brain, perm: "settings" },
       { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
-      { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: TrendingUp, perm: "analytics" },
+      { href: "/dashboard/revenue-copilot", label: "فرص الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: Gauge, perm: "analytics" },
       { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },
       { href: "/dashboard/intel", label: "الرصد الذكي", icon: Activity, perm: "analytics" },
@@ -153,7 +153,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/testing-arena", label: "ساحة الاختبار", icon: Beaker, perm: "settings" },
       // CONSOLIDATED (duplicate nav): same feature as /dashboard/testing-arena — page still reachable by URL.
       // { href: "/dashboard/arena", label: "ساحة الاختبار ٢", icon: Beaker, perm: "settings" },
-      { href: "/dashboard/ai-audit", label: "تدقيق الذكاء", icon: ShieldCheck, perm: "settings" },
+      { href: "/dashboard/ai-audit", label: "جاهزية المساعد", icon: ShieldCheck, perm: "settings" },
       // CONSOLIDATED (duplicate nav): overlaps /dashboard/revenue-copilot ("مساعد الإيرادات") — page still reachable by URL.
       // { href: "/dashboard/revenue-pro", label: "مساعد الإيرادات Pro", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/playground", label: "تجربة المحادثة", icon: FlaskConical, perm: "settings" },
@@ -197,7 +197,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/meta", label: "مركز Meta والفوترة", icon: ShieldCheck, perm: "settings", mode: "meta" },
       // CONSOLIDATED (duplicate nav): synonym of /dashboard/intel ("الرصد الذكي") — page still reachable by URL.
       // { href: "/dashboard/monitoring", label: "الرصد الذكي Pro", icon: Activity, perm: "analytics" },
-      { href: "/dashboard/ai-operations", label: "عمليات الذكاء", icon: Brain, perm: "settings" },
+      { href: "/dashboard/ai-operations", label: "عمليات المساعد", icon: Brain, perm: "settings" },
       { href: "/dashboard/qr-queue", label: "حجز جلسات QR", icon: CalendarClock, perm: "broadcasts" },
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/safety", label: "الأمان", icon: ShieldAlert, perm: "settings" },

@@ -52,7 +52,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               <OrderStatusPill status={toOrderStatus(order.status)} size="md" />
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <Field label="ثقة الاستخراج" value={`${order.aiConfidence || 0}%`} />
+              <Field label="دقة الاستخراج" value={(order.aiConfidence || 0) >= 70 ? "دقيق" : (order.aiConfidence || 0) >= 40 ? "جزئي" : "يحتاج مراجعة"} />
               <Field label="الإجمالي" value={`${(order.total || 0).toLocaleString()} ${order.currency || "EGP"}`} />
               <Field label="طريقة الدفع" value={order.paymentMethod || "—"} />
               <Field label="الشحن" value={`${(order.shipping || 0).toLocaleString()}`} />

@@ -185,8 +185,8 @@ export default async function OrdersPage({
                         <div className="text-sm font-semibold tabular-nums text-white">
                           {(o.total || 0).toLocaleString()} {o.currency || "ج"}
                         </div>
-                        <div className={`text-[10px] tabular-nums ${o.aiConfidence >= 70 ? "text-emerald-500" : o.aiConfidence >= 40 ? "text-amber-500" : "text-slate-500"}`}>
-                          {o.aiConfidence || 0}% ثقة
+                        <div className={`text-[10px] ${(o.aiConfidence || 0) >= 70 ? "text-emerald-500" : (o.aiConfidence || 0) >= 40 ? "text-amber-500" : "text-slate-500"}`}>
+                          {(o.aiConfidence || 0) >= 70 ? "استخراج دقيق" : (o.aiConfidence || 0) >= 40 ? "استخراج جزئي" : "يحتاج مراجعة"}
                         </div>
                       </td>
                       <td className="text-center">

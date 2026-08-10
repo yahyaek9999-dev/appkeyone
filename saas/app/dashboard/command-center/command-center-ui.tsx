@@ -245,7 +245,7 @@ export default function CommandCenterUi() {
                       </div>
                       <div className="shrink-0 text-left">
                         <div className="text-xs font-semibold text-emerald-300">{egp(o.estimatedValue)}</div>
-                        <div className="text-[10px] text-slate-500">{ACTION_AR[o.action] || o.action} · {o.confidence}%</div>
+                        <div className="text-[10px] text-slate-500">{ACTION_AR[o.action] || o.action} · {o.confidence >= 75 ? "عالي" : o.confidence >= 50 ? "متوسط" : "منخفض"}</div>
                       </div>
                     </Link>
                   ))}

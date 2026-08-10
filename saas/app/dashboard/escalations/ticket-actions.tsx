@@ -97,7 +97,7 @@ export default function EscalationActions({
       )}
       {draft && (
         <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-3 space-y-2">
-          <div className="text-[11px] font-medium text-violet-300">رد مقترح من الذكاء الاصطناعي — راجعه وأرسله يدوياً</div>
+          <div className="text-[11px] font-medium text-violet-300">رد مقترح — راجعه وأرسله يدوياً</div>
           <div className="text-slate-200 whitespace-pre-wrap">{draft}</div>
           <button onClick={copyDraft} className="text-[11px] text-violet-300 hover:text-violet-200 inline-flex items-center gap-1">
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "تم النسخ" : "نسخ"}

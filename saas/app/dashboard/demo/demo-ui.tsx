@@ -269,7 +269,7 @@ export default function DemoUi() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-emerald-300 font-bold text-sm">{c.leadScore * 50} ج</div>
-                    <div className="text-[11px] text-slate-500">ثقة {nba.confidence}%</div>
+                    <div className="text-[11px] text-slate-500">{nba.confidence >= 75 ? "احتمالية عالية" : nba.confidence >= 50 ? "احتمالية متوسطة" : "احتمالية منخفضة"}</div>
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-slate-400">{nba.reason}</p>
