@@ -108,7 +108,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                 className="input"
                 value={data.name}
                 onChange={(e) => update("name", e.target.value)}
-                placeholder="المساعد الذكي"
+                placeholder="مساعد متجرنا"
               />
             </div>
             <div>
@@ -140,7 +140,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
       {tab === "instructions" && (
         <div className="card p-6 space-y-2">
           <h2 className="font-bold text-lg">التعليمات (System Prompt)</h2>
-          <p className="text-sm text-slate-400 mb-3">قواعد سلوك البوت. خلي التعليمات واضحة عشان يلتزم.</p>
+          <p className="text-sm text-slate-400 mb-3">قواعد سلوك النظام. خلّي التعليمات واضحة عشان يلتزم.</p>
           <textarea
             className="input min-h-[220px] font-mono text-sm leading-relaxed"
             value={data.systemPrompt}
@@ -169,7 +169,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                   أسلوب الموظف البشري
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  يجعل ردود البوت تبدو طبيعية مثل موظف حقيقي: تأخير الكتابة المتغير، تنويع البدايات، إيموجي بسياق مناسب.
+                  يجعل الردود تبدو طبيعية مثل موظف حقيقي: تأخير الكتابة المتغير، تنويع البدايات، إيموجي بسياق مناسب.
                 </p>
               </div>
             </label>
@@ -351,7 +351,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                   تخزين الردود المتكررة مؤقتاً
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  لو عميل سأل نفس السؤال حرفياً، البوت يرجع ردّه السابق فوراً
+                  لو عميل سأل نفس السؤال حرفياً، يُرجع الرد السابق فوراً
                   بدلاً من إعادة استخدام الموديل. <strong className="text-yellow-300">نفس جودة الرد، في أجزاء
                   من الثانية بدل 5-10 ثوانٍ.</strong>
                 </p>
@@ -397,7 +397,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
         <div className="card p-6 space-y-4">
           <h2 className="font-bold text-lg">إشعارات الأوردر</h2>
           <p className="text-sm text-slate-400">
-            لما العميل يكتب رسالة فيها كلمة من الكلمات دي, البوت يبعتلك إشعار على الرقم اللي تختاره.
+            لما العميل يكتب رسالة فيها كلمة من الكلمات دي، يُرسل لك إشعار على الرقم اللي تختاره.
           </p>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
