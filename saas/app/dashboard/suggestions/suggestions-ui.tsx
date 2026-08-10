@@ -9,7 +9,6 @@ import {
   X,
   Save,
   Loader2,
-  Sparkles,
   AlertTriangle,
 } from "lucide-react";
 import { timeAgo } from "@/lib/format";
@@ -112,9 +111,9 @@ export default function SuggestionsUi() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Lightbulb className="w-6 h-6 text-yellow-400" />
-            اقتراحات تطوير قاعدة المعرفة
+          <h1 className="page-title mb-1 flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-amber-400" />
+            تطوير قاعدة المعرفة
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             الأسئلة التي طرحها العملاء ولم يتمكن البوت من الإجابة عليها. أضف
@@ -136,7 +135,7 @@ export default function SuggestionsUi() {
       </div>
 
       <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+        <Lightbulb className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
         <div className="text-sm">
           <strong className="text-yellow-200">كيف يعمل؟</strong>
           <p className="text-slate-300 mt-1">

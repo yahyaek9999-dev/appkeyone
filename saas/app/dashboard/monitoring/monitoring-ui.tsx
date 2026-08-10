@@ -151,7 +151,7 @@ export default function MonitoringUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">مركز الرصد الذكي</h1>
+          <h1 className="page-title mb-1">مركز الرصد</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يكتشف الشذوذ ويحسب درجات المخاطر وصحة النشاط من بياناتك الفعلية، ويصدر تنبيهات قابلة
             للمعالجة.

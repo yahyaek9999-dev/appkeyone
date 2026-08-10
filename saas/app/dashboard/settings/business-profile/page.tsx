@@ -15,8 +15,8 @@ export default async function BusinessProfileSettingsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-2">نوع النشاط والوحدات</h1>
-      <p className="text-slate-400 mb-8">
+      <h1 className="page-title mb-1">نوع النشاط والوحدات</h1>
+      <p className="page-desc mb-8">
         اختر نوع نشاطك ليتكيّف النظام معه، وفعّل أو عطّل وحدات مساحة العمل حسب احتياجك.
       </p>
       <div className="card p-6 max-w-2xl">

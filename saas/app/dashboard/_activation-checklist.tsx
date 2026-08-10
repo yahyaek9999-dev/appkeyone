@@ -14,7 +14,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Circle, ChevronLeft, X, Sparkles, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, X, Rocket, ArrowLeft } from "lucide-react";
 import type { MilestoneStatus, ActivationMilestone } from "@/lib/activation/track";
 import type { Vertical, ModuleKey } from "@/lib/modules";
 import { verticalSteps } from "@/lib/readiness/verticals";
@@ -125,7 +125,7 @@ export default function ActivationChecklist({
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/15">
-            <Sparkles className="h-5 w-5 text-brand-400" />
+            <Rocket className="h-5 w-5 text-brand-400" />
           </div>
           <div>
             <h2 className="section-title">خطوات التفعيل</h2>

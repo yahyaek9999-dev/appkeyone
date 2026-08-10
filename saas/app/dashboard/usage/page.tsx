@@ -18,7 +18,7 @@ import { getUsageSnapshot } from "@/lib/membership/limits";
 import { getCustomerCapState } from "@/lib/membership/customer-cap";
 import { tierBadge } from "@/lib/membership/plan";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
-import { AlertTriangle, MessageSquare, Sparkles, Megaphone, Crown, ShieldAlert } from "lucide-react";
+import { AlertTriangle, MessageSquare, Zap, Megaphone, Crown, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import UpgradeRequestPanel from "@/components/billing/UpgradeRequestPanel";
 
@@ -167,7 +167,7 @@ export default async function UsagePage() {
           cap={counters.messages.cap}
         />
         <Counter
-          icon={<Sparkles className="w-5 h-5" />}
+          icon={<Zap className="w-5 h-5" />}
           label="طلبات المعالجة"
           used={counters.ai.used}
           cap={counters.ai.cap}

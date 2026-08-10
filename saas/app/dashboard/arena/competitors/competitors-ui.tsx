@@ -57,7 +57,7 @@ export default function CompetitorBenchUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">مقارنة المنافسين (Real)</h1>
+          <h1 className="page-title mb-1">مقارنة المنافسين</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يحسب درجات KEYONE لكل بُعد من إعدادك الفعلي ويقارنها بالمنافسين، مع حفظ كل تشغيل وتتبّع
             التطوّر.

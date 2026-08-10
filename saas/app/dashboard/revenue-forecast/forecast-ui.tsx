@@ -12,7 +12,6 @@ import {
   Repeat,
   Crown,
   AlertTriangle,
-  Sparkles,
   Package,
   Bell,
   Lightbulb,
@@ -83,7 +82,7 @@ export default function ForecastUi() {
           {/* KPI row */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Kpi icon={<CalendarDays className="h-4 w-4" />} label="مبيعات 7 أيام (متوقع)" value={fmtMoney(data.next7Revenue)} accent="border-emerald-500/30 bg-emerald-500/10 text-emerald-300" trend={data.growthPct} />
-            <Kpi icon={<TrendingUp className="h-4 w-4" />} label="إيراد 30 يوم (متوقع)" value={fmtMoney(data.next30Revenue)} accent="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
+            <Kpi icon={<TrendingUp className="h-4 w-4" />} label="إيراد 30 يوم (متوقع)" value={fmtMoney(data.next30Revenue)} accent="border-brand-500/30 bg-brand-500/10 text-brand-300" />
             <Kpi icon={<ShoppingBag className="h-4 w-4" />} label="طلبات متوقعة (30ي)" value={(data.expectedOrders30 || 0).toLocaleString("ar-EG")} accent="border-sky-500/30 bg-sky-500/10 text-sky-300" />
             <Kpi icon={<Repeat className="h-4 w-4" />} label="نسبة العائدين" value={`${data.returningCustomersPct}%`} accent="border-gold-500/30 bg-gold-500/10 text-gold-300" />
           </div>
@@ -96,7 +95,7 @@ export default function ForecastUi() {
               </h3>
               <div className="flex items-center gap-3 text-[11px] text-slate-500">
                 <span className="flex items-center gap-1"><span className="h-2 w-3 rounded-full bg-emerald-400" /> فعلي</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-3 rounded-full bg-cyan-400/70 [background:repeating-linear-gradient(90deg,currentColor_0_3px,transparent_3px_6px)] text-cyan-400" /> متوقع</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-3 rounded-full bg-brand-400/70 [background:repeating-linear-gradient(90deg,currentColor_0_3px,transparent_3px_6px)] text-brand-400" /> متوقع</span>
               </div>
             </div>
             <ForecastChart history={data.history} forecast={data.forecast} />
@@ -140,12 +139,12 @@ export default function ForecastUi() {
           {/* Daily insights */}
           <div className="card p-5">
             <h3 className="section-title mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-brand-400" /> رؤى الأعمال اليومية
+              <TrendingUp className="h-4 w-4 text-brand-400" /> رؤى الأعمال اليومية
             </h3>
             <div className="space-y-2">
               {data.insights.map((ins, i) => (
                 <div key={i} className="flex items-start gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                  <span className="mt-0.5 shrink-0">{INSIGHT_ICON[ins.kind] || <Sparkles className="h-4 w-4 text-slate-400" />}</span>
+                  <span className="mt-0.5 shrink-0">{INSIGHT_ICON[ins.kind] || <TrendingUp className="h-4 w-4 text-slate-400" />}</span>
                   <span className="text-sm text-slate-200">{ins.text}</span>
                 </div>
               ))}

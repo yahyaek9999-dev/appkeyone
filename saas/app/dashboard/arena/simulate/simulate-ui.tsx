@@ -66,7 +66,7 @@ export default function SimulateUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">محاكاة المحادثات متعددة الأدوار</h1>
+          <h1 className="page-title mb-1">محاكاة المحادثات</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يحاكي محادثة كاملة: عميل ← مساعد ← عميل ← مساعد، بردود حقيقية من معرفتك ومتابعات حسب
             شخصية العميل، ويحدّد حالة الحل.

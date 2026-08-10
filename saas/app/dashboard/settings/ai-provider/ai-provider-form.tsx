@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Sparkles, FlaskConical, Zap, Brain, Rocket } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, CheckCircle, FlaskConical, Zap, Brain, Rocket } from "lucide-react";
 
 type ProviderId = "keyone" | "openai" | "gemini" | "openrouter" | "claude" | "groq" | "grok";
 type QualityTier = "fast" | "balanced" | "smart";
@@ -144,7 +144,7 @@ export function AIProviderForm({ initial }: { initial: Initial }) {
         </select>
         {isKeyone && (
           <p className="text-xs text-slate-400 mt-2">
-            <Sparkles className="inline w-3 h-3 me-1 text-brand-300" />
+            <CheckCircle className="inline w-3 h-3 me-1 text-brand-300" />
             KEYONE AI هو المزوّد الافتراضي. مفيش إعدادات إضافية.
           </p>
         )}

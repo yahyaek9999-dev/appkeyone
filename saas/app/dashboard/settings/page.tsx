@@ -1,7 +1,7 @@
 import { getAuthContext } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/rbac";
-import { CreditCard, Mail, User, Phone, Sparkles, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug, ShoppingBag, Building2, Server } from "lucide-react";
+import { CreditCard, Mail, User, Phone, Settings, ChevronLeft, MessageSquare, ShieldCheck, Crown, Users, Plug, ShoppingBag, Building2, Server } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { FadeInView } from "@/components/ui/stagger-reveal";
@@ -121,8 +121,8 @@ export default async function SettingsPage() {
         <SettingLink href="/dashboard/settings/business-profile" icon={<Building2 className="h-5 w-5 text-indigo-300" />}
           title="نوع النشاط والوحدات"
           desc="اختر نوع نشاطك (متجر، مطعم، خدمات، برمجيات...) وفعّل أو عطّل وحدات مساحة العمل لتناسب عملك." />
-        <SettingLink href="/dashboard/settings/ai-provider" icon={<Sparkles className="h-5 w-5 text-brand-300" />}
-          title="مزوّد الذكاء الاصطناعي"
+        <SettingLink href="/dashboard/settings/ai-provider" icon={<Settings className="h-5 w-5 text-brand-300" />}
+          title="مزوّد الخدمة"
           desc="اشتغل بـ KEYONE AI أو اربط مزوّدك الخاص (OpenAI / Gemini / Claude / Groq / OpenRouter)" />
         <SettingLink href="/dashboard/settings/providers" icon={<Plug className="h-5 w-5 text-violet-300" />}
           title="المزوّدون (ذكاء، صوت، صور، SMS، بريد)"

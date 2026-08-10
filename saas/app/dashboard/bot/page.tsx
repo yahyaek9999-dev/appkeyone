@@ -9,8 +9,8 @@ export default async function BotSettingsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-2">إعدادات البوت</h1>
-      <p className="text-slate-400 mb-8">شخصية البوت, طريقة كلامه, ومتى يبعتلك إشعار</p>
+      <h1 className="page-title mb-1">إعدادات المساعد</h1>
+      <p className="page-desc mb-8">شخصية المساعد، أسلوب حديثه، ومتى يُخطرك</p>
       <BotForm initial={JSON.parse(JSON.stringify(bot))} userPhone={user.phone || ""} />
     </div>
   );

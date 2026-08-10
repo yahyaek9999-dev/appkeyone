@@ -105,7 +105,7 @@ export default function ArenaUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">ساحة الاختبار 2.0</h1>
+          <h1 className="page-title mb-1">اختبار أداء المساعد</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يشغّل {data?.corpus.total || 120}+ سيناريو عميل عبر محرّك الاسترجاع الحقيقي ليقيس جاهزية
             معرفتك، يكشف نقاط الضعف، ويقترح إصلاحات.

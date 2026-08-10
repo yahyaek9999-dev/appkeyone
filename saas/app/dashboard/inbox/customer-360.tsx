@@ -41,7 +41,6 @@ import {
   PackagePlus,
   Bot as BotIcon,
   User as UserIcon,
-  Sparkles,
   Copy,
   Check,
   Crown,
@@ -925,7 +924,7 @@ const PILL_TONE: Record<string, string> = {
 };
 
 const VALUE_TIER_META: Record<string, { label: string; cls: string }> = {
-  platinum: { label: "بلاتيني", cls: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" },
+  platinum: { label: "بلاتيني", cls: "border-brand-400/40 bg-brand-400/10 text-brand-200" },
   gold: { label: "ذهبي", cls: "border-amber-400/40 bg-amber-400/10 text-amber-200" },
   silver: { label: "فضي", cls: "border-slate-300/30 bg-slate-300/10 text-slate-200" },
   bronze: { label: "برونزي", cls: "border-orange-700/40 bg-orange-700/10 text-orange-300" },
@@ -1123,9 +1122,9 @@ function NextBestActionCard({ advice }: { advice: NonNullable<Profile["advice"]>
     <div className="rounded-2xl border border-brand-500/30 bg-gradient-to-b from-brand-500/[0.08] to-transparent p-4">
       <div className="mb-2 flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-300">
-          <Sparkles className="h-3.5 w-3.5" /> الخطوة التالية الأفضل
+          <TrendingUp className="h-3.5 w-3.5" /> الإجراء المقترح
         </span>
-        <span className="text-[11px] font-bold text-brand-200">ثقة {nba.confidence}%</span>
+        <span className="text-[11px] font-bold text-brand-200">{nba.confidence >= 75 ? "احتمالية عالية" : nba.confidence >= 50 ? "احتمالية متوسطة" : "احتمالية منخفضة"}</span>
       </div>
 
       <div className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold ${actionCls}`}>

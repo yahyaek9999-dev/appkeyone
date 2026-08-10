@@ -81,7 +81,7 @@ export default function FixesUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">محرّك الإصلاح التلقائي</h1>
+          <h1 className="page-title mb-1">تحسين الردود تلقائياً</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يولّد إصلاحات من نقاط ضعف ساحة الاختبار. التطبيق يُنشئ مستند معرفة حقيقي، يعيد الفهرسة،
             ويعيد تشغيل الاختبار لقياس التحسّن فعلياً.

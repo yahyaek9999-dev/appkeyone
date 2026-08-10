@@ -97,7 +97,7 @@ export default function FunnelUi() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="page-title flex items-center gap-2">
-            <Filter className="h-6 w-6 text-cyan-400" />
+            <Filter className="h-6 w-6 text-brand-400" />
             مسار البيع
           </h1>
           <p className="page-desc mt-1">تحليل كامل لرحلة العميل من أول تواصل حتى التكرار</p>
@@ -132,7 +132,7 @@ export default function FunnelUi() {
           {/* KPI row */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Kpi icon={<Percent className="h-4 w-4" />} label="التحويل الكلي" value={`${data.metrics.overallConversionPct}%`} accent="border-emerald-500/30 bg-emerald-500/10 text-emerald-300" />
-            <Kpi icon={<Target className="h-4 w-4" />} label="معدل الإغلاق" value={`${data.metrics.closeRatePct}%`} accent="border-cyan-500/30 bg-cyan-500/10 text-cyan-300" />
+            <Kpi icon={<Target className="h-4 w-4" />} label="معدل الإغلاق" value={`${data.metrics.closeRatePct}%`} accent="border-brand-500/30 bg-brand-500/10 text-brand-300" />
             <Kpi icon={<Repeat className="h-4 w-4" />} label="معدل الشراء المتكرر" value={`${data.metrics.repeatPurchasePct}%`} accent="border-gold-500/30 bg-gold-500/10 text-gold-300" />
             <Kpi icon={<Clock className="h-4 w-4" />} label="متوسط زمن الرد" value={fmtDuration(data.metrics.avgResponseMins)} accent="border-sky-500/30 bg-sky-500/10 text-sky-300" />
           </div>
@@ -140,7 +140,7 @@ export default function FunnelUi() {
           {/* Funnel visualization */}
           <div className="card p-5">
             <h3 className="section-title mb-4 flex items-center gap-2">
-              <Filter className="h-4 w-4 text-cyan-400" /> مراحل المسار
+              <Filter className="h-4 w-4 text-brand-400" /> مراحل المسار
             </h3>
             <div className="space-y-2.5">
               {data.stages.map((s, i) => {
@@ -177,7 +177,7 @@ export default function FunnelUi() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <InsightCard
               icon={<Radio className="h-4 w-4" />}
-              tone="text-cyan-300"
+              tone="text-brand-300"
               label="أفضل قناة تحويل"
               value={data.topChannel?.label || "—"}
               sub={data.topChannel ? `${fmt(data.topChannel.count)} عميل` : ""}

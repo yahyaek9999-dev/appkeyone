@@ -13,7 +13,7 @@ import {
   Loader2,
   StickyNote,
   ChevronRight,
-  Sparkles,
+  TrendingUp,
   X,
   Inbox as InboxIcon,
   ArrowRight,
@@ -637,8 +637,8 @@ export default function InboxUi({
                 <div className="mb-3 rounded-xl border border-brand-500/25 bg-brand-500/[0.07] p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 text-xs font-semibold text-brand-300">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      اقتراحات AI
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      اقتراحات الرد
                     </div>
                     <button
                       onClick={() => {
@@ -717,7 +717,7 @@ export default function InboxUi({
                     {suggesting ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <TrendingUp className="w-3.5 h-3.5" />
                     )}
                     اقتراحات
                   </button>

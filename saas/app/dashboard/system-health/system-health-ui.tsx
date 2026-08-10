@@ -113,7 +113,7 @@ export default function SystemHealthUi() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Activity className="h-6 w-6 text-cyan-400" />
+          <Activity className="h-6 w-6 text-brand-400" />
           <div>
             <h1 className="page-title">صحة النظام والمراقبة</h1>
             <p className="page-desc mt-1">مؤشرات أداء فورية للخادم وقاعدة البيانات والواتساب والذكاء الاصطناعي</p>
@@ -161,7 +161,7 @@ export default function SystemHealthUi() {
             <div className="card p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="section-title flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-cyan-400" /> حالة الأنظمة الفرعية
+                  <Activity className="h-4 w-4 text-brand-400" /> حالة الأنظمة الفرعية
                 </h3>
                 {data.version && (
                   <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-[11px] text-slate-400">
@@ -184,7 +184,7 @@ export default function SystemHealthUi() {
           {/* Server */}
           <div className="card p-5">
             <h3 className="section-title mb-4 flex items-center gap-2">
-              <Server className="h-4 w-4 text-cyan-400" /> الخادم
+              <Server className="h-4 w-4 text-brand-400" /> الخادم
             </h3>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MiniCard icon={<Zap className="h-4 w-4" />} label="المعالج" value={(data.server.cpuModel || "—").replace(/\(R\)|\(TM\)|Processor/gi, "").trim().slice(0, 28) || "—"} sub={`${data.server.cpuCores || 0} نواة`} />

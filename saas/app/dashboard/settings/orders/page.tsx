@@ -20,8 +20,8 @@ export default async function OrderSettingsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-extrabold mb-2">إعدادات الطلبات</h1>
-      <p className="text-slate-400 mb-8">
+      <h1 className="page-title mb-1">إعدادات الطلبات</h1>
+      <p className="page-desc mb-8">
         تحكّم في كيفية استخراج الطلبات من المحادثات تلقائياً.
       </p>
       <div className="card p-6 max-w-2xl">

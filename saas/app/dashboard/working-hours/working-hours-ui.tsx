@@ -99,9 +99,9 @@ export default function WorkingHoursUi() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Clock className="w-6 h-6 text-sky-400" />
-          ساعات العمل والذكاء التشغيلي
+        <h1 className="page-title flex items-center gap-2">
+          <Clock className="w-5 h-5 text-sky-400" />
+          ساعات العمل
         </h1>
         <p className="text-sm text-slate-400 mt-1">
           تحكم في متى يرد البوت، ومتى يبعث رسالة "خارج الدوام"، وفي تنبيهات العملاء الغاضبين، والمتابعة التلقائية.

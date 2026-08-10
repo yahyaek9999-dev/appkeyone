@@ -23,7 +23,6 @@ import {
   Plug,
   Brain,
   Crown,
-  Sparkles,
   Briefcase,
   Wrench,
   Package,
@@ -105,7 +104,7 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
       { href: "/dashboard/analytics", label: "التحليلات", icon: BarChart3, perm: "analytics" },
-      { href: "/dashboard/command-center", label: "مركز القيادة", icon: Sparkles, perm: "analytics" },
+      { href: "/dashboard/command-center", label: "مركز القيادة", icon: Gauge, perm: "analytics" },
     ],
   },
   {
@@ -145,7 +144,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/bot", label: "المساعد الذكي", icon: Bot, perm: "settings" },
       { href: "/dashboard/knowledge", label: "المعرفة", icon: BookOpen, perm: "settings" },
       { href: "/dashboard/knowledge-brain", label: "عقل المعرفة", icon: Brain, perm: "settings" },
-      { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Sparkles, perm: "analytics" },
+      { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
       { href: "/dashboard/revenue-copilot", label: "مساعد الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: Gauge, perm: "analytics" },
       { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },

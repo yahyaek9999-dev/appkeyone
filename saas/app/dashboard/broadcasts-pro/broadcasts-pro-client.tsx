@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Coins, Plus, Send, ListOrdered, History, BarChart3, Loader2,
-  CheckCircle2, XCircle, RefreshCw, Sparkles, Users, AlertTriangle,
+  CheckCircle2, XCircle, RefreshCw, Megaphone, Users, AlertTriangle,
 } from "lucide-react";
 
 // ── Shared types ──────────────────────────────────────────────────────────────
@@ -283,7 +283,7 @@ function CampaignCreatorCard({ balance, perRecipient, onCreated }: { balance: nu
 
   return (
     <div className="card p-5">
-      <h2 className="font-bold text-lg flex items-center gap-2 mb-1"><Sparkles className="h-4 w-4 text-brand-300" /> إنشاء حملة</h2>
+      <h2 className="font-bold text-lg flex items-center gap-2 mb-1"><Megaphone className="h-4 w-4 text-brand-300" /> إنشاء حملة</h2>
       <p className="text-xs text-slate-500 mb-4">تدخل الحملة طابور جلسات QR. يُخصم {perRecipient} رصيد لكل مستلِم عند الإنشاء.</p>
       <form onSubmit={submit} className="space-y-3">
         <div>

@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Brain, Loader2, RefreshCw, Wifi, Shield, AlertTriangle, Lock,
-  Upload, FileText, Search, Sparkles, CheckCircle2, XCircle,
+  Upload, FileText, Search, BarChart3, CheckCircle2, XCircle,
   Gauge, ShieldCheck, HelpCircle, Package, Tag, Database, Crown,
 } from "lucide-react";
 
@@ -183,7 +183,7 @@ function ScoreCards({ health }: { health: Health }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <GaugeCard icon={<Gauge className="h-4 w-4" />} label="صحة المعرفة" value={health.healthScore} hint="حجم + عمق + حداثة المستندات" />
-      <GaugeCard icon={<Sparkles className="h-4 w-4" />} label="تغطية المواضيع" value={health.coverageScore} hint="أسعار · سياسات · أسئلة · منتجات" />
+      <GaugeCard icon={<BarChart3 className="h-4 w-4" />} label="تغطية المواضيع" value={health.coverageScore} hint="أسعار · سياسات · أسئلة · منتجات" />
       <div className="card p-5">
         <div className="mb-3 flex items-center gap-1.5 text-[11px] text-slate-500">
           <Database className="h-4 w-4" /> ملخص المعرفة
@@ -371,7 +371,7 @@ function AskBox() {
   return (
     <div className="card p-5">
       <h3 className="section-title mb-4 flex items-center gap-2">
-        <Search className="h-4 w-4 text-cyan-400" /> اسأل معرفتك
+        <Search className="h-4 w-4 text-amber-400" /> اسأل معرفتك
       </h3>
       <form onSubmit={ask} className="flex items-center gap-2">
         <input

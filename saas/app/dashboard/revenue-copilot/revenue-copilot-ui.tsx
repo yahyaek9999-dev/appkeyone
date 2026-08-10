@@ -15,14 +15,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Sparkles,
+  TrendingUp,
   RefreshCw,
   Loader2,
   Wallet,
   Target,
   Crown,
   AlertTriangle,
-  TrendingUp,
   Copy,
   Check,
   Phone,
@@ -84,7 +83,7 @@ interface Resp {
 const egp = (n: number) => `${(n || 0).toLocaleString("en-US")} ج`;
 
 const TIER_META: Record<ValueTier, { label: string; cls: string }> = {
-  platinum: { label: "بلاتيني", cls: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" },
+  platinum: { label: "بلاتيني", cls: "border-brand-400/40 bg-brand-400/10 text-brand-200" },
   gold: { label: "ذهبي", cls: "border-amber-400/40 bg-amber-400/10 text-amber-200" },
   silver: { label: "فضي", cls: "border-slate-300/30 bg-slate-300/10 text-slate-200" },
   bronze: { label: "برونزي", cls: "border-orange-700/40 bg-orange-700/10 text-orange-300" },
@@ -146,14 +145,12 @@ export default function RevenueCopilotUi() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-brand-400" />
-            مساعد الإيرادات
+          <h1 className="page-title flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-brand-400" />
+            فرص الإيرادات
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            قائمة واحدة مرتّبة بأعلى الفرص قيمةً — لكل عميل الخطوة التالية الأفضل،
-            نسبة الثقة، والقيمة المتوقعة. كله مبني على بياناتك الحالية بدون أي
-            تكلفة إضافية.
+          <p className="page-desc mt-1">
+            قائمة مرتّبة بأعلى الفرص قيمةً — لكل عميل الخطوة التالية المقترحة والقيمة المتوقعة.
           </p>
         </div>
         <button
@@ -185,7 +182,7 @@ export default function RevenueCopilotUi() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Kpi icon={<Target className="w-4 h-4" />} label="فرص نشطة" value={`${data.opportunityCount}`} tone="brand" />
             <Kpi icon={<Wallet className="w-4 h-4" />} label="قيمة الفرص المتوقعة" value={egp(data.totalPipelineValue)} tone="emerald" />
-            <Kpi icon={<TrendingUp className="w-4 h-4" />} label="قيمة عالية الثقة" value={egp(data.highConfidenceValue)} tone="sky" />
+            <Kpi icon={<TrendingUp className="w-4 h-4" />} label="الفرص المرتفعة" value={egp(data.highConfidenceValue)} tone="sky" />
             <Kpi
               icon={<Crown className="w-4 h-4" />}
               label="عملاء ذهبي+"
@@ -296,7 +293,9 @@ function OpportunityRow({ o }: { o: Opportunity }) {
         </div>
         <div className="shrink-0 text-left">
           <div className="text-emerald-300 font-bold text-sm">{egp(o.estimatedValue)}</div>
-          <div className="text-[11px] text-slate-500">ثقة {o.confidence}%</div>
+          <div className="text-[11px] text-slate-500">
+            {o.confidence >= 75 ? "احتمالية عالية" : o.confidence >= 50 ? "احتمالية متوسطة" : "احتمالية منخفضة"}
+          </div>
         </div>
       </div>
 

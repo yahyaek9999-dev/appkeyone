@@ -71,8 +71,8 @@ export default async function EscalationsPage() {
   return (
     <div className="space-y-6" dir="rtl">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <MessageSquareWarning className="h-6 w-6 text-amber-400" />
+        <h1 className="page-title flex items-center gap-2">
+          <MessageSquareWarning className="h-5 w-5 text-amber-400" />
           التصعيدات والتدخل البشري
         </h1>
         <p className="mt-1 text-sm text-slate-400">

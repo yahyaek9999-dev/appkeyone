@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Save, CheckCircle, Sparkles, ShoppingCart, User, MessageSquare, Bell, Zap, FlaskConical } from "lucide-react";
+import { Save, CheckCircle, ShoppingCart, User, MessageSquare, Bell, Zap, FlaskConical } from "lucide-react";
 import PromptLab from "./prompt-lab";
 import { useToast } from "@/components/ui/toast";
 
@@ -65,13 +65,13 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
   }
 
   const TABS: { id: Tab; label: string; icon: any }[] = [
-    { id: "identity", label: "الهوية", icon: User },
-    { id: "instructions", label: "التعليمات", icon: MessageSquare },
-    { id: "promptlab", label: "مختبر البرومبت", icon: FlaskConical },
-    { id: "humanize", label: "المحاكاة البشرية", icon: Sparkles },
+    { id: "identity", label: "شخصية المساعد", icon: User },
+    { id: "instructions", label: "تعليمات الأعمال", icon: MessageSquare },
+    { id: "promptlab", label: "تجربة الردود", icon: FlaskConical },
+    { id: "humanize", label: "أسلوب الحديث", icon: MessageSquare },
     { id: "sales", label: "البيع والتفاوض", icon: ShoppingCart },
     { id: "performance", label: "الأداء", icon: Zap },
-    { id: "alerts", label: "إشعارات الأوردر", icon: Bell },
+    { id: "alerts", label: "إشعارات الطلبات", icon: Bell },
   ];
 
   return (
@@ -87,7 +87,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
               onClick={() => setTab(t.id)}
               className={`px-3 py-1.5 rounded-lg text-sm border inline-flex items-center gap-1.5 transition ${
                 active
-                  ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                  ? "bg-brand-500/20 text-brand-300 border-brand-500/40"
                   : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
               }`}
             >
@@ -103,7 +103,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
         <div className="card p-6 space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="label">اسم البوت</label>
+              <label className="label">اسم المساعد</label>
               <input
                 className="input"
                 value={data.name}
@@ -155,18 +155,18 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
       {/* HUMANIZE */}
       {tab === "humanize" && (
         <div className="space-y-4">
-          <div className={`card p-6 border-2 transition ${data.humanizeReplies ? "border-cyan-500/40" : "border-white/10"}`}>
+          <div className={`card p-6 border-2 transition ${data.humanizeReplies ? "border-brand-500/40" : "border-white/10"}`}>
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={data.humanizeReplies}
                 onChange={(e) => update("humanizeReplies", e.target.checked)}
-                className="mt-1 w-5 h-5 accent-cyan-500"
+                className="mt-1 w-5 h-5 accent-brand-500"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 font-bold text-lg">
-                  <Sparkles className="w-5 h-5 text-cyan-400" />
-                  محاكاة الموظف البشري
+                  <MessageSquare className="w-5 h-5 text-brand-400" />
+                  أسلوب الموظف البشري
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
                   يجعل ردود البوت تبدو طبيعية مثل موظف حقيقي: تأخير الكتابة المتغير، تنويع البدايات، إيموجي بسياق مناسب.
@@ -180,7 +180,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label !mb-0">سرعة الكتابة (حرف/ثانية)</label>
-                  <span className="text-sm font-mono text-cyan-300">{data.typingSpeedCps}</span>
+                  <span className="text-sm font-mono text-brand-300">{data.typingSpeedCps}</span>
                 </div>
                 <input
                   type="range"
@@ -188,7 +188,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                   max={60}
                   value={data.typingSpeedCps}
                   onChange={(e) => update("typingSpeedCps", parseInt(e.target.value))}
-                  className="w-full accent-cyan-500"
+                  className="w-full accent-brand-500"
                 />
                 <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                   <span>بطيء (يوحي باهتمام أكثر)</span>
@@ -199,7 +199,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label !mb-0">تأخير القراءة قبل البدء (ms)</label>
-                  <span className="text-sm font-mono text-cyan-300">{data.preReplyDelayMs}</span>
+                  <span className="text-sm font-mono text-brand-300">{data.preReplyDelayMs}</span>
                 </div>
                 <input
                   type="range"
@@ -208,7 +208,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                   step={100}
                   value={data.preReplyDelayMs}
                   onChange={(e) => update("preReplyDelayMs", parseInt(e.target.value))}
-                  className="w-full accent-cyan-500"
+                  className="w-full accent-brand-500"
                 />
                 <p className="text-xs text-slate-500 mt-1">
                   وقت الانتظار قبل ظهور "يكتب الآن..." (يحاكي قراءة الموظف للرسالة).
@@ -220,7 +220,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                   type="checkbox"
                   checked={data.dynamicEmojis}
                   onChange={(e) => update("dynamicEmojis", e.target.checked)}
-                  className="mt-1 w-4 h-4 accent-cyan-500"
+                  className="mt-1 w-4 h-4 accent-brand-500"
                 />
                 <div className="flex-1">
                   <div className="font-medium">إيموجي ديناميكي</div>
@@ -235,7 +235,7 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
                   type="checkbox"
                   checked={data.replyVariations}
                   onChange={(e) => update("replyVariations", e.target.checked)}
-                  className="mt-1 w-4 h-4 accent-cyan-500"
+                  className="mt-1 w-4 h-4 accent-brand-500"
                 />
                 <div className="flex-1">
                   <div className="font-medium">تنويع أساليب الرد</div>
@@ -302,8 +302,8 @@ export default function BotForm({ initial, userPhone }: { initial: any; userPhon
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 font-bold text-lg">
-                  <Sparkles className="w-5 h-5 text-amber-400" />
-                  التفاوض الذكي على الأسعار
+                  <Zap className="w-5 h-5 text-amber-400" />
+                  التفاوض على الأسعار
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
                   يسمح للبوت بالتلميح إلى مرونة في السعر ضمن حد أقصى تحدّده. لن يذكر النسبة صراحة.

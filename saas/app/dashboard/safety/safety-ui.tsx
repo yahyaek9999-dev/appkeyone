@@ -99,8 +99,8 @@ export default function SafetyDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="w-6 h-6 text-emerald-400" />
+          <h1 className="page-title flex items-center gap-2">
+            <Shield className="w-5 h-5 text-emerald-400" />
             مركز الأمان والحماية من الحظر
           </h1>
           <p className="text-sm text-slate-400 mt-1">يتحدث كل 10 ثوانٍ</p>

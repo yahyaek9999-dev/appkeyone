@@ -89,7 +89,7 @@ export default function RevenueProUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">مساعد الإيرادات Pro</h1>
+          <h1 className="page-title mb-1">تحليل الإيرادات</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             صحة ودرجة الإيرادات، التسرّب، التكرار، القيمة الدائمة (LTV)، تحليل الأفواج (Cohorts)،
             وتوصيات حقيقية من بيانات طلباتك وعملائك.

@@ -100,7 +100,7 @@ export default function AuditUi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold mb-1">مدقّق الذكاء الاصطناعي</h1>
+          <h1 className="page-title mb-1">تدقيق جاهزية المساعد</h1>
           <p className="text-sm text-slate-400 max-w-xl">
             يفحص إعداد مساعدك بالكامل ويعطيك درجة جاهزية مع قائمة إصلاحات مرتّبة بالأولوية.
           </p>

@@ -131,8 +131,8 @@ export default function SalesBrainUi() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="w-6 h-6 text-teal-400" />
+          <h1 className="page-title flex items-center gap-2">
+            <Brain className="w-5 h-5 text-teal-400" />
             عقل المبيعات
           </h1>
           <p className="text-sm text-slate-400 mt-1">

@@ -241,7 +241,7 @@ export default async function DashboardOverview() {
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <BigKPI label="إجمالي العملاء" value={customerCount} color="sky" />
         <BigKPI label="رسائل هذا الأسبوع" value={msgs7d} delta={msgs7dDelta} color="brand" spark={last7Series} />
-        <BigKPI label="استدعاءات الذكاء" value={aiCalls} color="purple" />
+        <BigKPI label="تفاعلات المساعد" value={aiCalls} color="purple" />
         {modules.orders
           ? <BigKPI label="طلبات معلّقة" value={pendingOrderCount as number} color={(pendingOrderCount as number) > 0 ? "amber" : "brand"} urgent={(pendingOrderCount as number) > 0} />
           : <BigKPI label="حملات البث" value={broadcastCount as number} color="sky" />
@@ -371,7 +371,7 @@ export default async function DashboardOverview() {
             <div className="space-y-0.5">
               <DriverRow label="العملاء" value={customerCount.toLocaleString("ar-EG")} sub={`${topCustomers.length} نشط`} href="/dashboard/customers" barPct={100} />
               {modules.orders && <DriverRow label="الطلبات" value={orders7d.toLocaleString("ar-EG")} sub={pendingOrderCount > 0 ? `${pendingOrderCount} معلّق` : undefined} href="/dashboard/orders" delta={ordersDelta} barPct={customerCount > 0 ? Math.min((orders7d / customerCount) * 100 * 5, 100) : 0} />}
-              <DriverRow label="محادثات الذكاء" value={aiCalls.toLocaleString("ar-EG")} sub="هذا الأسبوع" href="/dashboard/analytics" barPct={msgs7d > 0 ? Math.min((aiCalls / msgs7d) * 100, 100) : 0} />
+              <DriverRow label="تفاعلات المساعد" value={aiCalls.toLocaleString("ar-EG")} sub="هذا الأسبوع" href="/dashboard/analytics" barPct={msgs7d > 0 ? Math.min((aiCalls / msgs7d) * 100, 100) : 0} />
               <DriverRow label="المعرفة" value={docCount.toLocaleString("ar-EG")} sub="مستند" href="/dashboard/knowledge" barPct={Math.min(docCount * 10, 100)} />
             </div>
           </div>

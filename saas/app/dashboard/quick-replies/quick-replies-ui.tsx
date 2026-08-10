@@ -90,8 +90,8 @@ export default function QuickRepliesUi() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Zap className="w-6 h-6 text-yellow-400" />
+        <h1 className="page-title flex items-center gap-2">
+          <Zap className="w-5 h-5 text-yellow-400" />
           الردود السريعة
         </h1>
         <p className="text-sm text-slate-400 mt-1">

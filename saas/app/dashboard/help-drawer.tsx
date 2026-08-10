@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LifeBuoy, X, ArrowLeft, Sparkles, BookOpen, MessageCircle,
+  LifeBuoy, X, ArrowLeft, Gauge, BookOpen, MessageCircle,
   Rocket, ChevronLeft,
 } from "lucide-react";
 
@@ -226,7 +226,7 @@ export default function HelpDrawer() {
               {/* Contextual topic */}
               <div>
                 <div className="mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-brand-400">
-                  <Sparkles className="h-3.5 w-3.5" /> هذه الصفحة
+                  <Gauge className="h-3.5 w-3.5" /> هذه الصفحة
                 </div>
                 <h3 className="text-base font-semibold text-white">{topic.title}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-slate-400">{topic.summary}</p>
@@ -279,7 +279,7 @@ export default function HelpDrawer() {
                 onClick={() => setOpen(false)}
                 className="btn-primary flex w-full items-center justify-center gap-2 text-sm"
               >
-                <Sparkles className="h-4 w-4" />
+                <Gauge className="h-4 w-4" />
                 افتح مركز القيادة
                 <ArrowLeft className="h-4 w-4" />
               </Link>
