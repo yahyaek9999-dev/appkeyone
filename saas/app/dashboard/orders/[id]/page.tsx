@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { ArrowRight, ArrowUpRight, AlertCircle, Package, Clock, MessageSquare } from "lucide-react";
+import { ArrowRight, ArrowUpRight, AlertCircle, Package, Clock, MessageSquare, Truck, CheckCircle2, MapPin, ExternalLink } from "lucide-react";
 import OrderActions from "./order-actions";
 import { Avatar } from "@/components/ui/avatar";
 import { OrderStatusPill, type OrderStatus } from "@/components/ui/order-status-pill";
@@ -250,6 +250,87 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               )}
             </div>
           </section>
+
+          {/* Shipping tracking timeline */}
+          {(order.trackingCode || order.shippingStatus !== "not_started") && (
+            <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.015]">
+              <div className="border-b border-white/[0.05] px-4 py-3 flex items-center justify-between">
+                <h3 className="text-[13px] font-semibold text-white flex items-center gap-1.5">
+                  <Truck className="h-3.5 w-3.5 text-brand-400" />
+                  تتبع الشحنة
+                </h3>
+                {order.trackingUrl && (
+                  <a
+                    href={order.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] text-brand-400 hover:text-brand-300"
+                  >
+                    تتبع مباشر <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+              <div className="px-4 py-3 space-y-3">
+                {/* Tracking code */}
+                {order.trackingCode && (
+                  <div className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500 mb-0.5">رقم التتبع</div>
+                    <div className="font-mono text-[13px] text-white select-all">{order.trackingCode}</div>
+                    {order.courierName && (
+                      <div className="text-[11px] text-slate-500 mt-0.5">{order.courierName}</div>
+                    )}
+                  </div>
+                )}
+                {/* Shipping status timeline */}
+                {(() => {
+                  const STEPS = [
+                    { key: "not_started", label: "لم يبدأ الشحن" },
+                    { key: "preparing", label: "جاري التجهيز" },
+                    { key: "shipped", label: "تم الشحن" },
+                    { key: "delayed", label: "تأخير" },
+                  ];
+                  const currentIdx = STEPS.findIndex(s => s.key === order.shippingStatus);
+                  return (
+                    <div className="space-y-2">
+                      {STEPS.filter(s => s.key !== "delayed").map((s, i) => {
+                        const done = currentIdx > i;
+                        const current = currentIdx === i;
+                        const delayed = order.shippingStatus === "delayed" && i === 2;
+                        return (
+                          <div key={s.key} className="flex items-center gap-2.5">
+                            <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              delayed ? "bg-amber-500/20" :
+                              done || current ? "bg-brand-500/20" : "bg-white/[0.04]"
+                            }`}>
+                              {done ? (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-brand-400" />
+                              ) : current ? (
+                                <span className="h-2 w-2 rounded-full bg-brand-400 animate-pulse" />
+                              ) : (
+                                <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                              )}
+                            </div>
+                            <span className={`text-[12px] ${done ? "text-slate-400 line-through" : current ? "text-white font-medium" : "text-slate-600"}`}>
+                              {s.label}
+                              {delayed && current && " (متأخر)"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Order status cross-reference */}
+                {["shipped", "out_for_delivery", "delivered"].includes(order.status) && (
+                  <div className="flex items-center gap-1.5 pt-1 text-[11px] text-slate-500">
+                    <MapPin className="h-3 w-3" />
+                    حالة الطلب: {order.status === "shipped" ? "تم الشحن" : order.status === "out_for_delivery" ? "في الطريق" : "تم التسليم"}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Actions */}
           <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.015]">

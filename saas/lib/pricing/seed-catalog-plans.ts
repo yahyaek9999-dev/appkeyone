@@ -17,7 +17,7 @@ import type { PrismaClient } from "@prisma/client";
 import { TIERS, CAPABILITIES, featureFlagsForTier, type TierDef } from "./catalog";
 
 function featureBullets(tier: TierDef): string[] {
-  const unlocked = CAPABILITIES.filter((c) => tier.index >= c.minTierIndex);
+  const unlocked = CAPABILITIES.filter((c) => tier.capIndex >= c.minTierIndex);
   const bullets: string[] = [];
 
   bullets.push(
@@ -37,7 +37,7 @@ function featureBullets(tier: TierDef): string[] {
       tier.limits.team === 0 ? "أعضاء فريق غير محدودين" : `${tier.limits.team} أعضاء فريق`,
     );
   }
-  if (tier.index >= 1) {
+  if (tier.capIndex >= 1) {
     bullets.push(
       tier.limits.broadcasts === 0
         ? "حملات بثّ غير محدودة"

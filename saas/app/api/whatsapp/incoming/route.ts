@@ -1257,7 +1257,22 @@ export async function POST(req: Request) {
     customerInitiated: !!(customer as any).firstInboundAt || true, // incoming msg => initiated
     contactTrust: (customer as any).trustScore ?? 50,
     inboundCount1H: undefined, // could be wired later from SafetyEvent reply rows
-    workingHours: bot.workingHoursEnabled ? null : null, // TODO: parse bot.workingHours JSON
+    workingHours: (() => {
+      if (!bot.workingHoursEnabled) return null;
+      try {
+        // Schema: [{day:0..6, from:"09:00", to:"21:00", enabled:true}]
+        const slots: Array<{ day: number; from: string; to: string; enabled: boolean }> =
+          JSON.parse((bot as any).workingHours || "[]");
+        const todayDay = new Date().getDay(); // 0=Sun..6=Sat
+        const slot = slots.find((s) => s.day === todayDay && s.enabled);
+        if (!slot) return null;
+        const fromHr = parseInt(slot.from.split(":")[0], 10);
+        const toHr   = parseInt(slot.to.split(":")[0],   10);
+        return { from: fromHr, to: toHr };
+      } catch {
+        return null;
+      }
+    })(),
     vipShortcut: salesMode === "fast_close",
     inboundLen: messageText.length,
   });

@@ -53,6 +53,8 @@ import {
   Send,
   CalendarClock,
   ClipboardList,
+  GitBranch,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -160,6 +162,7 @@ export const WORKSPACES: Workspace[] = [
       // { href: "/dashboard/revenue-pro", label: "مساعد الإيرادات Pro", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/playground", label: "تجربة المحادثة", icon: FlaskConical, perm: "settings" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
+      { href: "/dashboard/bot-builder", label: "منشئ المحادثات", icon: GitBranch, perm: "settings" },
       // CONSOLIDATED (duplicate nav): same `smart_assistant` capability as /dashboard/knowledge-brain — page still reachable by URL.
       // { href: "/dashboard/brain", label: "مركز الدماغ", icon: Brain, perm: "settings" },
       // HIDDEN (final-polish): not production-ready — re-enable when the workflow is complete
@@ -201,6 +204,7 @@ export const WORKSPACES: Workspace[] = [
       // { href: "/dashboard/monitoring", label: "الرصد الذكي Pro", icon: Activity, perm: "analytics" },
       { href: "/dashboard/ai-operations", label: "عمليات المساعد", icon: Brain, perm: "settings" },
       { href: "/dashboard/qr-queue", label: "حجز جلسات QR", icon: CalendarClock, perm: "broadcasts" },
+      { href: "/dashboard/sms", label: "K1SMS", icon: MessageCircle, perm: "settings" },
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/safety", label: "الأمان", icon: ShieldAlert, perm: "settings" },
       { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
@@ -228,6 +232,7 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard/settings",
     items: [
       { href: "/dashboard/settings", label: "الحساب", icon: Settings, perm: "analytics" },
+      { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
       { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
       // HIDDEN (final-polish): not production-ready — branding not yet applied at runtime
@@ -362,6 +367,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/approvals": "approval_workflows",
   "/dashboard/developer": "api_access",
   "/dashboard/working-hours": "working_hours",
+  "/dashboard/settings/numbers": "multi_whatsapp",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */

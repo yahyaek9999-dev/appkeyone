@@ -9,6 +9,7 @@ import {
 import { COMMERCE_EVENTS } from "@/lib/commerce/types";
 import { syncCommerceOrderFromEvent } from "@/lib/commerce/orders";
 import { dispatchCommerceAutomations } from "@/lib/commerce/notifications";
+import { sendOrderConfirmationSms, sendOrderStatusSms } from "@/lib/sms/order-notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -200,6 +201,13 @@ export async function POST(req: Request) {
             e?.message || e,
           ),
         );
+
+        // K1SMS — non-blocking order notifications (no-op when SMS not configured)
+        if (eventType === "order.created") {
+          sendOrderConfirmationSms(verification.integration.userId, syncResult.orderId).catch((e) =>
+            console.error("[commerce] sms confirmation failed:", e?.message || e),
+          );
+        }
       }
     }
   }
