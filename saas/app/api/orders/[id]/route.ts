@@ -7,6 +7,7 @@ import { dispatchCommerceAutomations } from "@/lib/commerce/notifications";
 import { usageIdempotencyKey } from "@/lib/usage-ledger";
 import { maybeSendShippingUpdate } from "@/lib/shipping/notify";
 import { auditCtx } from "@/lib/audit/log";
+import { sendOrderStatusSms } from "@/lib/sms/order-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -178,6 +179,11 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
       console.error("[orders] shipping update failed:", e?.message || e);
       Sentry.captureException(e, { tags: { context: "order_shipping_update" } });
     });
+
+    // K1SMS — non-blocking status notification. No-op if SMS not configured.
+    sendOrderStatusSms(user.id, ctx.params.id, data.status).catch((e) =>
+      console.error("[orders] sms status notify failed:", e?.message || e),
+    );
   }
 
   return NextResponse.json({ ok: true, order: updated });

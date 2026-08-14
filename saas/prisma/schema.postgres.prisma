@@ -112,6 +112,19 @@ model User {
   // ---- KEYONE Bridge (additive, new tables only; flag-gated transport) ----
   bridges           Bridge[]
 
+  // ---- Product Closure: K1SMS + Bot Builder (additive) ----
+  smsTemplates      SmsTemplate[]
+  smsMessages       SmsMessage[]
+  smsCreditLedger   SmsCreditLedger[]
+  convFlows         ConvFlow[]
+
+  // ---- Commercial Control Plane (additive) ----
+  planOverride      CustomerPlanOverride?
+  gifts             EntitlementGift[]
+
+  // ---- Multi-WhatsApp numbers (additive) ----
+  whatsAppNumbers   WhatsAppNumber[]
+
   @@index([resetTokenHash])
 }
 
@@ -134,6 +147,12 @@ model TeamMember {
   invitedAt       DateTime @default(now())
   acceptedAt      DateTime?
   lastLoginAt     DateTime?
+  // ---- Number-level access control (Phase 6) ----
+  // JSON array of WhatsAppNumber.id; empty = access all numbers in workspace
+  allowedNumberIds String  @default("[]")
+  // ---- Conversation permission scope ----
+  // own_only | team | all (override for this member; default = role-based)
+  conversationScope String @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -541,6 +560,21 @@ model Conversation {
   lastEscalatedAt    DateTime?
   humanActiveAt      DateTime?
 
+  // ---- Support Inbox routing (additive) ----
+  queueState         String?   // open | assigned | waiting_customer | waiting_team | resolved | closed
+  assignedStaffId    String?   // StaffMember.id
+  assignedTeam       String?   // team name or StaffDepartment.id
+  firstReplyAt       DateTime? // for SLA: time of first human reply
+  slaDeadlineAt      DateTime? // computed deadline for first response
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  activeFlowId       String?   // ConvFlow.id currently executing
+  activeFlowExecId   String?   // ConvFlowExecution.id
+
+  // ---- Multi-number scoping (Phase 6) ----
+  // Which WhatsApp number received this conversation (null = legacy/unscoped)
+  numberId           String?   // WhatsAppNumber.id
+
   updatedAt   DateTime  @updatedAt
   createdAt   DateTime  @default(now())
 
@@ -549,6 +583,7 @@ model Conversation {
 
   @@index([handoffState])
   @@index([lastEscalatedAt])
+  @@index([numberId])
 }
 
 model Message {
@@ -1428,8 +1463,8 @@ model WaMessage {
   @@index([userId, status, queuedAt])
   @@index([userId, customerPhone, queuedAt])
   @@index([userId, provider, status])
-  @@index([status, queuedAt])    // admin-level cross-tenant status counts (no userId filter)
-  @@index([status, failedAt])    // admin-level failed-message counts
+  @@index([status, queuedAt])    // admin cross-tenant status counts
+  @@index([status, failedAt])    // admin failed-message counts
 }
 
 /// Webhook event ledger — idempotency + dead-letter for Meta Cloud webhooks.
@@ -2600,20 +2635,27 @@ model StaffDepartment {
 }
 
 model StaffMember {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  role          String   @default("support") // owner|admin|finance|support|operations|sales|developer
-  departmentKey String   @default("")
-  status        String   @default("active") // active|suspended
-  permissions   String   @default("[]")
-  performance   Int      @default(0)
-  workload      Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  role            String   @default("support") // super_admin|admin|sales|support|finance|operations|technical
+  departmentKey   String   @default("")
+  status          String   @default("active") // active|suspended|invited
+  permissions     String   @default("[]")     // JSON array of permission keys
+  performance     Int      @default(0)
+  workload        Int      @default(0)
+  // ---- Authentication (admin panel login) ----
+  passwordHash    String?                      // bcrypt; null = not yet set (invite flow)
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  inviteToken     String?  @unique            // one-time setup token (raw, hashed before compare)
+  inviteExpiresAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([departmentKey, status])
   @@index([role, status])
+  @@index([email, status])
 }
 
 model StaffAssignment {
@@ -3603,7 +3645,7 @@ model Bridge {
 
   @@index([userId, status])
   @@index([userId, isPrimary])
-  @@index([lastHeartbeatAt])     // health checks: count bridges online in last N minutes
+  @@index([lastHeartbeatAt])
 }
 
 model BridgeTransport {
@@ -3632,6 +3674,227 @@ model BridgeLogLine {
   message  String
   @@index([bridgeId, at])
 }
+
+// ===== PRODUCT CLOSURE: new capabilities (all additive) =========================
+
+// ─── Feature Control (DB-backed feature flags + release management) ──────────
+
+/// Platform-level feature control: enable/disable/beta/hide any capability.
+/// Admin UI lives at /admin/feature-control. Navigation + APIs respect these.
+model FeatureControl {
+  id                 String   @id @default(cuid())
+  featureId          String   @unique   // stable key e.g. "k1sms" | "bot_builder"
+  name               String
+  description        String   @default("")
+  category           String   @default("general") // messaging | commerce | support | ai | ops | settings
+  workspace          String   @default("ops")     // nav workspace this belongs to
+  status             String   @default("enabled") // enabled | disabled | hidden | beta | deprecated
+  customerVisible    Boolean  @default(true)
+  adminOnly          Boolean  @default(false)
+  beta               Boolean  @default(false)
+  requiredPlan       String?                      // plan slug gate (null = any plan)
+  dependencies       String   @default("[]")      // JSON array of featureId strings
+  requiredIntegration String?                     // e.g. "sms_provider" | "k1sms_provider"
+  mobileVisible      Boolean  @default(true)
+  killSwitch         Boolean  @default(false)     // emergency disable overrides everything
+  rolloutPct         Int      @default(100)       // 0-100 % rollout
+  releaseId          String?                      // FK to FeatureRelease.releaseId
+  changedBy          String?                      // admin email who last toggled
+  changeNote         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([releaseId])
+}
+
+/// Release grouping — features belong to a release cohort.
+model FeatureRelease {
+  id          String   @id @default(cuid())
+  releaseId   String   @unique  // e.g. "core" | "automation" | "commerce" | "intelligence" | "scale"
+  name        String
+  description String   @default("")
+  status      String   @default("active") // active | beta | hidden | archived
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── K1SMS — transactional SMS infrastructure ─────────────────────────────────
+
+/// SMS provider record. Supports multiple providers per platform + per-tenant.
+/// null userId = platform-default; set userId = tenant override.
+model SmsProvider {
+  id           String   @id @default(cuid())
+  userId       String?                              // null = platform-wide
+  name         String
+  type         String   // twilio | vonage | unifonic | msegat | clicksend | custom
+  apiKeyEnc    String?
+  apiSecretEnc String?
+  senderIdEnc  String?                             // Sender ID / number
+  endpoint     String?                             // custom endpoint override
+  enabled      Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  health       String   @default("unknown")        // healthy | degraded | down | unknown
+  lastTestAt   DateTime?
+  lastTestOk   Boolean?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages     SmsMessage[]
+
+  @@index([userId])
+  @@index([enabled, isDefault])
+}
+
+/// Reusable SMS template — per-tenant, admin-managed.
+model SmsTemplate {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  purpose     String   @default("custom")  // order_confirmation | order_status | otp | custom
+  statusTrigger String?                    // for order_status: which status triggers this
+  body        String
+  language    String   @default("ar")      // ar | en
+  variables   String   @default("[]")      // JSON array of variable names
+  enabled     Boolean  @default(true)
+  charCount   Int      @default(0)
+  segCount    Int      @default(1)
+  sendCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, purpose])
+  @@index([userId, enabled])
+}
+
+/// Individual SMS delivery record — full audit trail.
+model SmsMessage {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId     String?
+  provider       SmsProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  customerId     String?
+  orderId        String?
+  templateId     String?
+  to             String                              // recipient E.164 phone
+  body           String
+  purpose        String   @default("custom")        // order_confirmation | order_status | otp | custom
+  status         String   @default("queued")        // queued | sent | delivered | failed | expired | rejected
+  providerMsgId  String?                            // upstream message ID
+  costUnits      Int      @default(0)               // cost in fils×100 (0 = no billing yet)
+  segments       Int      @default(1)
+  failReason     String?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@index([orderId])
+  @@index([customerId])
+  @@index([templateId])
+}
+
+/// OTP record — hashed, single-use, expiring.
+/// Raw OTP values are NEVER stored; only bcrypt/SHA-256 hash stored here.
+model SmsOtp {
+  id          String   @id @default(cuid())
+  userId      String?                             // null = pre-auth (signup/login OTP)
+  phone       String
+  purpose     String                             // signup | login | phone_verify | password_reset | transaction
+  codeHash    String                             // bcrypt hash — never store raw OTP
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  cooldownUntil DateTime?                        // resend cooldown
+  used        Boolean  @default(false)
+  usedAt      DateTime?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  @@index([phone, purpose, used])
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+/// Per-tenant SMS credit ledger — prepaid balance accounting.
+model SmsCreditLedger {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String                            // topup | debit | refund | adjustment
+  amount       Int                               // positive=credit, negative=debit (units=fils×100)
+  balanceAfter Int
+  ref          String?                           // SmsMessage.id or topup reason
+  note         String?
+  createdBy    String?                           // admin user who made adjustment
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+// ─── ConvFlow — Bot / Conversation Builder ────────────────────────────────────
+
+/// A visual conversation flow (bot builder). Stores nodes+edges as JSON.
+/// Extends and supersedes FlowDefinition for new bot builder capability.
+model ConvFlow {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String   @default("")
+  trigger       String   @default("message_in") // message_in | keyword | button_tap | order_event | manual
+  triggerConfig String   @default("{}")          // JSON: { keywords: [], eventType: "" }
+  nodesJson     String   @default("[]")          // JSON array of FlowNode objects
+  edgesJson     String   @default("[]")          // JSON array of FlowEdge objects
+  status        String   @default("draft")       // draft | active | paused | archived
+  version       Int      @default(1)
+  execCount     Int      @default(0)             // total executions (lifetime)
+  completions   Int      @default(0)             // completed without handoff
+  handoffs      Int      @default(0)             // transferred to human
+  isDefault     Boolean  @default(false)         // fires for unmatched messages
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  executions    ConvFlowExecution[]
+
+  @@index([userId, status])
+  @@index([userId, isDefault])
+}
+
+/// Active execution state for a running flow session.
+model ConvFlowExecution {
+  id           String   @id @default(cuid())
+  flowId       String
+  flow         ConvFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  userId       String
+  customerId   String?
+  phone        String?
+  currentNode  String   @default("")              // node ID the flow is paused at
+  stateJson    String   @default("{}")            // collected variables
+  status       String   @default("running")       // running | completed | handed_off | abandoned | error
+  handoffAt    DateTime?
+  handoffReason String?
+  handoffTo    String?                            // team or staff member ID
+  errorMsg     String?
+  startedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([flowId, status])
+  @@index([userId, customerId])
+  @@index([status, updatedAt])
+}
+
+// ─── Support Inbox: Conversation state + team routing additions ───────────────
+// (Additive nullable columns go on existing Conversation model above via migration,
+// not as a new model — tracked here as migration intent.)
+// Actual additions are applied via prisma db push after schema-parity check.
 
 // OAuth 2.0 Device Authorization Grant (RFC 8628) code — short-lived, one-time.
 model BridgeAuthCode {
@@ -3662,3 +3925,250 @@ model BridgeToken {
   @@index([bridgeId])
 }
 
+
+// ─── Commercial Control Plane — Custom Plans, Gifts, Promotions ──────────────
+
+/// Per-customer entitlement override — Admin grants a custom deal to one tenant.
+/// Layered ON TOP of the base plan. Takes precedence over plan entitlements
+/// when startsAt ≤ now ≤ expiresAt (or expiresAt null = permanent).
+model CustomerPlanOverride {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  baseSlug       String                          // plan slug to start from
+  customPriceUsd Int?                            // override monthly price (cents); null = no override
+  currency       String   @default("USD")
+  startsAt       DateTime @default(now())
+  expiresAt      DateTime?                       // null = permanent
+  autoRenew      Boolean  @default(false)
+  // Added capabilities (JSON array of cap keys)
+  addCaps        String   @default("[]")
+  // Limit overrides (JSON, e.g. { "team": 20, "kbDocs": 500 })
+  limitOverrides String   @default("{}")
+  // Admin metadata
+  reason         String   @default("")
+  adminNotes     String   @default("")
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, startsAt])
+}
+
+/// One-time or time-limited gift granted to a specific customer.
+/// Credits, feature unlocks, free days, temporary plan upgrades.
+model EntitlementGift {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // What's being gifted
+  type       String   // sms_credits | ai_credits | broadcast_credits | days | feature_unlock | plan_upgrade
+  amount     Int      @default(0)       // units (credits) or days
+  featureKey String?                    // for type=feature_unlock
+  planSlug   String?                    // for type=plan_upgrade
+  // Lifecycle
+  expiresAt  DateTime?
+  used       Boolean  @default(false)
+  usedAt     DateTime?
+  // Attribution
+  reason     String   @default("")
+  grantedBy  String?
+  source     String   @default("admin") // admin | promotion | referral | system
+  promoId    String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, used])
+  @@index([userId, expiresAt])
+}
+
+/// Sales, promotions, offers — applies discounts or bonuses to subscriptions.
+/// Separate from tenant-facing Coupon (which is for merchant's own customers).
+model Promotion {
+  id               String   @id @default(cuid())
+  name             String
+  code             String?  @unique         // null = auto-apply
+  // Discount type + config
+  type             String                   // percentage | fixed_usd | free_period | credit_bonus | feature_unlock | custom_price
+  discountPct      Int      @default(0)     // for percentage type (0-100)
+  discountUsd      Int      @default(0)     // for fixed_usd (cents)
+  freeDays         Int      @default(0)     // for free_period
+  creditType       String?                  // sms_credits | ai_credits | broadcast_credits
+  creditAmount     Int      @default(0)
+  featureKey       String?                  // for feature_unlock
+  customPriceUsd   Int?                     // for custom_price override (cents)
+  // Applicability
+  targetPlans      String   @default("[]")  // JSON array of plan slugs; [] = all
+  newCustomersOnly Boolean  @default(false)
+  existingOnly     Boolean  @default(false)
+  specificUserIds  String   @default("[]")  // JSON array; [] = all eligible
+  // Duration
+  durationMonths   Int?                     // null = permanent
+  applyToPayments  String   @default("first") // first | all | count:N
+  // Usage limits
+  usageLimit       Int?
+  usedCount        Int      @default(0)
+  perCustomerLimit Int      @default(1)
+  // Timing window
+  startsAt         DateTime?
+  endsAt           DateTime?
+  // Status
+  status           String   @default("draft") // draft | active | paused | expired
+  description      String   @default("")
+  adminNotes       String   @default("")
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  redemptions PromotionRedemption[]
+  @@index([status, startsAt])
+  @@index([code])
+}
+
+/// Record of each promotion application to a customer.
+model PromotionRedemption {
+  id             String    @id @default(cuid())
+  promoId        String
+  promo          Promotion @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  userId         String
+  subscriptionId String?
+  discountApplied Int      @default(0)  // USD cents
+  appliedAt      DateTime  @default(now())
+
+  @@unique([promoId, userId])
+  @@index([userId])
+  @@index([promoId])
+}
+
+// ─── Payment Gateway Abstraction ─────────────────────────────────────────────
+
+/// Payment gateway configuration. Admin adds credentials for a provider once;
+/// the payment processor reads the active default gateway at charge time.
+/// No hard-coded provider names in business logic — adapters registered by name.
+model PaymentGateway {
+  id              String   @id @default(cuid())
+  name            String                         // human label
+  adapter         String                         // stripe | paymob | fawry | manual | moyasar | other
+  displayName     String   @default("")
+  status          String   @default("inactive")  // active | inactive | test | error
+  isDefault       Boolean  @default(false)
+  isFallback      Boolean  @default(false)
+  testMode        Boolean  @default(true)
+  // Encrypted credentials JSON (encryptSecret/decryptSecret)
+  credentialsEnc  String?
+  webhookSecret   String?
+  webhookSecretEnc String?
+  // Supported config
+  currencies      String   @default("[\"USD\"]") // JSON
+  methods         String   @default("[]")        // JSON: card | bank_transfer | cash | ...
+  // Health
+  health          String   @default("unknown")
+  lastTestAt      DateTime?
+  lastTestOk      Boolean?
+  lastError       String?
+  sortOrder       Int      @default(0)
+  adminNotes      String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Bot Execution ────────────────────────────────────────────────────────────
+
+/// Active bot lock — prevents employee + bot replying simultaneously.
+/// One row per active conversation; deleted on handoff / flow completion.
+model ConvBotLock {
+  conversationId  String   @id
+  flowId          String
+  execId          String
+  lockedAt        DateTime @default(now())
+  expiresAt       DateTime                      // safety TTL so crashes don't strand a conversation
+}
+
+// ─── Multi-WhatsApp Number Architecture (Phase 6) ────────────────────────────
+
+/// A WhatsApp number slot owned by a workspace.
+/// Membership controls how many slots a customer can create.
+/// Each slot has independent configuration via NumberSettings.
+model WhatsAppNumber {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName      String   @default("")           // e.g. "Customer Support"
+  phone            String   @default("")            // actual WhatsApp phone number
+  connectionMethod String   @default("bridge")     // bridge | meta_cloud
+  status           String   @default("inactive")   // active | inactive | connecting | error | banned
+  isPrimary        Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  // Optional link to the Bridge client serving this number
+  bridgeId         String?
+  // Health / diagnostics
+  lastConnectedAt  DateTime?
+  lastError        String?
+  // Monthly usage tracking (reset each billing period)
+  messagesThisPeriod Int    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  settings         NumberSettings?
+
+  @@index([userId])
+  @@index([userId, isPrimary])
+  @@index([userId, status])
+}
+
+/// Per-number configuration — every WhatsAppNumber has independent settings.
+/// This is the single source of truth for number-level behavior.
+model NumberSettings {
+  id                  String   @id @default(cuid())
+  numberId            String   @unique
+  number              WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
+  // Business identity
+  businessName        String   @default("")
+  businessCategory    String   @default("")
+  // Messaging behavior
+  greetingMessage     String   @default("")         // sent on first contact
+  awayMessage         String   @default("")         // sent outside working hours
+  // Working hours: JSON { mon: {from:"09:00", to:"17:00", enabled:true}, ... }
+  workingHours        String   @default("{}")
+  timezone            String   @default("Asia/Riyadh")
+  defaultLanguage     String   @default("ar")
+  // Bot configuration
+  botEnabled          Boolean  @default(true)
+  botFlowId           String?                       // default ConvFlow for this number
+  // Routing
+  defaultTeam         String?                       // default team assignment
+  routingStrategy     String   @default("round_robin") // round_robin | least_loaded | manual
+  defaultAssigneeId   String?                       // for manual strategy
+  // Notification triggers
+  notifyOnOrders      Boolean  @default(true)       // send order confirmations
+  notifyOnShipping    Boolean  @default(true)       // send shipping updates
+  notifyOnOtp         Boolean  @default(false)      // send OTP via this number
+  // Limits
+  maxConcurrentConvs  Int      @default(0)          // 0 = unlimited
+  // WhatsApp Business Profile metadata
+  waDescription       String   @default("")
+  waEmail             String   @default("")
+  waWebsite           String   @default("")
+  waAddress           String   @default("")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+/// Usage enforcement ledger — immutable per-event records for server-side quota enforcement.
+/// Every message sent, AI call made, or campaign dispatched creates one entry.
+/// Monthly counts are derived by summing this table — never trust client-submitted values.
+model UsageEvent {
+  id             String   @id @default(cuid())
+  userId         String
+  numberId       String?                            // WhatsAppNumber.id (if number-scoped)
+  eventType      String                             // message_in | message_out | ai_request | broadcast | sms | otp
+  quantity       Int      @default(1)
+  idempotencyKey String   @unique                  // prevents replay/duplicate counting
+  period         String                             // YYYY-MM (billing period)
+  source         String   @default("")             // whatsapp | bridge | api | cron
+  metadata       String   @default("{}")
+  createdAt      DateTime @default(now())
+
+  @@index([userId, period, eventType])
+  @@index([userId, numberId, period])
+  @@index([period, eventType])
+}

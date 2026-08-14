@@ -1,22 +1,30 @@
 /**
- * Membership: capability entitlements — the central feature gate.
+ * Membership: capability entitlements — the SINGLE SOURCE OF TRUTH for feature gating.
  *
- * Built on top of `getEffectivePlan()` (lib/membership/plan.ts). Reads the
- * per-user `featureFlags` (written by the catalog-driven seed) and the plan
- * tier to answer "can this user use capability X" + "what are the numeric
- * soft-limits (team / automations / kbDocs)".
+ * Effective entitlement is calculated as:
  *
- * Additive: this does NOT replace existing `checkLimit()` usage-counter gates;
- * it complements them for boolean feature availability. Fail-open on errors so
- * a gating bug never takes down production.
+ *   Base Plan
+ *   + CustomerPlanOverride (admin custom deal — per-tenant)
+ *   + EntitlementGift (sms_credits, feature_unlock, plan_upgrade, free days)
+ *   + PromotionRedemption (active promotions with feature unlocks)
+ *   - Admin kill switch (FeatureControl.killSwitch → always overrides)
+ *   - Expired items are excluded
+ *
+ * Fail-open on DB errors: a gating bug must never take down production.
+ * Fail-closed on admin kill-switch: that must always work.
  */
 
+import { prisma } from "@/lib/db";
 import { getEffectivePlan, type EffectivePlan } from "./plan";
+import { getAllFeatures } from "@/lib/feature-control";
 import {
   CAPABILITIES,
   TIERS,
   TIER_ORDER,
+  PUBLIC_TIERS,
   tierUnlocking,
+  getTier,
+  capabilitiesForIndex,
   type TierSlug,
 } from "@/lib/pricing/catalog";
 
@@ -27,125 +35,314 @@ export interface Entitlements {
   isFallback: boolean;
   blocked: boolean;
   /**
-   * Whether capability gating should be ENFORCED for this user. True only when
-   * the user is on a new public plan (k_* slug). Legacy-slug and no-subscription
-   * users are never locked out of features they already use — this keeps Phase 2
-   * enforcement fully non-regressive on the live base.
+   * Whether capability gating is enforced for this user.
+   * True for k_* plan holders and free-tier when FREE_TIER_ENFORCEMENT=1.
+   * False for legacy active subscribers (non-regressive).
    */
   enforce: boolean;
-  /** capabilityKey -> allowed. */
+  /** capabilityKey → allowed (after all layered overrides applied). */
   capabilities: Record<string, boolean>;
   /** Numeric soft-limits (0 = unlimited). */
   limits: {
-    team: number;
+    team:        number;
     automations: number;
-    kbDocs: number;
-    whatsapp: number;
-    broadcasts: number;
-    ai: number;
-    messages: number;
-    customers: number;
+    kbDocs:      number;
+    whatsapp:    number;
+    broadcasts:  number;
+    ai:          number;
+    messages:    number;
+    customers:   number;
+    smsCredits:  number;
   };
+  /** Which layers contributed to the final entitlements (for diagnostics). */
+  sources: ("plan" | "override" | "gift" | "promotion")[];
 }
 
 /**
- * Map an internal gating tier (basic|pro|max|companies) to the cheapest public
- * catalog tier index, so capability resolution has a sensible default even for
- * users sitting on a legacy plan row.
+ * Map internal tier to capability index (4-tier model).
+ * Legacy plans that pre-date k_* slugs map to their closest equivalent.
  */
-const INDEX_BY_INTERNAL_TIER: Record<EffectivePlan["tier"], number> = {
-  basic: 0,
-  pro: 2,
-  max: 3,
-  companies: 5,
+const CAP_INDEX_BY_INTERNAL_TIER: Record<EffectivePlan["tier"], number> = {
+  basic:     0,  // Start
+  pro:       1,  // Growth
+  max:       2,  // Pro
+  companies: 3,  // Enterprise
 };
 
-function numFlag(
-  flags: Record<string, any>,
-  key: string,
-  fallback: number,
-): number {
+function numFlag(flags: Record<string, any>, key: string, fallback: number): number {
   const v = flags?.[key];
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
 
-/**
- * Free-tier enforcement master switch.
- *
- * When ON, users with NO active subscription (the "Free" tier) and users whose
- * subscription has expired are limited to CORE capabilities only — premium
- * features render an upgrade prompt instead of being silently free. This is
- * what closes the "accidentally free" revenue leak for new sign-ups.
- *
- * Default OFF (non-regressive): until the owner flips FREE_TIER_ENFORCEMENT=1,
- * fallback/no-subscription users keep full access exactly as before — so a
- * deploy never locks anyone out. Flip it ON at go-live AFTER confirming no
- * active paying customer is left without a Subscription row.
- *
- * IMPORTANT: legacy-slug ACTIVE subscribers (starter/pro/business/…) are NEVER
- * fallback users, so this switch can never touch a current paying customer.
- * k_* subscribers are always enforced regardless of this flag.
- */
 export function freeTierEnforcementEnabled(): boolean {
   return process.env.FREE_TIER_ENFORCEMENT === "1";
 }
 
+/**
+ * Full effective entitlement calculation — the authoritative source.
+ * Called by hasCapability, pageGate, apiGate, and the plan preview API.
+ */
 export async function getEntitlements(userId: string): Promise<Entitlements> {
-  const plan = await getEffectivePlan(userId);
-  const flags = plan.featureFlags || {};
+  const [plan, override, gifts, promos] = await Promise.all([
+    getEffectivePlan(userId),
+    fetchOverride(userId),
+    fetchActiveGifts(userId),
+    fetchActivePromoUnlocks(userId),
+  ]);
 
-  // Resolve capability booleans. A plan's own featureFlags win when present;
-  // otherwise we derive from the tier ladder so legacy plans behave sensibly.
-  const fallbackIndex = INDEX_BY_INTERNAL_TIER[plan.tier] ?? 0;
+  const flags = plan.featureFlags || {};
+  const sources: Entitlements["sources"] = ["plan"];
+
+  // ── Step 1: base plan capabilities ────────────────────────────────────────
+  // Use capIndex from the catalog TierDef when available, otherwise fall back
+  // to the internal-tier mapping (for legacy plan rows with no k_* slug).
+  const catalogTier = getTier(plan.slug);
+  const baseCapIndex = catalogTier?.capIndex ?? CAP_INDEX_BY_INTERNAL_TIER[plan.tier] ?? 0;
+
   const capabilities: Record<string, boolean> = {};
   for (const cap of CAPABILITIES) {
     const explicit = flags[cap.key];
-    capabilities[cap.key] =
-      typeof explicit === "boolean"
-        ? explicit
-        : fallbackIndex >= cap.minTierIndex;
+    capabilities[cap.key] = typeof explicit === "boolean"
+      ? explicit
+      : baseCapIndex >= cap.minTierIndex;
   }
 
-  // Enforcement applies to: (1) the new public catalog plans (k_* slugs) — always;
-  // and (2) the FREE tier (no/expired subscription → isFallback) when the owner
-  // has turned on FREE_TIER_ENFORCEMENT. Active legacy-slug subscribers are never
-  // fallback users, so they always keep full access — non-regressive by design.
+  let limits = {
+    team:        numFlag(flags, "team", plan.tier === "basic" ? 1 : 0),
+    automations: numFlag(flags, "automations", 0),
+    kbDocs:      numFlag(flags, "kbDocs", 0),
+    whatsapp:    plan.whatsappSessions,
+    broadcasts:  plan.broadcastsMonthly,
+    ai:          plan.aiRequestsMonthly,
+    messages:    plan.monthlyMsgs,
+    customers:   numFlag(flags, "customers", 0),
+    smsCredits:  0,
+  };
+
+  // ── Step 2: admin custom plan override ────────────────────────────────────
+  if (override) {
+    sources.push("override");
+    // Additional capabilities granted by the override
+    try {
+      const addCaps: string[] = JSON.parse(override.addCaps || "[]");
+      for (const key of addCaps) {
+        capabilities[key] = true;
+      }
+    } catch {}
+
+    // Limit overrides
+    try {
+      const lo: Record<string, number> = JSON.parse(override.limitOverrides || "{}");
+      for (const [k, v] of Object.entries(lo)) {
+        if (typeof v === "number" && k in limits) {
+          (limits as any)[k] = v;
+        }
+      }
+    } catch {}
+
+    // If override specifies a higher base plan, merge its capabilities in
+    const overrideTier = getTier(override.baseSlug);
+    if (overrideTier && overrideTier.capIndex > baseCapIndex) {
+      const overrideCaps = capabilitiesForIndex(overrideTier.capIndex);
+      for (const key of overrideCaps) {
+        capabilities[key] = true;
+      }
+    }
+  }
+
+  // ── Step 3: active promotion feature unlocks ─────────────────────────────
+  for (const promo of promos) {
+    sources.push("promotion");
+    if (promo.featureKey) capabilities[promo.featureKey] = true;
+    if (promo.creditType === "sms_credits" && promo.creditAmount > 0) {
+      limits.smsCredits += promo.creditAmount;
+    }
+    if (promo.creditType === "ai_credits" && promo.creditAmount > 0) {
+      limits.ai = limits.ai === 0 ? 0 : limits.ai + promo.creditAmount;
+    }
+    if (promo.creditType === "broadcast_credits" && promo.creditAmount > 0) {
+      limits.broadcasts = limits.broadcasts === 0 ? 0 : limits.broadcasts + promo.creditAmount;
+    }
+  }
+
+  // ── Step 4: active gifts ───────────────────────────────────────────────────
+  for (const gift of gifts) {
+    sources.push("gift");
+    switch (gift.type) {
+      case "feature_unlock":
+        if (gift.featureKey) capabilities[gift.featureKey] = true;
+        break;
+      case "plan_upgrade": {
+        const giftTier = gift.planSlug ? getTier(gift.planSlug) : undefined;
+        if (giftTier && giftTier.capIndex > baseCapIndex) {
+          const giftCaps = capabilitiesForIndex(giftTier.capIndex);
+          for (const key of giftCaps) {
+            capabilities[key] = true;
+          }
+        }
+        break;
+      }
+      case "sms_credits":
+        limits.smsCredits += gift.amount;
+        break;
+      case "ai_credits":
+        limits.ai = limits.ai === 0 ? 0 : limits.ai + gift.amount;
+        break;
+      case "broadcast_credits":
+        limits.broadcasts = limits.broadcasts === 0 ? 0 : limits.broadcasts + gift.amount;
+        break;
+    }
+  }
+
+  // ── Step 5: admin kill switch (FeatureControl) — always overrides ────────
+  // If Admin has killed a feature whose featureId matches a capability key,
+  // force capabilities[key] = false regardless of plan/override/gift/promo.
+  // getAllFeatures() is 30s-cached — safe to call on every request.
+  try {
+    const fcRows = await getAllFeatures();
+    for (const fc of fcRows) {
+      if ((fc.killSwitch || fc.status === "disabled") && fc.featureId in capabilities) {
+        capabilities[fc.featureId] = false;
+      }
+    }
+  } catch {
+    // Fail-open: a dead FeatureControl table must never block feature access
+  }
+
+  // ── Step 6: enforcement logic ─────────────────────────────────────────────
   const isKPlan = typeof plan.slug === "string" && plan.slug.startsWith("k_");
   const enforceFreeTier = plan.isFallback && freeTierEnforcementEnabled();
 
   return {
     tier: plan.tier,
     slug: plan.slug,
-    planName: plan.planName,
+    planName: override
+      ? `${plan.planName} + مزايا مخصّصة`
+      : plan.planName,
     isFallback: plan.isFallback,
     blocked: plan.blocked,
     enforce: isKPlan || enforceFreeTier,
     capabilities,
-    limits: {
-      team: numFlag(flags, "team", plan.tier === "basic" ? 1 : 0),
-      automations: numFlag(flags, "automations", 0),
-      kbDocs: numFlag(flags, "kbDocs", 0),
-      whatsapp: plan.whatsappSessions,
-      broadcasts: plan.broadcastsMonthly,
-      ai: plan.aiRequestsMonthly,
-      messages: plan.monthlyMsgs,
-      customers: numFlag(flags, "customers", 0),
-    },
+    limits,
+    sources: [...new Set(sources)],
   };
 }
 
-export async function hasCapability(
-  userId: string,
-  capKey: string,
-): Promise<boolean> {
+async function fetchOverride(userId: string) {
+  try {
+    const now = new Date();
+    return await (prisma as any).customerPlanOverride.findFirst({
+      where: {
+        userId,
+        startsAt: { lte: now },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns active promotions that apply to this user and grant either a
+ * feature unlock or extra credits. Called as Layer 3 of getEntitlements().
+ *
+ * A promotion applies to a user when:
+ *   - It has an explicit PromotionRedemption row for this userId, OR
+ *   - specificUserIds is empty (applies to everyone) AND it's still active
+ */
+async function fetchActivePromoUnlocks(userId: string): Promise<Array<{
+  featureKey: string | null;
+  creditType: string | null;
+  creditAmount: number;
+}>> {
+  try {
+    const now = new Date();
+    // Promos redeemed by this user specifically
+    const redeemed = await (prisma as any).promotionRedemption.findMany({
+      where: { userId },
+      include: {
+        promo: {
+          where: {
+            status: "active",
+            OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+            type: { in: ["feature_unlock", "credit_bonus"] },
+          },
+        },
+      },
+    });
+
+    // Also auto-apply global (no-code) active promos not yet redeemed
+    const globalPromos = await (prisma as any).promotion.findMany({
+      where: {
+        status: "active",
+        code: null, // auto-apply
+        specificUserIds: "[]", // applies to all
+        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+        type: { in: ["feature_unlock", "credit_bonus"] },
+      },
+    });
+
+    const results: Array<{ featureKey: string | null; creditType: string | null; creditAmount: number }> = [];
+
+    for (const r of redeemed) {
+      if (r.promo) results.push({ featureKey: r.promo.featureKey, creditType: r.promo.creditType, creditAmount: r.promo.creditAmount ?? 0 });
+    }
+    for (const p of globalPromos) {
+      results.push({ featureKey: p.featureKey, creditType: p.creditType, creditAmount: p.creditAmount ?? 0 });
+    }
+    return results;
+  } catch {
+    return []; // fail-open
+  }
+}
+
+async function fetchActiveGifts(userId: string) {
+  try {
+    const now = new Date();
+    return await (prisma as any).entitlementGift.findMany({
+      where: {
+        userId,
+        used: false,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+    });
+  } catch {
+    return [];
+  }
+}
+
+// ── Public helpers ─────────────────────────────────────────────────────────
+
+export async function hasCapability(userId: string, capKey: string): Promise<boolean> {
   try {
     const ent = await getEntitlements(userId);
     if (ent.blocked) return false;
-    // Non-enforced users (legacy / no-sub) keep full access.
     if (!ent.enforce) return true;
     return Boolean(ent.capabilities[capKey]);
   } catch {
-    return true; // fail-open
+    return true; // fail-open: gating error must never break production
+  }
+}
+
+/** Explains WHY a feature is off — for Admin diagnostics and "why is this off?" UI. */
+export async function featureOffReason(
+  userId: string,
+  capKey: string,
+): Promise<string | null> {
+  try {
+    const ent = await getEntitlements(userId);
+    if (ent.blocked) return "الحساب موقوف";
+    if (!ent.enforce) return null; // full access
+    if (ent.capabilities[capKey]) return null; // feature is ON
+    const unlocking = tierUnlocking(capKey);
+    if (unlocking) {
+      const tier = getTier(unlocking);
+      return `يتطلب ${tier?.name.ar ?? unlocking}`;
+    }
+    return "غير متاح في خطّتك";
+  } catch {
+    return null;
   }
 }
 
@@ -153,7 +350,7 @@ export async function hasCapability(
 export class PaywallError extends Error {
   capability: string;
   recommendedTier: TierSlug | null;
-  status = 402; // Payment Required
+  status = 402;
   constructor(capability: string) {
     super(`capability_locked:${capability}`);
     this.name = "PaywallError";
@@ -162,33 +359,19 @@ export class PaywallError extends Error {
   }
 }
 
-/**
- * Server-side guard for API routes / server actions. Throws `PaywallError`
- * when the user's plan does not include the capability. Callers convert it
- * into a 402 JSON the upgrade modal understands:
- *   { error: "capability_locked", capability, recommendedTier }
- */
-export async function requireCapability(
-  userId: string,
-  capKey: string,
-): Promise<void> {
+export async function requireCapability(userId: string, capKey: string): Promise<void> {
   const ok = await hasCapability(userId, capKey);
   if (!ok) throw new PaywallError(capKey);
 }
 
-/** Convert any thrown error into a paywall JSON payload, or null if unrelated. */
 export function paywallPayload(
   err: unknown,
 ): { error: string; capability: string; recommendedTier: string | null } | null {
   if (err instanceof PaywallError) {
-    return {
-      error: "capability_locked",
-      capability: err.capability,
-      recommendedTier: err.recommendedTier,
-    };
+    return { error: "capability_locked", capability: err.capability, recommendedTier: err.recommendedTier };
   }
   return null;
 }
 
-/** Public tier slugs in order — re-export for convenience. */
-export { TIER_ORDER, TIERS };
+/** Re-exports for convenience */
+export { TIER_ORDER, TIERS, PUBLIC_TIERS };
