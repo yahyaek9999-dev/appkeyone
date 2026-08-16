@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function RevenueForecastPage() {
   const uid = await getUserId();
   if (!uid) redirect("/login");
-  const g = await pageGate("revenue_attribution");
+  const g = await pageGate("forecasting");
   if (!g.allowed) {
     return (
       <div className="p-6">
