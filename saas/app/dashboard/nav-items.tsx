@@ -98,6 +98,7 @@ export type Workspace = {
  * URL-only.
  */
 export const WORKSPACES: Workspace[] = [
+  // ── 1. الرئيسية ───────────────────────────────────────────────────────────
   {
     id: "home",
     label: "الرئيسية",
@@ -107,10 +108,42 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
       { href: "/dashboard/my-work", label: "عملي اليوم", icon: ClipboardList, perm: "inbox" },
-      { href: "/dashboard/analytics", label: "التحليلات", icon: BarChart3, perm: "analytics" },
-      { href: "/dashboard/command-center", label: "مركز القيادة", icon: Gauge, perm: "analytics" },
     ],
   },
+
+  // ── 2. المحادثات ──────────────────────────────────────────────────────────
+  {
+    id: "conversations",
+    label: "المحادثات",
+    short: "المحادثات",
+    icon: Inbox,
+    home: "/dashboard/inbox",
+    items: [
+      { href: "/dashboard/inbox", label: "صندوق المحادثات", icon: Inbox, perm: "inbox" },
+      { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
+      { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
+      { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
+      { href: "/dashboard/whatsapp-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "qr" },
+      { href: "/dashboard/meta-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "meta" },
+    ],
+  },
+
+  // ── 3. العملاء ────────────────────────────────────────────────────────────
+  {
+    id: "customers",
+    label: "العملاء",
+    short: "العملاء",
+    icon: Users,
+    home: "/dashboard/customers",
+    items: [
+      { href: "/dashboard/customers", label: "كل العملاء", icon: Users, perm: "customers" },
+      { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap, perm: "customers" },
+      { href: "/dashboard/segments", label: "الشرائح", icon: Layers, perm: "analytics" },
+      { href: "/dashboard/import", label: "استيراد العملاء", icon: Download, perm: "customers" },
+    ],
+  },
+
+  // ── 4. المبيعات ───────────────────────────────────────────────────────────
   {
     id: "sales",
     label: "المبيعات",
@@ -120,110 +153,59 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag, perm: "customers" },
       { href: "/dashboard/products", label: "المنتجات", icon: Package, perm: "settings" },
-      // REMOVED from nav (superseded by "حملات الرصيد (QR)" / broadcasts-pro; conflicts with QR reservation). Page still reachable by URL.
-      // { href: "/dashboard/broadcasts", label: "الإرسال الجماعي", icon: Megaphone, perm: "broadcasts" },
-      { href: "/dashboard/broadcasts-pro", label: "حملات الرصيد (QR)", icon: Send, perm: "broadcasts" },
+      { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket, perm: "settings" },
     ],
   },
+
+  // ── 5. التسويق ────────────────────────────────────────────────────────────
   {
-    id: "customers",
-    label: "العملاء",
-    short: "العملاء",
-    icon: Users,
-    home: "/dashboard/customers",
+    id: "marketing",
+    label: "التسويق",
+    short: "التسويق",
+    icon: Rocket,
+    home: "/dashboard/broadcasts-pro",
     items: [
-      { href: "/dashboard/customers", label: "العملاء", icon: Users, perm: "customers" },
-      { href: "/dashboard/inbox", label: "صندوق المحادثات", icon: Inbox, perm: "inbox" },
-      { href: "/dashboard/leads", label: "العملاء المحتملون", icon: Zap, perm: "customers" },
-      { href: "/dashboard/import", label: "استيراد العملاء", icon: Download, perm: "customers" },
+      { href: "/dashboard/broadcasts-pro", label: "الحملات", icon: Send, perm: "broadcasts" },
+      { href: "/dashboard/recovery", label: "استعادة العملاء", icon: RotateCcw, perm: "broadcasts" },
+      { href: "/dashboard/sms", label: "رسائل SMS", icon: MessageCircle, perm: "settings" },
+      { href: "/dashboard/qr-queue", label: "حجز جلسات الإرسال", icon: CalendarClock, perm: "broadcasts" },
     ],
   },
+
+  // ── 6. الأتمتة ────────────────────────────────────────────────────────────
   {
-    id: "ai",
-    label: "ذكاء الأعمال",
-    short: "الرؤى",
-    icon: Brain,
+    id: "automation",
+    label: "الأتمتة",
+    short: "الأتمتة",
+    icon: Zap,
     home: "/dashboard/bot",
     items: [
       { href: "/dashboard/bot", label: "الردود التلقائية", icon: Bot, perm: "settings" },
-      { href: "/dashboard/knowledge", label: "المعرفة", icon: BookOpen, perm: "settings" },
-      { href: "/dashboard/knowledge-brain", label: "عقل المعرفة", icon: Brain, perm: "settings" },
-      { href: "/dashboard/sales-brain", label: "عقل المبيعات", icon: Brain, perm: "analytics" },
-      { href: "/dashboard/revenue-copilot", label: "فرص الإيرادات", icon: TrendingUp, perm: "analytics" },
-      { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: Gauge, perm: "analytics" },
-      { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },
-      { href: "/dashboard/intel", label: "الرصد الذكي", icon: Activity, perm: "analytics" },
-      { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "analytics" },
-      { href: "/dashboard/testing-arena", label: "ساحة الاختبار", icon: Beaker, perm: "settings" },
-      // CONSOLIDATED (duplicate nav): same feature as /dashboard/testing-arena — page still reachable by URL.
-      // { href: "/dashboard/arena", label: "ساحة الاختبار ٢", icon: Beaker, perm: "settings" },
-      { href: "/dashboard/ai-audit", label: "جاهزية المساعد", icon: ShieldCheck, perm: "settings" },
-      // CONSOLIDATED (duplicate nav): overlaps /dashboard/revenue-copilot ("مساعد الإيرادات") — page still reachable by URL.
-      // { href: "/dashboard/revenue-pro", label: "مساعد الإيرادات Pro", icon: TrendingUp, perm: "analytics" },
-      { href: "/dashboard/playground", label: "تجربة المحادثة", icon: FlaskConical, perm: "settings" },
-      { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/bot-builder", label: "منشئ المحادثات", icon: GitBranch, perm: "settings" },
-      // CONSOLIDATED (duplicate nav): same `smart_assistant` capability as /dashboard/knowledge-brain — page still reachable by URL.
-      // { href: "/dashboard/brain", label: "مركز الدماغ", icon: Brain, perm: "settings" },
-      // HIDDEN (final-polish): not production-ready — re-enable when the workflow is complete
-      // { href: "/dashboard/agents", label: "نظام الوكلاء", icon: Users, perm: "settings" },
+      { href: "/dashboard/automations", label: "قواعد الأتمتة", icon: Zap, perm: "settings" },
+      { href: "/dashboard/knowledge", label: "قاعدة المعرفة", icon: BookOpen, perm: "settings" },
+      { href: "/dashboard/working-hours", label: "ساعات العمل", icon: CalendarClock, perm: "settings" },
     ],
   },
+
+  // ── 7. التحليلات ──────────────────────────────────────────────────────────
   {
-    id: "growth",
-    label: "النمو",
-    short: "النمو",
-    icon: Rocket,
-    home: "/dashboard/funnel",
+    id: "analytics",
+    label: "التحليلات",
+    short: "التحليلات",
+    icon: BarChart3,
+    home: "/dashboard/analytics",
     items: [
+      { href: "/dashboard/analytics", label: "نظرة عامة", icon: BarChart3, perm: "analytics" },
+      { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },
       { href: "/dashboard/funnel", label: "قمع التحويل", icon: Filter, perm: "analytics" },
-      { href: "/dashboard/segments", label: "الشرائح", icon: Layers, perm: "analytics" },
-      { href: "/dashboard/recovery", label: "استعادة العملاء", icon: RotateCcw, perm: "broadcasts" },
+      { href: "/dashboard/revenue-copilot", label: "فرص الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/business", label: "أداء النشاط", icon: Building2, perm: "analytics" },
-    ],
-  },
-  {
-    id: "ops",
-    label: "العمليات",
-    short: "العمليات",
-    icon: Wrench,
-    home: "/dashboard/integrations",
-    items: [
-      { href: "/dashboard/integrations", label: "التكاملات", icon: Plug, perm: "settings" },
-      { href: "/dashboard/automations", label: "الأتمتة", icon: Zap, perm: "settings" },
-      // HIDDEN (final-polish): not production-ready — re-enable when flows actually execute
-      // { href: "/dashboard/flow-builder", label: "منشئ المسارات", icon: Workflow, perm: "settings" },
-      { href: "/dashboard/branches", label: "الفروع", icon: Building2, perm: "settings" },
-      { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
-      // REMOVED from nav (old WhatsApp linking page — not working / superseded by QR-queue reservation flow). Page still reachable by URL.
-      // { href: "/dashboard/whatsapp", label: "ربط واتساب", icon: Phone, perm: "settings", mode: "qr" },
-      { href: "/dashboard/whatsapp-health", label: "صحة جلسة واتساب", icon: Phone, perm: "settings", mode: "qr" },
-      { href: "/dashboard/meta-health", label: "صحة اتصال Meta", icon: ShieldCheck, perm: "settings", mode: "meta" },
-      { href: "/dashboard/meta", label: "مركز Meta والفوترة", icon: ShieldCheck, perm: "settings", mode: "meta" },
-      // CONSOLIDATED (duplicate nav): synonym of /dashboard/intel ("الرصد الذكي") — page still reachable by URL.
-      // { href: "/dashboard/monitoring", label: "الرصد الذكي Pro", icon: Activity, perm: "analytics" },
-      { href: "/dashboard/ai-operations", label: "عمليات المساعد", icon: Brain, perm: "settings" },
-      { href: "/dashboard/qr-queue", label: "حجز جلسات QR", icon: CalendarClock, perm: "broadcasts" },
-      { href: "/dashboard/sms", label: "K1SMS", icon: MessageCircle, perm: "settings" },
-      { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
-      { href: "/dashboard/safety", label: "الأمان", icon: ShieldAlert, perm: "settings" },
-      { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
-      { href: "/dashboard/audit-log", label: "سجل التدقيق", icon: ScrollText, perm: "team" },
-      { href: "/docs", label: "مركز المساعدة", icon: BookOpen, perm: "analytics" },
-    ],
-  },
-  {
-    id: "data",
-    label: "البيانات",
-    short: "البيانات",
-    icon: Database,
-    home: "/dashboard/export",
-    items: [
-      { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket, perm: "settings" },
       { href: "/dashboard/export", label: "تصدير البيانات", icon: Download, perm: "customers" },
-      { href: "/dashboard/demo", label: "بيانات تجريبية", icon: Beaker, perm: "settings" },
     ],
   },
+
+  // ── 8. الإعدادات ──────────────────────────────────────────────────────────
   {
     id: "settings",
     label: "الإعدادات",
@@ -231,20 +213,58 @@ export const WORKSPACES: Workspace[] = [
     icon: Settings,
     home: "/dashboard/settings",
     items: [
-      { href: "/dashboard/settings", label: "الحساب", icon: Settings, perm: "analytics" },
-      { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
-      { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
-      { href: "/dashboard/working-hours", label: "ساعات العمل", icon: Shield, perm: "settings" },
-      // HIDDEN (final-polish): not production-ready — branding not yet applied at runtime
-      { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
-      { href: "/dashboard/usage", label: "الباقة", icon: Crown, perm: "analytics" },
-      { href: "/dashboard/plan", label: "لوحة الباقة", icon: Gauge, perm: "analytics" },
+      { href: "/dashboard/settings", label: "الحساب والنشاط", icon: Settings, perm: "analytics" },
       { href: "/dashboard/billing", label: "الاشتراك والدفع", icon: Wallet, perm: "billing" },
+      { href: "/dashboard/usage", label: "الباقة والاستخدام", icon: Crown, perm: "analytics" },
       { href: "/dashboard/wallet", label: "المحفظة والرصيد", icon: Wallet, perm: "billing" },
+      { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
+      { href: "/dashboard/integrations", label: "التكاملات", icon: Plug, perm: "settings" },
+      { href: "/dashboard/branches", label: "الفروع", icon: Building2, perm: "settings" },
+      { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
+      { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
       { href: "/dashboard/developer", label: "مركز المطوّرين", icon: Code2, perm: "settings" },
+      { href: "/docs", label: "مركز المساعدة", icon: BookOpen, perm: "analytics" },
     ],
   },
 ];
+
+/**
+ * Destinations intentionally NOT in customer navigation.
+ *
+ * Internal diagnostics / technical surfaces — a merchant should never be shown
+ * these; they leak implementation detail and have no business meaning:
+ *   /dashboard/command-center   internal ops console
+ *   /dashboard/ai-operations    assistant internals
+ *   /dashboard/intel            monitoring internals
+ *   /dashboard/safety           anti-ban internals
+ *   /dashboard/compliance       deliverability internals
+ *   /dashboard/testing-arena    QA harness
+ *   /dashboard/playground       QA harness
+ *   /dashboard/ai-audit         QA harness
+ *   /dashboard/demo             seeds fake data
+ *
+ * Consolidated duplicates (a single canonical destination already covers them):
+ *   /dashboard/knowledge-brain  → /dashboard/knowledge
+ *   /dashboard/sales-brain      → /dashboard/business-intelligence
+ *   /dashboard/brain            → /dashboard/knowledge
+ *   /dashboard/suggestions      → /dashboard/revenue-copilot
+ *   /dashboard/revenue-forecast → /dashboard/revenue-copilot
+ *   /dashboard/monitoring       → /dashboard/analytics
+ *   /dashboard/arena            → (QA harness, hidden)
+ *   /dashboard/revenue-pro      → /dashboard/revenue-copilot
+ *   /dashboard/broadcasts       → /dashboard/broadcasts-pro
+ *   /dashboard/whatsapp         → /dashboard/settings/numbers
+ *   /dashboard/plan             → /dashboard/usage
+ *   /dashboard/meta             → /dashboard/billing
+ *
+ * Not production-ready:
+ *   /dashboard/flow-builder     flows do not execute
+ *   /dashboard/agents           workflow incomplete
+ *   /dashboard/white-label      branding not applied at runtime
+ *
+ * All of the above remain reachable by direct URL for support/debugging; they
+ * are simply not advertised in the sidebar or ⌘K palette.
+ */
 
 // ── Back-compat exports ───────────────────────────────────────────────────────
 // Older callers (command palette, mobile header label) consume a flat list and a
@@ -278,11 +298,20 @@ function isActivePath(pathname: string, href: string) {
 const CORE_HREFS = new Set<string>([
   "/dashboard",
   "/dashboard/my-work",
-  "/dashboard/orders", "/dashboard/products", "/dashboard/broadcasts",
-  "/dashboard/customers", "/dashboard/inbox", "/dashboard/leads",
-  "/dashboard/bot", "/dashboard/knowledge", "/dashboard/quick-replies",
-  "/dashboard/whatsapp", "/docs",
-  "/dashboard/settings", "/dashboard/billing", "/dashboard/wallet",
+  // المحادثات
+  "/dashboard/inbox", "/dashboard/quick-replies", "/dashboard/settings/numbers",
+  // العملاء
+  "/dashboard/customers", "/dashboard/leads",
+  // المبيعات
+  "/dashboard/orders", "/dashboard/products",
+  // التسويق
+  "/dashboard/broadcasts-pro",
+  // الأتمتة
+  "/dashboard/bot", "/dashboard/knowledge",
+  // التحليلات
+  "/dashboard/analytics",
+  // الإعدادات
+  "/dashboard/settings", "/dashboard/billing", "/dashboard/usage", "/docs",
 ]);
 const NAV_MODE_KEY = "keyone_nav_simple";
 
