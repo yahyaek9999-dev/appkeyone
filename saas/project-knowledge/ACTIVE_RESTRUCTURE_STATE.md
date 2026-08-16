@@ -5,6 +5,52 @@ Compact working state. Update in place; do not regenerate.
 
 ---
 
+## BLOCKER 1 — FEATURE REGISTRY EMPTY → CLOSED
+
+**Symptom (production screenshot):** "لا توجد ميزات بعد / الكل (0)"
+**Root cause:** `FeatureControl` table was never seeded. `seedDefaultFeatureControls()` existed but had no call-site. Every gate silently passed; the admin control plane was inert.
+
+**Fix:**
+- `seedFeatureRegistry()` derives rows from the **pricing capability catalog**, not a hand-written list. This makes `featureId === capability key` structural — load-bearing, because `getEntitlements()` Step 5 kills `capabilities[featureId]`; any drift turns the kill switch into a silent no-op.
+- Idempotent + non-destructive: `update` refreshes descriptive/plan metadata only, never `status`/`killSwitch`/`customerVisible`/`rolloutPct`.
+- Seeded from the **instrumentation hook on server boot** (not lazily) — the lazy path only fires on an authenticated request, so a fresh deploy sat empty. That was observed and corrected.
+
+**Production evidence (`342ed27`):**
+```
+[feature-registry] reconciled 44 features, 5 releases
+FeatureControl rows: 44   FeatureRelease rows: 5
+by category: core 5 · automation 7 · intelligence 9 · analytics 5 ·
+             commerce 3 · team 5 · scale 4 · enterprise 6
+requiredPlan correctly mapped: any / k_growth / k_pro / k_enterprise
+```
+
+---
+
+## BLOCKER 2 — RELEASES DISCONNECTED → CLOSED
+
+**Symptom:** "لا توجد إصدارات بعد"; lifecycle was a decorative CRUD page.
+
+**Fix:** 5 baseline trains seeded from the *shipped* product (no fabricated history): `core`, `automation`, `intelligence`, `commerce`, `scale`. Release state now gates availability — `active`/`beta` → available; `draft`/`hidden`/`archived` → unavailable.
+
+New `getDisabledFeatureIds()` resolves **every** disable reason (kill switch, status, release state, disabled dependency) into one set with bounded propagation. `getEntitlements()` Step 5 consumes it. Previously Step 5 checked `killSwitch` alone, so archiving a release had no effect on plan capabilities — the entitlement layer and `isFeatureEnabled()` could disagree. They cannot now.
+
+**Adversarial proof, run against PRODUCTION data and fully restored:**
+
+| Test | Expected | Result |
+|------|----------|--------|
+| baseline disabled set | only `white_label` (comingSoon) | ✅ 1 |
+| `inbox` live at baseline | not disabled | ✅ |
+| killSwitch ON → `multi_whatsapp` | disabled | ✅ |
+| killSwitch restored | live again | ✅ |
+| archive `commerce` train | k1sms + shipping_tracking + loyalty_rewards all disabled | ✅ |
+| other train unaffected during archive | `inbox` still live | ✅ |
+| train restored | all 3 live again | ✅ |
+| **final state** | 0 kill switches, 0 non-active releases | ✅ restored |
+
+Logic covered by 21 new unit tests (`__tests__/feature-registry.test.ts`): empty registry, key drift, ignored release state, dependency × release interaction, recovery paths.
+
+---
+
 ## COMPLETED (this session, verified)
 
 | Item | Evidence |
@@ -52,8 +98,8 @@ Classified honestly. None of these were completed this session.
 
 | Item | Class | Why |
 |------|-------|-----|
-| Canonical Feature Registry (16 fields: rollout %, version, allowed roles, limit, deprecated, history) | NON-BLOCKING | Current `FeatureControl` has ~14 of the 16 fields and the kill switch is wired into entitlements. Missing: per-feature `limit`, `allowedRoles`, change history UI. |
-| Release → feature availability binding | NON-BLOCKING | `FeatureControl.releaseId` exists and `/admin/releases` manages lifecycle, but release status does not yet gate `isFeatureEnabled()`. |
+| Per-feature `limit` + `allowedRoles` columns | NON-BLOCKING | Registry now populated with 14 of the 16 requested fields. These two are absent from the schema; plan limits are currently carried by the entitlement `limits` object instead, which is authoritative and enforced. |
+| Feature change-history UI | NON-BLOCKING | `changedBy` + `changeNote` columns are written on every admin edit; no timeline view yet. |
 | Automated card checkout | OPTIONAL / NEEDS DECISION | See payment finding above — this is a new feature, needs owner sign-off on gateway + market. |
 | Full 78-route customer crawl with authenticated session | NON-BLOCKING | Requires a seeded test account; not run this session. |
 | UI normalization pass across all pages | NON-BLOCKING | Nav is normalized; per-page typography/spacing/empty-state sweep not done. |
