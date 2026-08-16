@@ -387,8 +387,10 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/business-intelligence": "advanced_analytics",
   "/dashboard/intel": "advanced_insights",
   "/dashboard/funnel": "advanced_analytics",
-  "/dashboard/segments": "customer_segmentation",
-  "/dashboard/recovery": "smart_campaign_builder",
+  // Gate on the tier-1 capability each page actually sells. These previously
+  // pointed at tier-2 keys, hiding Growth-plan features from Growth customers.
+  "/dashboard/segments": "segments",
+  "/dashboard/recovery": "recovery",
   "/dashboard/coupons": "smart_campaign_builder",
   "/dashboard/business": "advanced_reporting",
   "/dashboard/automations": "advanced_automations",

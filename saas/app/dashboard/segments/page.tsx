@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function SegmentsPage() {
   const uid = await getUserId();
   if (!uid) redirect("/login");
-  const g = await pageGate("customer_segmentation");
+  // Gate on `segments` (tier 1 / Growth) — the capability this page actually
+  // sells. It previously gated on `customer_segmentation` (tier 2 / Pro),
+  // which locked Growth customers out of a feature their plan includes.
+  const g = await pageGate("segments");
   if (!g.allowed) {
     return (
       <div className="p-6">

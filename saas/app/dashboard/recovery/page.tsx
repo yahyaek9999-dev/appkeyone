@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function RecoveryPage() {
   const uid = await getUserId();
   if (!uid) redirect("/login");
-  const g = await pageGate("smart_campaign_builder");
+  // Gate on `recovery` (tier 1 / Growth) — the capability this page actually
+  // sells. It previously gated on `smart_campaign_builder` (tier 2 / Pro),
+  // which locked Growth customers out of a feature their plan includes.
+  const g = await pageGate("recovery");
   if (!g.allowed) {
     return (
       <div className="p-6">
