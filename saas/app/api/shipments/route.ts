@@ -4,14 +4,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { createShipment } from "@/lib/shipping";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const uid = await getUserIdForPermission("customers");
-  if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // shipping_tracking is a Pro (tier 2) capability. Gate server-side at the
+  // data boundary — hiding the nav entry alone left the API openly readable.
+  const g = await apiGate("shipping_tracking", "customers");
+  if (g.response) return g.response;
+  const uid = g.uid!;
 
   const orderId = new URL(req.url).searchParams.get("orderId") || undefined;
   const [shipments, providers] = await Promise.all([
@@ -58,8 +62,9 @@ const CreateBody = z.object({
 });
 
 export async function POST(req: Request) {
-  const uid = await getUserIdForPermission("customers");
-  if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const g = await apiGate("shipping_tracking", "customers");
+  if (g.response) return g.response;
+  const uid = g.uid!;
 
   const limited = enforceRateLimit(req, {
     name: "shipment-create",

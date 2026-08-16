@@ -3,7 +3,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import {
   syncShipment,
   notifyCustomerOfShipment,
@@ -19,8 +19,10 @@ const Body = z.object({
 });
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const uid = await getUserIdForPermission("customers");
-  if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // shipping_tracking = Pro (tier 2). Mutating a shipment is a paid action.
+  const g = await apiGate("shipping_tracking", "customers");
+  if (g.response) return g.response;
+  const uid = g.uid!;
 
   // Scope check: shipment must belong to this owner.
   const owned = await (prisma as any).shipment.findFirst({

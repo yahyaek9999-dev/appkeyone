@@ -7,8 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAuthContext } from "@/lib/auth";
-import { can } from "@/lib/rbac";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
@@ -56,14 +55,11 @@ async function resolveStaff(
 }
 
 export async function POST(req: NextRequest) {
-  const ctx = await getAuthContext();
-  if (!ctx) return NextResponse.json({ error: "unauth" }, { status: 401 });
-
-  if (!can(ctx.role, "team")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
-  const userId = ctx.user.id;
+  // Assigning conversations to staff/teams is team_routing — a Pro (tier 2)
+  // capability. apiGate resolves auth, the "team" permission, and entitlement.
+  const g = await apiGate("team_routing", "team");
+  if (g.response) return g.response;
+  const userId = g.uid!;
   const body = await req.json().catch(() => ({}));
   const { customerId, staffId, team, strategy = "manual", slaMinutes } = body;
 
@@ -107,10 +103,11 @@ export async function POST(req: NextRequest) {
  * queueState: "open" | "assigned" | "pending" | "resolved" | "closed"
  */
 export async function PATCH(req: NextRequest) {
-  const ctx = await getAuthContext();
-  if (!ctx) return NextResponse.json({ error: "unauth" }, { status: 401 });
-
-  const userId = ctx.user.id;
+  // Queue-state transitions (open/pending/resolved/closed + SLA) are the
+  // support_inbox capability — Pro (tier 2).
+  const g = await apiGate("support_inbox");
+  if (g.response) return g.response;
+  const userId = g.uid!;
   const body = await req.json().catch(() => ({}));
   const { customerId, queueState } = body;
 

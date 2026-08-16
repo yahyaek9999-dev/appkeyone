@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermission, getAuthContext } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { auditCtx } from "@/lib/audit/log";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -15,9 +16,11 @@ const CreateBody = z.object({
 });
 
 export async function GET(req: Request) {
-  let user;
-  try { user = await requirePermission("settings"); }
-  catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
+  // custom_integrations is an Enterprise (tier 3) capability. Gate at the data
+  // boundary — connected-integration rows include provider metadata.
+  const g = await apiGate("custom_integrations", "settings");
+  if (g.response) return g.response;
+  const user = { id: g.uid! };
 
   const rows = await (prisma as any).commerceIntegration.findMany({
     where: { userId: user.id },
@@ -35,9 +38,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  let user;
-  try { user = await requirePermission("settings"); }
-  catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
+  const g = await apiGate("custom_integrations", "settings");
+  if (g.response) return g.response;
+  const user = { id: g.uid! };
 
   const limited = enforceRateLimit(req, { name: "commerce-integration-create", identifier: user.id, ...RATE_LIMITS.api });
   if (limited) return limited;
