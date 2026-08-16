@@ -16,7 +16,7 @@
 
 import { prisma } from "@/lib/db";
 import { getEffectivePlan, type EffectivePlan } from "./plan";
-import { getAllFeatures } from "@/lib/feature-control";
+import { getDisabledFeatureIds } from "@/lib/feature-control";
 import {
   CAPABILITIES,
   TIERS,
@@ -194,16 +194,19 @@ export async function getEntitlements(userId: string): Promise<Entitlements> {
     }
   }
 
-  // ── Step 5: admin kill switch (FeatureControl) — always overrides ────────
-  // If Admin has killed a feature whose featureId matches a capability key,
-  // force capabilities[key] = false regardless of plan/override/gift/promo.
-  // getAllFeatures() is 30s-cached — safe to call on every request.
+  // ── Step 5: admin control plane — always overrides ───────────────────────
+  // A feature can be unavailable for several reasons: admin kill switch, a
+  // disabled/deprecated status, a held or archived RELEASE train, or a disabled
+  // dependency. getDisabledFeatureIds() resolves all of them into one set so
+  // this layer can never disagree with isFeatureEnabled().
+  //
+  // Registry featureIds are derived from the capability catalog, so the key
+  // match below is guaranteed rather than coincidental.
+  // 30s-cached — safe to call on every request.
   try {
-    const fcRows = await getAllFeatures();
-    for (const fc of fcRows) {
-      if ((fc.killSwitch || fc.status === "disabled") && fc.featureId in capabilities) {
-        capabilities[fc.featureId] = false;
-      }
+    const disabled = await getDisabledFeatureIds();
+    for (const featureId of disabled) {
+      if (featureId in capabilities) capabilities[featureId] = false;
     }
   } catch {
     // Fail-open: a dead FeatureControl table must never block feature access

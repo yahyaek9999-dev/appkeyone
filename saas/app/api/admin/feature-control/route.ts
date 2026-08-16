@@ -2,7 +2,7 @@
 // POST /api/admin/feature-control  → seed defaults or bulk update
 import { NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth";
-import { getAllFeatures, seedDefaultFeatureControls, upsertFeature } from "@/lib/feature-control";
+import { getAllFeatures, seedFeatureRegistry, upsertFeature } from "@/lib/feature-control";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -39,9 +39,9 @@ export async function POST(req: Request) {
   const d = parsed.data;
 
   if (d.action === "seed") {
-    await seedDefaultFeatureControls();
-    const features = await getAllFeatures();
-    return NextResponse.json({ ok: true, seeded: features.length });
+    const { features: seeded, releases } = await seedFeatureRegistry();
+    const all = await getAllFeatures();
+    return NextResponse.json({ ok: true, seeded, releases, total: all.length });
   }
 
   if (d.feature) {

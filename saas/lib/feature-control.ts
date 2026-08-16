@@ -7,6 +7,7 @@
 // Rule: beta=true → shown only to allowed users (future: beta list).
 
 import { prisma } from "@/lib/db";
+import { CAPABILITIES, PUBLIC_TIERS } from "@/lib/pricing/catalog";
 
 export interface FeatureControlRow {
   featureId: string;
@@ -31,11 +32,32 @@ let cache: Map<string, FeatureControlRow> | null = null;
 let cacheAt = 0;
 const CACHE_TTL = 30_000; // 30s
 
+/**
+ * Guards the empty-table auto-seed so a cold start with an empty registry
+ * doesn't fire one seed per concurrent request. Reset only by process restart —
+ * a failed seed retries on the next boot rather than hammering the DB.
+ */
+let autoSeedAttempted = false;
+
 async function loadAll(): Promise<Map<string, FeatureControlRow>> {
   const now = Date.now();
   if (cache && now - cacheAt < CACHE_TTL) return cache;
 
-  const rows = await (prisma as any).featureControl.findMany({ orderBy: { featureId: "asc" } });
+  let rows = await (prisma as any).featureControl.findMany({ orderBy: { featureId: "asc" } });
+
+  // Self-heal: an empty registry means every feature gate silently passes and
+  // the admin UI shows "0 features". Seed it from the capability catalog on
+  // first sight rather than shipping a dead control plane.
+  if (rows.length === 0 && !autoSeedAttempted) {
+    autoSeedAttempted = true;
+    try {
+      await seedFeatureRegistry();
+      rows = await (prisma as any).featureControl.findMany({ orderBy: { featureId: "asc" } });
+    } catch {
+      // Leave rows empty — isFeatureEnabled() fails open, so the product keeps
+      // working; the next boot retries the seed.
+    }
+  }
   const m = new Map<string, FeatureControlRow>();
   for (const r of rows) {
     let deps: string[] = [];
@@ -50,6 +72,51 @@ async function loadAll(): Promise<Map<string, FeatureControlRow>> {
 export function invalidateFeatureCache() {
   cache = null;
   cacheAt = 0;
+  releaseCache = null;
+  releaseCacheAt = 0;
+}
+
+// ── Release gating ───────────────────────────────────────────────────────────
+// A feature ships inside a release train. The release's lifecycle state gates
+// availability independently of the feature's own status, so Admin can hold or
+// pull an entire train without touching each feature.
+//
+//   active   → features available
+//   beta     → features available (beta cohort; rollout % still applies)
+//   draft    → not yet shipped        → unavailable
+//   hidden   → held back              → unavailable
+//   archived → withdrawn              → unavailable
+
+let releaseCache: Map<string, string> | null = null;   // releaseId → status
+let releaseCacheAt = 0;
+
+const RELEASE_STATES_AVAILABLE = new Set(["active", "beta"]);
+
+async function loadReleaseStates(): Promise<Map<string, string>> {
+  const now = Date.now();
+  if (releaseCache && now - releaseCacheAt < CACHE_TTL) return releaseCache;
+
+  const m = new Map<string, string>();
+  try {
+    const rows = await (prisma as any).featureRelease.findMany({
+      select: { releaseId: true, status: true },
+    });
+    for (const r of rows) m.set(r.releaseId, r.status);
+  } catch {
+    // Fail-open: an unreadable release table must not black out the product.
+  }
+  releaseCache = m;
+  releaseCacheAt = now;
+  return m;
+}
+
+/** True when the feature's release train is in a customer-available state. */
+async function releaseAllows(releaseId: string | null): Promise<boolean> {
+  if (!releaseId) return true;                    // unassigned → not gated
+  const states = await loadReleaseStates();
+  const status = states.get(releaseId);
+  if (!status) return true;                       // unknown release → not gated
+  return RELEASE_STATES_AVAILABLE.has(status);
 }
 
 /**
@@ -70,7 +137,10 @@ export async function isFeatureEnabled(
   const f = all.get(featureId);
   if (!f) return true; // unknown feature → assume enabled
   if (f.killSwitch) return false;
-  if (f.status !== "enabled") return false;
+  if (f.status !== "enabled" && f.status !== "beta") return false;
+
+  // Release train gating — a held/withdrawn train disables everything in it.
+  if (!(await releaseAllows(f.releaseId))) return false;
 
   // Recursively check all declared dependencies
   for (const dep of f.dependencies) {
@@ -93,7 +163,8 @@ export async function featureBlockedBy(
   const all = await loadAll();
   const f = all.get(featureId);
   if (!f) return null;
-  if (f.killSwitch || f.status !== "enabled") return featureId;
+  if (f.killSwitch || (f.status !== "enabled" && f.status !== "beta")) return featureId;
+  if (!(await releaseAllows(f.releaseId))) return `release:${f.releaseId}`;
 
   for (const dep of f.dependencies) {
     const blocked = await featureBlockedBy(dep, visited);
@@ -118,6 +189,50 @@ export async function isFeatureVisible(featureId: string): Promise<boolean> {
 export async function getAllFeatures(): Promise<FeatureControlRow[]> {
   const all = await loadAll();
   return Array.from(all.values());
+}
+
+/**
+ * The set of featureIds that are NOT available right now, for ANY reason —
+ * kill switch, status, or a held/withdrawn release train.
+ *
+ * This is what the entitlement engine consumes. Checking killSwitch alone (as
+ * an earlier revision did) meant archiving a release had no effect on plan
+ * capabilities; routing every reason through one helper keeps the entitlement
+ * layer and the isFeatureEnabled() call sites in agreement.
+ */
+export async function getDisabledFeatureIds(): Promise<Set<string>> {
+  const disabled = new Set<string>();
+  try {
+    const all = await loadAll();
+    const releaseStates = await loadReleaseStates();
+
+    for (const f of all.values()) {
+      if (f.killSwitch) { disabled.add(f.featureId); continue; }
+      if (f.status !== "enabled" && f.status !== "beta") { disabled.add(f.featureId); continue; }
+      if (f.releaseId) {
+        const st = releaseStates.get(f.releaseId);
+        if (st && !RELEASE_STATES_AVAILABLE.has(st)) disabled.add(f.featureId);
+      }
+    }
+
+    // Propagate: a feature whose dependency is disabled is itself disabled.
+    // Bounded relaxation — the dependency graph is shallow and the cycle guard
+    // in isFeatureEnabled() already rejects loops.
+    for (let pass = 0; pass < 5; pass++) {
+      let changed = false;
+      for (const f of all.values()) {
+        if (disabled.has(f.featureId)) continue;
+        if (f.dependencies.some((d) => disabled.has(d))) {
+          disabled.add(f.featureId);
+          changed = true;
+        }
+      }
+      if (!changed) break;
+    }
+  } catch {
+    // Fail-open: return whatever we resolved rather than blacking out features.
+  }
+  return disabled;
 }
 
 /** Upsert a feature control record (admin action). */
@@ -170,7 +285,147 @@ export async function upsertFeature(
   return { ...row, dependencies: parsedDeps };
 }
 
-/** Seed default feature control records for all major capabilities. */
+// ── Canonical feature registry ───────────────────────────────────────────────
+//
+// The registry is DERIVED from the pricing capability catalog, not hand-written.
+// That guarantees three things that a hand-maintained list cannot:
+//
+//   1. featureId === capability key. getEntitlements() Step 5 kills
+//      `capabilities[featureId]`, so if these ever drift the admin kill switch
+//      silently becomes a no-op. Deriving them makes drift impossible.
+//   2. No invented features. Every row corresponds to a capability a customer
+//      can actually buy.
+//   3. requiredPlan stays in lock-step with the pricing matrix.
+
+/** Capability category → the customer nav workspace that surfaces it. */
+const WORKSPACE_BY_CATEGORY: Record<string, string> = {
+  core:         "conversations",
+  automation:   "automation",
+  team:         "settings",
+  intelligence: "analytics",
+  analytics:    "analytics",
+  commerce:     "sales",
+  scale:        "settings",
+  enterprise:   "settings",
+};
+
+/** Capability category → the release train it shipped in. */
+const RELEASE_BY_CATEGORY: Record<string, string> = {
+  core:         "core",
+  automation:   "automation",
+  team:         "scale",
+  intelligence: "intelligence",
+  analytics:    "intelligence",
+  commerce:     "commerce",
+  scale:        "scale",
+  enterprise:   "scale",
+};
+
+/**
+ * Real dependency edges. Only genuine runtime dependencies are listed — a
+ * feature appears here ONLY if disabling the parent actually breaks it.
+ */
+const REAL_DEPENDENCIES: Record<string, string[]> = {
+  human_handoff:          ["flow_builder"],
+  team_routing:           ["team"],
+  support_inbox:          ["inbox"],
+  shipping_tracking:      ["order_management"],
+  smart_campaign_builder: ["broadcasts"],
+  recovery:               ["broadcasts"],
+  revenue_copilot:        ["smart_assistant"],
+  next_best_action:       ["smart_assistant"],
+  revenue_attribution:    ["advanced_analytics"],
+  forecasting:            ["advanced_analytics"],
+  customer_segmentation:  ["segments"],
+  multi_team:             ["team"],
+  approval_workflows:     ["team"],
+};
+
+/** Integrations a feature genuinely cannot run without. */
+const REQUIRED_INTEGRATION: Record<string, string> = {
+  k1sms:             "sms_provider",
+  shipping_tracking: "shipping_provider",
+};
+
+/** The baseline release trains, seeded alongside the registry. */
+const RELEASE_TRAINS: Array<{ releaseId: string; name: string; description: string; status: string; sortOrder: number }> = [
+  { releaseId: "core",         name: "الإصدار الأساسي",        description: "التواصل الأساسي: صندوق الوارد، الردود التلقائية، إدارة العملاء والطلبات.", status: "active", sortOrder: 1 },
+  { releaseId: "automation",   name: "إصدار الأتمتة",          description: "الحملات، الاستعادة، الشرائح، منشئ المحادثات، ساعات العمل.",              status: "active", sortOrder: 2 },
+  { releaseId: "intelligence", name: "إصدار الذكاء والتحليلات", description: "المساعد الذكي، قاعدة المعرفة، التحليلات المتقدّمة، إسناد الإيرادات.",      status: "active", sortOrder: 3 },
+  { releaseId: "commerce",     name: "إصدار التجارة",          description: "K1SMS، الشحن والتتبّع، الولاء والمكافآت.",                                status: "active", sortOrder: 4 },
+  { releaseId: "scale",        name: "إصدار التوسّع",           description: "الأرقام المتعدّدة، الفروع، الفرق، الموافقات، التكاملات المخصّصة.",          status: "active", sortOrder: 5 },
+];
+
+/**
+ * Seed / reconcile the canonical feature registry from the capability catalog.
+ *
+ * Idempotent and NON-DESTRUCTIVE: `create` populates a missing row, `update`
+ * only refreshes descriptive fields (name/category/plan/deps). It NEVER
+ * overwrites the admin-controlled columns — status, killSwitch, customerVisible,
+ * rolloutPct — so re-running this can't silently re-enable something an admin
+ * turned off.
+ *
+ * Returns counts so the caller can report what actually happened.
+ */
+export async function seedFeatureRegistry(): Promise<{ features: number; releases: number }> {
+  // 1. Release trains first (features reference releaseId).
+  for (const r of RELEASE_TRAINS) {
+    await (prisma as any).featureRelease.upsert({
+      where:  { releaseId: r.releaseId },
+      create: r,
+      update: { name: r.name, description: r.description, sortOrder: r.sortOrder },
+    });
+  }
+
+  // 2. One registry row per real, purchasable capability.
+  const tierSlugByIndex = PUBLIC_TIERS.map((t: any) => t.slug);
+
+  for (const cap of CAPABILITIES) {
+    const requiredPlan = cap.minTierIndex > 0 ? tierSlugByIndex[cap.minTierIndex] ?? null : null;
+    const deps = REAL_DEPENDENCIES[cap.key] ?? [];
+
+    await (prisma as any).featureControl.upsert({
+      where: { featureId: cap.key },
+      create: {
+        featureId:           cap.key,
+        name:                cap.label.ar,
+        description:         cap.label.en,
+        category:            cap.category,
+        workspace:           WORKSPACE_BY_CATEGORY[cap.category] ?? "settings",
+        // comingSoon capabilities ship hidden — visible to admin, not to customers.
+        status:              cap.comingSoon ? "hidden" : "enabled",
+        customerVisible:     !cap.comingSoon,
+        adminOnly:           false,
+        beta:                Boolean(cap.comingSoon),
+        requiredPlan,
+        dependencies:        JSON.stringify(deps),
+        requiredIntegration: REQUIRED_INTEGRATION[cap.key] ?? null,
+        mobileVisible:       true,
+        killSwitch:          false,
+        rolloutPct:          100,
+        releaseId:           RELEASE_BY_CATEGORY[cap.category] ?? "core",
+      },
+      update: {
+        // Descriptive + plan metadata is re-derived from the catalog…
+        name:                cap.label.ar,
+        description:         cap.label.en,
+        category:            cap.category,
+        workspace:           WORKSPACE_BY_CATEGORY[cap.category] ?? "settings",
+        requiredPlan,
+        dependencies:        JSON.stringify(deps),
+        requiredIntegration: REQUIRED_INTEGRATION[cap.key] ?? null,
+        releaseId:           RELEASE_BY_CATEGORY[cap.category] ?? "core",
+        // …but status / killSwitch / customerVisible / rolloutPct are the
+        // admin's to own. Never reset them here.
+      },
+    });
+  }
+
+  invalidateFeatureCache();
+  return { features: CAPABILITIES.length, releases: RELEASE_TRAINS.length };
+}
+
+/** @deprecated Superseded by seedFeatureRegistry(); kept for the older admin call-site. */
 export async function seedDefaultFeatureControls(): Promise<void> {
   const defaults: Array<Omit<FeatureControlRow, "featureId"> & { featureId: string }> = [
     // ─── Messaging ────────────────────────────────────────────────────────────
