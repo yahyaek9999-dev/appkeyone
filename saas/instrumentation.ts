@@ -28,6 +28,31 @@ export async function register(): Promise<void> {
 
     // Full server-side SDK (Prisma tracing, beforeSend filters, etc.)
     await import("./sentry.server.config");
+
+    // Reconcile the feature registry once per boot.
+    //
+    // The control plane is useless when the FeatureControl table is empty —
+    // every gate silently passes and the admin UI reports "0 features". Lazy
+    // seeding on first read is not sufficient because the first read only
+    // happens on an AUTHENTICATED request, so a fresh deploy can sit with an
+    // empty registry indefinitely.
+    //
+    // seedFeatureRegistry() is idempotent and never overwrites admin-controlled
+    // columns (status / killSwitch / customerVisible / rolloutPct), so running
+    // it on every boot is safe and keeps the registry in step with the pricing
+    // catalog as capabilities are added.
+    //
+    // Deliberately non-fatal and non-blocking: a seeding failure must never
+    // stop the server from accepting traffic.
+    void (async () => {
+      try {
+        const { seedFeatureRegistry } = await import("./lib/feature-control");
+        const { features, releases } = await seedFeatureRegistry();
+        console.log(`[feature-registry] reconciled ${features} features, ${releases} releases`);
+      } catch (err) {
+        console.error("[feature-registry] seed failed (non-fatal):", (err as Error)?.message);
+      }
+    })();
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {
