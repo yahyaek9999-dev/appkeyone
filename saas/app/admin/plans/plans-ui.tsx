@@ -216,11 +216,18 @@ export default function PlansUi({
       </div>
 
       {/* Plan cards */}
-      <div className="space-y-3">
-        {rows.map((p) => {
+      {/* Public plans section */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-slate-500">الباقات العامة (4)</span>
+          <div className="h-px flex-1 bg-white/[0.06]" />
+          <span className="text-[10px] text-slate-600">تظهر في صفحة الأسعار وشاشة الدفع</span>
+        </div>
+        <div className="space-y-3">
+          {rows.filter((p) => ["k_start", "k_growth", "k_pro", "k_enterprise"].includes(p.slug)).map((p) => {
           const typeConfig = PLAN_TYPE_LABELS[p.slug];
           const isEditing = editing === p.slug;
-          const isLegacy = !["k_start", "k_growth", "k_pro", "k_enterprise"].includes(p.slug);
+          const isLegacy = false;
           const capIndex = CATALOG_CAP_INDEX[p.slug] ?? 0;
 
           return (
@@ -383,7 +390,63 @@ export default function PlansUi({
             </div>
           );
         })}
+        </div>
       </div>
+
+      {/* Legacy plans section */}
+      {rows.some((p) => !["k_start", "k_growth", "k_pro", "k_enterprise"].includes(p.slug)) && (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-orange-500/70">الباقات القديمة (legacy)</span>
+            <div className="h-px flex-1 bg-white/[0.04]" />
+            <span className="text-[10px] text-slate-600">مخفية عن العملاء الجدد — المشتركون الحاليون محمّيون</span>
+          </div>
+          <div className="space-y-3 opacity-75">
+            {rows.filter((p) => !["k_start", "k_growth", "k_pro", "k_enterprise"].includes(p.slug)).map((p) => {
+              const typeConfig = PLAN_TYPE_LABELS[p.slug];
+              const isEditing = editing === p.slug;
+              const isLegacy = true;
+              const capIndex = CATALOG_CAP_INDEX[p.slug] ?? 0;
+              return (
+                <div
+                  key={p.slug}
+                  className={`rounded-xl border transition-colors ${p.status === "archived" ? "border-white/[0.05] bg-white/[0.01] opacity-60" : isEditing ? "border-white/[0.12] bg-white/[0.04]" : "border-orange-500/[0.10] bg-orange-500/[0.02]"}`}
+                >
+                  <div className="flex flex-wrap items-center gap-4 p-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="text-base font-bold text-white">{p.name}</span>
+                        {typeConfig && (
+                          <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${typeConfig.color}`}>{typeConfig.label}</span>
+                        )}
+                        <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-300">legacy</span>
+                        {p.status === "archived" && <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-400">مؤرشفة</span>}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[12px] text-slate-400">
+                        <span className="font-bold text-white">
+                          {p.priceUsd === 0 ? "تواصل معنا" : `$${p.priceUsd}/شهر`}
+                        </span>
+                        {p.yearlyUsd && <span className="text-slate-500">${p.yearlyUsd}/سنة</span>}
+                        <span className="text-slate-600">·</span>
+                        <span>{p.monthlyMsgs === 0 ? "رسائل غير محدودة" : `${p.monthlyMsgs.toLocaleString()} رسالة/شهر`}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleArchive(p)}
+                        disabled={pending}
+                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors disabled:opacity-50 ${p.status === "archived" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-white/[0.08] bg-white/[0.03] text-slate-500 hover:text-slate-300"}`}
+                      >
+                        {p.status === "archived" ? <><Unlock className="h-3 w-3" /> استعادة</> : <><Archive className="h-3 w-3" /> أرشفة</>}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

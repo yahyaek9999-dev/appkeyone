@@ -81,9 +81,12 @@ export default function SmsTemplatesPage() {
   const { charCount, segCount } = countSms(form.body);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">قوالب SMS</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.05] pb-5">
+        <div>
+          <h1 className="page-title mb-1">قوالب SMS</h1>
+          <p className="page-desc">رسائل الطلبات، التأكيد، الحالة، OTP</p>
+        </div>
         <button onClick={() => { setShowForm(true); setEditId(null); setForm(emptyForm); }} className="btn-primary flex items-center gap-2 text-sm">
           <Plus className="h-4 w-4" /> قالب جديد
         </button>

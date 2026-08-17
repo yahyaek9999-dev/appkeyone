@@ -9,12 +9,12 @@
 import { useEffect, useState } from "react";
 import { Crown, Loader2, Check, Clock } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
-import { TIERS } from "@/lib/pricing/catalog";
+import { PUBLIC_TIERS, getTier } from "@/lib/pricing/catalog";
 
 export default function UpgradeRequestPanel({ locale = "ar" }: { locale?: "ar" | "en" }) {
   const lang = locale === "ar" ? "ar" : "en";
   const { success, error, info } = useToast();
-  const [toSlug, setToSlug] = useState("k_pro");
+  const [toSlug, setToSlug] = useState("k_growth");
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [submitting, setSubmitting] = useState(false);
   const [current, setCurrent] = useState<{ toSlug: string; status: string } | null>(null);
@@ -67,7 +67,9 @@ export default function UpgradeRequestPanel({ locale = "ar" }: { locale?: "ar" |
       {current && current.status === "pending" && (
         <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200">
           <Clock className="h-3.5 w-3.5" />
-          {locale === "ar" ? `طلب ترقية معلّق إلى ${current.toSlug}` : `Pending upgrade to ${current.toSlug}`}
+          {locale === "ar"
+          ? `طلب ترقية معلّق إلى ${getTier(current.toSlug)?.name.ar ?? current.toSlug}`
+          : `Pending upgrade to ${getTier(current.toSlug)?.name.en ?? current.toSlug}`}
         </div>
       )}
 
@@ -75,7 +77,7 @@ export default function UpgradeRequestPanel({ locale = "ar" }: { locale?: "ar" |
         <div className="flex-1">
           <div className="label mb-1">{locale === "ar" ? "الباقة" : "Plan"}</div>
           <select value={toSlug} onChange={(e) => setToSlug(e.target.value)} className={`${sel} w-full`}>
-            {TIERS.filter((t) => !t.contactSales).map((t) => (
+            {PUBLIC_TIERS.filter((t) => !t.contactSales).map((t) => (
               <option key={t.slug} value={t.slug} className="bg-canvas">
                 {t.name[lang]} — ${t.priceUsdMonthly}/{locale === "ar" ? "شهر" : "mo"}
               </option>

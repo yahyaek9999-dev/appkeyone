@@ -63,11 +63,11 @@ export default function SmsMessagesPage() {
   const pages = Math.ceil(total / 20);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">سجل الرسائل</h1>
-          <p className="text-sm text-slate-400">{total} رسالة إجمالاً</p>
+          <h1 className="page-title mb-1">سجل الرسائل</h1>
+          <p className="page-desc">{total > 0 ? `${total} رسالة إجمالاً` : "مراقبة حالة الإرسال والتسليم"}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => load(page)} className="btn-ghost flex items-center gap-2 text-sm">

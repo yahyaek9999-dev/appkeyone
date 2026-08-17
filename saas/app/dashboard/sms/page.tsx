@@ -31,14 +31,11 @@ export default async function SmsHubPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 p-6">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-brand-500/10 p-3">
-          <MessageCircle className="h-6 w-6 text-brand-400" />
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">K1SMS</h1>
-          <p className="text-sm text-slate-400">إرسال رسائل SMS تجارية متعددة المزوّدين</p>
+          <h1 className="page-title mb-1">K1SMS</h1>
+          <p className="page-desc">إرسال رسائل SMS تجارية متعددة المزوّدين</p>
         </div>
       </div>
 

@@ -58,27 +58,51 @@ export default function FinancePaymentsClient({ initial, approved = [] }: { init
           </div>
 
           {/* details + actions */}
-          <div className="flex-1 text-sm space-y-1">
+          <div className="flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <b className="text-lg">${p.amountUsd}</b>
-              <span className="font-mono text-xs text-slate-400">{p.methodKey}</span>
-              {p.planSlug && <span className="rounded bg-white/5 px-2 py-0.5 text-xs">{p.planSlug}</span>}
-              <span className={`rounded px-2 py-0.5 text-xs ${p.status === "under_review" ? "bg-sky-500/15 text-sky-300" : "bg-amber-500/15 text-amber-300"}`}>{p.status === "under_review" ? "قيد المراجعة" : "بانتظار المراجعة"}</span>
+              <span className="text-xl font-bold tabular-nums text-white">${p.amountUsd}</span>
+              <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-slate-400">{p.methodKey}</span>
+              {p.planSlug && <span className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 text-[11px] text-slate-400">{p.planSlug}</span>}
+              <span className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${p.status === "under_review" ? "border-sky-500/20 bg-sky-500/10 text-sky-300" : "border-amber-500/20 bg-amber-500/10 text-amber-300"}`}>
+                {p.status === "under_review" ? "قيد المراجعة" : "بانتظار المراجعة"}
+              </span>
             </div>
-            <div className="text-xs text-slate-500">العميل: <span className="font-mono">{p.userId}</span> · {fmt(p.createdAt)}</div>
-            {p.reference && <div className="text-xs text-slate-400">المرجع: <span className="font-mono">{p.reference}</span></div>}
+            <div className="text-[12px] text-slate-500">
+              العميل: <span className="font-mono text-slate-400">{String(p.userId).slice(-8)}</span>
+              <span className="mx-1.5 text-white/20">·</span>
+              {fmt(p.createdAt)}
+            </div>
+            {p.reference && <div className="text-[12px] text-slate-500">المرجع: <span className="font-mono text-slate-400">{p.reference}</span></div>}
 
             <div className="flex flex-wrap gap-2 pt-1">
-              {p.status === "pending" && <button disabled={!!busy} onClick={() => act(p.id, { action: "start_review" })} className="rounded bg-sky-500/15 text-sky-300 text-xs px-3 py-1.5 disabled:opacity-50">بدء المراجعة</button>}
-              <button disabled={busy === p.id} onClick={() => act(p.id, { decision: "approve" })} className="rounded bg-emerald-500/15 text-emerald-300 text-xs px-3 py-1.5 disabled:opacity-50">اعتماد وشحن الرصيد</button>
-              <button disabled={busy === p.id} onClick={() => { setRejectFor(rejectFor === p.id ? null : p.id); setReason(""); }} className="rounded bg-rose-500/15 text-rose-300 text-xs px-3 py-1.5 disabled:opacity-50">رفض</button>
+              {p.status === "pending" && (
+                <button disabled={!!busy} onClick={() => act(p.id, { action: "start_review" })}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50">
+                  بدء المراجعة
+                </button>
+              )}
+              <button disabled={busy === p.id} onClick={() => act(p.id, { decision: "approve" })}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50">
+                اعتماد وشحن الرصيد
+              </button>
+              <button disabled={busy === p.id} onClick={() => { setRejectFor(rejectFor === p.id ? null : p.id); setReason(""); }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50">
+                رفض
+              </button>
             </div>
 
             {rejectFor === p.id && (
-              <div className="mt-2 space-y-1.5 rounded-lg bg-rose-500/5 border border-rose-500/20 p-2.5">
-                <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="سبب الرفض (يراه العميل) — إلزامي" className="w-full bg-white/5 rounded px-2 py-1.5 text-xs" />
-                <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة داخلية (اختياري)" className="w-full bg-white/5 rounded px-2 py-1.5 text-xs" />
-                <button disabled={busy === p.id || !reason.trim()} onClick={() => act(p.id, { decision: "reject", rejectionReason: reason, note })} className="rounded bg-rose-500/20 text-rose-200 text-xs px-3 py-1.5 disabled:opacity-50">تأكيد الرفض</button>
+              <div className="mt-2 space-y-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-3">
+                <input value={reason} onChange={(e) => setReason(e.target.value)}
+                  placeholder="سبب الرفض (يراه العميل) — إلزامي"
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white placeholder-slate-600 focus:border-rose-500/40 focus:outline-none" />
+                <input value={note} onChange={(e) => setNote(e.target.value)}
+                  placeholder="ملاحظة داخلية (اختياري)"
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white placeholder-slate-600 focus:outline-none" />
+                <button disabled={busy === p.id || !reason.trim()} onClick={() => act(p.id, { decision: "reject", rejectionReason: reason, note })}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/15 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-50">
+                  تأكيد الرفض
+                </button>
               </div>
             )}
           </div>
@@ -105,8 +129,8 @@ export default function FinancePaymentsClient({ initial, approved = [] }: { init
                   <td className="p-1.5 font-mono text-[10px] text-slate-500">{String(p.userId).slice(0, 10)}</td>
                   <td className="p-1.5 text-left">
                     {p.status === "refunded"
-                      ? <span className="rounded bg-white/5 px-2 py-0.5 text-slate-400">مُسترَد</span>
-                      : <button disabled={busy === p.id} onClick={() => refund(p.id)} className="rounded bg-rose-500/10 text-rose-300 px-3 py-1 disabled:opacity-50">استرداد</button>}
+                      ? <span className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 text-[10px] text-slate-500">مُسترَد</span>
+                      : <button disabled={busy === p.id} onClick={() => refund(p.id)} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-300 hover:bg-rose-500/20 disabled:opacity-50 transition">استرداد</button>}
                   </td>
                 </tr>
               ))}

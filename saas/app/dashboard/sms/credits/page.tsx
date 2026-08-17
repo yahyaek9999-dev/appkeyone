@@ -50,8 +50,11 @@ export default function SmsCreditsPage() {
   if (!data) return null;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <h1 className="text-xl font-bold text-white">رصيد SMS</h1>
+    <div className="space-y-6">
+      <div className="border-b border-white/[0.05] pb-5">
+        <h1 className="page-title mb-1">رصيد SMS</h1>
+        <p className="page-desc">رصيد SMS وكشف الحساب التفصيلي</p>
+      </div>
 
       {/* Balance card */}
       <div className="rounded-xl border border-white/10 bg-canvas-raised p-6 flex items-center gap-4">
