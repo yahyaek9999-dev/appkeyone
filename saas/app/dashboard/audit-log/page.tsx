@@ -11,10 +11,13 @@
  */
 
 import { requirePagePermission } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { ScrollText, Filter } from "lucide-react";
 import Link from "next/link";
 import { AUDIT_ACTION_LABELS as ACTION_LABELS, auditBadgeColor as badgeColor } from "@/lib/audit/labels";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +35,9 @@ export default async function AuditLogPage({
 }: {
   searchParams?: { action?: string; page?: string };
 }) {
+  const gate = await pageGate("audit_log");
+  if (!gate.uid) redirect("/login");
+  if (!gate.allowed) return <LockedFeature title="سجل النشاط والتدقيق" description="تتبّع جميع الإجراءات الحساسة داخل مساحة العمل" recommendedTier={gate.recommendedTier} />;
   const { user } = await requirePagePermission("team");
 
   const action = searchParams?.action;

@@ -42,7 +42,7 @@ export const INDUSTRIES: IndustryGroup[] = [
     label: { ar: "المتاجر الإلكترونية", en: "E-Commerce Stores" },
     levels: [
       { key: "ecom_startup", tier: "k_growth", label: { ar: "متجر إلكتروني ناشئ", en: "E-Commerce Startup" }, why: { ar: "أتمتة الطلبات والحملات من اليوم الأول.", en: "Order automation + campaigns from day one." } },
-      { key: "ecom_scale", tier: "k_scale", label: { ar: "متجر إلكتروني متوسّع", en: "E-Commerce Scale" }, why: { ar: "أحجام عالية، أرقام متعدّدة، وتكاملات.", en: "High volume, multi-number, integrations." } },
+      { key: "ecom_scale", tier: "k_enterprise", label: { ar: "متجر إلكتروني متوسّع", en: "E-Commerce Scale" }, why: { ar: "أحجام عالية، أرقام متعدّدة، وتكاملات.", en: "High volume, multi-number, integrations." } },
       { key: "ecom_enterprise", tier: "k_enterprise", label: { ar: "متجر إلكتروني مؤسسي", en: "E-Commerce Enterprise" }, why: { ar: "بلا حدود + تكاملات ERP/CRM مخصّصة.", en: "Unlimited + custom ERP/CRM integrations." } },
     ],
   },
@@ -53,7 +53,7 @@ export const INDUSTRIES: IndustryGroup[] = [
     levels: [
       { key: "show_startup", tier: "k_growth", label: { ar: "معرض ناشئ", en: "Showroom Startup" }, why: { ar: "متابعة العملاء المهتمين تلقائياً.", en: "Auto follow-up with interested buyers." } },
       { key: "show_pro", tier: "k_pro", label: { ar: "معرض احترافي", en: "Showroom Pro" }, why: { ar: "تقييم العملاء وخطّ أنابيب المبيعات.", en: "Lead scoring + sales pipeline." } },
-      { key: "show_elite", tier: "k_business", label: { ar: "معرض رائد", en: "Showroom Elite" }, why: { ar: "فرق متعدّدة وتقارير تنفيذية.", en: "Multi-team + executive reporting." } },
+      { key: "show_elite", tier: "k_enterprise", label: { ar: "معرض رائد", en: "Showroom Elite" }, why: { ar: "فرق متعدّدة وتقارير تنفيذية.", en: "Multi-team + executive reporting." } },
     ],
   },
   {
@@ -63,7 +63,7 @@ export const INDUSTRIES: IndustryGroup[] = [
     levels: [
       { key: "re_startup", tier: "k_growth", label: { ar: "عقارات ناشئة", en: "Real Estate Startup" }, why: { ar: "إدارة الاستفسارات والمتابعات.", en: "Manage inquiries + follow-ups." } },
       { key: "re_growth", tier: "k_pro", label: { ar: "عقارات نامية", en: "Real Estate Growth" }, why: { ar: "تقييم العملاء ورؤى متقدّمة.", en: "Lead scoring + advanced insights." } },
-      { key: "re_enterprise", tier: "k_business", label: { ar: "عقارات مؤسسية", en: "Real Estate Enterprise" }, why: { ar: "فرق متعدّدة الفروع وموافقات.", en: "Multi-branch teams + approvals." } },
+      { key: "re_enterprise", tier: "k_enterprise", label: { ar: "عقارات مؤسسية", en: "Real Estate Enterprise" }, why: { ar: "فرق متعدّدة الفروع وموافقات.", en: "Multi-branch teams + approvals." } },
     ],
   },
   {
@@ -73,7 +73,7 @@ export const INDUSTRIES: IndustryGroup[] = [
     levels: [
       { key: "clinic_startup", tier: "k_start", label: { ar: "عيادة ناشئة", en: "Clinic Startup" }, why: { ar: "حجوزات وردود تلقائية بدون سكرتيرة.", en: "Bookings + auto-replies, no extra staff." } },
       { key: "clinic_pro", tier: "k_pro", label: { ar: "عيادة احترافية", en: "Clinic Pro" }, why: { ar: "تذكير المواعيد ورؤى المرضى.", en: "Appointment reminders + patient insights." } },
-      { key: "clinic_enterprise", tier: "k_business", label: { ar: "مركز طبي مؤسسي", en: "Clinic Enterprise" }, why: { ar: "فروع متعدّدة وفرق وتقارير.", en: "Multi-branch, teams & reporting." } },
+      { key: "clinic_enterprise", tier: "k_enterprise", label: { ar: "مركز طبي مؤسسي", en: "Clinic Enterprise" }, why: { ar: "فروع متعدّدة وفرق وتقارير.", en: "Multi-branch, teams & reporting." } },
     ],
   },
   {
@@ -93,7 +93,7 @@ export const INDUSTRIES: IndustryGroup[] = [
     levels: [
       { key: "rest_startup", tier: "k_growth", label: { ar: "مطعم ناشئ", en: "Restaurant Startup" }, why: { ar: "استقبال الطلبات وتأكيدها تلقائياً.", en: "Auto order intake + confirmation." } },
       { key: "rest_pro", tier: "k_pro", label: { ar: "مطعم احترافي", en: "Restaurant Pro" }, why: { ar: "حملات ذكية ورؤى الذروة.", en: "Smart campaigns + peak-time insights." } },
-      { key: "rest_enterprise", tier: "k_business", label: { ar: "سلسلة مطاعم", en: "Restaurant Enterprise" }, why: { ar: "فروع متعدّدة وتقارير موحّدة.", en: "Multi-branch + unified reporting." } },
+      { key: "rest_enterprise", tier: "k_enterprise", label: { ar: "سلسلة مطاعم", en: "Restaurant Enterprise" }, why: { ar: "فروع متعدّدة وتقارير موحّدة.", en: "Multi-branch + unified reporting." } },
     ],
   },
   {
@@ -113,7 +113,7 @@ export const INDUSTRIES: IndustryGroup[] = [
     levels: [
       { key: "fit_startup", tier: "k_start", label: { ar: "صالة ناشئة", en: "Fitness Startup" }, why: { ar: "اشتراكات وردود تلقائية.", en: "Memberships + auto-replies." } },
       { key: "fit_pro", tier: "k_pro", label: { ar: "صالة احترافية", en: "Fitness Pro" }, why: { ar: "متابعة الأعضاء ورؤى الاحتفاظ.", en: "Member follow-up + retention insights." } },
-      { key: "fit_elite", tier: "k_business", label: { ar: "سلسلة صالات", en: "Fitness Elite" }, why: { ar: "فروع متعدّدة وفرق.", en: "Multi-branch + teams." } },
+      { key: "fit_elite", tier: "k_enterprise", label: { ar: "سلسلة صالات", en: "Fitness Elite" }, why: { ar: "فروع متعدّدة وفرق.", en: "Multi-branch + teams." } },
     ],
   },
   {
@@ -122,8 +122,8 @@ export const INDUSTRIES: IndustryGroup[] = [
     label: { ar: "الخدمات اللوجستية والشحن", en: "Logistics & Shipping" },
     levels: [
       { key: "log_startup", tier: "k_growth", label: { ar: "شحن ناشئ", en: "Logistics Startup" }, why: { ar: "تتبّع الطلبات وتحديثات تلقائية.", en: "Order tracking + auto-updates." } },
-      { key: "log_growth", tier: "k_business", label: { ar: "شحن نامي", en: "Logistics Growth" }, why: { ar: "فرق متعدّدة وحجوم أعلى.", en: "Multi-team + higher volume." } },
-      { key: "log_enterprise", tier: "k_scale", label: { ar: "شحن مؤسسي", en: "Logistics Enterprise" }, why: { ar: "أحجام ضخمة وتكاملات API.", en: "Massive volume + API integrations." } },
+      { key: "log_growth", tier: "k_enterprise", label: { ar: "شحن نامي", en: "Logistics Growth" }, why: { ar: "فرق متعدّدة وحجوم أعلى.", en: "Multi-team + higher volume." } },
+      { key: "log_enterprise", tier: "k_enterprise", label: { ar: "شحن مؤسسي", en: "Logistics Enterprise" }, why: { ar: "أحجام ضخمة وتكاملات API.", en: "Massive volume + API integrations." } },
     ],
   },
   {

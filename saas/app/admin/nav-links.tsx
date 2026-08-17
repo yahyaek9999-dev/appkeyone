@@ -66,7 +66,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
 
   // ── D. PRODUCT ────────────────────────────────────────────────────────────
   { title: "المنتج", icon: ToggleLeft, items: [
-    { href: "/admin/feature-control", label: "سجل الميزات", icon: ToggleLeft, core: true },
+    { href: "/admin/feature-control", label: "مركز الميزات", icon: ToggleLeft, core: true },
     { href: "/admin/feature-flags", label: "مفاتيح النظام (env)", icon: ToggleLeft },
   ] },
 

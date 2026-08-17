@@ -205,27 +205,27 @@ export default function CommercialControlPage() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">التحكم التجاري</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-2xl font-bold text-white">التحكم التجاري</h1>
+        <p className="text-sm text-slate-400 mt-1">
           باقات مخصّصة · هدايا · عروض · تشخيص حقوق العميل
         </p>
       </div>
 
       {/* Customer search */}
       <div className="relative">
-        <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="ابحث عن عميل بالبريد أو الاسم..."
-          className="w-full pr-9 border border-border rounded-lg px-3 py-2 text-sm bg-background focus:ring-2 ring-primary/20 outline-none"
+          className="w-full pr-9 border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03] focus:ring-2 ring-primary/20 outline-none"
         />
         {users.length > 0 && (
-          <div className="absolute z-10 top-full mt-1 w-full border border-border rounded-lg bg-background shadow-lg overflow-hidden">
+          <div className="absolute z-10 top-full mt-1 w-full border border-white/[0.08] rounded-lg bg-white/[0.03] shadow-lg overflow-hidden">
             {users.map(u => (
-              <button key={u.id} onClick={() => selectUser(u)} className="w-full text-right px-4 py-2.5 hover:bg-muted text-sm flex items-center gap-2">
-                <span className="font-medium text-foreground">{u.name || u.email}</span>
-                <span className="text-muted-foreground text-xs">{u.email}</span>
+              <button key={u.id} onClick={() => selectUser(u)} className="w-full text-right px-4 py-2.5 hover:bg-white/[0.04] text-sm flex items-center gap-2">
+                <span className="font-medium text-white">{u.name || u.email}</span>
+                <span className="text-slate-400 text-xs">{u.email}</span>
               </button>
             ))}
           </div>
@@ -235,14 +235,14 @@ export default function CommercialControlPage() {
       {selectedUser && (
         <div className="space-y-4">
           {/* User badge */}
-          <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-border">
+          <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-lg border border-white/[0.08]">
             <div className="flex-1">
-              <div className="font-semibold text-foreground">{selectedUser.name || selectedUser.email}</div>
-              <div className="text-xs text-muted-foreground">{selectedUser.email}</div>
+              <div className="font-semibold text-white">{selectedUser.name || selectedUser.email}</div>
+              <div className="text-xs text-slate-400">{selectedUser.email}</div>
             </div>
             {entitlements && (
               <div className="flex gap-2 items-center text-xs">
-                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 font-medium">
                   {entitlements.planName}
                 </span>
                 {entitlements.sources.includes("override") && (
@@ -259,15 +259,15 @@ export default function CommercialControlPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-border gap-1">
+          <div className="flex border-b border-white/[0.08] gap-1">
             {(["plan", "gifts", "diagnostics"] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 className={`px-4 py-2 text-sm font-medium transition-colors ${
                   tab === t
-                    ? "border-b-2 border-primary text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-b-2 border-primary text-brand-400"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 {t === "plan" ? "الباقة المخصّصة" : t === "gifts" ? "الهدايا والمكافآت" : "تشخيص الحقوق"}
@@ -275,18 +275,18 @@ export default function CommercialControlPage() {
             ))}
           </div>
 
-          {loading && <div className="text-sm text-muted-foreground animate-pulse">جاري التحميل...</div>}
+          {loading && <div className="text-sm text-slate-400 animate-pulse">جاري التحميل...</div>}
 
           {/* Plan override tab */}
           {tab === "plan" && !loading && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">الباقة الأساسية للعقد</label>
+                  <label className="block text-xs text-slate-400 mb-1">الباقة الأساسية للعقد</label>
                   <select
                     value={ovBaseSlug}
                     onChange={e => setOvBaseSlug(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                    className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                   >
                     <option value="">— نفس الباقة المشتركة —</option>
                     {PUBLIC_TIERS.map(t => (
@@ -295,52 +295,52 @@ export default function CommercialControlPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">تنتهي في (اختياري)</label>
+                  <label className="block text-xs text-slate-400 mb-1">تنتهي في (اختياري)</label>
                   <input
                     type="date"
                     value={ovExpiresAt}
                     onChange={e => setOvExpiresAt(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                    className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">
+                <label className="block text-xs text-slate-400 mb-1">
                   ميزات إضافية (مفاتيح مفصولة بفاصلة)
                 </label>
                 <input
                   value={ovAddCaps}
                   onChange={e => setOvAddCaps(e.target.value)}
                   placeholder="k1sms, api_access, multi_whatsapp"
-                  className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background font-mono"
+                  className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03] font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">
+                <label className="block text-xs text-slate-400 mb-1">
                   تجاوز الحدود (JSON — مثال: {"{ \"team\": 10, \"broadcasts\": 1000 }"})
                 </label>
                 <textarea
                   value={ovLimits}
                   onChange={e => setOvLimits(e.target.value)}
                   rows={3}
-                  className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background font-mono resize-none"
+                  className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03] font-mono resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">ملاحظة داخلية</label>
+                <label className="block text-xs text-slate-400 mb-1">ملاحظة داخلية</label>
                 <input
                   value={ovNote}
                   onChange={e => setOvNote(e.target.value)}
                   placeholder="صفقة مع الشركة XYZ — عقد سنوي"
-                  className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                  className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                 />
               </div>
 
               {override && (
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <div className="text-xs text-slate-400 flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                   آخر تحديث: {new Date(override.updatedAt).toLocaleDateString("ar-SA")} بواسطة {override.createdBy || "admin"}
                 </div>
@@ -349,7 +349,7 @@ export default function CommercialControlPage() {
               <div className="flex gap-2">
                 <button
                   onClick={saveOverride}
-                  className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
+                  className="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
                 >
                   حفظ الباقة المخصّصة
                 </button>
@@ -369,17 +369,17 @@ export default function CommercialControlPage() {
           {tab === "gifts" && !loading && (
             <div className="space-y-4">
               {/* Grant form */}
-              <div className="border border-border rounded-lg p-4 space-y-3">
-                <h3 className="font-medium text-sm text-foreground flex items-center gap-2">
+              <div className="border border-white/[0.08] rounded-lg p-4 space-y-3">
+                <h3 className="font-medium text-sm text-white flex items-center gap-2">
                   <Gift className="h-4 w-4 text-purple-500" /> منح هدية جديدة
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">نوع الهدية</label>
+                    <label className="block text-xs text-slate-400 mb-1">نوع الهدية</label>
                     <select
                       value={giftType}
                       onChange={e => setGiftType(e.target.value)}
-                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                      className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                     >
                       {GIFT_TYPES.map(g => (
                         <option key={g.value} value={g.value}>{g.label}</option>
@@ -388,34 +388,34 @@ export default function CommercialControlPage() {
                   </div>
                   {["sms_credits","ai_credits","broadcast_credits","days"].includes(giftType) && (
                     <div>
-                      <label className="block text-xs text-muted-foreground mb-1">الكمية</label>
+                      <label className="block text-xs text-slate-400 mb-1">الكمية</label>
                       <input
                         type="number"
                         value={giftAmount}
                         onChange={e => setGiftAmount(e.target.value)}
-                        className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                        className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                         min={1}
                       />
                     </div>
                   )}
                   {giftType === "feature_unlock" && (
                     <div>
-                      <label className="block text-xs text-muted-foreground mb-1">مفتاح الميزة</label>
+                      <label className="block text-xs text-slate-400 mb-1">مفتاح الميزة</label>
                       <input
                         value={giftFeatureKey}
                         onChange={e => setGiftFeatureKey(e.target.value)}
                         placeholder="k1sms"
-                        className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background font-mono"
+                        className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03] font-mono"
                       />
                     </div>
                   )}
                   {giftType === "plan_upgrade" && (
                     <div>
-                      <label className="block text-xs text-muted-foreground mb-1">الباقة المؤقتة</label>
+                      <label className="block text-xs text-slate-400 mb-1">الباقة المؤقتة</label>
                       <select
                         value={giftPlanSlug}
                         onChange={e => setGiftPlanSlug(e.target.value)}
-                        className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                        className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                       >
                         <option value="">اختر...</option>
                         {PUBLIC_TIERS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -423,21 +423,21 @@ export default function CommercialControlPage() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">تنتهي في (اختياري)</label>
+                    <label className="block text-xs text-slate-400 mb-1">تنتهي في (اختياري)</label>
                     <input
                       type="date"
                       value={giftExpires}
                       onChange={e => setGiftExpires(e.target.value)}
-                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                      className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs text-muted-foreground mb-1">سبب / ملاحظة</label>
+                    <label className="block text-xs text-slate-400 mb-1">سبب / ملاحظة</label>
                     <input
                       value={giftReason}
                       onChange={e => setGiftReason(e.target.value)}
                       placeholder="تعويض، ترحيب، اتفاق..."
-                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                      className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                     />
                   </div>
                 </div>
@@ -452,25 +452,25 @@ export default function CommercialControlPage() {
               {/* Existing gifts */}
               <div className="space-y-2">
                 {gifts.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">لا توجد هدايا بعد</p>
+                  <p className="text-sm text-slate-400 text-center py-4">لا توجد هدايا بعد</p>
                 )}
                 {gifts.map(g => (
-                  <div key={g.id} className={`flex items-center gap-3 p-3 rounded-lg border ${g.used ? "opacity-50 border-border" : "border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-900/10"}`}>
+                  <div key={g.id} className={`flex items-center gap-3 p-3 rounded-lg border ${g.used ? "opacity-50 border-white/[0.08]" : "border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-900/10"}`}>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground">
+                      <div className="text-sm font-medium text-white">
                         {GIFT_TYPES.find(t => t.value === g.type)?.label || g.type}
                         {g.amount ? ` — ${g.amount.toLocaleString()}` : ""}
                         {g.featureKey ? ` — ${g.featureKey}` : ""}
                         {g.planSlug ? ` — ${g.planSlug}` : ""}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-slate-400">
                         بواسطة {g.grantedBy} · {new Date(g.createdAt).toLocaleDateString("ar-SA")}
                         {g.expiresAt ? ` · تنتهي ${new Date(g.expiresAt).toLocaleDateString("ar-SA")}` : ""}
                         {g.reason ? ` · ${g.reason}` : ""}
                       </div>
                     </div>
                     {g.used ? (
-                      <span className="text-xs text-muted-foreground">مستخدمة</span>
+                      <span className="text-xs text-slate-400">مستخدمة</span>
                     ) : (
                       <button
                         onClick={() => revokeGift(g.id)}
@@ -489,36 +489,36 @@ export default function CommercialControlPage() {
           {tab === "diagnostics" && !loading && entitlements && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3">
-                <div className="border border-border rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground mb-1">الطبقات المفعّلة</div>
+                <div className="border border-white/[0.08] rounded-lg p-3">
+                  <div className="text-xs text-slate-400 mb-1">الطبقات المفعّلة</div>
                   <div className="flex gap-1 flex-wrap">
                     {entitlements.sources.map(s => (
-                      <span key={s} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">{s}</span>
+                      <span key={s} className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 text-xs">{s}</span>
                     ))}
                   </div>
                 </div>
-                <div className="border border-border rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground mb-1">الحدود</div>
+                <div className="border border-white/[0.08] rounded-lg p-3">
+                  <div className="text-xs text-slate-400 mb-1">الحدود</div>
                   <div className="space-y-0.5">
                     {Object.entries(entitlements.limits).map(([k, v]) => (
                       <div key={k} className="text-xs flex justify-between">
-                        <span className="text-muted-foreground font-mono">{k}</span>
-                        <span className="text-foreground">{v === 0 ? "∞" : v}</span>
+                        <span className="text-slate-400 font-mono">{k}</span>
+                        <span className="text-white">{v === 0 ? "∞" : v}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="border border-border rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground mb-1">حالة التطبيق</div>
+                <div className="border border-white/[0.08] rounded-lg p-3">
+                  <div className="text-xs text-slate-400 mb-1">حالة التطبيق</div>
                   <div className="space-y-1 text-xs">
                     <div className="flex gap-2">
-                      <span className="text-muted-foreground">تطبيق القيود:</span>
+                      <span className="text-slate-400">تطبيق القيود:</span>
                       <span className={entitlements.enforce ? "text-amber-600" : "text-emerald-600"}>
                         {entitlements.enforce ? "نعم" : "لا"}
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      <span className="text-muted-foreground">موقوف:</span>
+                      <span className="text-slate-400">موقوف:</span>
                       <span className={entitlements.blocked ? "text-red-600" : "text-emerald-600"}>
                         {entitlements.blocked ? "نعم" : "لا"}
                       </span>
@@ -529,16 +529,16 @@ export default function CommercialControlPage() {
 
               {offCaps.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-amber-500" />
                     الميزات المعطّلة وسببها
                   </h3>
                   <div className="space-y-1">
                     {offCaps.map(([key, reason]) => (
-                      <div key={key} className="flex items-center gap-3 text-sm p-2 rounded-lg bg-muted/30">
-                        <code className="text-xs font-mono text-muted-foreground shrink-0">{key}</code>
-                        <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span className="text-foreground">{reason}</span>
+                      <div key={key} className="flex items-center gap-3 text-sm p-2 rounded-lg bg-white/[0.04]/30">
+                        <code className="text-xs font-mono text-slate-400 shrink-0">{key}</code>
+                        <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
+                        <span className="text-white">{reason}</span>
                       </div>
                     ))}
                   </div>
@@ -557,7 +557,7 @@ export default function CommercialControlPage() {
       )}
 
       {!selectedUser && (
-        <div className="text-center py-16 text-muted-foreground">
+        <div className="text-center py-16 text-slate-400">
           <Shield className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">ابحث عن عميل للبدء</p>
         </div>

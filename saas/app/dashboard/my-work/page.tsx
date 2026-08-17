@@ -1,5 +1,8 @@
 import { requirePagePermission } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 import {
   MessageSquare, AlertTriangle, CheckCircle2,
   Clock, ArrowUpRight, ClipboardList, Flag, User,
@@ -26,6 +29,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function MyWorkPage() {
+  const gate = await pageGate("my_work");
+  if (!gate.uid) redirect("/login");
+  if (!gate.allowed) return <LockedFeature title="عملي اليوم" description="قائمة مهام الوكيل: المحادثات المفتوحة والمهام المُسنَدة" recommendedTier={gate.recommendedTier} />;
   const { user } = await requirePagePermission("inbox");
 
   const now = new Date();

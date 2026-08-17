@@ -305,8 +305,21 @@ const WORKSPACE_BY_CATEGORY: Record<string, string> = {
   intelligence: "analytics",
   analytics:    "analytics",
   commerce:     "sales",
+  messaging:    "marketing",
   scale:        "settings",
+  operations:   "settings",
   enterprise:   "settings",
+};
+
+/** Per-capability workspace override (takes precedence over category default). */
+const WORKSPACE_BY_KEY: Record<string, string> = {
+  bot_configuration:    "conversations",
+  compliance_monitoring: "settings",
+  meta_cloud:           "settings",
+  monitoring_center:    "analytics",
+  broadcast_credits:    "marketing",
+  safety_controls:      "settings",
+  revenue_pro:          "analytics",
 };
 
 /** Capability category → the release train it shipped in. */
@@ -317,8 +330,21 @@ const RELEASE_BY_CATEGORY: Record<string, string> = {
   intelligence: "intelligence",
   analytics:    "intelligence",
   commerce:     "commerce",
+  messaging:    "commerce",
   scale:        "scale",
+  operations:   "core",
   enterprise:   "scale",
+};
+
+/** Per-capability release override. */
+const RELEASE_BY_KEY: Record<string, string> = {
+  bot_configuration:    "core",
+  compliance_monitoring: "core",
+  meta_cloud:           "automation",
+  monitoring_center:    "automation",
+  broadcast_credits:    "commerce",
+  safety_controls:      "intelligence",
+  revenue_pro:          "intelligence",
 };
 
 /**
@@ -336,14 +362,28 @@ const REAL_DEPENDENCIES: Record<string, string[]> = {
   next_best_action:       ["smart_assistant"],
   revenue_attribution:    ["advanced_analytics"],
   forecasting:            ["advanced_analytics"],
+  funnel_analytics:       ["advanced_analytics"],
+  business_performance:   ["basic_analytics"],
   customer_segmentation:  ["segments"],
   multi_team:             ["team"],
   approval_workflows:     ["team"],
+  sms_messaging:          ["k1sms"],
+  qr_broadcast_queue:     ["broadcasts"],
+  coupons_discounts:      ["order_management"],
+  escalations:            ["inbox"],
+  audit_log:              ["team"],
+  broadcast_credits:      ["broadcasts"],
+  monitoring_center:      ["basic_analytics"],
+  revenue_pro:            ["advanced_analytics"],
+  safety_controls:        ["inbox"],
+  compliance_monitoring:  ["inbox"],
+  meta_cloud:             ["whatsapp_connection"],
 };
 
 /** Integrations a feature genuinely cannot run without. */
 const REQUIRED_INTEGRATION: Record<string, string> = {
   k1sms:             "sms_provider",
+  sms_messaging:     "sms_provider",
   shipping_tracking: "shipping_provider",
 };
 
@@ -383,6 +423,8 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
   for (const cap of CAPABILITIES) {
     const requiredPlan = cap.minTierIndex > 0 ? tierSlugByIndex[cap.minTierIndex] ?? null : null;
     const deps = REAL_DEPENDENCIES[cap.key] ?? [];
+    const workspace = WORKSPACE_BY_KEY[cap.key] ?? WORKSPACE_BY_CATEGORY[cap.category] ?? "settings";
+    const releaseId = RELEASE_BY_KEY[cap.key] ?? RELEASE_BY_CATEGORY[cap.category] ?? "core";
 
     await (prisma as any).featureControl.upsert({
       where: { featureId: cap.key },
@@ -391,7 +433,7 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
         name:                cap.label.ar,
         description:         cap.label.en,
         category:            cap.category,
-        workspace:           WORKSPACE_BY_CATEGORY[cap.category] ?? "settings",
+        workspace,
         // comingSoon capabilities ship hidden — visible to admin, not to customers.
         status:              cap.comingSoon ? "hidden" : "enabled",
         customerVisible:     !cap.comingSoon,
@@ -403,18 +445,18 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
         mobileVisible:       true,
         killSwitch:          false,
         rolloutPct:          100,
-        releaseId:           RELEASE_BY_CATEGORY[cap.category] ?? "core",
+        releaseId,
       },
       update: {
         // Descriptive + plan metadata is re-derived from the catalog…
         name:                cap.label.ar,
         description:         cap.label.en,
         category:            cap.category,
-        workspace:           WORKSPACE_BY_CATEGORY[cap.category] ?? "settings",
+        workspace,
         requiredPlan,
         dependencies:        JSON.stringify(deps),
         requiredIntegration: REQUIRED_INTEGRATION[cap.key] ?? null,
-        releaseId:           RELEASE_BY_CATEGORY[cap.category] ?? "core",
+        releaseId,
         // …but status / killSwitch / customerVisible / rolloutPct are the
         // admin's to own. Never reset them here.
       },

@@ -11,6 +11,8 @@ import { getUserIdForPermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import EscalationActions from "@/app/dashboard/escalations/ticket-actions";
 import { EmptyState } from "@/components/ui/empty-state";
+import { pageGate } from "@/lib/membership/gate";
+import { LockedFeature } from "@/components/billing/LockedFeature";
 
 export const dynamic = "force-dynamic";
 
@@ -62,8 +64,10 @@ function timeWaiting(d: Date): string {
 }
 
 export default async function EscalationsPage() {
-  const uid = await getUserIdForPermission("escalations");
-  if (!uid) redirect("/dashboard");
+  const gate = await pageGate("escalations");
+  if (!gate.uid) redirect("/login");
+  if (!gate.allowed) return <LockedFeature title="التصعيدات والمتابعة" description="تتبّع الحالات الحرجة وإدارة تصعيدات الفريق" recommendedTier={gate.recommendedTier} />;
+  const uid = gate.uid;
 
   const [tickets, resolved24h] = await Promise.all([
     (prisma as any).escalationTicket

@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function BroadcastsProPage() {
   const uid = await getUserId();
   if (!uid) redirect("/login");
-  const g = await pageGate("broadcasts");
+  const g = await pageGate("broadcast_credits");
   if (!g.allowed) {
     return (
       <div className="p-6">

@@ -4,7 +4,7 @@ import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { listPaymentProofs } from "@/lib/payments-ops/proofs";
 import { customerPayableMethods } from "@/lib/payments-ops/accounts";
-import { TIERS } from "@/lib/pricing/catalog";
+import { PUBLIC_TIERS } from "@/lib/pricing/catalog";
 import BillingClient from "./billing-client";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function BillingPage({ searchParams }: { searchParams: { pl
   const dbBySlug = new Map(dbPlans.map((p) => [p.slug, p]));
   // Catalog is the canonical tier list; overlay the admin-editable DB price and
   // hide any plan the owner archived in /admin/plans.
-  const plans = TIERS.filter((t) => t.priceUsdMonthly != null)
+  const plans = PUBLIC_TIERS.filter((t) => t.priceUsdMonthly != null)
     .filter((t) => ((dbBySlug.get(t.slug)?.status as string) ?? "active") !== "archived")
     .map((t) => ({ slug: t.slug, name: t.name.en, price: dbBySlug.get(t.slug)?.priceUsd ?? t.priceUsdMonthly }));
   return (
