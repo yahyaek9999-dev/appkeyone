@@ -1,8 +1,14 @@
 import { requirePagePermission } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import BotForm from "./bot-form";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 
 export default async function BotSettingsPage() {
+  const gate = await pageGate("bot_configuration");
+  if (!gate.uid) redirect("/login");
+  if (!gate.allowed) return <LockedFeature title="إعداد المساعد الآلي" description="خصّص شخصية مساعدك وأسلوب تعامله مع عملائك" recommendedTier={gate.recommendedTier} />;
   const { user } = await requirePagePermission("settings");
   const bot = user.bot ||
     (await prisma.bot.create({ data: { userId: user.id, notifyPhone: user.phone || undefined } }));

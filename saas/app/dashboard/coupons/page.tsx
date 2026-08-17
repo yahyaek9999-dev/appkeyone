@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function CouponsPage() {
   const uid = await getUserId();
   if (!uid) redirect("/login");
-  const g = await pageGate("smart_campaign_builder");
+  const g = await pageGate("coupons_discounts");
   if (!g.allowed) {
     return (
       <div className="p-6">

@@ -130,3 +130,135 @@ describe("catalog integrity", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Full-chain invariants: page gates → catalog → nav map
+// ---------------------------------------------------------------------------
+
+/**
+ * These keys are the exhaustive set used in pageGate() calls across
+ * saas/app/dashboard/**\/page.tsx. Any new gated page MUST add its key here;
+ * this test then enforces that the key is in the catalog before it ships.
+ */
+const PAGE_GATED_KEYS: ReadonlySet<string> = new Set([
+  // START tier (minTierIndex 0)
+  "my_work",
+  // GROWTH tier (minTierIndex 1)
+  "advanced_automations",
+  "broadcasts",
+  "broadcast_credits",
+  "compliance_monitoring",
+  "coupons_discounts",  // /dashboard/coupons — was incorrectly gated at Pro
+  "escalations",
+  "flow_builder",
+  "meta_cloud",
+  "monitoring_center",
+  "recovery",
+  "segments",
+  "working_hours",
+  // PRO tier (minTierIndex 2)
+  "advanced_analytics",
+  "advanced_insights",
+  "advanced_reporting",
+  "api_access",
+  "audit_log",
+  "bot_configuration",
+  "forecasting",
+  "knowledge_base",
+  "lead_scoring",
+  "revenue_copilot",
+  "revenue_pro",
+  "safety_controls",
+  "sales_pipeline",
+  "smart_assistant",
+  // ENTERPRISE tier (minTierIndex 3)
+  "approval_workflows",
+  "multi_branch",
+  "white_label",
+]);
+
+/**
+ * Values from NAV_CAP_BY_HREF in saas/app/dashboard/nav-items.tsx.
+ * The nav map and the catalog must always agree — this test is the enforcement.
+ */
+const NAV_CAP_VALUES: ReadonlySet<string> = new Set([
+  "advanced_analytics",
+  "advanced_automations",
+  "advanced_reporting",
+  "api_access",
+  "approval_workflows",
+  "audit_log",
+  "bot_configuration",
+  "broadcast_credits",
+  "broadcasts",
+  "compliance_monitoring",
+  "coupons_discounts",
+  "customer_import",
+  "escalations",
+  "flow_builder",
+  "forecasting",
+  "knowledge_base",
+  "lead_scoring",
+  "meta_cloud",
+  "monitoring_center",
+  "multi_branch",
+  "multi_whatsapp",
+  "products",
+  "recovery",
+  "revenue_copilot",
+  "revenue_pro",
+  "safety_controls",
+  "sales_pipeline",
+  "segments",
+  "smart_assistant",
+  "smart_campaign_builder",      // Pro-tier builder; /dashboard/coupons now uses coupons_discounts
+  "wallet",
+  "white_label",
+  "working_hours",
+]);
+
+describe("gated pages use valid capability keys", () => {
+  const catalogKeys = new Set(CAPABILITIES.map((c) => c.key));
+
+  it("every pageGate() key exists in the capability catalog", () => {
+    const missing = [...PAGE_GATED_KEYS].filter((k) => !catalogKeys.has(k));
+    expect(
+      missing,
+      `pageGate() uses keys not in catalog: ${missing.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("every NAV_CAP_BY_HREF value exists in the capability catalog", () => {
+    const missing = [...NAV_CAP_VALUES].filter((k) => !catalogKeys.has(k));
+    expect(
+      missing,
+      `NAV_CAP_BY_HREF references keys not in catalog: ${missing.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("pageGate keys are a subset of NAV_CAP_BY_HREF (gated pages are always in nav)", () => {
+    // Every key enforced at page level should also be represented in the nav map,
+    // so the capability is hidden from the sidebar for ineligible tiers.
+    const ungated = [...PAGE_GATED_KEYS].filter((k) => !NAV_CAP_VALUES.has(k));
+    expect(
+      ungated,
+      `pageGate() keys missing from nav map (nav won't hide these for non-entitled users): ${ungated.join(", ")}`,
+    ).toEqual([]);
+  });
+});
+
+describe("legacy plan isolation", () => {
+  it("k_business and k_scale are defined (backward-compat) but not public", () => {
+    const publicSlugs = new Set(PUBLIC_TIERS.map((t) => t.slug));
+    expect(publicSlugs.has("k_business")).toBe(false);
+    expect(publicSlugs.has("k_scale")).toBe(false);
+    expect(getTier("k_business")).toBeTruthy();
+    expect(getTier("k_scale")).toBeTruthy();
+  });
+
+  it("legacy tiers never appear in PUBLIC_TIERS used for pricing display", () => {
+    const PUBLIC_SLUGS = PUBLIC_TIERS.map((t) => t.slug);
+    expect(PUBLIC_SLUGS).not.toContain("k_business");
+    expect(PUBLIC_SLUGS).not.toContain("k_scale");
+  });
+});

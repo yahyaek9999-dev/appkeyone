@@ -375,7 +375,6 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/analytics": "advanced_analytics",
   "/dashboard/command-center": "advanced_analytics",
   "/dashboard/broadcasts": "broadcasts",
-  "/dashboard/broadcasts-pro": "broadcasts",
   "/dashboard/leads": "lead_scoring",
   "/dashboard/knowledge": "knowledge_base",
   "/dashboard/knowledge-brain": "smart_assistant",
@@ -391,7 +390,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   // pointed at tier-2 keys, hiding Growth-plan features from Growth customers.
   "/dashboard/segments": "segments",
   "/dashboard/recovery": "recovery",
-  "/dashboard/coupons": "smart_campaign_builder",
+  "/dashboard/coupons": "coupons_discounts",
   "/dashboard/business": "advanced_reporting",
   "/dashboard/automations": "advanced_automations",
   "/dashboard/branches": "multi_branch",
@@ -405,6 +404,13 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/escalations": "escalations",
   "/dashboard/audit-log": "audit_log",
   "/dashboard/customer-import": "customer_import",
+  "/dashboard/broadcasts-pro": "broadcast_credits",
+  "/dashboard/monitoring": "monitoring_center",
+  "/dashboard/compliance": "compliance_monitoring",
+  "/dashboard/meta": "meta_cloud",
+  "/dashboard/revenue-pro": "revenue_pro",
+  "/dashboard/safety": "safety_controls",
+  "/dashboard/bot": "bot_configuration",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */

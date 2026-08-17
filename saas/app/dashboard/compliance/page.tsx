@@ -13,15 +13,21 @@
  */
 
 import { requireUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { metaCloudAllowedForUser } from "@/lib/messaging/feature-flags";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ShieldCheck } from "lucide-react";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompliancePage() {
+  const gate = await pageGate("compliance_monitoring");
+  if (!gate.uid) redirect("/login");
+  if (!gate.allowed) return <LockedFeature title="لوحة الامتثال وصحة التسليم" description="مراقبة جودة واتساب، حالات التسليم، والامتثال" recommendedTier={gate.recommendedTier} />;
   const user = await requireUser();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
