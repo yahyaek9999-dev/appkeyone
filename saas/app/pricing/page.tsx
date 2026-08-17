@@ -13,7 +13,7 @@ import PricingExperience, {
 import FeatureMatrix from "@/components/pricing/FeatureMatrix";
 import IndustryMatcher from "@/components/pricing/IndustryMatcher";
 import {
-  TIERS,
+  PUBLIC_TIERS,
   CAPABILITIES,
   yearlySavings,
   type TierDef,
@@ -69,7 +69,11 @@ export default async function PricingPage({
 
   // Localized short feature bullets per tier: headline limits + capabilities
   // newly unlocked at this tier (the "what's new here" delta).
+  // Uses tier.capIndex (0-3) to match CAPABILITIES.minTierIndex, and looks up
+  // the previous PUBLIC tier (not the legacy k_business/k_scale) for the
+  // "Everything in X" summary line.
   function bullets(tier: TierDef): string[] {
+    const publicIdx = PUBLIC_TIERS.indexOf(tier);
     const out: string[] = [];
     out.push(
       tier.limits.messages === 0
@@ -85,7 +89,7 @@ export default async function PricingPage({
           ? `${tier.limits.whatsapp} رقم واتساب`
           : `${tier.limits.whatsapp} WhatsApp number${tier.limits.whatsapp > 1 ? "s" : ""}`,
     );
-    if (tier.index >= 1) {
+    if (publicIdx >= 1) {
       out.push(
         tier.limits.team === 0
           ? locale === "ar" ? "أعضاء فريق غير محدودين" : "Unlimited team seats"
@@ -95,25 +99,26 @@ export default async function PricingPage({
       );
     }
     const delta = CAPABILITIES.filter(
-      (c) => c.minTierIndex === tier.index && c.category !== "core",
+      (c) => c.minTierIndex === tier.capIndex && c.category !== "core",
     ).slice(0, 4);
     for (const c of delta) {
       out.push(c.label[lang] + (c.comingSoon ? (locale === "ar" ? " (قريباً)" : " (soon)") : ""));
     }
-    if (tier.index === 0) {
+    if (publicIdx === 0) {
       out.push(locale === "ar" ? "صندوق وارد وردود تلقائية" : "Inbox & auto-replies");
     }
-    if (tier.index > 0) {
+    if (publicIdx > 0) {
+      const prev = PUBLIC_TIERS[publicIdx - 1];
       out.unshift(
         locale === "ar"
-          ? `كل مزايا ${TIERS[tier.index - 1].name.ar.replace("KEYONE ", "")}`
-          : `Everything in ${TIERS[tier.index - 1].name.en.replace("KEYONE ", "")}`,
+          ? `كل مزايا ${prev.name.ar.replace("KEYONE ", "")}`
+          : `Everything in ${prev.name.en.replace("KEYONE ", "")}`,
       );
     }
     return out;
   }
 
-  const tiers: PricingTierVM[] = TIERS
+  const tiers: PricingTierVM[] = PUBLIC_TIERS
     // Hide plans an owner archived in /admin/plans. Default "active" → no change
     // until explicitly archived. Existing subscribers are unaffected (entitlement
     // resolves by planId, not by this list).
