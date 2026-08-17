@@ -56,7 +56,9 @@ export type CapabilityCategory =
   | "analytics"
   | "commerce"
   | "scale"
-  | "enterprise";
+  | "enterprise"
+  | "messaging"
+  | "operations";
 
 export interface Capability {
   key: string;
@@ -75,7 +77,9 @@ export const CATEGORY_LABELS: Record<CapabilityCategory, Bilingual> = {
   intelligence: { ar: "الذكاء والمبيعات",           en: "Intelligence & Sales" },
   analytics:    { ar: "التحليلات والتقارير",         en: "Analytics & Reporting" },
   commerce:     { ar: "التجارة والشحن والرسائل",    en: "Commerce, Shipping & Messaging" },
+  messaging:    { ar: "الرسائل والتواصل",           en: "Messaging & Communication" },
   scale:        { ar: "التوسّع والتكاملات",          en: "Scale & Integrations" },
+  operations:   { ar: "العمليات والإدارة",           en: "Operations & Administration" },
   enterprise:   { ar: "المؤسسات",                  en: "Enterprise" },
 };
 
@@ -88,24 +92,33 @@ export const CATEGORY_LABELS: Record<CapabilityCategory, Bilingual> = {
  * Enterprise (3): Custom controls. Multiple teams. Branches. Advanced security. White label.
  */
 export const CAPABILITIES: Capability[] = [
-  // ── START — core communication ────────────────────────────────────────
-  { key: "inbox",              category: "core", minTierIndex: 0, label: { ar: "صندوق وارد واتساب موحّد",     en: "WhatsApp Inbox" } },
-  { key: "auto_reply",         category: "core", minTierIndex: 0, label: { ar: "ردود تلقائية ذكية",           en: "Smart Auto-Reply" } },
-  { key: "customer_management",category: "core", minTierIndex: 0, label: { ar: "إدارة العملاء (360°)",        en: "Customer Management (360°)" } },
-  { key: "order_management",   category: "core", minTierIndex: 0, label: { ar: "إدارة الطلبات",               en: "Order Management" } },
-  { key: "quick_replies",      category: "core", minTierIndex: 0, label: { ar: "ردود سريعة جاهزة",            en: "Quick Replies" } },
-  { key: "basic_analytics",    category: "analytics", minTierIndex: 0, label: { ar: "تحليلات أساسية",         en: "Basic Analytics" } },
+  // ── START — core communication & operations (all paying customers) ─────
+  { key: "inbox",              category: "core",       minTierIndex: 0, label: { ar: "صندوق وارد واتساب موحّد",     en: "WhatsApp Inbox" } },
+  { key: "auto_reply",         category: "core",       minTierIndex: 0, label: { ar: "ردود تلقائية ذكية",           en: "Smart Auto-Reply" } },
+  { key: "customer_management",category: "core",       minTierIndex: 0, label: { ar: "إدارة العملاء (360°)",        en: "Customer Management (360°)" } },
+  { key: "order_management",   category: "core",       minTierIndex: 0, label: { ar: "إدارة الطلبات",               en: "Order Management" } },
+  { key: "quick_replies",      category: "core",       minTierIndex: 0, label: { ar: "ردود سريعة جاهزة",            en: "Quick Replies" } },
+  { key: "basic_analytics",    category: "analytics",  minTierIndex: 0, label: { ar: "تحليلات أساسية",              en: "Basic Analytics" } },
+  { key: "products",           category: "commerce",   minTierIndex: 0, label: { ar: "كتالوج المنتجات",              en: "Product Catalog" } },
+  { key: "customer_import",    category: "operations", minTierIndex: 0, label: { ar: "استيراد العملاء",              en: "Customer Import" } },
+  { key: "data_export",        category: "operations", minTierIndex: 0, label: { ar: "تصدير البيانات",               en: "Data Export" } },
+  { key: "whatsapp_connection", category: "core",      minTierIndex: 0, label: { ar: "إدارة اتصال واتساب",          en: "WhatsApp Connection" } },
+  { key: "wallet",             category: "operations", minTierIndex: 0, label: { ar: "المحفظة والرصيد",              en: "Wallet & Credits" } },
+  { key: "my_work",            category: "operations", minTierIndex: 0, label: { ar: "عملي اليوم",                  en: "My Work Today" } },
 
   // ── GROWTH — revenue automation + campaigns ───────────────────────────
-  { key: "advanced_automations", category: "automation", minTierIndex: 1, label: { ar: "أتمتة متقدّمة",       en: "Advanced Automations" } },
-  { key: "broadcasts",           category: "automation", minTierIndex: 1, label: { ar: "حملات البثّ الجماعي", en: "Broadcast Campaigns" } },
-  { key: "recovery",             category: "automation", minTierIndex: 1, label: { ar: "استعادة العملاء",      en: "Customer Recovery" } },
-  { key: "segments",             category: "automation", minTierIndex: 1, label: { ar: "شرائح العملاء",        en: "Customer Segments" } },
+  { key: "advanced_automations", category: "automation", minTierIndex: 1, label: { ar: "أتمتة متقدّمة",             en: "Advanced Automations" } },
+  { key: "broadcasts",           category: "automation", minTierIndex: 1, label: { ar: "حملات البثّ الجماعي",       en: "Broadcast Campaigns" } },
+  { key: "recovery",             category: "automation", minTierIndex: 1, label: { ar: "استعادة العملاء",            en: "Customer Recovery" } },
+  { key: "segments",             category: "automation", minTierIndex: 1, label: { ar: "شرائح العملاء",              en: "Customer Segments" } },
   { key: "working_hours",        category: "automation", minTierIndex: 1, label: { ar: "ساعات العمل والردود خارج الدوام", en: "Working Hours & After-Hours Replies" } },
-  { key: "team",                 category: "team",       minTierIndex: 1, label: { ar: "أعضاء الفريق (حتى 5)", en: "Team Members (up to 5)" } },
+  { key: "team",                 category: "team",       minTierIndex: 1, label: { ar: "أعضاء الفريق (حتى 5)",      en: "Team Members (up to 5)" } },
   { key: "lead_scoring",         category: "intelligence", minTierIndex: 1, label: { ar: "تقييم العملاء المحتملين", en: "Lead Scoring" } },
-  { key: "flow_builder",         category: "automation", minTierIndex: 1, label: { ar: "منشئ محادثات المبيعات", en: "Bot / Conversation Builder" } },
-  { key: "human_handoff",        category: "automation", minTierIndex: 1, label: { ar: "تحويل للموظف عند الحاجة", en: "Human Handoff" } },
+  { key: "flow_builder",         category: "automation", minTierIndex: 1, label: { ar: "منشئ محادثات المبيعات",     en: "Bot / Conversation Builder" } },
+  { key: "human_handoff",        category: "automation", minTierIndex: 1, label: { ar: "تحويل للموظف عند الحاجة",   en: "Human Handoff" } },
+  { key: "coupons_discounts",    category: "commerce",   minTierIndex: 1, label: { ar: "الكوبونات والخصومات",        en: "Coupons & Discounts" } },
+  { key: "qr_broadcast_queue",   category: "messaging",  minTierIndex: 1, label: { ar: "جدولة جلسات الإرسال",       en: "Broadcast Session Queue" } },
+  { key: "escalations",          category: "operations", minTierIndex: 1, label: { ar: "التصعيدات والمتابعة",        en: "Escalations & Follow-ups" } },
 
   // ── PRO — full revenue OS + AI intelligence + K1SMS + shipping + support ──
   { key: "knowledge_base",        category: "intelligence", minTierIndex: 2, label: { ar: "قاعدة المعرفة (AI)",         en: "AI Knowledge Base" } },
@@ -119,11 +132,16 @@ export const CAPABILITIES: Capability[] = [
   { key: "advanced_analytics",    category: "analytics",    minTierIndex: 2, label: { ar: "تحليلات متقدّمة",              en: "Advanced Analytics" } },
   { key: "revenue_attribution",   category: "analytics",    minTierIndex: 2, label: { ar: "إسناد الإيرادات",              en: "Revenue Attribution" } },
   { key: "forecasting",           category: "analytics",    minTierIndex: 2, label: { ar: "توقّع الإيرادات",              en: "Revenue Forecasting" } },
-  { key: "k1sms",                 category: "commerce",     minTierIndex: 2, label: { ar: "K1SMS — رسائل SMS تجارية",     en: "K1SMS — Transactional SMS" } },
+  { key: "funnel_analytics",      category: "analytics",    minTierIndex: 2, label: { ar: "قمع التحويل",                  en: "Conversion Funnel Analytics" } },
+  { key: "business_performance",  category: "analytics",    minTierIndex: 2, label: { ar: "أداء النشاط التجاري",          en: "Business Performance" } },
+  { key: "k1sms",                 category: "messaging",    minTierIndex: 2, label: { ar: "K1SMS — رسائل SMS تجارية",     en: "K1SMS — Transactional SMS" } },
+  { key: "sms_messaging",         category: "messaging",    minTierIndex: 2, label: { ar: "إدارة الرسائل القصيرة",         en: "SMS Messaging Interface" } },
   { key: "shipping_tracking",     category: "commerce",     minTierIndex: 2, label: { ar: "الشحن والتتبّع",               en: "Shipping & Tracking" } },
+  { key: "loyalty_rewards",       category: "commerce",     minTierIndex: 2, label: { ar: "الولاء والمكافآت",             en: "Loyalty & Rewards" } },
   { key: "team_routing",          category: "team",         minTierIndex: 2, label: { ar: "توزيع المحادثات على الفريق",   en: "Team Routing" } },
   { key: "support_inbox",         category: "team",         minTierIndex: 2, label: { ar: "صندوق دعم العمليات (SLA)",     en: "Support Ops Inbox (SLA)" } },
-  { key: "loyalty_rewards",       category: "commerce",     minTierIndex: 2, label: { ar: "الولاء والمكافآت",             en: "Loyalty & Rewards" } },
+  { key: "audit_log",             category: "operations",   minTierIndex: 2, label: { ar: "سجل النشاط والتدقيق",          en: "Activity & Audit Log" } },
+  { key: "integrations",          category: "scale",        minTierIndex: 2, label: { ar: "التكاملات مع الأنظمة",         en: "Third-Party Integrations" } },
   { key: "api_access",            category: "scale",        minTierIndex: 2, label: { ar: "وصول API للمطوّرين",           en: "Developer API Access" } },
 
   // ── ENTERPRISE — custom controls + multi-team + scale ────────────────────

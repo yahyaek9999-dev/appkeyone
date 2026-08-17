@@ -116,14 +116,14 @@ export default function PaymentGatewaysPage() {
     <div className="p-6 space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">بوابات الدفع</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold text-white">بوابات الدفع</h1>
+          <p className="text-sm text-slate-400 mt-1">
             {gateways.length} بوابة مُعدّة — البيانات السرية مشفّرة دائماً
           </p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
+          className="flex items-center gap-2 bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
         >
           <Plus className="h-4 w-4" /> إضافة بوابة
         </button>
@@ -131,64 +131,64 @@ export default function PaymentGatewaysPage() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="border border-border rounded-xl p-5 space-y-4 bg-muted/20">
-          <h3 className="font-semibold text-foreground flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-primary" /> بوابة جديدة
+        <div className="border border-white/[0.08] rounded-xl p-5 space-y-4 bg-white/[0.02]">
+          <h3 className="font-semibold text-white flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-brand-400" /> بوابة جديدة
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">المعالج (Adapter)</label>
+              <label className="block text-xs text-slate-400 mb-1">المعالج (Adapter)</label>
               <select value={adapter} onChange={e => setAdapter(e.target.value)}
-                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
               >
                 {ADAPTERS.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">الاسم *</label>
+              <label className="block text-xs text-slate-400 mb-1">الاسم *</label>
               <input value={gwName} onChange={e => setGwName(e.target.value)}
-                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+                className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
                 placeholder="Stripe — إنتاج"
               />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">العملات (مفصولة بفاصلة)</label>
+              <label className="block text-xs text-slate-400 mb-1">العملات (مفصولة بفاصلة)</label>
               <input value={currencies} onChange={e => setCurrencies(e.target.value)}
-                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background font-mono"
+                className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03] font-mono"
                 placeholder="SAR, USD, AED"
               />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">طرق الدفع</label>
+              <label className="block text-xs text-slate-400 mb-1">طرق الدفع</label>
               <input value={methods} onChange={e => setMethods(e.target.value)}
-                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background font-mono"
+                className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03] font-mono"
                 placeholder="card, apple_pay, stc_pay"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">
+            <label className="block text-xs text-slate-400 mb-1">
               بيانات الاعتماد (JSON — ستُشفَّر عند الحفظ)
             </label>
             <textarea
               value={credJson}
               onChange={e => setCredJson(e.target.value)}
               rows={4}
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background font-mono resize-none"
+              className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03] font-mono resize-none"
               placeholder='{ "secret_key": "sk_test_...", "publishable_key": "pk_test_..." }'
             />
           </div>
 
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">
+            <label className="block text-xs text-slate-400 mb-1">
               Webhook Secret (اختياري — سيُشفَّر)
             </label>
             <input
               type="password"
               value={webhookSecret}
               onChange={e => setWebhookSecret(e.target.value)}
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+              className="w-full border border-white/[0.08] rounded-lg px-3 py-2 text-sm bg-white/[0.03]"
               placeholder="whsec_..."
             />
           </div>
@@ -199,10 +199,10 @@ export default function PaymentGatewaysPage() {
           </label>
 
           <div className="flex gap-2 pt-1">
-            <button onClick={create} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90">
+            <button onClick={create} className="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90">
               إضافة البوابة
             </button>
-            <button onClick={() => setShowCreate(false)} className="border border-border px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted">
+            <button onClick={() => setShowCreate(false)} className="border border-white/[0.08] px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/[0.04]">
               إلغاء
             </button>
           </div>
@@ -211,25 +211,25 @@ export default function PaymentGatewaysPage() {
 
       {/* Gateways list */}
       {loading ? (
-        <div className="text-sm text-muted-foreground animate-pulse">جاري التحميل...</div>
+        <div className="text-sm text-slate-400 animate-pulse">جاري التحميل...</div>
       ) : gateways.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="text-center py-12 text-slate-400">
           <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">لا توجد بوابات مُعدّة بعد</p>
         </div>
       ) : (
         <div className="space-y-2">
           {gateways.map(g => (
-            <div key={g.id} className={`border rounded-xl p-4 flex items-center gap-4 ${g.isDefault ? "border-primary/40 bg-primary/5" : "border-border"}`}>
+            <div key={g.id} className={`border rounded-xl p-4 flex items-center gap-4 ${g.isDefault ? "border-brand-500/40 bg-brand-500/[0.05]" : "border-white/[0.08]"}`}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">{g.name}</span>
-                  <code className="text-xs bg-muted px-2 py-0.5 rounded">{g.adapter}</code>
-                  {g.isDefault && <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">افتراضية</span>}
-                  {g.isFallback && <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 text-xs">احتياطية</span>}
-                  {g.testMode && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs flex items-center gap-1"><FlaskConical className="h-3 w-3" />اختبار</span>}
+                  <span className="font-semibold text-white">{g.name}</span>
+                  <code className="text-xs bg-white/[0.04] px-2 py-0.5 rounded">{g.adapter}</code>
+                  {g.isDefault && <span className="px-2 py-0.5 rounded-full bg-brand-500/[0.10] text-brand-400 text-xs">افتراضية</span>}
+                  {g.isFallback && <span className="px-2 py-0.5 rounded-full bg-white/[0.06] text-slate-400  text-xs">احتياطية</span>}
+                  {g.testMode && <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300  text-xs flex items-center gap-1"><FlaskConical className="h-3 w-3" />اختبار</span>}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
                   {HEALTH_ICONS[g.health]}
                   <span>{g.health === "healthy" ? "صحية" : g.health === "unhealthy" ? "مشكلة" : "غير معروفة"}</span>
                   {g.hasCredentials && <span className="text-emerald-600">· بيانات اعتماد ✓</span>}
@@ -244,12 +244,12 @@ export default function PaymentGatewaysPage() {
               </div>
               <div className="flex items-center gap-1">
                 {!g.isDefault && (
-                  <button onClick={() => setDefault(g.id)} title="تعيين كافتراضية" className="p-1.5 hover:bg-primary/10 rounded text-muted-foreground hover:text-primary">
+                  <button onClick={() => setDefault(g.id)} title="تعيين كافتراضية" className="p-1.5 hover:bg-brand-500/[0.10] rounded text-slate-400 hover:text-brand-400">
                     <Star className="h-4 w-4" />
                   </button>
                 )}
                 {!g.isDefault && (
-                  <button onClick={() => deleteGw(g.id)} title="حذف" className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500">
+                  <button onClick={() => deleteGw(g.id)} title="حذف" className="p-1.5 hover:bg-red-500/10  rounded text-red-500">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}

@@ -399,6 +399,12 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/developer": "api_access",
   "/dashboard/working-hours": "working_hours",
   "/dashboard/settings/numbers": "multi_whatsapp",
+  // Capabilities added in catalog expansion (catalog.ts)
+  "/dashboard/products": "products",
+  "/dashboard/wallet": "wallet",
+  "/dashboard/escalations": "escalations",
+  "/dashboard/audit-log": "audit_log",
+  "/dashboard/customer-import": "customer_import",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */

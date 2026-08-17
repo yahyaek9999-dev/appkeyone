@@ -305,7 +305,9 @@ const WORKSPACE_BY_CATEGORY: Record<string, string> = {
   intelligence: "analytics",
   analytics:    "analytics",
   commerce:     "sales",
+  messaging:    "marketing",
   scale:        "settings",
+  operations:   "settings",
   enterprise:   "settings",
 };
 
@@ -317,7 +319,9 @@ const RELEASE_BY_CATEGORY: Record<string, string> = {
   intelligence: "intelligence",
   analytics:    "intelligence",
   commerce:     "commerce",
+  messaging:    "commerce",
   scale:        "scale",
+  operations:   "core",
   enterprise:   "scale",
 };
 
@@ -336,14 +340,22 @@ const REAL_DEPENDENCIES: Record<string, string[]> = {
   next_best_action:       ["smart_assistant"],
   revenue_attribution:    ["advanced_analytics"],
   forecasting:            ["advanced_analytics"],
+  funnel_analytics:       ["advanced_analytics"],
+  business_performance:   ["basic_analytics"],
   customer_segmentation:  ["segments"],
   multi_team:             ["team"],
   approval_workflows:     ["team"],
+  sms_messaging:          ["k1sms"],
+  qr_broadcast_queue:     ["broadcasts"],
+  coupons_discounts:      ["order_management"],
+  escalations:            ["inbox"],
+  audit_log:              ["team"],
 };
 
 /** Integrations a feature genuinely cannot run without. */
 const REQUIRED_INTEGRATION: Record<string, string> = {
   k1sms:             "sms_provider",
+  sms_messaging:     "sms_provider",
   shipping_tracking: "shipping_provider",
 };
 
