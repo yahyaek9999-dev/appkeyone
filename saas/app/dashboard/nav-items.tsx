@@ -55,6 +55,7 @@ import {
   ClipboardList,
   GitBranch,
   MessageCircle,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -430,13 +431,14 @@ export function navItemVisible(i: NavItem, opts: NavAccess): boolean {
     const mod = NAV_MODULE_BY_HREF[i.href];
     if (mod && opts.modules[mod] === false) return false;
   }
-  // Per-plan feature visibility: hide what the plan doesn't own (k_* enforced).
-  // The page's pageGate renders the upgrade CTA if reached by direct URL.
-  if (opts.enforce && opts.caps) {
-    const cap = NAV_CAP_BY_HREF[i.href];
-    if (cap && !opts.caps[cap]) return false;
-  }
   return true;
+}
+
+/** True when the nav item exists but the user's plan doesn't include it. */
+export function navItemLocked(i: NavItem, opts: NavAccess): boolean {
+  if (!opts.enforce || !opts.caps) return false;
+  const cap = NAV_CAP_BY_HREF[i.href];
+  return !!cap && !opts.caps[cap];
 }
 
 /** Flat list of destinations the principal may reach — used by the command palette. */
@@ -448,10 +450,13 @@ function accessibleWorkspaces(role: Role, simple = false, pathname = "", access:
   return WORKSPACES.map((w) => ({
     ...w,
     items: w.items.filter((i) => {
+      // Items hidden by role/mode/module are never shown.
       if (!navItemVisible(i, { role, ...access })) return false;
-      if (!access.activated) return true; // pre-activation set already minimal
-      // In simple mode keep only core items — plus whatever page you're on, so the
-      // nav always answers "where am I?" even on an advanced screen.
+      if (!access.activated) return true;
+      // Locked items (plan-gated) are shown but rendered differently.
+      // Keep them visible so users know what's available — not a blank wall.
+      const locked = navItemLocked(i, { role, ...access });
+      if (locked) return !simple; // only show locked items in expanded mode
       return !simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href);
     }),
   })).filter((w) => w.items.length > 0);
@@ -475,8 +480,21 @@ function NavModeToggle({ simple, toggle }: { simple: boolean; toggle: () => void
   );
 }
 
-function ContextRow({ item, active }: { item: NavItem; active: boolean }) {
+function ContextRow({ item, active, locked = false }: { item: NavItem; active: boolean; locked?: boolean }) {
   const Icon = item.icon;
+  if (locked) {
+    return (
+      <Link
+        href={item.href}
+        className="sidebar-link relative opacity-50 hover:opacity-70 transition-opacity"
+        title="ترقية الباقة للوصول"
+      >
+        <Icon className="h-[18px] w-[18px] shrink-0 text-slate-600" />
+        <span className="flex-1 truncate text-slate-600">{item.label}</span>
+        <Lock className="h-3 w-3 shrink-0 text-slate-700" />
+      </Link>
+    );
+  }
   return (
     <Link href={item.href} className={cn("sidebar-link relative", active && "sidebar-link-active")}>
       {active && (
@@ -544,7 +562,12 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
           {viewed.label}
         </div>
         {viewed.items.map((it) => (
-          <ContextRow key={it.href} item={it} active={isActivePath(pathname, it.href)} />
+          <ContextRow
+            key={it.href}
+            item={it}
+            active={isActivePath(pathname, it.href)}
+            locked={navItemLocked(it, { role, activated, metaMode, enforce, caps, modules })}
+          />
         ))}
         {activated && <NavModeToggle simple={simple} toggle={toggleMode} />}
       </nav>
@@ -570,7 +593,12 @@ export function NavLinks({ role = "owner", activated = true, metaMode = "qr", en
           </div>
           <div className="space-y-0.5">
             {w.items.map((it) => (
-              <ContextRow key={it.href} item={it} active={isActivePath(pathname, it.href)} />
+              <ContextRow
+                key={it.href}
+                item={it}
+                active={isActivePath(pathname, it.href)}
+                locked={navItemLocked(it, { role, activated, metaMode, enforce, caps, modules })}
+              />
             ))}
           </div>
         </div>
