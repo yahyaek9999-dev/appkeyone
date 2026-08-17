@@ -17,6 +17,7 @@ import { prisma } from "@/lib/db";
 import { getUsageSnapshot } from "@/lib/membership/limits";
 import { getCustomerCapState } from "@/lib/membership/customer-cap";
 import { tierBadge } from "@/lib/membership/plan";
+import { getTier } from "@/lib/pricing/catalog";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { AlertTriangle, MessageSquare, Zap, Megaphone, Crown, ShieldAlert } from "lucide-react";
 import Link from "next/link";
@@ -44,6 +45,8 @@ export default async function UsagePage() {
 
   const { plan, counters, resetAt } = snapshot;
   const badge = tierBadge(plan.tier);
+  const catalogTier = getTier(plan.slug);
+  const badgeLabel = catalogTier ? catalogTier.name.en.replace("KEYONE ", "") : badge.label;
   const mode = normalizeConnectionMode(bot?.connectionMode);
 
   return (
@@ -72,7 +75,7 @@ export default async function UsagePage() {
       {/* Plan banner */}
       <div className="card p-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className={`rounded-lg px-3 py-1 text-sm font-bold ${badge.color}`}>{badge.label}</span>
+          <span className={`rounded-lg px-3 py-1 text-sm font-bold ${badge.color}`}>{badgeLabel}</span>
           <div>
             <div className="font-bold">{plan.planName}</div>
             <div className="text-xs text-slate-400">
