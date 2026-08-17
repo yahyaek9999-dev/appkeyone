@@ -83,6 +83,25 @@ export function freeTierEnforcementEnabled(): boolean {
  * Called by hasCapability, pageGate, apiGate, and the plan preview API.
  */
 export async function getEntitlements(userId: string): Promise<Entitlements> {
+  // Platform admins (User.role = "admin") bypass all capability gating so they
+  // can see the full product as any customer would, regardless of their own plan.
+  const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (userRow?.role === "admin") {
+    const allCaps: Record<string, boolean> = {};
+    for (const cap of CAPABILITIES) allCaps[cap.key] = true;
+    return {
+      tier: "companies",
+      slug: "k_enterprise",
+      planName: "Admin",
+      isFallback: false,
+      blocked: false,
+      enforce: false,
+      capabilities: allCaps,
+      limits: { team: 0, automations: 0, kbDocs: 0, whatsapp: 0, broadcasts: 0, ai: 0, messages: 0, customers: 0, smsCredits: 0 },
+      sources: ["plan"],
+    };
+  }
+
   const [plan, override, gifts, promos] = await Promise.all([
     getEffectivePlan(userId),
     fetchOverride(userId),
