@@ -12,7 +12,7 @@ import { prisma } from "@/lib/db";
 import EscalationActions from "@/app/dashboard/escalations/ticket-actions";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageGate } from "@/lib/membership/gate";
-import { LockedFeature } from "@/components/billing/LockedFeature";
+import LockedFeature from "@/components/billing/LockedFeature";
 
 export const dynamic = "force-dynamic";
 
