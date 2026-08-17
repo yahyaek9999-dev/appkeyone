@@ -311,11 +311,11 @@ export default function FeatureControlPage() {
       ) : viewMode === "table" ? (
         <TableView features={filtered} pending={pending} onPatch={patch} releaseMap={releaseMap} />
       ) : viewMode === "category" ? (
-        <CategoryView features={filtered} categories={categories} pending={pending} onPatch={patch} releaseMap={releaseMap} editingId={editingId} setEditingId={setEditingId} />
+        <CategoryView features={filtered} categories={categories} releases={releases} pending={pending} onPatch={patch} releaseMap={releaseMap} editingId={editingId} setEditingId={setEditingId} />
       ) : viewMode === "release" ? (
         <ReleaseView features={filtered} releases={releases} pending={pending} onPatch={patch} releaseMap={releaseMap} editingId={editingId} setEditingId={setEditingId} />
       ) : (
-        <ListView features={filtered} pending={pending} onPatch={patch} releaseMap={releaseMap} editingId={editingId} setEditingId={setEditingId} />
+        <ListView features={filtered} pending={pending} onPatch={patch} releases={releases} releaseMap={releaseMap} editingId={editingId} setEditingId={setEditingId} />
       )}
     </div>
   );
@@ -427,11 +427,12 @@ function ActionBar({
 
 // ── List view ─────────────────────────────────────────────────────────────────
 function ListView({
-  features, pending, onPatch, releaseMap, editingId, setEditingId,
+  features, pending, onPatch, releases, releaseMap, editingId, setEditingId,
 }: {
   features: Feature[];
   pending: Set<string>;
   onPatch: (id: string, u: Partial<Feature>) => void;
+  releases: Release[];
   releaseMap: Record<string, Release>;
   editingId: string | null;
   setEditingId: (id: string | null) => void;
@@ -444,6 +445,7 @@ function ListView({
           feature={f}
           saving={pending.has(f.featureId)}
           onPatch={(u) => onPatch(f.featureId, u)}
+          releases={releases}
           release={f.releaseId ? releaseMap[f.releaseId] : undefined}
           expanded={editingId === f.featureId}
           onToggleExpand={() => setEditingId(editingId === f.featureId ? null : f.featureId)}
@@ -454,17 +456,21 @@ function ListView({
 }
 
 function FeatureRow({
-  feature: f, saving, onPatch, release, expanded, onToggleExpand,
+  feature: f, saving, onPatch, releases, release, expanded, onToggleExpand,
 }: {
   feature: Feature;
   saving: boolean;
   onPatch: (u: Partial<Feature>) => void;
+  releases: Release[];
   release?: Release;
   expanded: boolean;
   onToggleExpand: () => void;
 }) {
   const [editName, setEditName] = useState(f.name);
   const [editDesc, setEditDesc] = useState(f.description);
+  const [editPlan, setEditPlan] = useState(f.requiredPlan ?? "");
+  const [editRelease, setEditRelease] = useState(f.releaseId ?? "");
+  const [editRollout, setEditRollout] = useState(f.rolloutPct);
 
   return (
     <div className={`rounded-xl border transition-colors ${f.killSwitch ? "border-red-500/25 bg-red-500/[0.03]" : expanded ? "border-white/[0.12] bg-white/[0.04]" : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.09]"}`}>
@@ -474,17 +480,24 @@ function FeatureRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-white text-sm">{f.name}</span>
-            <span className="font-mono text-[10px] text-slate-600 bg-white/[0.04] border border-white/[0.06] px-1.5 py-0.5 rounded" dir="ltr">{f.featureId}</span>
             <StatusBadge status={f.status} killSwitch={f.killSwitch} />
             {f.adminOnly && <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-400">مشرف فقط</span>}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
             <span className="bg-white/[0.03] border border-white/[0.06] rounded px-1.5 py-0.5">{CATEGORY_LABELS[f.category] ?? f.category}</span>
-            {f.requiredPlan && <span>الباقة: <span className="text-slate-400">{PLAN_LABELS[f.requiredPlan] ?? f.requiredPlan}</span></span>}
+            {f.requiredPlan && (
+              <span className={`rounded-full border px-2 py-0.5 font-medium ${
+                f.requiredPlan === "k_enterprise" ? "border-violet-500/25 bg-violet-500/10 text-violet-300" :
+                f.requiredPlan === "k_pro"        ? "border-brand-500/25 bg-brand-500/10 text-brand-300" :
+                f.requiredPlan === "k_growth"     ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300" :
+                "border-white/[0.10] bg-white/[0.04] text-slate-300"
+              }`}>{PLAN_LABELS[f.requiredPlan] ?? f.requiredPlan}</span>
+            )}
             {release && (
               <span>الإصدار: <span className={RELEASE_STATUS_COLOR[release.status] ?? "text-slate-400"}>{release.name}</span></span>
             )}
-            {f.dependencies.length > 0 && <span>يعتمد على: {f.dependencies.join(", ")}</span>}
+            {f.rolloutPct < 100 && <span className="text-amber-500">{f.rolloutPct}% انتشار</span>}
+            {f.dependencies.length > 0 && <span className="truncate max-w-[200px]">يعتمد على: {f.dependencies.join(", ")}</span>}
           </div>
         </div>
 
@@ -502,7 +515,8 @@ function FeatureRow({
 
       {/* Expanded edit panel */}
       {expanded && (
-        <div className="border-t border-white/[0.06] p-4 space-y-3">
+        <div className="border-t border-white/[0.06] p-4 space-y-4">
+          {/* Row 1: name + description */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-[11px] text-slate-500">اسم الميزة</label>
@@ -523,9 +537,65 @@ function FeatureRow({
               />
             </div>
           </div>
+
+          {/* Row 2: plan + release + rollout */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-[11px] text-slate-500">الحد الأدنى للباقة</label>
+              <select
+                value={editPlan}
+                onChange={(e) => setEditPlan(e.target.value)}
+                className="w-full rounded-lg border border-white/[0.08] bg-[#0a1628] py-1.5 ps-2 pe-6 text-sm text-slate-300 focus:outline-none focus:border-brand-500/50"
+              >
+                <option value="">بدون قيد (جميع الباقات)</option>
+                <option value="k_start">Start</option>
+                <option value="k_growth">Growth</option>
+                <option value="k_pro">Pro</option>
+                <option value="k_enterprise">Enterprise</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] text-slate-500">الإصدار</label>
+              <select
+                value={editRelease}
+                onChange={(e) => setEditRelease(e.target.value)}
+                className="w-full rounded-lg border border-white/[0.08] bg-[#0a1628] py-1.5 ps-2 pe-6 text-sm text-slate-300 focus:outline-none focus:border-brand-500/50"
+              >
+                <option value="">غير مرتبط بإصدار</option>
+                {releases.map((r) => (
+                  <option key={r.releaseId} value={r.releaseId}>{r.name} ({r.status})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
+                <span>نسبة الانتشار</span>
+                <span className="font-mono text-white">{editRollout}%</span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={editRollout}
+                onChange={(e) => setEditRollout(Number(e.target.value))}
+                className="w-full accent-brand-500"
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { onPatch({ name: editName, description: editDesc }); onToggleExpand(); }}
+              onClick={() => {
+                onPatch({
+                  name: editName,
+                  description: editDesc,
+                  requiredPlan: editPlan || null,
+                  releaseId: editRelease || null,
+                  rolloutPct: editRollout,
+                });
+                onToggleExpand();
+              }}
               className="flex items-center gap-1.5 rounded-lg bg-brand-500/20 border border-brand-500/30 px-3 py-1.5 text-sm text-brand-300 hover:bg-brand-500/30 transition-colors"
             >
               <Check className="h-3.5 w-3.5" />حفظ
@@ -533,9 +603,6 @@ function FeatureRow({
             <button onClick={onToggleExpand} className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors">
               <X className="h-3.5 w-3.5" />إلغاء
             </button>
-            <div className="ms-auto text-[10px] text-slate-600">
-              <span>noop: {f.rolloutPct}%</span>
-            </div>
           </div>
         </div>
       )}
@@ -618,9 +685,10 @@ function TableView({
 }
 
 // ── Category view ─────────────────────────────────────────────────────────────
-function CategoryView({ features, categories, pending, onPatch, releaseMap, editingId, setEditingId }: {
+function CategoryView({ features, categories, releases, pending, onPatch, releaseMap, editingId, setEditingId }: {
   features: Feature[];
   categories: string[];
+  releases: Release[];
   pending: Set<string>;
   onPatch: (id: string, u: Partial<Feature>) => void;
   releaseMap: Record<string, Release>;
@@ -650,6 +718,7 @@ function CategoryView({ features, categories, pending, onPatch, releaseMap, edit
                 feature={f}
                 saving={pending.has(f.featureId)}
                 onPatch={(u) => onPatch(f.featureId, u)}
+                releases={releases}
                 release={f.releaseId ? releaseMap[f.releaseId] : undefined}
                 expanded={editingId === f.featureId}
                 onToggleExpand={() => setEditingId(editingId === f.featureId ? null : f.featureId)}
@@ -703,6 +772,7 @@ function ReleaseView({ features, releases, pending, onPatch, releaseMap, editing
                   feature={f}
                   saving={pending.has(f.featureId)}
                   onPatch={(u) => onPatch(f.featureId, u)}
+                  releases={releases}
                   release={rel ?? undefined}
                   expanded={editingId === f.featureId}
                   onToggleExpand={() => setEditingId(editingId === f.featureId ? null : f.featureId)}
