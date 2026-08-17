@@ -189,8 +189,8 @@ export default async function PricingPage({
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
               {locale === "ar"
-                ? "6 باقات مرنة — ابدأ صغيراً وارتقِ وقت ما تكبر. فوترة شهرية أو سنوية، إلغاء في أي وقت."
-                : "6 flexible plans — start small and scale as you grow. Monthly or yearly, cancel anytime."}
+                ? "4 باقات مرنة — ابدأ صغيراً وارتقِ وقت ما تكبر. فوترة شهرية أو سنوية، إلغاء في أي وقت."
+                : "4 flexible plans — start small and scale as you grow. Monthly or yearly, cancel anytime."}
             </p>
           </SectionReveal>
         </div>
