@@ -1,5 +1,6 @@
+import React from "react";
 import { prisma } from "@/lib/db";
-import { CheckCircle2, ChevronLeft } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Rocket, ToggleLeft, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -13,12 +14,14 @@ export const dynamic = "force-dynamic";
 async function getDaily() {
   const now = Date.now();
   const soon = new Date(now + 3 * 24 * 60 * 60 * 1000);
-  const [activeSubsList, pendingSubs, expiredSubs, totalUsers, totalMessages] = await Promise.all([
+  const [activeSubsList, pendingSubs, expiredSubs, totalUsers, totalMessages, activeFeatures, activeReleases] = await Promise.all([
     prisma.subscription.findMany({ where: { status: "active" }, include: { plan: true } }),
     prisma.subscription.count({ where: { status: "pending" } }),
     prisma.subscription.count({ where: { status: "expired" } }),
     prisma.user.count({ where: { role: "user" } as any }),
     prisma.message.count(),
+    (prisma as any).featureControl?.count({ where: { status: "enabled", killSwitch: false } }).catch(() => null as null | number),
+    (prisma as any).featureRelease?.count({ where: { status: "active" } }).catch(() => null as null | number),
   ]);
   const activeUserIds = activeSubsList.map((s: any) => s.userId);
 
@@ -36,7 +39,7 @@ async function getDaily() {
     return sum + price;
   }, 0);
 
-  return { activeSubs: activeSubsList.length, pendingSubs, expiredSubs, totalUsers, totalMessages, pendingProofs, disconnected, expiringSoon, openIncidents, mrrUsd };
+  return { activeSubs: activeSubsList.length, pendingSubs, expiredSubs, totalUsers, totalMessages, pendingProofs, disconnected, expiringSoon, openIncidents, mrrUsd, activeFeatures, activeReleases };
 }
 
 type Action = { area: string; problem: string; cta: string; href: string; urgent: boolean };
@@ -94,24 +97,54 @@ export default async function AdminHome() {
         </div>
       )}
 
-      {/* Demoted: the numbers (reference only, not the focus) */}
+      {/* Numbers */}
       <div className="border-t border-white/[0.06] pt-4">
         <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">الأرقام</div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Mini label="الإيراد الشهري (MRR)" value={`$${s.mrrUsd.toLocaleString("en-US")}`} />
+          <Mini label="الإيراد الشهري (MRR)" value={`$${s.mrrUsd.toLocaleString("en-US")}`} icon={TrendingUp} />
           <Mini label="اشتراكات نشطة" value={s.activeSubs.toLocaleString()} />
           <Mini label="إجمالي العملاء" value={s.totalUsers.toLocaleString()} />
           <Mini label="إجمالي الرسائل" value={s.totalMessages.toLocaleString()} />
         </div>
       </div>
+
+      {/* Product status */}
+      {(s.activeFeatures !== null || s.activeReleases !== null) && (
+        <div className="border-t border-white/[0.06] pt-4">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">المنتج</div>
+          <div className="grid grid-cols-2 gap-3">
+            {s.activeFeatures !== null && (
+              <Link href="/admin/feature-control?status=enabled" className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 hover:border-white/[0.10] hover:bg-white/[0.04] transition-colors">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <ToggleLeft className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-[11px] text-slate-500">ميزات مفعّلة</span>
+                </div>
+                <div className="text-lg font-bold tabular-nums text-white">{s.activeFeatures}</div>
+              </Link>
+            )}
+            {s.activeReleases !== null && (
+              <Link href="/admin/releases" className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 hover:border-white/[0.10] hover:bg-white/[0.04] transition-colors">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Rocket className="h-3.5 w-3.5 text-brand-400" />
+                  <span className="text-[11px] text-slate-500">إصدارات نشطة</span>
+                </div>
+                <div className="text-lg font-bold tabular-nums text-white">{s.activeReleases}</div>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) {
+function Mini({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{className?: string}> }) {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-      <div className="text-[11px] text-slate-500">{label}</div>
+      <div className="flex items-center gap-1 text-[11px] text-slate-500">
+        {Icon && <Icon className="h-3 w-3" />}
+        {label}
+      </div>
       <div className="mt-0.5 text-lg font-bold tabular-nums text-white">{value}</div>
     </div>
   );
