@@ -411,6 +411,9 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/revenue-pro": "revenue_pro",
   "/dashboard/safety": "safety_controls",
   "/dashboard/bot": "bot_configuration",
+  "/dashboard/whatsapp-health": "whatsapp_health",
+  "/dashboard/ai-operations": "ai_operations",
+  "/dashboard/system-health": "system_health",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */

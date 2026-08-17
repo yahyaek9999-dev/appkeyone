@@ -12,7 +12,7 @@ import { Check, Minus, ChevronDown } from "lucide-react";
 import {
   CAPABILITIES,
   CATEGORY_LABELS,
-  TIERS,
+  PUBLIC_TIERS,
   type CapabilityCategory,
 } from "@/lib/pricing/catalog";
 
@@ -62,7 +62,7 @@ export default function FeatureMatrix({
               <th className="p-4 text-start text-xs font-medium uppercase tracking-wider text-slate-500">
                 {locale === "ar" ? "الميزة" : "Feature"}
               </th>
-              {TIERS.map((t) => (
+              {PUBLIC_TIERS.map((t) => (
                 <th key={t.slug} className="p-4 text-center">
                   <div
                     className={`text-sm font-bold ${
@@ -136,8 +136,8 @@ export default function FeatureMatrix({
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {TIERS.map((t) => {
-                          const on = t.index >= c.minTierIndex;
+                        {PUBLIC_TIERS.map((t) => {
+                          const on = t.capIndex >= c.minTierIndex;
                           return (
                             <span
                               key={t.slug}
@@ -181,7 +181,7 @@ function FragmentRows({
     <>
       <tr>
         <td
-          colSpan={TIERS.length + 1}
+          colSpan={PUBLIC_TIERS.length + 1}
           className="bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-brand-300/80"
         >
           {catLabel}
@@ -200,12 +200,12 @@ function FragmentRows({
               </span>
             )}
           </td>
-          {TIERS.map((t) => (
+          {PUBLIC_TIERS.map((t) => (
             <td
               key={t.slug}
               className={`p-4 ${t.recommended ? "bg-brand-500/[0.04]" : ""}`}
             >
-              <Cell on={t.index >= c.minTierIndex} />
+              <Cell on={t.capIndex >= c.minTierIndex} />
             </td>
           ))}
         </tr>

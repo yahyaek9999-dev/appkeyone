@@ -320,6 +320,9 @@ const WORKSPACE_BY_KEY: Record<string, string> = {
   broadcast_credits:    "marketing",
   safety_controls:      "settings",
   revenue_pro:          "analytics",
+  whatsapp_health:      "conversations",
+  ai_operations:        "analytics",
+  system_health:        "settings",
 };
 
 /** Capability category → the release train it shipped in. */
@@ -345,6 +348,9 @@ const RELEASE_BY_KEY: Record<string, string> = {
   broadcast_credits:    "commerce",
   safety_controls:      "intelligence",
   revenue_pro:          "intelligence",
+  whatsapp_health:      "core",
+  ai_operations:        "intelligence",
+  system_health:        "core",
 };
 
 /**
@@ -378,6 +384,8 @@ const REAL_DEPENDENCIES: Record<string, string[]> = {
   safety_controls:        ["inbox"],
   compliance_monitoring:  ["inbox"],
   meta_cloud:             ["whatsapp_connection"],
+  whatsapp_health:        ["whatsapp_connection"],
+  ai_operations:          ["bot_configuration"],
 };
 
 /** Integrations a feature genuinely cannot run without. */

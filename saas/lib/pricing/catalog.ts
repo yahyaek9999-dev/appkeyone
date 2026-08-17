@@ -106,6 +106,7 @@ export const CAPABILITIES: Capability[] = [
   { key: "whatsapp_connection",   category: "core",       minTierIndex: 0, label: { ar: "إدارة اتصال واتساب",           en: "WhatsApp Connection" } },
   { key: "wallet",                category: "operations", minTierIndex: 0, label: { ar: "المحفظة والرصيد",               en: "Wallet & Credits" } },
   { key: "my_work",               category: "operations", minTierIndex: 0, label: { ar: "عملي اليوم",                   en: "My Work Today" } },
+  { key: "whatsapp_health",       category: "operations", minTierIndex: 0, label: { ar: "صحة جلسة واتساب",              en: "WhatsApp Session Health" } },
 
   // ── GROWTH — revenue automation + campaigns ───────────────────────────
   { key: "advanced_automations",  category: "automation", minTierIndex: 1, label: { ar: "أتمتة متقدّمة",              en: "Advanced Automations" } },
@@ -150,6 +151,8 @@ export const CAPABILITIES: Capability[] = [
   { key: "api_access",            category: "scale",        minTierIndex: 2, label: { ar: "وصول API للمطوّرين",                en: "Developer API Access" } },
   { key: "safety_controls",       category: "operations",   minTierIndex: 2, label: { ar: "لوحة السلامة وتحكّم الحماية",       en: "Safety & Anti-Ban Controls" } },
   { key: "revenue_pro",           category: "analytics",    minTierIndex: 2, label: { ar: "تحليلات الإيرادات المتقدّمة (Pro)", en: "Revenue Pro Analytics" } },
+  { key: "ai_operations",         category: "operations",   minTierIndex: 2, label: { ar: "مركز عمليات الذكاء الاصطناعي",      en: "AI Operations Center" } },
+  { key: "system_health",         category: "operations",   minTierIndex: 2, label: { ar: "صحة النظام والخدمات",               en: "System Health Monitoring" } },
 
   // ── ENTERPRISE — custom controls + multi-team + scale ────────────────────
   { key: "multi_team",          category: "team",       minTierIndex: 3, label: { ar: "فرق متعدّدة مع صلاحيات منفصلة", en: "Multi-Team with Isolated Permissions" } },

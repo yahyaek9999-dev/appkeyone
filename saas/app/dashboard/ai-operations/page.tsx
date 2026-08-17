@@ -1,15 +1,18 @@
 /** /dashboard/ai-operations — AI provider usage, cost, failures, latency + switch/test (B3). */
 import { redirect } from "next/navigation";
-import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROVIDER_LABELS } from "@/lib/providers/types";
 import AiOperationsClient from "./ai-operations-client";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 
 export const dynamic = "force-dynamic";
 
 export default async function AiOperationsPage() {
-  const uid = await getUserId();
-  if (!uid) redirect("/login");
+  const gate = await pageGate("ai_operations");
+  if (!gate.uid) redirect("/login");
+  if (!gate.allowed) return <LockedFeature title="مركز عمليات الذكاء الاصطناعي" description="مراقبة أداء مزوّدي الذكاء الاصطناعي، التكاليف، والأعطال في الوقت الفعلي" recommendedTier={gate.recommendedTier} />;
+  const uid = gate.uid;
   const bot = (await prisma.bot.findUnique({ where: { userId: uid }, select: { aiProvider: true, aiModel: true, aiApiKeyEnc: true } })) as any;
 
   const logs = await prisma.providerCallLog.findMany({

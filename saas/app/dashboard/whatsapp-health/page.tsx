@@ -1,14 +1,17 @@
 /** /dashboard/whatsapp-health — WhatsApp (QR) session health + actions (B2). */
 import { redirect } from "next/navigation";
-import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import WhatsappHealthClient from "./whatsapp-health-client";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 
 export const dynamic = "force-dynamic";
 
 export default async function WhatsappHealthPage() {
-  const uid = await getUserId();
-  if (!uid) redirect("/login");
+  const gate = await pageGate("whatsapp_health");
+  if (!gate.uid) redirect("/login");
+  if (!gate.allowed) return <LockedFeature title="صحة جلسة واتساب" description="مراقبة حالة اتصال واتساب وسجل الامتثال" recommendedTier={gate.recommendedTier} />;
+  const uid = gate.uid;
   const bot = (await prisma.bot.findUnique({ where: { userId: uid }, select: { whatsappStatus: true, whatsappPhone: true } })) as any;
   const warnings = await prisma.waComplianceAudit.findMany({
     where: { userId: uid, provider: "qr", category: { in: ["rate_limit", "policy", "window_24h"] } },
