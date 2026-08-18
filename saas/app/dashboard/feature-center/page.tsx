@@ -16,6 +16,8 @@ interface RegistryFeature {
   capability: string;
   routes: string[];
   apiFamilies: string[];
+  customerVisible?: boolean;
+  requiredPlan?: string | null;
   notes?: string;
 }
 
@@ -52,22 +54,42 @@ export default async function FeatureCenterPage() {
     ctrlMap.set(row.featureId, { ...row, dependencies: deps });
   }
 
-  // Merge: registry is source of truth for static fields; DB is source for runtime controls
+  // Merge: registry is source of truth for static fields; DB provides runtime controls
+  const defaultCtrl = (key: string, f: RegistryFeature) => ({
+    featureId: key,
+    status: 'enabled',
+    customerVisible: f.type !== 'admin_internal' ? (f.customerVisible ?? true) : false,
+    adminOnly: f.type === 'admin_internal',
+    beta: false,
+    killSwitch: false,
+    rolloutPct: 100,
+    requiredPlan: f.requiredPlan ?? null,
+    releaseId: null,
+    dependencies: [],
+  });
+
   const merged = registry.map(f => {
-    const ctrl = ctrlMap.get(f.key) ?? {
-      featureId: f.key,
-      status: 'enabled',
-      customerVisible: true,
-      adminOnly: false,
-      beta: false,
-      killSwitch: false,
-      rolloutPct: 100,
-      requiredPlan: null,
-      releaseId: null,
-      dependencies: [],
-    };
+    const ctrl = ctrlMap.get(f.key) ?? defaultCtrl(f.key, f);
     return { ...f, ctrl };
   });
 
-  return <FeatureCenterClient features={merged} />;
+  // Classification stats (from registry — not DB-derived so they're stable)
+  const stats = {
+    // Registry structure
+    customerFeatures:  registry.filter(f => f.type === 'feature').length,
+    subFeatures:       registry.filter(f => f.type === 'subfeature').length,
+    adminFeatures:     registry.filter(f => f.type === 'admin_internal').length,
+    totalRegistry:     registry.length,
+    // DB persistence
+    persistedControls: dbControls.length,
+    // Runtime state (from merged)
+    active:            merged.filter(f => f.ctrl.status === 'enabled').length,
+    disabled:          merged.filter(f => f.ctrl.status === 'disabled').length,
+    hidden:            merged.filter(f => f.ctrl.status === 'hidden').length,
+    beta:              merged.filter(f => f.ctrl.status === 'beta').length,
+    killed:            merged.filter(f => f.ctrl.killSwitch).length,
+    customerVisible:   merged.filter(f => f.ctrl.customerVisible).length,
+  };
+
+  return <FeatureCenterClient features={merged} stats={stats} />;
 }

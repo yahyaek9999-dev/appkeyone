@@ -525,3 +525,62 @@ export async function seedDefaultFeatureControls(): Promise<void> {
 
   invalidateFeatureCache();
 }
+
+// ── Registry-driven sync ─────────────────────────────────────────────────────
+//
+// Syncs the master-feature-registry.json to FeatureControl DB rows.
+// SAFE: only inserts missing rows — never touches admin-controlled columns
+// (status, killSwitch, customerVisible, rolloutPct) on existing rows.
+
+export interface RegistryEntry {
+  key: string;
+  nameEn: string;
+  nameAr: string;
+  type: string;
+  category: string;
+  capability?: string;
+  customerVisible?: boolean;
+  requiredPlan?: string | null;
+}
+
+export async function syncRegistryFromJson(
+  registry: RegistryEntry[],
+): Promise<{ added: number; existing: number }> {
+  const existingSet = new Set<string>(
+    (await (prisma as any).featureControl.findMany({ select: { featureId: true } }))
+      .map((r: any) => r.featureId as string),
+  );
+
+  let added = 0;
+  let existing = 0;
+
+  for (const f of registry) {
+    if (existingSet.has(f.key)) { existing++; continue; }
+
+    const isAdmin = f.type === 'admin_internal';
+    await (prisma as any).featureControl.create({
+      data: {
+        featureId:       f.key,
+        name:            f.nameAr || f.nameEn,
+        description:     f.nameEn,
+        category:        f.category,
+        workspace:       f.category,
+        status:          'enabled',
+        customerVisible: isAdmin ? false : (f.customerVisible ?? true),
+        adminOnly:       isAdmin,
+        beta:            false,
+        requiredPlan:    f.requiredPlan ?? null,
+        dependencies:    '[]',
+        requiredIntegration: null,
+        mobileVisible:   !isAdmin,
+        killSwitch:      false,
+        rolloutPct:      100,
+        releaseId:       null,
+      },
+    });
+    added++;
+  }
+
+  invalidateFeatureCache();
+  return { added, existing };
+}
