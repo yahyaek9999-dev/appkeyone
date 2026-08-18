@@ -1,11 +1,12 @@
 // POST /api/admin/feature-control/sync
-// Reads master-feature-registry.json and upserts missing FeatureControl rows.
-// Safe: never overwrites admin-controlled fields on existing rows.
+// Reads master-feature-registry.json and upserts missing FeatureControl rows,
+// then classifies all 142 rows (registry-backed vs legacy_db).
+// SAFE: never overwrites admin-controlled fields on existing rows.
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { requireAdmin } from '@/lib/admin';
-import { syncRegistryFromJson } from '@/lib/feature-control';
+import { syncRegistryFromJson, classifyLegacyRows } from '@/lib/feature-control';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,7 @@ export async function POST() {
     return NextResponse.json({ error: 'registry_not_found', path: registryPath }, { status: 500 });
   }
 
+  // syncRegistryFromJson also calls classifyLegacyRows internally
   const result = await syncRegistryFromJson(registry);
   return NextResponse.json({ ok: true, ...result, total: registry.length });
 }

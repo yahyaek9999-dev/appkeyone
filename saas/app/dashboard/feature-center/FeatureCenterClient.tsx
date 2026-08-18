@@ -1,23 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 
-interface RegistryFeature {
-  id: string;
-  key: string;
-  nameEn: string;
-  nameAr: string;
-  type: 'feature' | 'subfeature' | 'admin_internal';
-  category: string;
-  parentFeature?: string;
-  capability: string;
-  routes: string[];
-  apiFamilies: string[];
-  notes?: string;
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface ControlRow {
+interface Ctrl {
   featureId: string;
+  name: string;
+  description: string;
+  category: string;
+  workspace: string;
   status: string;
   customerVisible: boolean;
   adminOnly: boolean;
@@ -26,25 +18,45 @@ interface ControlRow {
   rolloutPct: number;
   requiredPlan: string | null;
   releaseId: string | null;
+  featureSource: string;
+  featureType: string;
+  adminVisible: boolean;
   dependencies: string[];
 }
 
-interface MergedFeature extends RegistryFeature {
-  ctrl: ControlRow;
+interface MergedFeature {
+  featureId: string;
+  name: string;
+  nameEn: string;
+  nameAr: string;
+  type: string;
+  category: string;
+  parentFeature: string | null;
+  capability: string | null;
+  routes: string[];
+  apiFamilies: string[];
+  featureSource: string;
+  featureType: string;
+  adminVisible: boolean;
+  ctrl: Ctrl;
 }
 
 interface Stats {
+  total: number;
+  registryBacked: number;
+  legacyTotal: number;
+  legacyMapped: number;
+  legacyUnmapped: number;
   customerFeatures: number;
   subFeatures: number;
   adminFeatures: number;
-  totalRegistry: number;
-  persistedControls: number;
   active: number;
   disabled: number;
   hidden: number;
   beta: number;
   killed: number;
   customerVisible: number;
+  adminOnly: number;
 }
 
 interface Props {
@@ -52,372 +64,463 @@ interface Props {
   stats: Stats;
 }
 
-const STATUS_OPTIONS = ['enabled', 'disabled', 'hidden', 'beta', 'deprecated'];
-const PLAN_OPTIONS = ['', 'k_start', 'k_growth', 'k_pro', 'k_enterprise'];
-const TYPE_OPTIONS = ['', 'feature', 'subfeature', 'admin_internal'];
+// ── Constants ──────────────────────────────────────────────────────────────────
 
-const statusColor: Record<string, string> = {
-  enabled: '#16a34a',
-  beta: '#2563eb',
-  disabled: '#dc2626',
-  hidden: '#d97706',
-  deprecated: '#6b7280',
+const TYPE_FILTER_OPTIONS = [
+  { key: 'all',             label: 'الكل' },
+  { key: 'feature',         label: 'Customer Features' },
+  { key: 'subfeature',      label: 'Sub-Features' },
+  { key: 'admin_internal',  label: 'Admin/Internal' },
+  { key: 'legacy_mapped',   label: 'Legacy / Mapped' },
+  { key: 'legacy_unmapped', label: 'Legacy / Unmapped' },
+  { key: 'customer_visible',label: 'Customer Visible' },
+  { key: 'admin_only',      label: 'Admin Only' },
+  { key: 'disabled',        label: 'Disabled' },
+  { key: 'hidden',          label: 'Hidden' },
+  { key: 'beta',            label: 'Beta' },
+  { key: 'killed',          label: 'Kill Switch' },
+];
+
+const TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  feature:         { bg: '#dbeafe', text: '#1d4ed8', label: 'Customer Feature' },
+  subfeature:      { bg: '#ede9fe', text: '#6d28d9', label: 'Sub-Feature' },
+  admin_internal:  { bg: '#fee2e2', text: '#991b1b', label: 'Admin/Internal' },
+  legacy_mapped:   { bg: '#fef9c3', text: '#92400e', label: 'Legacy · Mapped' },
+  legacy_unmapped: { bg: '#fce7f3', text: '#9d174d', label: 'Legacy · Unmapped' },
 };
 
-const planLabel: Record<string, string> = {
-  '': 'any',
-  k_start: 'Start',
-  k_growth: 'Growth',
-  k_pro: 'Pro',
-  k_enterprise: 'Enterprise',
+const SOURCE_COLORS: Record<string, { bg: string; text: string }> = {
+  registry:  { bg: '#d1fae5', text: '#065f46' },
+  legacy_db: { bg: '#fef9c3', text: '#92400e' },
 };
 
-const planColor: Record<string, string> = {
-  '': '#6b7280',
-  k_start: '#64748b',
-  k_growth: '#2563eb',
-  k_pro: '#7c3aed',
-  k_enterprise: '#b91c1c',
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  enabled:    { bg: '#d1fae5', text: '#065f46' },
+  disabled:   { bg: '#fee2e2', text: '#991b1b' },
+  hidden:     { bg: '#f1f5f9', text: '#64748b' },
+  beta:       { bg: '#ede9fe', text: '#6d28d9' },
+  deprecated: { bg: '#f1f5f9', text: '#9ca3af' },
 };
 
-type Saving = Record<string, boolean>;
+const CATEGORY_AR: Record<string, string> = {
+  conversations: 'المحادثات',
+  customers: 'العملاء',
+  sales: 'المبيعات',
+  marketing: 'التسويق',
+  automation: 'الأتمتة',
+  ai: 'الذكاء الاصطناعي',
+  analytics: 'التحليلات',
+  settings: 'الإعدادات',
+  integrations: 'التكاملات',
+  developer: 'المطوّرون',
+  security: 'الأمان',
+  admin: 'إداري',
+  core: 'الأساسيات',
+  support: 'الدعم',
+  intelligence: 'الذكاء',
+  messaging: 'المراسلة',
+  commerce: 'التجارة',
+  team: 'الفريق',
+  operations: 'العمليات',
+  enterprise: 'المؤسسات',
+  scale: 'التوسّع',
+};
 
-export default function FeatureCenterClient({ features: initial, stats }: Props) {
-  const [features, setFeatures] = useState<MergedFeature[]>(initial);
-  const [saving, setSaving] = useState<Saving>({});
-  const [error, setError] = useState<Record<string, string>>({});
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterPlan, setFilterPlan] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [expandedCategory, setExpandedCategory] = useState<Record<string, boolean>>({});
-  const [toast, setToast] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ added: number; existing: number; total: number } | null>(null);
+// ── Stat tile ─────────────────────────────────────────────────────────────────
 
-  const categories = useMemo(() => [...new Set(features.map(f => f.category))].sort(), [features]);
+function Tile({ label, value, color, onClick, active }: {
+  label: string; value: number; color: string;
+  onClick?: () => void; active?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: active ? `${color}20` : '#fff',
+        border: `1.5px solid ${active ? color : '#e2e8f0'}`,
+        borderRadius: '10px',
+        padding: '10px 14px',
+        cursor: onClick ? 'pointer' : 'default',
+        textAlign: 'left',
+        minWidth: '100px',
+        flex: '0 0 auto',
+      }}
+    >
+      <div style={{ fontSize: '20px', fontWeight: '700', color }}>{value}</div>
+      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', lineHeight: 1.3 }}>{label}</div>
+    </button>
+  );
+}
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return features.filter(f => {
-      if (search && !f.nameEn.toLowerCase().includes(q) && !f.key.includes(q) && !f.nameAr.includes(q)) return false;
-      if (filterStatus && f.ctrl.status !== filterStatus) return false;
-      if (filterPlan && (f.ctrl.requiredPlan ?? '') !== filterPlan) return false;
-      if (filterCategory && f.category !== filterCategory) return false;
-      if (filterType && f.type !== filterType) return false;
-      return true;
-    });
-  }, [features, search, filterStatus, filterPlan, filterCategory, filterType]);
+// ── Visibility toggle ─────────────────────────────────────────────────────────
 
-  const byCategory = useMemo(() => {
-    const m: Record<string, MergedFeature[]> = {};
-    for (const f of filtered) {
-      if (!m[f.category]) m[f.category] = [];
-      m[f.category].push(f);
-    }
-    return m;
-  }, [filtered]);
+function VisibilityToggle({
+  feature, onToggle,
+}: { feature: MergedFeature; onToggle: (id: string, visible: boolean) => Promise<void> }) {
+  const [loading, setLoading] = useState(false);
+  const visible = feature.ctrl.customerVisible && !feature.ctrl.adminOnly;
 
-  async function patch(featureId: string, body: object) {
-    setSaving(s => ({ ...s, [featureId]: true }));
-    setError(e => { const n = { ...e }; delete n[featureId]; return n; });
-    try {
-      const res = await fetch(`/api/admin/feature-control/${featureId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Failed');
-      setFeatures(prev => prev.map(f =>
-        f.key === featureId ? { ...f, ctrl: { ...f.ctrl, ...body } } : f
-      ));
-      setToast(`${featureId} updated`);
-      setTimeout(() => setToast(null), 2000);
-    } catch (e: any) {
-      setError(err => ({ ...err, [featureId]: e.message }));
-    } finally {
-      setSaving(s => { const n = { ...s }; delete n[featureId]; return n; });
-    }
+  async function toggle() {
+    if (loading) return;
+    setLoading(true);
+    try { await onToggle(feature.featureId, !visible); }
+    finally { setLoading(false); }
   }
-
-  async function syncRegistry() {
-    setSyncing(true);
-    try {
-      const res = await fetch('/api/admin/feature-control/sync', { method: 'POST' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'sync failed');
-      setSyncResult({ added: json.added, existing: json.existing, total: json.total });
-      setToast(`Sync complete — ${json.added} added, ${json.existing} already persisted`);
-      setTimeout(() => setToast(null), 4000);
-    } catch (e: any) {
-      setToast(`Sync failed: ${e.message}`);
-      setTimeout(() => setToast(null), 4000);
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  const notPersisted = stats.totalRegistry - stats.persistedControls;
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '24px', maxWidth: '1400px' }}>
+    <button
+      onClick={toggle}
+      disabled={loading}
+      style={{
+        padding: '3px 8px', borderRadius: '6px', border: 'none',
+        fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+        background: visible ? '#d1fae5' : '#f1f5f9',
+        color: visible ? '#065f46' : '#475569',
+        opacity: loading ? 0.5 : 1, whiteSpace: 'nowrap',
+      }}
+    >
+      {loading ? '…' : visible ? '✓ Customer Visible' : '⊘ Admin Only'}
+    </button>
+  );
+}
 
-      {/* Header */}
-      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+// ── Feature row ───────────────────────────────────────────────────────────────
+
+function FeatureRow({
+  feature, onVisibilityToggle,
+}: { feature: MergedFeature; onVisibilityToggle: (id: string, visible: boolean) => Promise<void> }) {
+  const [expanded, setExpanded] = useState(false);
+  const tc = TYPE_COLORS[feature.featureType] ?? { bg: '#f1f5f9', text: '#475569', label: feature.featureType };
+  const sc = SOURCE_COLORS[feature.featureSource] ?? SOURCE_COLORS.legacy_db;
+  const stc = STATUS_COLORS[feature.ctrl.status] ?? STATUS_COLORS.hidden;
+  const isLegacy = feature.featureSource === 'legacy_db';
+
+  return (
+    <div style={{ borderBottom: '1px solid #f1f5f9', background: isLegacy ? 'rgba(254,249,195,.25)' : '#fff' }}>
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 110px 90px 90px 75px 140px 22px',
+          gap: '8px', padding: '10px 16px', cursor: 'pointer', alignItems: 'center',
+        }}
+      >
+        {/* Name + key + route */}
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', margin: '0 0 2px' }}>مركز التحكم بالمنتج</h1>
-          <p style={{ color: '#6b7280', margin: 0, fontSize: '13px' }}>Feature Control Center — changes apply within 30 seconds</p>
-        </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {notPersisted > 0 && (
-            <span style={{ fontSize: '12px', color: '#d97706', background: '#fef9c3', padding: '3px 10px', borderRadius: '6px', border: '1px solid #fde047' }}>
-              {notPersisted} features use default state (not persisted)
-            </span>
-          )}
-          <button
-            onClick={syncRegistry}
-            disabled={syncing}
-            style={{
-              padding: '6px 14px', background: syncing ? '#94a3b8' : '#2563eb', color: '#fff',
-              border: 'none', borderRadius: '6px', fontSize: '12px', cursor: syncing ? 'not-allowed' : 'pointer', fontWeight: '600',
-            }}
-          >
-            {syncing ? 'Syncing…' : 'Sync Registry → DB'}
-          </button>
-          {toast && (
-            <div style={{ background: '#d1fae5', color: '#065f46', padding: '6px 14px', borderRadius: '6px', fontSize: '13px' }}>
-              ✓ {toast}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Classification Banner */}
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
-        <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>
-          Product Inventory — from master-feature-registry.json
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
-          {[
-            { label: 'Customer Features', value: stats.customerFeatures, color: '#2563eb', note: 'type=feature' },
-            { label: 'Sub / Embedded', value: stats.subFeatures, color: '#7c3aed', note: 'type=subfeature' },
-            { label: 'Admin / Internal', value: stats.adminFeatures, color: '#dc2626', note: 'type=admin_internal' },
-            { label: 'Total Registry', value: stats.totalRegistry, color: '#1e293b', note: 'all types' },
-            { label: 'Persisted in DB', value: stats.persistedControls, color: '#16a34a', note: 'FeatureControl rows' },
-            { label: 'Active', value: stats.active, color: '#16a34a', note: 'status=enabled' },
-            { label: 'Disabled', value: stats.disabled, color: '#dc2626', note: 'status=disabled' },
-            { label: 'Hidden', value: stats.hidden, color: '#d97706', note: 'status=hidden' },
-            { label: 'Kill-Switched', value: stats.killed, color: '#dc2626', note: 'killSwitch=true' },
-            { label: 'Customer Visible', value: stats.customerVisible, color: '#0891b2', note: 'customerVisible=true' },
-          ].map(({ label, value, color, note }) => (
-            <div key={label} style={{ background: '#fff', borderRadius: '8px', padding: '10px 14px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>{label}</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color }}>{value}</div>
-              <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>{note}</div>
-            </div>
-          ))}
-        </div>
-        {syncResult && (
-          <div style={{ marginTop: '12px', fontSize: '12px', color: '#16a34a', background: '#f0fdf4', padding: '8px 12px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-            Last sync: {syncResult.added} rows added, {syncResult.existing} already existed. Total: {syncResult.total}
-          </div>
-        )}
-      </div>
-
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search features…"
-          style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px', flex: '1', minWidth: '180px' }}
-        />
-        <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px' }}>
-          <option value="">All types</option>
-          <option value="feature">Customer Features</option>
-          <option value="subfeature">Sub-Features</option>
-          <option value="admin_internal">Admin Internal</option>
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px' }}>
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)}
-          style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px' }}>
-          <option value="">All plans</option>
-          {PLAN_OPTIONS.filter(p => p).map(p => <option key={p} value={p}>{planLabel[p]}</option>)}
-        </select>
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px' }}>
-          <option value="">All categories</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <span style={{ fontSize: '12px', color: '#6b7280', alignSelf: 'center' }}>{filtered.length} shown</span>
-      </div>
-
-      {/* Feature table by category */}
-      {Object.entries(byCategory).map(([category, catFeatures]) => {
-        const isExpanded = expandedCategory[category] !== false;
-        const adminCat = catFeatures.every(f => f.type === 'admin_internal');
-        return (
-          <div key={category} style={{ marginBottom: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-            <button
-              onClick={() => setExpandedCategory(prev => ({ ...prev, [category]: !isExpanded }))}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 16px', background: adminCat ? '#fef2f2' : '#f8fafc', border: 'none', cursor: 'pointer',
-                fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em',
-                color: adminCat ? '#991b1b' : '#475569',
-              }}
-            >
-              <span>
-                {adminCat && '🔒 '}
-                {category} ({catFeatures.length})
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '13px', fontWeight: '600' }}>{feature.nameEn || feature.ctrl.description || feature.featureId}</span>
+            {feature.ctrl.killSwitch && (
+              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fee2e2', color: '#991b1b', fontWeight: '700' }}>
+                KILL SWITCH
               </span>
-              <span>{isExpanded ? '▲' : '▼'}</span>
-            </button>
-
-            {isExpanded && (
-              <div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '200px 1fr 100px 110px 80px 80px 80px 90px',
-                  gap: '8px', padding: '6px 16px',
-                  background: '#f1f5f9', borderBottom: '1px solid #e2e8f0',
-                  fontSize: '11px', fontWeight: '600', color: '#64748b',
-                }}>
-                  <span>Feature</span>
-                  <span>Key / Routes</span>
-                  <span>Status</span>
-                  <span>Plan</span>
-                  <span>Rollout%</span>
-                  <span>Visible</span>
-                  <span>Kill</span>
-                  <span>Type</span>
-                </div>
-
-                {catFeatures.map((f, i) => (
-                  <div key={f.id} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '200px 1fr 100px 110px 80px 80px 80px 90px',
-                    gap: '8px', padding: '10px 16px', alignItems: 'center',
-                    background: f.ctrl.killSwitch ? '#fff5f5' : (i % 2 === 0 ? '#fff' : '#f8fafc'),
-                    borderBottom: i < catFeatures.length - 1 ? '1px solid #f1f5f9' : 'none',
-                    opacity: saving[f.key] ? 0.6 : 1,
-                  }}>
-                    {/* Name */}
-                    <div>
-                      <div style={{ fontWeight: '500', fontSize: '13px' }}>{f.nameEn}</div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', direction: 'rtl', textAlign: 'left' }}>{f.nameAr}</div>
-                      {f.parentFeature && <div style={{ fontSize: '10px', color: '#94a3b8' }}>↳ {f.parentFeature}</div>}
-                      {error[f.key] && <div style={{ fontSize: '10px', color: '#dc2626' }}>✗ {error[f.key]}</div>}
-                    </div>
-
-                    {/* Key / Routes */}
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{f.key}</div>
-                      {f.routes.slice(0, 2).map(r => (
-                        <div key={r} style={{ fontSize: '10px', color: '#94a3b8' }}>{r}</div>
-                      ))}
-                    </div>
-
-                    {/* Status */}
-                    <select
-                      value={f.ctrl.status}
-                      disabled={saving[f.key]}
-                      onChange={e => patch(f.key, { status: e.target.value })}
-                      style={{
-                        fontSize: '11px', padding: '2px 4px', border: '1px solid #e2e8f0', borderRadius: '4px',
-                        background: `${statusColor[f.ctrl.status] || '#6b7280'}18`,
-                        color: statusColor[f.ctrl.status] || '#6b7280', fontWeight: '600', cursor: 'pointer',
-                      }}
-                    >
-                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-
-                    {/* Plan */}
-                    <select
-                      value={f.ctrl.requiredPlan ?? ''}
-                      disabled={saving[f.key]}
-                      onChange={e => patch(f.key, { requiredPlan: e.target.value || null })}
-                      style={{
-                        fontSize: '11px', padding: '2px 4px', border: '1px solid #e2e8f0', borderRadius: '4px',
-                        color: planColor[f.ctrl.requiredPlan ?? ''], fontWeight: '600', cursor: 'pointer',
-                      }}
-                    >
-                      {PLAN_OPTIONS.map(p => <option key={p} value={p}>{planLabel[p] ?? p}</option>)}
-                    </select>
-
-                    {/* Rollout % */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <input
-                        type="number" min={0} max={100}
-                        value={f.ctrl.rolloutPct}
-                        disabled={saving[f.key]}
-                        onChange={e => {
-                          const v = parseInt(e.target.value, 10);
-                          if (!isNaN(v) && v >= 0 && v <= 100)
-                            setFeatures(prev => prev.map(x => x.key === f.key ? { ...x, ctrl: { ...x.ctrl, rolloutPct: v } } : x));
-                        }}
-                        onBlur={e => patch(f.key, { rolloutPct: parseInt(e.target.value, 10) || 100 })}
-                        style={{ width: '44px', fontSize: '11px', padding: '2px 4px', border: '1px solid #e2e8f0', borderRadius: '4px', textAlign: 'center' }}
-                      />
-                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>%</span>
-                    </div>
-
-                    {/* Customer Visible */}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                      <input
-                        type="checkbox"
-                        checked={f.ctrl.customerVisible}
-                        disabled={saving[f.key]}
-                        onChange={e => patch(f.key, { customerVisible: e.target.checked })}
-                      />
-                      <span style={{ color: f.ctrl.customerVisible ? '#16a34a' : '#dc2626' }}>
-                        {f.ctrl.customerVisible ? 'yes' : 'no'}
-                      </span>
-                    </label>
-
-                    {/* Kill Switch */}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                      <input
-                        type="checkbox"
-                        checked={f.ctrl.killSwitch}
-                        disabled={saving[f.key]}
-                        onChange={e => patch(f.key, { killSwitch: e.target.checked })}
-                      />
-                      <span style={{ color: f.ctrl.killSwitch ? '#dc2626' : '#94a3b8', fontWeight: f.ctrl.killSwitch ? '700' : 'normal' }}>
-                        {f.ctrl.killSwitch ? '🔴 ON' : 'off'}
-                      </span>
-                    </label>
-
-                    {/* Type */}
-                    <div>
-                      <span style={{
-                        fontSize: '10px', padding: '1px 6px', borderRadius: '99px',
-                        background: f.type === 'admin_internal' ? '#fee2e2' : f.type === 'subfeature' ? '#f0fdf4' : '#eff6ff',
-                        color: f.type === 'admin_internal' ? '#991b1b' : f.type === 'subfeature' ? '#166534' : '#1e40af',
-                      }}>
-                        {f.type === 'admin_internal' ? 'admin' : f.type === 'subfeature' ? 'sub' : 'feature'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
             )}
           </div>
-        );
-      })}
+          <div style={{ display: 'flex', gap: '4px', marginTop: '2px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#94a3b8' }}>{feature.featureId}</span>
+            {feature.routes.length > 0 ? (
+              <span style={{ fontSize: '10px', color: '#2563eb', background: '#eff6ff', padding: '0 5px', borderRadius: '4px' }}>
+                {feature.routes[0]}
+              </span>
+            ) : (
+              <span style={{ fontSize: '10px', color: '#94a3b8', background: '#f8fafc', padding: '0 5px', borderRadius: '4px' }}>
+                NO CUSTOMER PAGE
+              </span>
+            )}
+          </div>
+        </div>
 
-      {filtered.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '48px', color: '#6b7280' }}>
-          No features match the current filters.
+        {/* Type badge */}
+        <div>
+          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '5px', background: tc.bg, color: tc.text, fontWeight: '600' }}>
+            {tc.label}
+          </span>
+        </div>
+
+        {/* Category */}
+        <div style={{ fontSize: '11px', color: '#475569' }}>
+          {CATEGORY_AR[feature.category] ?? feature.category}
+        </div>
+
+        {/* Plan */}
+        <div style={{ fontSize: '11px', color: '#6b7280' }}>
+          {feature.ctrl.requiredPlan?.replace('k_', '') ?? 'any'}
+        </div>
+
+        {/* Status */}
+        <div>
+          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '5px', background: stc.bg, color: stc.text, fontWeight: '600' }}>
+            {feature.ctrl.status}
+          </span>
+        </div>
+
+        {/* Visibility */}
+        <div onClick={e => e.stopPropagation()}>
+          <VisibilityToggle feature={feature} onToggle={onVisibilityToggle} />
+        </div>
+
+        {/* Expand */}
+        <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center' }}>
+          {expanded ? '▲' : '▼'}
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {expanded && (
+        <div style={{ padding: '12px 16px 14px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '12px', fontSize: '12px' }}>
+            <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Source</span>
+              <span style={{ padding: '2px 8px', borderRadius: '4px', background: sc.bg, color: sc.text, fontSize: '11px', fontWeight: '600' }}>
+                {feature.featureSource === 'registry' ? '✦ Registry' : '⚑ Legacy DB'}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin Visibility</span>
+              <span style={{ color: '#16a34a', fontWeight: '600' }}>Always visible ✓</span>
+            </div>
+            {feature.nameAr && <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arabic Name</span>
+              <span>{feature.nameAr}</span>
+            </div>}
+            {feature.capability && <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Capability</span>
+              <span style={{ fontFamily: 'monospace' }}>{feature.capability}</span>
+            </div>}
+            {feature.parentFeature && <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Parent Feature</span>
+              <span style={{ fontFamily: 'monospace' }}>{feature.parentFeature}</span>
+            </div>}
+            <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rollout</span>
+              <span>{feature.ctrl.rolloutPct}%</span>
+            </div>
+            {feature.ctrl.releaseId && <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Release</span>
+              <span style={{ fontFamily: 'monospace' }}>{feature.ctrl.releaseId}</span>
+            </div>}
+            {feature.ctrl.dependencies.length > 0 && <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dependencies</span>
+              <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>{feature.ctrl.dependencies.join(', ')}</span>
+            </div>}
+            {feature.routes.length > 0 && <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Routes</span>
+              <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>{feature.routes.join(', ')}</span>
+            </div>}
+            {feature.apiFamilies?.length > 0 && <div>
+              <span style={{ color: '#64748b', display: 'block', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>API Families</span>
+              <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>{feature.apiFamilies.join(', ')}</span>
+            </div>}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+export default function FeatureCenterClient({ features: initialFeatures, stats }: Props) {
+  const [features, setFeatures] = useState(initialFeatures);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [syncState, setSyncState] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle');
+  const [syncMsg, setSyncMsg] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    let result = features;
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter(f =>
+        f.featureId.toLowerCase().includes(q) ||
+        (f.nameEn?.toLowerCase() ?? '').includes(q) ||
+        (f.nameAr?.toLowerCase() ?? '').includes(q) ||
+        (f.category?.toLowerCase() ?? '').includes(q)
+      );
+    }
+    switch (filter) {
+      case 'feature':          result = result.filter(f => f.featureType === 'feature'); break;
+      case 'subfeature':       result = result.filter(f => f.featureType === 'subfeature'); break;
+      case 'admin_internal':   result = result.filter(f => f.featureType === 'admin_internal'); break;
+      case 'legacy_mapped':    result = result.filter(f => f.featureType === 'legacy_mapped'); break;
+      case 'legacy_unmapped':  result = result.filter(f => f.featureType === 'legacy_unmapped'); break;
+      case 'customer_visible': result = result.filter(f => f.ctrl.customerVisible && !f.ctrl.adminOnly && !f.ctrl.killSwitch); break;
+      case 'admin_only':       result = result.filter(f => f.ctrl.adminOnly || !f.ctrl.customerVisible); break;
+      case 'disabled':         result = result.filter(f => f.ctrl.status === 'disabled'); break;
+      case 'hidden':           result = result.filter(f => f.ctrl.status === 'hidden'); break;
+      case 'beta':             result = result.filter(f => f.ctrl.status === 'beta'); break;
+      case 'killed':           result = result.filter(f => f.ctrl.killSwitch); break;
+    }
+    return result;
+  }, [features, filter, search]);
+
+  const handleVisibilityToggle = useCallback(async (featureId: string, customerVisible: boolean) => {
+    const res = await fetch(`/api/admin/feature-control/${featureId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerVisible }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? 'Failed to update');
+    }
+    setFeatures(prev => prev.map(f =>
+      f.featureId === featureId ? { ...f, ctrl: { ...f.ctrl, customerVisible } } : f
+    ));
+    setToast(`${featureId} → ${customerVisible ? 'customer visible' : 'admin only'}`);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  async function handleSync() {
+    setSyncState('loading'); setSyncMsg('');
+    try {
+      const res = await fetch('/api/admin/feature-control/sync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'sync failed');
+      setSyncState('ok');
+      setSyncMsg(`added:${data.added} existing:${data.existing} total:${data.total}`);
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e: any) {
+      setSyncState('err'); setSyncMsg(e.message);
+    }
+  }
+
+  return (
+    <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '1300px', padding: '0 0 60px' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 4px' }}>مركز التحكم بالمنتج</h1>
+          <p style={{ color: '#6b7280', margin: 0, fontSize: '13px' }}>
+            Admin sees all {stats.total} controls · Customer visibility is controlled per feature · No entitlements changed
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {toast && <span style={{ fontSize: '12px', color: '#065f46', background: '#d1fae5', padding: '4px 10px', borderRadius: '6px' }}>✓ {toast}</span>}
+          <button
+            onClick={handleSync} disabled={syncState === 'loading'}
+            style={{
+              padding: '7px 14px', borderRadius: '7px', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+              background: syncState === 'ok' ? '#d1fae5' : syncState === 'err' ? '#fee2e2' : '#1e293b',
+              color: syncState === 'ok' ? '#065f46' : syncState === 'err' ? '#991b1b' : '#fff',
+            }}
+          >
+            {syncState === 'loading' ? 'Syncing…'
+              : syncState === 'ok' ? `✓ ${syncMsg}`
+              : syncState === 'err' ? `✗ ${syncMsg}`
+              : 'Sync Registry → DB'}
+          </button>
+        </div>
+      </div>
+
+      {/* Product Inventory banner */}
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px' }}>
+        <div style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94a3b8', marginBottom: '10px' }}>
+          PRODUCT INVENTORY — {stats.total} TOTAL FEATURE CONTROLS
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <Tile label="Total Controls" value={stats.total} color="#1e293b" />
+          <div style={{ width: '1px', background: '#e2e8f0', margin: '0 2px', alignSelf: 'stretch' }} />
+          <Tile label="Canonical" value={stats.registryBacked} color="#2563eb" onClick={() => setFilter('all')} active={filter === 'all'} />
+          <Tile label="Customer Features" value={stats.customerFeatures} color="#0284c7" onClick={() => setFilter('feature')} active={filter === 'feature'} />
+          <Tile label="Sub-Features" value={stats.subFeatures} color="#7c3aed" onClick={() => setFilter('subfeature')} active={filter === 'subfeature'} />
+          <Tile label="Admin/Internal" value={stats.adminFeatures} color="#dc2626" onClick={() => setFilter('admin_internal')} active={filter === 'admin_internal'} />
+          <div style={{ width: '1px', background: '#e2e8f0', margin: '0 2px', alignSelf: 'stretch' }} />
+          <Tile label="Legacy DB" value={stats.legacyTotal} color="#92400e" onClick={() => { setFilter('legacy_mapped'); }} active={filter === 'legacy_mapped' || filter === 'legacy_unmapped'} />
+          <Tile label="Legacy Mapped" value={stats.legacyMapped} color="#b45309" onClick={() => setFilter('legacy_mapped')} active={filter === 'legacy_mapped'} />
+          <Tile label="Legacy Unmapped" value={stats.legacyUnmapped} color="#9d174d" onClick={() => setFilter('legacy_unmapped')} active={filter === 'legacy_unmapped'} />
+        </div>
+      </div>
+
+      {/* Visibility + runtime state */}
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px' }}>
+        <div style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94a3b8', marginBottom: '10px' }}>
+          VISIBILITY &amp; RUNTIME STATE
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <Tile label="Customer Visible" value={stats.customerVisible} color="#16a34a" onClick={() => setFilter('customer_visible')} active={filter === 'customer_visible'} />
+          <Tile label="Admin Only" value={stats.adminOnly} color="#475569" onClick={() => setFilter('admin_only')} active={filter === 'admin_only'} />
+          <div style={{ width: '1px', background: '#e2e8f0', margin: '0 2px', alignSelf: 'stretch' }} />
+          <Tile label="Active" value={stats.active} color="#16a34a" />
+          <Tile label="Disabled" value={stats.disabled} color="#dc2626" onClick={() => setFilter('disabled')} active={filter === 'disabled'} />
+          <Tile label="Hidden" value={stats.hidden} color="#64748b" onClick={() => setFilter('hidden')} active={filter === 'hidden'} />
+          <Tile label="Beta" value={stats.beta} color="#7c3aed" onClick={() => setFilter('beta')} active={filter === 'beta'} />
+          <Tile label="Kill Switch" value={stats.killed} color="#dc2626" onClick={() => setFilter('killed')} active={filter === 'killed'} />
+        </div>
+      </div>
+
+      {/* Separation notice */}
+      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#92400e' }}>
+        <strong>Admin sees all {stats.total} controls.</strong>
+        {' '}Customer dashboard only shows features where{' '}
+        <code style={{ background: '#fef3c7', padding: '0 4px', borderRadius: '3px' }}>customerVisible=true</code>
+        {' '}+ plan entitlement + active status are all satisfied.
+        {' '}Toggle the button on any row to control customer visibility. Changes persist to DB immediately.
+      </div>
+
+      {/* Filter + search bar */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search key, name, category…"
+          style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', width: '220px', outline: 'none' }}
+        />
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {TYPE_FILTER_OPTIONS.map(opt => (
+            <button
+              key={opt.key} onClick={() => setFilter(opt.key)}
+              style={{
+                padding: '4px 9px', borderRadius: '6px', border: 'none', fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                background: filter === opt.key ? '#1e293b' : '#f1f5f9',
+                color: filter === opt.key ? '#fff' : '#475569',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Feature list */}
+      <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+        {/* Header row */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 110px 90px 90px 75px 140px 22px',
+          gap: '8px', padding: '8px 16px',
+          background: '#f8fafc', borderBottom: '1px solid #e2e8f0',
+          fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.07em', color: '#64748b',
+        }}>
+          <span>Feature / Key / Route</span>
+          <span>Type</span>
+          <span>Category</span>
+          <span>Plan</span>
+          <span>Status</span>
+          <span>Customer Visibility</span>
+          <span></span>
+        </div>
+
+        {/* Rows */}
+        {filtered.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+            No features match the current filter.
+          </div>
+        ) : (
+          filtered.map(f => (
+            <FeatureRow key={f.featureId} feature={f} onVisibilityToggle={handleVisibilityToggle} />
+          ))
+        )}
+
+        {/* Footer */}
+        <div style={{
+          padding: '10px 16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0',
+          fontSize: '12px', color: '#64748b', display: 'flex', justifyContent: 'space-between',
+        }}>
+          <span>Showing <strong>{filtered.length}</strong> of <strong>{stats.total}</strong> feature controls</span>
+          <span>Registry: {stats.registryBacked} · Legacy DB: {stats.legacyTotal}</span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -368,7 +368,66 @@ export interface NavAccess {
   caps?: Record<string, boolean>;
   /** Workspace module toggles (Business Type). moduleKey -> enabled. undefined = all on. */
   modules?: Partial<Record<ModuleKey, boolean>>;
+  /**
+   * Set of featureIds where customerVisible=false in FeatureControl.
+   * Admin users pass undefined (bypass) — all features visible to admin.
+   * Regular customers pass the loaded set — hides admin-disabled features.
+   */
+  disabledFeatures?: Set<string>;
 }
+
+/**
+ * Href → canonical featureId from master-feature-registry.json.
+ * Used to check FeatureControl.customerVisible before showing a nav item.
+ * Only customer-facing routes need entries here. Admin routes are irrelevant.
+ */
+export const NAV_FEATURE_BY_HREF: Record<string, string> = {
+  "/dashboard/inbox":                "whatsapp_inbox",
+  "/dashboard/escalations":          "escalations",
+  "/dashboard/quick-replies":        "quick_replies",
+  "/dashboard/my-work":              "my_work_today",
+  "/dashboard/customers":            "customer_management",
+  "/dashboard/leads":                "lead_scoring",
+  "/dashboard/segments":             "customer_segments",
+  "/dashboard/import":               "customer_import",
+  "/dashboard/orders":               "order_management",
+  "/dashboard/products":             "product_catalog",
+  "/dashboard/coupons":              "coupons_discounts",
+  "/dashboard/broadcasts-pro":       "broadcasts_pro",
+  "/dashboard/recovery":             "customer_recovery",
+  "/dashboard/qr-queue":             "qr_broadcast_queue",
+  "/dashboard/sms":                  "sms_channel",
+  "/dashboard/bot":                  "bot_configuration",
+  "/dashboard/bot-builder":          "bot_builder_legacy",
+  "/dashboard/automations":          "advanced_automations",
+  "/dashboard/knowledge":            "knowledge_base",
+  "/dashboard/working-hours":        "working_hours",
+  "/dashboard/flow-builder":         "flow_builder",
+  "/dashboard/agents":               "ai_agents",
+  "/dashboard/analytics":            "analytics_dashboard",
+  "/dashboard/business-intelligence":"business_intelligence",
+  "/dashboard/funnel":               "sales_pipeline",
+  "/dashboard/revenue-copilot":      "revenue_copilot",
+  "/dashboard/business":             "business_performance",
+  "/dashboard/revenue-pro":          "revenue_pro_analytics",
+  "/dashboard/export":               "customer_export",
+  "/dashboard/wallet":               "wallet_credits",
+  "/dashboard/billing":              "billing_plan",
+  "/dashboard/integrations":         "integrations_hub",
+  "/dashboard/developer":            "developer_portal",
+  "/dashboard/branches":             "branches_management",
+  "/dashboard/approvals":            "approval_workflows",
+  "/dashboard/audit-log":            "audit_log",
+  "/dashboard/white-label":          "white_label",
+  "/dashboard/settings/numbers":     "whatsapp_numbers",
+  "/dashboard/settings/team":        "team_members",
+  "/dashboard/settings/ai-provider": "ai_provider_settings",
+  "/dashboard/settings/meta-cloud":  "meta_cloud_integration",
+  "/dashboard/settings/bridge":      "bridge_desktop_app",
+  "/dashboard/ai-operations":        "ai_operations_center",
+  "/dashboard/whatsapp-health":      "whatsapp_health",
+  "/dashboard/meta-health":          "meta_health_monitor",
+};
 
 /**
  * Destination → workspace MODULE. When a tenant disables a module (by Business
@@ -457,6 +516,13 @@ export function navItemVisible(i: NavItem, opts: NavAccess): boolean {
     const mod = NAV_MODULE_BY_HREF[i.href];
     if (mod && opts.modules[mod] === false) return false;
   }
+  // FeatureControl.customerVisible gate: admin can disable customer visibility of
+  // any feature from Feature Center. disabledFeatures is undefined for admin
+  // principals (who bypass this gate entirely).
+  if (opts.disabledFeatures) {
+    const fid = NAV_FEATURE_BY_HREF[i.href];
+    if (fid && opts.disabledFeatures.has(fid)) return false;
+  }
   return true;
 }
 
@@ -476,7 +542,7 @@ function accessibleWorkspaces(role: Role, simple = false, pathname = "", access:
   return WORKSPACES.map((w) => ({
     ...w,
     items: w.items.filter((i) => {
-      // Items hidden by role/mode/module are never shown.
+      // Items hidden by role/mode/module/customerVisible are never shown.
       if (!navItemVisible(i, { role, ...access })) return false;
       if (!access.activated) return true;
       // Locked items (plan-gated) are shown but rendered differently.
@@ -536,12 +602,12 @@ function ContextRow({ item, active, locked = false }: { item: NavItem; active: b
  * Desktop chrome: workspace icon RAIL + CONTEXTUAL panel. The rail is the
  * identity of the OS; the panel is the context you're working in.
  */
-export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, isPlatformAdmin = false }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; isPlatformAdmin?: boolean }) {
+export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, isPlatformAdmin = false, disabledFeatures }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; isPlatformAdmin?: boolean; disabledFeatures?: Set<string> }) {
   const pathname = usePathname();
   const [_simple, toggleMode] = useNavMode();
   // Admins (enforce=false) always see full nav regardless of localStorage preference.
   const simple = enforce ? _simple : false;
-  const baseSpaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules });
+  const baseSpaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules, disabledFeatures });
   const spaces = isPlatformAdmin ? [...baseSpaces, ADMIN_WORKSPACE] : baseSpaces;
   const currentWs = workspaceForPath(pathname, spaces);
   // Which workspace's items are shown in the panel. Defaults to the one holding
@@ -550,6 +616,7 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
   useEffect(() => setViewId(currentWs.id), [currentWs.id]);
 
   const viewed = spaces.find((w) => w.id === viewId) ?? spaces[0];
+  const accessOpts: Omit<NavAccess, "role"> = { activated, metaMode, enforce, caps, modules, disabledFeatures };
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -595,7 +662,7 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
             key={it.href}
             item={it}
             active={isActivePath(pathname, it.href)}
-            locked={navItemLocked(it, { role, activated, metaMode, enforce, caps, modules })}
+            locked={navItemLocked(it, { role, ...accessOpts })}
           />
         ))}
         {activated && <NavModeToggle simple={simple} toggle={toggleMode} />}
@@ -608,11 +675,11 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
  * Mobile drawer: full workspace map, each workspace as a labelled group. No rail
  * (touch targets win over density on small screens).
  */
-export function NavLinks({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>> }) {
+export function NavLinks({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, disabledFeatures }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; disabledFeatures?: Set<string> }) {
   const pathname = usePathname();
   const [_simple, toggleMode] = useNavMode();
   const simple = enforce ? _simple : false;
-  const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules });
+  const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules, disabledFeatures });
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
       {spaces.map((w) => (
@@ -627,7 +694,7 @@ export function NavLinks({ role = "owner", activated = true, metaMode = "qr", en
                 key={it.href}
                 item={it}
                 active={isActivePath(pathname, it.href)}
-                locked={navItemLocked(it, { role, activated, metaMode, enforce, caps, modules })}
+                locked={navItemLocked(it, { role, activated, metaMode, enforce, caps, modules, disabledFeatures })}
               />
             ))}
           </div>

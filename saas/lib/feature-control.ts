@@ -26,6 +26,10 @@ export interface FeatureControlRow {
   killSwitch: boolean;
   rolloutPct: number;
   releaseId: string | null;
+  // Classification
+  featureSource: string;   // "registry" | "legacy_db"
+  featureType: string;     // "feature" | "subfeature" | "admin_internal" | "legacy_unmapped" | "legacy_mapped"
+  adminVisible: boolean;
 }
 
 let cache: Map<string, FeatureControlRow> | null = null;
@@ -62,7 +66,13 @@ async function loadAll(): Promise<Map<string, FeatureControlRow>> {
   for (const r of rows) {
     let deps: string[] = [];
     try { deps = JSON.parse(r.dependencies || "[]"); } catch {}
-    m.set(r.featureId, { ...r, dependencies: deps });
+    m.set(r.featureId, {
+      ...r,
+      dependencies: deps,
+      featureSource: r.featureSource ?? "legacy_db",
+      featureType: r.featureType ?? "feature",
+      adminVisible: r.adminVisible ?? true,
+    });
   }
   cache = m;
   cacheAt = now;
@@ -491,7 +501,7 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
 
 /** @deprecated Superseded by seedFeatureRegistry(); kept for the older admin call-site. */
 export async function seedDefaultFeatureControls(): Promise<void> {
-  const defaults: Array<Omit<FeatureControlRow, "featureId"> & { featureId: string }> = [
+  const defaults: Array<Record<string, any>> = [
     // ─── Messaging ────────────────────────────────────────────────────────────
     { featureId: "k1sms", name: "K1SMS — رسائل SMS", description: "بنية تحتية رسائل SMS للطلبات والتحقق والتنبيهات", category: "messaging", workspace: "ops", status: "enabled", customerVisible: true, adminOnly: false, beta: true, requiredPlan: null, dependencies: [], requiredIntegration: "sms_provider", mobileVisible: true, killSwitch: false, rolloutPct: 100, releaseId: "commerce" },
     { featureId: "k1sms_otp", name: "OTP — رمز التحقق", description: "رموز التحقق المؤقتة عبر SMS", category: "messaging", workspace: "settings", status: "enabled", customerVisible: false, adminOnly: true, beta: true, requiredPlan: null, dependencies: ["k1sms"], requiredIntegration: "sms_provider", mobileVisible: false, killSwitch: false, rolloutPct: 100, releaseId: "commerce" },
@@ -543,19 +553,45 @@ export interface RegistryEntry {
   requiredPlan?: string | null;
 }
 
+// ── Legacy key → canonical feature mapping ──────────────────────────────────
+// Legacy rows whose featureId is a capability-level key (from old seeding) that
+// maps to a canonical registry feature under a different key. Keeps both rows
+// alive; just classifies the legacy one as "legacy_mapped".
+const LEGACY_MAPPED_KEYS = new Set([
+  'advanced_analytics','advanced_insights','advanced_reporting','ai_operations',
+  'api_access','auto_reply','basic_analytics','broadcast_credits','broadcasts',
+  'compliance_monitoring','custom_integrations','customer_segmentation',
+  'data_export','forecasting','funnel_analytics','human_handoff','inbox',
+  'integrations','k1sms','loyalty_rewards','meta_cloud','multi_branch',
+  'multi_team','multi_whatsapp','my_work','next_best_action','products',
+  'recovery','revenue_pro','safety_controls','segments','smart_assistant',
+  'smart_campaign_builder','sms_messaging','support_inbox','team','team_routing',
+  'wallet',
+]);
+
 export async function syncRegistryFromJson(
   registry: RegistryEntry[],
 ): Promise<{ added: number; existing: number }> {
-  const existingSet = new Set<string>(
-    (await (prisma as any).featureControl.findMany({ select: { featureId: true } }))
-      .map((r: any) => r.featureId as string),
-  );
+  const existingRows = await (prisma as any).featureControl.findMany({ select: { featureId: true } });
+  const existingSet = new Set<string>(existingRows.map((r: any) => r.featureId as string));
 
   let added = 0;
   let existing = 0;
 
   for (const f of registry) {
-    if (existingSet.has(f.key)) { existing++; continue; }
+    if (existingSet.has(f.key)) {
+      // Update source/type on existing registry-backed rows (idempotent)
+      await (prisma as any).featureControl.update({
+        where: { featureId: f.key },
+        data: {
+          featureSource: 'registry',
+          featureType: f.type ?? 'feature',
+          adminVisible: true,
+        },
+      });
+      existing++;
+      continue;
+    }
 
     const isAdmin = f.type === 'admin_internal';
     await (prisma as any).featureControl.create({
@@ -576,11 +612,63 @@ export async function syncRegistryFromJson(
         killSwitch:      false,
         rolloutPct:      100,
         releaseId:       null,
+        featureSource:   'registry',
+        featureType:     f.type ?? 'feature',
+        adminVisible:    true,
       },
     });
     added++;
   }
 
+  // Also update legacy rows with their classification
+  await classifyLegacyRows(existingSet, new Set(registry.map((f: RegistryEntry) => f.key)));
+
   invalidateFeatureCache();
   return { added, existing };
+}
+
+/**
+ * Classify legacy (non-registry) rows with featureSource="legacy_db" and
+ * featureType="legacy_mapped" or "legacy_unmapped".
+ * SAFE: only updates featureSource/featureType/adminVisible — never changes
+ * status, killSwitch, customerVisible, rolloutPct, or any admin-controlled field.
+ */
+export async function classifyLegacyRows(
+  allExistingKeys?: Set<string>,
+  registryKeys?: Set<string>,
+): Promise<{ classified: number }> {
+  const existing = allExistingKeys ?? new Set<string>(
+    (await (prisma as any).featureControl.findMany({ select: { featureId: true } }))
+      .map((r: any) => r.featureId as string),
+  );
+  const regKeys = registryKeys ?? new Set<string>(existing); // fallback: treat all as non-legacy
+
+  let classified = 0;
+  for (const fid of existing) {
+    if (regKeys.has(fid)) continue; // skip registry-backed rows
+    const legacyType = LEGACY_MAPPED_KEYS.has(fid) ? 'legacy_mapped' : 'legacy_unmapped';
+    await (prisma as any).featureControl.update({
+      where: { featureId: fid },
+      data: {
+        featureSource: 'legacy_db',
+        featureType: legacyType,
+        adminVisible: true,
+      },
+    });
+    classified++;
+  }
+  return { classified };
+}
+
+/**
+ * Returns the set of featureIds that are NOT customer-visible.
+ * Used by the dashboard nav to suppress customer-invisible features.
+ * Admin users bypass this entirely.
+ */
+export async function getCustomerInvisibleFeatureIds(): Promise<Set<string>> {
+  const rows = await (prisma as any).featureControl.findMany({
+    where: { customerVisible: false },
+    select: { featureId: true },
+  });
+  return new Set<string>(rows.map((r: any) => r.featureId as string));
 }

@@ -10,6 +10,7 @@ import { NavLinks, SidebarNav } from "./nav-items";
 import { normalizeConnectionMode } from "@/lib/messaging/mode";
 import { getEntitlements } from "@/lib/membership/entitlements";
 import { isActiveSubscription } from "@/lib/membership/plan";
+import { getCustomerInvisibleFeatureIds } from "@/lib/feature-control";
 import { getWhiteLabelConfig } from "@/lib/whitelabel/resolve";
 import { resolveBusinessContext } from "@/lib/business-context";
 import type { Metadata } from "next";
@@ -86,6 +87,13 @@ export default async function DashboardLayout({
   // existing tenants and any DB hiccup are fully non-regressive.
   const bizCtx = await resolveBusinessContext(user.id).catch(() => null);
   const modules = bizCtx?.modules;
+
+  // Feature-level customer visibility gate. Admin principals bypass entirely
+  // (undefined = no gate). Regular owners/members receive the set of featureIds
+  // that FeatureControl.customerVisible=false so the nav hides them.
+  const disabledFeatures = isAdmin
+    ? undefined
+    : await getCustomerInvisibleFeatureIds().catch(() => undefined);
 
   const Brand = (
     <Link href="/dashboard" className="group flex items-center gap-3 px-3.5 py-4">
@@ -172,7 +180,7 @@ export default async function DashboardLayout({
               <CommandTrigger />
             </div>
             <div className="px-3 pt-1">{AdminLink}</div>
-            <NavLinks role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} />
+            <NavLinks role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} disabledFeatures={disabledFeatures} />
             {UserFooter}
           </MobileNav>
 
@@ -185,7 +193,7 @@ export default async function DashboardLayout({
                 <CommandTrigger />
               </div>
             </div>
-            <SidebarNav adminLink={AdminLink} role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} isPlatformAdmin={isAdmin} />
+            <SidebarNav adminLink={AdminLink} role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} isPlatformAdmin={isAdmin} disabledFeatures={disabledFeatures} />
             {UserFooter}
           </aside>
           <DashboardTour />
