@@ -275,7 +275,7 @@ export const WORKSPACES: Workspace[] = [
  * are simply not advertised in the sidebar or ⌘K palette.
  */
 
-/** Platform-admin-only workspace — never shown to regular owners or team members. */
+/** Platform-admin-only workspace — ALL 59 existing real/internal product pages visible to admin. */
 const ADMIN_WORKSPACE: Workspace = {
   id: "platform_admin",
   label: "Platform Admin",
@@ -283,13 +283,91 @@ const ADMIN_WORKSPACE: Workspace = {
   icon: Sliders,
   home: "/dashboard/feature-center",
   items: [
+    // ── Platform Control ──────────────────────────────────────────────────────
+    { href: "/dashboard/feature-center", label: "Feature Center", icon: Sliders, perm: "billing" },
     { href: "/admin/feature-control", label: "Feature Control", icon: Sliders, perm: "billing" },
     { href: "/admin/memberships", label: "Memberships", icon: CreditCard, perm: "billing" },
-    { href: "/dashboard/memberships", label: "Plan Editor", icon: CreditCard, perm: "billing" },
-    { href: "/admin/customers", label: "All Customers", icon: Users, perm: "billing" },
-    { href: "/dashboard/usage", label: "Usage & Limits", icon: BarChart3, perm: "billing" },
-    { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText, perm: "billing" },
-    { href: "/admin/system-health", label: "System Health", icon: Activity, perm: "billing" },
+    { href: "/dashboard/memberships", label: "Memberships Matrix", icon: CreditCard, perm: "billing" },
+
+    // ── Messaging & Inbox ─────────────────────────────────────────────────────
+    { href: "/dashboard/inbox", label: "Inbox", icon: Inbox, perm: "billing" },
+    { href: "/dashboard/quick-replies", label: "Quick Replies", icon: MessageSquare, perm: "billing" },
+    { href: "/dashboard/escalations", label: "Escalations", icon: AlertTriangle, perm: "billing" },
+    { href: "/dashboard/whatsapp-health", label: "WhatsApp Health", icon: Activity, perm: "billing" },
+    { href: "/dashboard/meta-health", label: "Meta Health", icon: Activity, perm: "billing" },
+    { href: "/dashboard/whatsapp", label: "WhatsApp (Legacy)", icon: Phone, perm: "billing" },
+    { href: "/dashboard/meta", label: "Meta (Legacy)", icon: CreditCard, perm: "billing" },
+
+    // ── Customers & Segmentation ──────────────────────────────────────────────
+    { href: "/dashboard/customers", label: "Customers", icon: Users, perm: "billing" },
+    { href: "/dashboard/leads", label: "Leads", icon: Zap, perm: "billing" },
+    { href: "/dashboard/segments", label: "Segments", icon: Layers, perm: "billing" },
+    { href: "/dashboard/import", label: "Customer Import", icon: Download, perm: "billing" },
+
+    // ── Sales & Commerce ──────────────────────────────────────────────────────
+    { href: "/dashboard/orders", label: "Orders", icon: ShoppingBag, perm: "billing" },
+    { href: "/dashboard/products", label: "Products", icon: Package, perm: "billing" },
+    { href: "/dashboard/coupons", label: "Coupons", icon: Ticket, perm: "billing" },
+
+    // ── Marketing & Growth ────────────────────────────────────────────────────
+    { href: "/dashboard/broadcasts-pro", label: "Broadcasts (QR)", icon: Send, perm: "billing" },
+    { href: "/dashboard/broadcasts", label: "Broadcasts (Classic)", icon: Send, perm: "billing" },
+    { href: "/dashboard/recovery", label: "Recovery", icon: RotateCcw, perm: "billing" },
+    { href: "/dashboard/qr-queue", label: "QR Queue", icon: CalendarClock, perm: "billing" },
+    { href: "/dashboard/sms", label: "SMS", icon: MessageCircle, perm: "billing" },
+
+    // ── Automation & AI ───────────────────────────────────────────────────────
+    { href: "/dashboard/bot", label: "Bot Configuration", icon: Bot, perm: "billing" },
+    { href: "/dashboard/bot-builder", label: "Bot Builder", icon: GitBranch, perm: "billing" },
+    { href: "/dashboard/automations", label: "Automations", icon: Zap, perm: "billing" },
+    { href: "/dashboard/flow-builder", label: "Flow Builder", icon: Workflow, perm: "billing" },
+    { href: "/dashboard/agents", label: "AI Agents", icon: Brain, perm: "billing" },
+    { href: "/dashboard/ai-operations", label: "AI Operations", icon: Lightbulb, perm: "billing" },
+    { href: "/dashboard/knowledge", label: "Knowledge Base", icon: BookOpen, perm: "billing" },
+    { href: "/dashboard/knowledge-brain", label: "Knowledge Brain", icon: Brain, perm: "billing" },
+    { href: "/dashboard/brain", label: "Brain", icon: Brain, perm: "billing" },
+    { href: "/dashboard/working-hours", label: "Working Hours", icon: CalendarClock, perm: "billing" },
+
+    // ── Analytics & Revenue ───────────────────────────────────────────────────
+    { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, perm: "billing" },
+    { href: "/dashboard/business-intelligence", label: "Business Intelligence", icon: PieChart, perm: "billing" },
+    { href: "/dashboard/funnel", label: "Funnel", icon: Filter, perm: "billing" },
+    { href: "/dashboard/revenue-copilot", label: "Revenue Copilot", icon: TrendingUp, perm: "billing" },
+    { href: "/dashboard/revenue-forecast", label: "Revenue Forecast", icon: TrendingUp, perm: "billing" },
+    { href: "/dashboard/revenue-pro", label: "Revenue Pro", icon: TrendingUp, perm: "billing" },
+    { href: "/dashboard/sales-brain", label: "Sales Brain", icon: Brain, perm: "billing" },
+    { href: "/dashboard/business", label: "Business Performance", icon: Building2, perm: "billing" },
+    { href: "/dashboard/suggestions", label: "Suggestions", icon: Lightbulb, perm: "billing" },
+    { href: "/dashboard/monitoring", label: "Monitoring", icon: Activity, perm: "billing" },
+    { href: "/dashboard/plan", label: "Plan", icon: CreditCard, perm: "billing" },
+
+    // ── Account & Settings ────────────────────────────────────────────────────
+    { href: "/dashboard/settings", label: "Settings", icon: Settings, perm: "billing" },
+    { href: "/dashboard/billing", label: "Billing", icon: CreditCard, perm: "billing" },
+    { href: "/dashboard/usage", label: "Usage", icon: Crown, perm: "billing" },
+    { href: "/dashboard/wallet", label: "Wallet", icon: Wallet, perm: "billing" },
+    { href: "/dashboard/integrations", label: "Integrations", icon: Plug, perm: "billing" },
+    { href: "/dashboard/developer", label: "Developer", icon: Code2, perm: "billing" },
+    { href: "/dashboard/branches", label: "Branches", icon: Building2, perm: "billing" },
+    { href: "/dashboard/approvals", label: "Approvals", icon: CheckSquare, perm: "billing" },
+    { href: "/dashboard/export", label: "Export", icon: Download, perm: "billing" },
+
+    // ── Monitoring & Internal ─────────────────────────────────────────────────
+    { href: "/dashboard/audit-log", label: "Audit Log", icon: ScrollText, perm: "billing" },
+    { href: "/dashboard/system-health", label: "System Health", icon: Activity, perm: "billing" },
+    { href: "/dashboard/command-center", label: "Command Center", icon: Sliders, perm: "billing" },
+    { href: "/dashboard/intel", label: "Intel", icon: Activity, perm: "billing" },
+    { href: "/dashboard/safety", label: "Safety", icon: ShieldAlert, perm: "billing" },
+    { href: "/dashboard/compliance", label: "Compliance", icon: ShieldCheck, perm: "billing" },
+    { href: "/dashboard/white-label", label: "White Label", icon: Palette, perm: "billing" },
+    { href: "/dashboard/my-work", label: "My Work", icon: ClipboardList, perm: "billing" },
+
+    // ── QA & Debugging (Optional) ─────────────────────────────────────────────
+    { href: "/dashboard/testing-arena", label: "Testing Arena", icon: FlaskConical, perm: "billing" },
+    { href: "/dashboard/playground", label: "Playground", icon: Beaker, perm: "billing" },
+    { href: "/dashboard/ai-audit", label: "AI Audit", icon: Gauge, perm: "billing" },
+    { href: "/dashboard/demo", label: "Demo", icon: Database, perm: "billing" },
+    { href: "/dashboard/arena", label: "Arena", icon: FlaskConical, perm: "billing" },
   ],
 };
 
