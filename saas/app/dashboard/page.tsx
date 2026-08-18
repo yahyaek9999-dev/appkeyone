@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardOverview() {
   const user = await requireUser();
+  const isAdmin = (user as any).role === "admin";
   const bot = await prisma.bot.findUnique({
     where: { userId: user.id },
     select: { id: true, name: true, whatsappStatus: true } as any,
@@ -170,7 +171,7 @@ export default async function DashboardOverview() {
       href: "/dashboard/whatsapp",
       tone: "rose",
     });
-  if (!sub.active)
+  if (!sub.active && !isAdmin)
     attention.push({
       label: "الاشتراك غير نشط",
       why: "الخدمة موقوفة مؤقتاً حتى تجديد الباقة",
@@ -352,7 +353,7 @@ export default async function DashboardOverview() {
       )}
 
       {/* ══ ACTIVATION CHECKLIST ══════════════════════════════════════════════ */}
-      {milestones && !Object.values(milestones.reached).every(Boolean) && (
+      {!isAdmin && milestones && !Object.values(milestones.reached).every(Boolean) && (
         <div className="py-6 border-b border-white/[0.05]">
           <ActivationChecklist milestones={milestones} vertical={vertical} modules={modules} />
         </div>

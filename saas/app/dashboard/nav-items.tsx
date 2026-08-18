@@ -512,7 +512,9 @@ function ContextRow({ item, active, locked = false }: { item: NavItem; active: b
  */
 export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>> }) {
   const pathname = usePathname();
-  const [simple, toggleMode] = useNavMode();
+  const [_simple, toggleMode] = useNavMode();
+  // Admins (enforce=false) always see full nav regardless of localStorage preference.
+  const simple = enforce ? _simple : false;
   const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules });
   const currentWs = workspaceForPath(pathname);
   // Which workspace's items are shown in the panel. Defaults to the one holding
@@ -581,7 +583,8 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
  */
 export function NavLinks({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>> }) {
   const pathname = usePathname();
-  const [simple, toggleMode] = useNavMode();
+  const [_simple, toggleMode] = useNavMode();
+  const simple = enforce ? _simple : false;
   const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules });
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
