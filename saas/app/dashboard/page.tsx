@@ -90,7 +90,7 @@ export default async function DashboardOverview() {
     prisma.document.count({ where: { userId: user.id } }),
     (prisma as any).commerceIntegration.count({ where: { userId: user.id, enabled: true } }).catch(() => 0),
     prisma.broadcast.count({ where: { userId: user.id } }).catch(() => 0),
-    syncUserMilestones(user.id).catch(() => null),
+    isAdmin ? Promise.resolve(null) : syncUserMilestones(user.id).catch(() => null),
     prisma.order.count({ where: { userId: user.id, createdAt: { gte: start7 } } }).catch(() => 0),
     prisma.order.count({ where: { userId: user.id, createdAt: { gte: start14, lt: start7 } } }).catch(() => 0),
     prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start7 }, status: { not: "canceled" } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
