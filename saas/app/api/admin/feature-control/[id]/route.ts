@@ -1,7 +1,7 @@
 // PATCH /api/admin/feature-control/:id → update a single feature flag
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthContext } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin";
 import { upsertFeature } from "@/lib/feature-control";
 
 export const dynamic = "force-dynamic";
@@ -21,12 +21,13 @@ const PatchBody = z.object({
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getAuthContext();
-  if (!ctx || ctx.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  let admin: any;
+  try { admin = await requireAdmin(); }
+  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
 
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body", issues: parsed.error.issues }, { status: 400 });
 
-  const updated = await upsertFeature(params.id, parsed.data as any, ctx.principalEmail);
+  const updated = await upsertFeature(params.id, parsed.data as any, admin.email);
   return NextResponse.json({ ok: true, feature: updated });
 }

@@ -1,7 +1,7 @@
 // GET  /api/admin/feature-control  → list all feature controls
 // POST /api/admin/feature-control  → seed defaults or bulk update
 import { NextResponse } from "next/server";
-import { getAuthContext } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin";
 import { getAllFeatures, seedFeatureRegistry, upsertFeature } from "@/lib/feature-control";
 import { z } from "zod";
 
@@ -23,16 +23,17 @@ const BulkBody = z.object({
 });
 
 export async function GET(_req: Request) {
-  const ctx = await getAuthContext();
-  if (!ctx || ctx.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  try { await requireAdmin(); }
+  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
 
   const features = await getAllFeatures();
   return NextResponse.json({ ok: true, features, total: features.length });
 }
 
 export async function POST(req: Request) {
-  const ctx = await getAuthContext();
-  if (!ctx || ctx.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  let admin: any;
+  try { admin = await requireAdmin(); }
+  catch { return NextResponse.json({ error: "غير مصرح" }, { status: 401 }); }
 
   const parsed = BulkBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body" }, { status: 400 });
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
 
   if (d.feature) {
     const { featureId, changeNote, ...rest } = d.feature;
-    const updated = await upsertFeature(featureId, rest as any, ctx.principalEmail);
+    const updated = await upsertFeature(featureId, rest as any, admin.email);
     return NextResponse.json({ ok: true, feature: updated });
   }
 
