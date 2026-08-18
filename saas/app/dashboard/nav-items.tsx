@@ -221,7 +221,7 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard/settings",
     items: [
       { href: "/dashboard/settings", label: "الحساب والنشاط", icon: Settings, perm: "analytics" },
-      { href: "/dashboard/billing", label: "الاشتراك والدفع", icon: Wallet, perm: "billing" },
+      { href: "/dashboard/billing", label: "الاشتراك والدفع", icon: CreditCard, perm: "billing" },
       { href: "/dashboard/usage", label: "الباقة والاستخدام", icon: Crown, perm: "analytics" },
       { href: "/dashboard/wallet", label: "المحفظة والرصيد", icon: Wallet, perm: "billing" },
       { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
@@ -283,12 +283,13 @@ const ADMIN_WORKSPACE: Workspace = {
   icon: Sliders,
   home: "/dashboard/feature-center",
   items: [
-    { href: "/dashboard/feature-center", label: "Feature Center", icon: Sliders, perm: "billing" },
-    { href: "/dashboard/memberships", label: "Memberships", icon: CreditCard, perm: "billing" },
-    { href: "/dashboard/customers", label: "All Customers", icon: Users, perm: "billing" },
+    { href: "/admin/feature-control", label: "Feature Control", icon: Sliders, perm: "billing" },
+    { href: "/admin/memberships", label: "Memberships", icon: CreditCard, perm: "billing" },
+    { href: "/dashboard/memberships", label: "Plan Editor", icon: CreditCard, perm: "billing" },
+    { href: "/admin/customers", label: "All Customers", icon: Users, perm: "billing" },
     { href: "/dashboard/usage", label: "Usage & Limits", icon: BarChart3, perm: "billing" },
-    { href: "/dashboard/audit-log", label: "Audit Log", icon: ScrollText, perm: "billing" },
-    { href: "/dashboard/system-health", label: "System Health", icon: Activity, perm: "billing" },
+    { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText, perm: "billing" },
+    { href: "/admin/system-health", label: "System Health", icon: Activity, perm: "billing" },
   ],
 };
 
