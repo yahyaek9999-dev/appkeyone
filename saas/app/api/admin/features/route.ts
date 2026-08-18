@@ -22,10 +22,10 @@ export async function GET(request: Request) {
       });
     }
 
-    // Load feature registry
+    // Load feature registry (stored at repo root, go up from saas/)
     const registryPath = path.join(
       process.cwd(),
-      'project-knowledge/master-feature-registry.json'
+      '../project-knowledge/master-feature-registry.json'
     );
 
     const registryData = await fs.readFile(registryPath, 'utf-8');
