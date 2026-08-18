@@ -56,6 +56,8 @@ import {
   GitBranch,
   MessageCircle,
   Lock,
+  Sliders,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -273,6 +275,23 @@ export const WORKSPACES: Workspace[] = [
  * are simply not advertised in the sidebar or ⌘K palette.
  */
 
+/** Platform-admin-only workspace — never shown to regular owners or team members. */
+const ADMIN_WORKSPACE: Workspace = {
+  id: "platform_admin",
+  label: "Platform Admin",
+  short: "Admin",
+  icon: Sliders,
+  home: "/dashboard/feature-center",
+  items: [
+    { href: "/dashboard/feature-center", label: "Feature Center", icon: Sliders, perm: "billing" },
+    { href: "/dashboard/memberships", label: "Memberships", icon: CreditCard, perm: "billing" },
+    { href: "/dashboard/customers", label: "All Customers", icon: Users, perm: "billing" },
+    { href: "/dashboard/usage", label: "Usage & Limits", icon: BarChart3, perm: "billing" },
+    { href: "/dashboard/audit-log", label: "Audit Log", icon: ScrollText, perm: "billing" },
+    { href: "/dashboard/system-health", label: "System Health", icon: Activity, perm: "billing" },
+  ],
+};
+
 // ── Back-compat exports ───────────────────────────────────────────────────────
 // Older callers (command palette, mobile header label) consume a flat list and a
 // {title, items} section list. Derive both from WORKSPACES so there is a single
@@ -282,10 +301,10 @@ export const NAV_SECTIONS: { title: string; items: NavItem[] }[] = WORKSPACES.ma
 );
 export const NAV_ITEMS: NavItem[] = WORKSPACES.flatMap((w) => w.items);
 
-function workspaceForPath(pathname: string): Workspace {
-  // Longest-prefix match across all items wins; fall back to Home.
+function workspaceForPath(pathname: string, allSpaces?: Workspace[]): Workspace {
+  const search = allSpaces ?? WORKSPACES;
   let best: { ws: Workspace; len: number } | null = null;
-  for (const ws of WORKSPACES) {
+  for (const ws of search) {
     for (const it of ws.items) {
       const match = it.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(it.href);
       if (match && (!best || it.href.length > best.len)) best = { ws, len: it.href.length };
@@ -516,13 +535,14 @@ function ContextRow({ item, active, locked = false }: { item: NavItem; active: b
  * Desktop chrome: workspace icon RAIL + CONTEXTUAL panel. The rail is the
  * identity of the OS; the panel is the context you're working in.
  */
-export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>> }) {
+export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, isPlatformAdmin = false }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; isPlatformAdmin?: boolean }) {
   const pathname = usePathname();
   const [_simple, toggleMode] = useNavMode();
   // Admins (enforce=false) always see full nav regardless of localStorage preference.
   const simple = enforce ? _simple : false;
-  const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules });
-  const currentWs = workspaceForPath(pathname);
+  const baseSpaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules });
+  const spaces = isPlatformAdmin ? [...baseSpaces, ADMIN_WORKSPACE] : baseSpaces;
+  const currentWs = workspaceForPath(pathname, spaces);
   // Which workspace's items are shown in the panel. Defaults to the one holding
   // the current route; the user can preview another by clicking its rail glyph.
   const [viewId, setViewId] = useState(currentWs.id);

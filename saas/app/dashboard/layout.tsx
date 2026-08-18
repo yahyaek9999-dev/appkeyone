@@ -185,7 +185,7 @@ export default async function DashboardLayout({
                 <CommandTrigger />
               </div>
             </div>
-            <SidebarNav adminLink={AdminLink} role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} />
+            <SidebarNav adminLink={AdminLink} role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} isPlatformAdmin={isAdmin} />
             {UserFooter}
           </aside>
           <DashboardTour />
