@@ -62,7 +62,7 @@ async function main() {
   const admins = await prisma.user.findMany({
     where: { role: "admin" } as any,
     select: { id: true, email: true } as any,
-  }) as Array<{ id: string; email: string }>;
+  }) as unknown as Array<{ id: string; email: string }>;
 
   if (admins.length === 0) {
     console.log("· no admin users found — done");
