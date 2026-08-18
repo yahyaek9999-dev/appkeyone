@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const uid = ctx.user.id;
 
   // ── Feature control gate (admin kill switch) ──────────────────────────────
-  if (!(await isFeatureEnabled("multi_whatsapp"))) {
+  if (!(await isFeatureEnabled("multi_whatsapp", new Set(), uid))) {
     return NextResponse.json({ error: "feature_disabled" }, { status: 403 });
   }
 

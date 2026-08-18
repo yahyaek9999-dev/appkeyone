@@ -129,7 +129,21 @@ async function releaseAllows(releaseId: string | null): Promise<boolean> {
 export async function isFeatureEnabled(
   featureId: string,
   visited: Set<string> = new Set(),
+  userId?: string,
 ): Promise<boolean> {
+  // Admin users always have full feature access.
+  if (userId) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      if (user?.role === "admin") return true;
+    } catch {
+      // Fail open on DB error
+    }
+  }
+
   if (visited.has(featureId) || visited.size > 20) return true; // cycle guard
   visited.add(featureId);
 
@@ -144,7 +158,7 @@ export async function isFeatureEnabled(
 
   // Recursively check all declared dependencies
   for (const dep of f.dependencies) {
-    if (!(await isFeatureEnabled(dep, visited))) return false;
+    if (!(await isFeatureEnabled(dep, visited, userId))) return false;
   }
   return true;
 }
