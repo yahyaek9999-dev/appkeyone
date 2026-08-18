@@ -79,8 +79,9 @@ export default async function DashboardLayout({
     normalizeConnectionMode((user as any).bot?.connectionMode) === "meta_cloud" ? "meta" : "qr";
   // Per-plan feature visibility: hide destinations the plan doesn't own (k_* only;
   // legacy/fallback plans keep full nav — non-regressive, matches backend gating).
+  // Platform admin bypasses all capability gates (sees all existing pages).
   const ent = await getEntitlements(user.id).catch(() => null);
-  const enforce = !!ent?.enforce;
+  const enforce = isAdmin ? false : !!ent?.enforce;
   const caps = ent?.capabilities;
   // Business Type → workspace module map. Owner-scoped (team members inherit,
   // like white-label/entitlements). Null/error → Store + all modules ON, so
