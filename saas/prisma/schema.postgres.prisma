@@ -3701,12 +3701,18 @@ model FeatureControl {
   releaseId          String?                      // FK to FeatureRelease.releaseId
   changedBy          String?                      // admin email who last toggled
   changeNote         String?
+  // Classification fields — admin discovery vs customer visibility separation
+  featureSource      String   @default("registry")  // "registry" | "legacy_db"
+  featureType        String   @default("feature")    // "feature" | "subfeature" | "admin_internal" | "legacy_unmapped" | "legacy_mapped"
+  adminVisible       Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@index([category])
   @@index([status])
   @@index([releaseId])
+  @@index([featureSource])
+  @@index([featureType])
 }
 
 /// Release grouping — features belong to a release cohort.
