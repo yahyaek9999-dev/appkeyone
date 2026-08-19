@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
   Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
-  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database, Truck, Palette, ScrollText, ToggleLeft, HeartPulse,
+  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database, Truck, Palette, ScrollText, ToggleLeft, HeartPulse, Timer,
 } from "lucide-react";
 
 type AdminLink = { href: string; label: string; icon: typeof LayoutDashboard; core?: boolean };
@@ -87,6 +87,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     { href: "/admin/whatsapp", label: "حالة واتساب", icon: Phone, core: true },
     { href: "/admin/meta", label: "منصة Meta", icon: Globe, core: true },
     { href: "/admin/qr-queue", label: "طابور جلسات QR", icon: CalendarClock },
+    { href: "/admin/jobs", label: "المهام المجدولة", icon: Timer, core: true },
     { href: "/admin/shipping", label: "شركات الشحن", icon: Truck },
   ] },
 

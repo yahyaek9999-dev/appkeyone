@@ -6,6 +6,7 @@ import { getAuthContext } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import MobileNav from "@/app/dashboard/mobile-nav";
 import { AdminNavLinks } from "./nav-links";
+import AdminCommandPalette from "./admin-command-palette";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { AdminBreadcrumb } from "@/components/ui/breadcrumb";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
@@ -110,6 +111,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminBreadcrumb />
         {children}
       </main>
+
+      {/* Global admin search — Cmd/Ctrl+K, reachable from every admin page */}
+      <AdminCommandPalette />
     </div>
     </ConfirmProvider>
   );

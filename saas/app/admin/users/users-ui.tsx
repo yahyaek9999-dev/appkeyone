@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import {
   Search,
@@ -253,7 +254,14 @@ export default function UsersUi({
                     className="border-t border-white/5 hover:bg-white/[0.02]"
                   >
                     <td className="p-3">
-                      <div className="font-medium">{u.name || "—"}</div>
+                      <Link
+                        href={`/admin/tenants/${u.id}`}
+                        className="group inline-flex items-center gap-1 font-medium text-white hover:text-brand-300"
+                        title="عرض 360° للتاجر"
+                      >
+                        {u.name || "—"}
+                        <ExternalLink className="h-3 w-3 opacity-0 transition group-hover:opacity-60" />
+                      </Link>
                       <div className="text-xs text-slate-400">{u.email}</div>
                     </td>
                     <td className="p-3 text-slate-300">{u.phone || "—"}</td>

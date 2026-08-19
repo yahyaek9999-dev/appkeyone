@@ -2,6 +2,7 @@ import React from "react";
 import { prisma } from "@/lib/db";
 import { CheckCircle2, ChevronLeft, Rocket, ToggleLeft, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import PlatformHealthStrip from "./platform-health-strip";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,9 @@ export default async function AdminHome() {
           ))}
         </div>
       )}
+
+      {/* Platform health — real per-subsystem verdicts from /api/system/health */}
+      <PlatformHealthStrip />
 
       {/* Numbers */}
       <div className="border-t border-white/[0.06] pt-4">
