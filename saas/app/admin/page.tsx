@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronLeft, Rocket, ToggleLeft, TrendingUp } from "lucid
 import Link from "next/link";
 import PlatformHealthStrip from "./platform-health-strip";
 import { getFinanceAttentionSignals } from "@/lib/admin/finance-reconcile";
+import { getOpsAttentionSignals } from "@/lib/admin/attention";
 
 export const dynamic = "force-dynamic";
 
@@ -47,17 +48,22 @@ async function getDaily() {
 type Action = { area: string; problem: string; cta: string; href: string; urgent: boolean };
 
 export default async function AdminHome() {
-  const [s, finance] = await Promise.all([
+  const [s, finance, ops] = await Promise.all([
     getDaily(),
     getFinanceAttentionSignals().catch(() => []),
+    getOpsAttentionSignals().catch(() => []),
   ]);
 
   // Build the action list — ONE line per real problem, ordered urgent-first.
   const actions: Action[] = [];
 
-  // Finance signals feed the SAME attention list (no duplicate architecture).
+  // Finance + ops/security/SLA/risk/customer-success signals feed the SAME
+  // attention list (no duplicate dashboard architecture).
   for (const f of finance) {
     actions.push({ area: f.area, problem: f.problem, cta: f.cta, href: f.href, urgent: f.severity === "critical" });
+  }
+  for (const o of ops) {
+    actions.push({ area: o.area, problem: o.problem, cta: o.cta, href: o.href, urgent: o.severity === "critical" });
   }
   if (s.pendingProofs > 0) actions.push({ area: "الإيرادات", problem: `${s.pendingProofs} دفعة بانتظار مراجعتك`, cta: "راجع المدفوعات", href: "/admin/payment-reviews", urgent: true });
   if (s.disconnected > 0) actions.push({ area: "واتساب", problem: `${s.disconnected} تاجر مشترك واتسابه غير متصل`, cta: "حالة واتساب", href: "/admin/whatsapp", urgent: true });

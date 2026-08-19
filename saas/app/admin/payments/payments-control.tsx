@@ -6,6 +6,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, Loader2, Download, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import SavedViews from "../saved-views";
+
+type ViewParams = { q: string; status: string; provider: string; minUsd: string; maxUsd: string; from: string; to: string; sort: "createdAt" | "amountUsd"; dir: "asc" | "desc" };
 
 type Row = {
   id: string; userId: string; tenantEmail: string | null; provider: string;
@@ -86,8 +89,18 @@ export default function PaymentsControl({ providers }: { providers: string[] }) 
     else { setSort(col); setDir("desc"); }
   }
 
+  const currentView: ViewParams = { q, status, provider, minUsd, maxUsd, from, to, sort, dir };
+  function applyView(v: ViewParams) {
+    setQ(v.q ?? ""); setStatus(v.status ?? ""); setProvider(v.provider ?? "");
+    setMinUsd(v.minUsd ?? ""); setMaxUsd(v.maxUsd ?? ""); setFrom(v.from ?? ""); setTo(v.to ?? "");
+    setSort(v.sort ?? "createdAt"); setDir(v.dir ?? "desc");
+  }
+
   return (
     <div className="space-y-3">
+      {/* Saved views — per-admin, localStorage; reuses this table's filter state */}
+      <SavedViews<ViewParams> tableId="admin_payments" current={currentView} onApply={applyView} />
+
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
         <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">

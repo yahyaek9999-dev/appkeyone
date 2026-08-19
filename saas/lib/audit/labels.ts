@@ -31,6 +31,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.payment_refunded": "استرداد دفعة",
   "admin.feature.update": "تعديل ميزة",
   "admin.job.run": "تشغيل مهمة",
+  "admin.copilot.query": "استعلام المساعد الذكي",
   "admin.finance.reconcile": "تسوية مدفوعات",
   "admin.finance.export": "تصدير مالي",
   "wallet.payments_reconciled": "تسوية مدفوعات (سابقة)",

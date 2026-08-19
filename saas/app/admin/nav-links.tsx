@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
   Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
   KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database, Truck, Palette, ScrollText, ToggleLeft, HeartPulse, Timer, Share2,
+  Bell, Sparkles, Gauge, ShieldAlert,
 } from "lucide-react";
 
 type AdminLink = { href: string; label: string; icon: typeof LayoutDashboard; core?: boolean };
@@ -31,6 +32,8 @@ export const ADMIN_GROUPS: AdminGroup[] = [
   { title: "النظرة العامة", icon: LayoutDashboard, items: [
     { href: "/admin", label: "لوحة التحكم", icon: LayoutDashboard, core: true },
     { href: "/admin/super-center", label: "مركز الانتباه", icon: LayoutGrid, core: true },
+    { href: "/admin/notifications", label: "الإشعارات", icon: Bell, core: true },
+    { href: "/admin/copilot", label: "المساعد الذكي", icon: Sparkles, core: true },
     { href: "/admin/system-health", label: "صحة النظام", icon: HeartPulse, core: true },
     { href: "/admin/analytics", label: "الإيرادات", icon: TrendingUp, core: true },
     { href: "/admin/usage-stats", label: "الاستخدام", icon: Activity, core: true },
@@ -44,6 +47,8 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     { href: "/admin/customers", label: "عملاء المنصة", icon: UserCheck },
     { href: "/admin/businesses", label: "الأنشطة التجارية", icon: Building2 },
     { href: "/admin/activation", label: "قُمع التفعيل", icon: Rocket },
+    { href: "/admin/customer-success", label: "نجاح العملاء", icon: HeartPulse, core: true },
+    { href: "/admin/risk", label: "مخاطر التجّار", icon: ShieldAlert, core: true },
     { href: "/admin/customer-cap", label: "حدّ العملاء", icon: Activity },
     { href: "/admin/import", label: "استيراد العملاء", icon: Download },
   ] },
@@ -53,6 +58,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     { href: "/admin/finance", label: "المركز المالي", icon: Coins, core: true },
     { href: "/admin/plans", label: "الباقات والحدود", icon: Crown, core: true },
     { href: "/admin/promotions", label: "العروض والتخفيضات", icon: Send, core: true },
+    { href: "/admin/promotions/analytics", label: "تحليلات العروض", icon: BarChart3 },
     { href: "/admin/commercial", label: "التحكم التجاري", icon: Coins, core: true },
     { href: "/admin/payment-reviews", label: "مراجعة المدفوعات", icon: CreditCard, core: true },
     { href: "/admin/upgrade-requests", label: "طلبات الترقية", icon: Rocket, core: true },
@@ -102,8 +108,11 @@ export const ADMIN_GROUPS: AdminGroup[] = [
 
   // ── I. SECURITY ───────────────────────────────────────────────────────────
   { title: "الأمان", icon: Shield, items: [
+    { href: "/admin/security", label: "مركز الأمان", icon: ShieldAlert, core: true },
     { href: "/admin/audit-log", label: "سجل التدقيق", icon: ScrollText, core: true },
     { href: "/admin/protection-logs", label: "سجل الحماية", icon: Shield },
+    { href: "/admin/sla", label: "مستوى الخدمة (SLA)", icon: Gauge, core: true },
+    { href: "/admin/backups", label: "النسخ الاحتياطي", icon: Database },
   ] },
 
   // ── J. SETTINGS ───────────────────────────────────────────────────────────
