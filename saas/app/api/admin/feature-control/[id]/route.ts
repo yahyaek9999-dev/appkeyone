@@ -2,7 +2,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
-import { upsertFeature } from "@/lib/feature-control";
+import { upsertFeature, getAllFeatures } from "@/lib/feature-control";
+import { audit } from "@/lib/audit/log";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,30 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_body", issues: parsed.error.issues }, { status: 400 });
 
+  // Capture BEFORE state for the changed keys so the audit row carries a diff.
+  const beforeRow = (await getAllFeatures().catch(() => [])).find((f) => f.featureId === params.id) || null;
+  const changedKeys = Object.keys(parsed.data);
+  const before: Record<string, unknown> = {};
+  const after: Record<string, unknown> = {};
+  for (const k of changedKeys) {
+    if (beforeRow) before[k] = (beforeRow as any)[k];
+    after[k] = (parsed.data as any)[k];
+  }
+
   const updated = await upsertFeature(params.id, parsed.data as any, admin.email);
+
+  // Audit 2.0 — sensitive feature-control mutation with before/after diff.
+  void audit({
+    userId: admin.id,
+    actorId: admin.id,
+    actorEmail: admin.email ?? null,
+    actorRole: "admin",
+    action: "admin.feature.update" as any,
+    targetType: "feature",
+    targetId: params.id,
+    metadata: { before, after, changeNote: (parsed.data as any).changeNote ?? null },
+    req,
+  }).catch(() => {});
+
   return NextResponse.json({ ok: true, feature: updated });
 }

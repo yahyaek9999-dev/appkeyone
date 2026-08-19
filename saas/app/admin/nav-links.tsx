@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Settings, LogOut, ShieldCheck, BarChart3, Building2,
   Crown, ShoppingBag, Phone, Brain, Shield, Activity, UserCheck, Coins, Rocket, Wallet,
-  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database, Truck, Palette, ScrollText, ToggleLeft, HeartPulse, Timer,
+  KeyRound, Send, Download, CreditCard, LayoutGrid, TrendingUp, CalendarClock, BookOpen, Globe, Plug, Cpu, Database, Truck, Palette, ScrollText, ToggleLeft, HeartPulse, Timer, Share2,
 } from "lucide-react";
 
 type AdminLink = { href: string; label: string; icon: typeof LayoutDashboard; core?: boolean };
@@ -67,6 +67,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
   // ── D. PRODUCT ────────────────────────────────────────────────────────────
   { title: "المنتج", icon: ToggleLeft, items: [
     { href: "/admin/feature-control", label: "مركز الميزات", icon: ToggleLeft, core: true },
+    { href: "/admin/dependencies", label: "الاعتماديات والتفسير", icon: Share2, core: true },
     { href: "/admin/feature-flags", label: "مفاتيح النظام (env)", icon: ToggleLeft },
   ] },
 

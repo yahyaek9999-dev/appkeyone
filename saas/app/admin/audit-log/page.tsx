@@ -14,6 +14,7 @@ import { prisma } from "@/lib/db";
 import { ScrollText, Filter } from "lucide-react";
 import Link from "next/link";
 import { AUDIT_ACTION_LABELS, auditBadgeColor } from "@/lib/audit/labels";
+import AuditDiff from "./audit-diff";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +141,7 @@ export default async function AdminAuditLogPage({
                 <th className="p-3 text-right">المنفّذ</th>
                 <th className="p-3 text-right">الصلاحية</th>
                 <th className="p-3 text-right">الهدف</th>
+                <th className="p-3 text-right">التغيير</th>
                 <th className="p-3 text-right">IP</th>
                 <th className="p-3 text-right">التاريخ</th>
               </tr>
@@ -147,7 +149,7 @@ export default async function AdminAuditLogPage({
             <tbody>
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-slate-500">
                     لا يوجد نشاط مطابق.
                   </td>
                 </tr>
@@ -165,6 +167,7 @@ export default async function AdminAuditLogPage({
                   <td className="p-3 font-mono text-[11px] text-slate-400">
                     {l.targetType ? `${l.targetType}${l.targetId ? `:${String(l.targetId).slice(0, 8)}` : ""}` : "—"}
                   </td>
+                  <td className="p-3 text-[11px]"><AuditDiff metadata={l.metadata || "{}"} /></td>
                   <td className="p-3 font-mono text-[11px] text-slate-500" dir="ltr">{l.ip || "—"}</td>
                   <td className="p-3 text-xs text-slate-400">
                     {new Date(l.at).toLocaleString("ar-EG")}

@@ -29,6 +29,11 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.payment_approved": "اعتماد دفعة",
   "admin.payment_rejected": "رفض دفعة",
   "admin.payment_refunded": "استرداد دفعة",
+  "admin.feature.update": "تعديل ميزة",
+  "admin.job.run": "تشغيل مهمة",
+  "release.create": "إنشاء إصدار",
+  "release.update": "تعديل إصدار",
+  "release.delete": "حذف إصدار",
 };
 
 export function auditBadgeColor(action: string): string {

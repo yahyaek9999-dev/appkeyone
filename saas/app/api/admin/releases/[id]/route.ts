@@ -40,6 +40,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.status !== undefined) update.status = body.status;
   if (body.sortOrder !== undefined) update.sortOrder = Number(body.sortOrder);
 
+  // Capture BEFORE state for the keys being changed, for a Change-Diff audit row.
+  const before: Record<string, unknown> = {};
+  for (const k of Object.keys(update)) before[k] = (release as any)[k];
+
   const updated = await (prisma as any).featureRelease.update({
     where: { id: params.id },
     data: update,
@@ -50,10 +54,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   void audit({
     userId: admin.userId,
+    actorId: admin.userId,
+    actorEmail: admin.email ?? null,
+    actorRole: "admin",
     action: "release.update" as any,
     targetType: "release",
     targetId: release.releaseId,
-    metadata: update,
+    metadata: { before, after: update },
+    req,
   });
 
   return NextResponse.json({ ok: true, release: updated });
