@@ -1,10 +1,11 @@
 import React from "react";
 import { prisma } from "@/lib/db";
-import { CheckCircle2, ChevronLeft, Rocket, ToggleLeft, TrendingUp } from "lucide-react";
+import { CheckCircle2, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import PlatformHealthStrip from "./platform-health-strip";
 import { getFinanceAttentionSignals } from "@/lib/admin/finance-reconcile";
 import { getOpsAttentionSignals } from "@/lib/admin/attention";
+import { PageHeader, Section, MetricBand } from "./_ui/primitives";
 
 export const dynamic = "force-dynamic";
 
@@ -75,96 +76,79 @@ export default async function AdminHome() {
 
   const allClear = actions.length === 0;
 
+  const critical = actions.filter((a) => a.urgent).length;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="page-title mb-1">فحص اليوم</h1>
-        <p className="page-desc">{allClear ? "كل شيء يعمل — لا إجراءات عاجلة." : "ما يحتاج إجراءً منك الآن، بالترتيب."}</p>
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="مركز التحكّم"
+        title="فحص اليوم"
+        subtitle={allClear ? "كل الأنظمة مستقرّة — لا إجراءات عاجلة الآن." : "ما يحتاج قراراً منك الآن، مرتّباً حسب الأهمية."}
+      />
 
-      {/* Decision panel — the only thing the owner needs at 9 AM */}
-      {allClear ? (
-        <div className="card flex items-center gap-4 border-emerald-500/25 bg-emerald-500/[0.05] p-6">
-          <CheckCircle2 className="h-10 w-10 shrink-0 text-emerald-400" />
-          <div>
-            <div className="text-lg font-bold text-white">كل شيء على ما يرام ✓</div>
-            <div className="text-sm text-slate-400">لا مدفوعات معلّقة، ولا انقطاع واتساب، ولا حوادث، ولا اشتراكات تحتاج انتباهك. استمتع بيومك.</div>
+      {/* State band */}
+      <MetricBand
+        items={[
+          { label: "بحاجة إجراء", value: actions.length, sub: `${critical} حرج` },
+          { label: "الإيراد الشهري (MRR)", value: `$${s.mrrUsd.toLocaleString("en-US")}` },
+          { label: "اشتراكات نشطة", value: s.activeSubs.toLocaleString() },
+          { label: "إجمالي العملاء", value: s.totalUsers.toLocaleString() },
+          { label: "إجمالي الرسائل", value: s.totalMessages.toLocaleString() },
+        ]}
+      />
+
+      {/* Attention — the decision list */}
+      <Section title="ما يحتاج انتباهك">
+        {allClear ? (
+          <div className="adm-panel adm-panel-pad" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CheckCircle2 className="h-6 w-6 shrink-0" style={{ color: "var(--adm-brand)" }} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--adm-text)" }}>لا عناصر عاجلة</div>
+              <div className="adm-note">لا مدفوعات معلّقة، ولا انقطاع واتساب، ولا حوادث، ولا اشتراكات تحتاج انتباهك.</div>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {actions.map((a, i) => (
-            <Link
-              key={i}
-              href={a.href}
-              className={`card flex items-center gap-4 p-4 transition hover:bg-white/[0.03] ${a.urgent ? "border-rose-500/25 bg-rose-500/[0.04]" : "border-amber-500/20 bg-amber-500/[0.03]"}`}
-            >
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${a.urgent ? "bg-rose-500/15 text-rose-300" : "bg-amber-500/15 text-amber-300"}`}>{i + 1}</span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] text-slate-500">{a.area}</div>
-                <div className="text-sm font-semibold text-white">{a.problem}</div>
-              </div>
-              <span className={`shrink-0 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold ${a.urgent ? "bg-rose-500/15 text-rose-200" : "bg-white/[0.06] text-slate-200"}`}>
-                {a.cta}
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {actions.map((a, i) => (
+              <Link key={i} href={a.href} className={`adm-attn ${a.urgent ? "crit" : "warn"}`}>
+                <span className="adm-attn-index">{i + 1}</span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="adm-note" style={{ marginBottom: 2 }}>{a.area}</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--adm-text)" }}>{a.problem}</div>
+                </div>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: "var(--adm-text-2)" }}>
+                  {a.cta} <ChevronLeft className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Section>
 
-      {/* Platform health — real per-subsystem verdicts from /api/system/health */}
-      <PlatformHealthStrip />
-
-      {/* Numbers */}
-      <div className="border-t border-white/[0.06] pt-4">
-        <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">الأرقام</div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Mini label="الإيراد الشهري (MRR)" value={`$${s.mrrUsd.toLocaleString("en-US")}`} icon={TrendingUp} />
-          <Mini label="اشتراكات نشطة" value={s.activeSubs.toLocaleString()} />
-          <Mini label="إجمالي العملاء" value={s.totalUsers.toLocaleString()} />
-          <Mini label="إجمالي الرسائل" value={s.totalMessages.toLocaleString()} />
-        </div>
-      </div>
+      {/* Platform health */}
+      <Section title="صحة المنصّة" action={<Link href="/admin/system-health" className="adm-link" style={{ fontSize: 12 }}>التفاصيل ←</Link>}>
+        <PlatformHealthStrip />
+      </Section>
 
       {/* Product status */}
       {(s.activeFeatures !== null || s.activeReleases !== null) && (
-        <div className="border-t border-white/[0.06] pt-4">
-          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">المنتج</div>
-          <div className="grid grid-cols-2 gap-3">
+        <Section title="المنتج">
+          <div className="adm-band">
             {s.activeFeatures !== null && (
-              <Link href="/admin/feature-control?status=enabled" className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 hover:border-white/[0.10] hover:bg-white/[0.04] transition-colors">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <ToggleLeft className="h-3.5 w-3.5 text-emerald-500" />
-                  <span className="text-[11px] text-slate-500">ميزات مفعّلة</span>
-                </div>
-                <div className="text-lg font-bold tabular-nums text-white">{s.activeFeatures}</div>
+              <Link href="/admin/feature-control?status=enabled" className="adm-metric" style={{ display: "block" }}>
+                <div className="adm-metric-label">ميزات مفعّلة</div>
+                <div className="adm-metric-value">{s.activeFeatures}</div>
               </Link>
             )}
             {s.activeReleases !== null && (
-              <Link href="/admin/releases" className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 hover:border-white/[0.10] hover:bg-white/[0.04] transition-colors">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <Rocket className="h-3.5 w-3.5 text-brand-400" />
-                  <span className="text-[11px] text-slate-500">إصدارات نشطة</span>
-                </div>
-                <div className="text-lg font-bold tabular-nums text-white">{s.activeReleases}</div>
+              <Link href="/admin/releases" className="adm-metric" style={{ display: "block" }}>
+                <div className="adm-metric-label">إصدارات نشطة</div>
+                <div className="adm-metric-value">{s.activeReleases}</div>
               </Link>
             )}
           </div>
-        </div>
+        </Section>
       )}
-    </div>
-  );
-}
-
-function Mini({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{className?: string}> }) {
-  return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-      <div className="flex items-center gap-1 text-[11px] text-slate-500">
-        {Icon && <Icon className="h-3 w-3" />}
-        {label}
-      </div>
-      <div className="mt-0.5 text-lg font-bold tabular-nums text-white">{value}</div>
     </div>
   );
 }

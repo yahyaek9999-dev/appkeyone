@@ -8,6 +8,7 @@
 import { getOpsAttentionSignals } from "@/lib/admin/attention";
 import { getFinanceAttentionSignals } from "@/lib/admin/finance-reconcile";
 import NotificationCenter from "./notification-center";
+import { PageHeader } from "../_ui/primitives";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +35,12 @@ export default async function AdminNotificationsPage() {
   all.sort((a, b) => (rank[a.severity] ?? 3) - (rank[b.severity] ?? 3));
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="page-title mb-1">مركز الإشعارات</h1>
-        <p className="page-desc">إشعارات فعلية قابلة للتنفيذ من كل الأنظمة — الأمان، الحوادث، المالية، SLA، المخاطر، ونجاح العملاء.</p>
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="التشغيل"
+        title="مركز الإشعارات"
+        subtitle="إشعارات فعلية قابلة للتنفيذ من كل الأنظمة — الأمان، الحوادث، المالية، SLA، المخاطر، ونجاح العملاء."
+      />
       <NotificationCenter signals={all} />
     </div>
   );

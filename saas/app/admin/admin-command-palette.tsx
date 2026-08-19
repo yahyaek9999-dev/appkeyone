@@ -33,8 +33,13 @@ export default function AdminCommandPalette() {
         setOpen(false);
       }
     }
+    function onOpen() { setOpen(true); }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("adm-open-search", onOpen as EventListener);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("adm-open-search", onOpen as EventListener);
+    };
   }, []);
 
   useEffect(() => {

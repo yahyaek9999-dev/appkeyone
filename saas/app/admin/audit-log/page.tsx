@@ -11,7 +11,7 @@
  */
 
 import { prisma } from "@/lib/db";
-import { ScrollText, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
 import Link from "next/link";
 import { AUDIT_ACTION_LABELS, auditBadgeColor } from "@/lib/audit/labels";
 import AuditDiff from "./audit-diff";
@@ -73,16 +73,12 @@ export default async function AdminAuditLogPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gold-500 to-teal-500 shadow-lg shadow-gold-500/20">
-          <ScrollText className="h-5 w-5 text-white" />
-        </span>
-        <div>
-          <h1 className="page-title">سجل النشاط — كل التجّار</h1>
-          <p className="text-sm text-slate-400">
-            سجل غير قابل للتعديل لكل الإجراءات الحساسة عبر كل مساحات العمل — من فعل ماذا، متى، وفي أي حساب.
-          </p>
-        </div>
+      <div>
+        <div className="adm-eyebrow">التحقيق</div>
+        <h1 className="adm-title">سجل النشاط — كل التجّار</h1>
+        <p className="adm-subtitle">
+          سجل غير قابل للتعديل لكل الإجراءات الحساسة عبر كل مساحات العمل — من فعل ماذا، متى، وفي أي حساب.
+        </p>
       </div>
 
       <form action="/admin/audit-log" method="get" className="flex flex-wrap items-center gap-2">

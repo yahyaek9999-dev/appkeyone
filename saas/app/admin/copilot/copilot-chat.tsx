@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, Loader2, Sparkles, Database, ShieldAlert } from "lucide-react";
+import { Send, Loader2, Database, ShieldAlert, CornerDownLeft } from "lucide-react";
 
 type Turn = { q: string; a: string; usedLlm: boolean; sources: string[] };
 
@@ -50,7 +50,7 @@ export default function CopilotChat() {
       {/* Input */}
       <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 shrink-0 text-brand-300" />
+          <CornerDownLeft className="h-4 w-4 shrink-0 text-slate-500" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}

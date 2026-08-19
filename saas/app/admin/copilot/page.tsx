@@ -2,19 +2,18 @@
 // never mutates anything; shows the evidence used. Sensitive actions are never
 // executed here — the Copilot can only recommend reviewing a page.
 import CopilotChat from "./copilot-chat";
+import { PageHeader } from "../_ui/primitives";
 
 export const dynamic = "force-dynamic";
 
 export default function AdminCopilotPage() {
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="page-title mb-1">مساعد الإدارة الذكي</h1>
-        <p className="page-desc">
-          اسأل عن حالة المنصّة — يجيب من بيانات النظام الفعلية فقط، مع ذكر المصادر. لا ينفّذ أي إجراء حسّاس، ويقول
-          «البيانات غير كافية» عند عدم توفّرها.
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="ذكاء التشغيل"
+        title="مساعد الإدارة"
+        subtitle="اسأل عن حالة المنصّة — يجيب من بيانات النظام الفعلية فقط مع ذكر المصادر. لا ينفّذ أي إجراء حسّاس، ويقول «البيانات غير كافية» عند عدم توفّرها."
+      />
       <CopilotChat />
     </div>
   );

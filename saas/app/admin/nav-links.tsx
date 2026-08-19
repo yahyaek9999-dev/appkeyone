@@ -158,30 +158,25 @@ export function AdminNavLinks() {
     .filter((g) => g.items.length > 0);
 
   return (
-    <nav className="flex-1 space-y-3 overflow-y-auto px-2 py-2">
+    <>
       {groups.map((g) => (
-        <div key={g.title}>
-          <div className="flex items-center gap-1.5 px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-            <g.icon className="h-3 w-3" />
-            {g.title}
-          </div>
-          <div className="space-y-0.5">
-            {g.items.map((n) => {
-              const Icon = n.icon;
-              const active = isActive(pathname, n.href);
-              return (
-                <Link key={n.href} href={n.href} className={cn("sidebar-link", active && "sidebar-link-active")}>
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{n.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+        <div key={g.title} className="adm-nav-group">
+          <div className="adm-nav-eyebrow">{g.title}</div>
+          {g.items.map((n) => {
+            const Icon = n.icon;
+            const active = isActive(pathname, n.href);
+            return (
+              <Link key={n.href} href={n.href} className={cn("adm-nav-link", active && "is-active")}>
+                <Icon />
+                <span className="truncate">{n.label}</span>
+              </Link>
+            );
+          })}
         </div>
       ))}
-      <button onClick={toggle} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2 text-[11px] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200">
-        {simple ? "⚙ عرض كل الأدوات" : "↩ الأساسيات فقط"}
+      <button onClick={toggle} className="adm-nav-link" style={{ width: "100%", justifyContent: "center", marginTop: 14, color: "var(--adm-text-4)" }}>
+        {simple ? "عرض كل الأدوات" : "الأساسيات فقط"}
       </button>
-    </nav>
+    </>
   );
 }

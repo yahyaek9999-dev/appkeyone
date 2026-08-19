@@ -4,7 +4,7 @@
 // the canonical cost aggregator. Missing cost sources render "Data unavailable".
 import Link from "next/link";
 import { getRevenueSummary, getPlanEconomics, getPromotionImpact } from "@/lib/admin/finance";
-import { TrendingUp, RotateCcw, Tag, AlertCircle, Wallet } from "lucide-react";
+import { PageHeader, MetricBand, Section } from "../_ui/primitives";
 
 export const dynamic = "force-dynamic";
 
@@ -23,29 +23,31 @@ export default async function AdminFinancePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.06] pb-5">
-        <div>
-          <h1 className="page-title mb-1">المركز المالي</h1>
-          <p className="page-desc">إيرادات فعلية، اقتصاديات الباقات، وأثر العروض — آخر {rev.days} يوم.</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/admin/payments" className="btn-ghost text-sm">المدفوعات</Link>
-          <Link href="/admin/payments/reconciliation" className="btn-ghost text-sm">التسوية</Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="الباك أوفيس المالي"
+        title="المركز المالي"
+        subtitle={`إيرادات فعلية، اقتصاديات الباقات، وأثر العروض — آخر ${rev.days} يوم.`}
+        actions={
+          <>
+            <Link href="/admin/payments" className="adm-btn">المدفوعات</Link>
+            <Link href="/admin/payments/reconciliation" className="adm-btn">التسوية</Link>
+          </>
+        }
+      />
 
-      {/* Revenue — every tile explicitly labelled ACTUAL / DERIVED */}
-      <section>
-        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">الإيرادات</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Tile icon={<TrendingUp className="h-5 w-5 text-emerald-300" />} label="إجمالي المُحصّل (فعلي)" value={usd(rev.grossPaidUsd)} sub={`${rev.paidCount} دفعة ناجحة`} />
-          <Tile icon={<RotateCcw className="h-5 w-5 text-sky-300" />} label="الاستردادات (فعلي)" value={usd(rev.refundsUsd)} sub={`${rev.refundCount} عملية`} />
-          <Tile icon={<TrendingUp className="h-5 w-5 text-brand-300" />} label="الصافي المُحصّل (مُشتق)" value={usd(rev.netCollectedUsd)} sub="الإجمالي − الاستردادات" tone="ok" />
-          <Tile icon={<Tag className="h-5 w-5 text-amber-300" />} label="قيمة الخصومات (فعلي)" value={usd(rev.discountsUsd)} sub="لا تُخصم من الصافي — مُطبّقة مسبقاً" />
-          <Tile icon={<Wallet className="h-5 w-5 text-amber-300" />} label="قيد الانتظار (فعلي)" value={usd(rev.pendingUsd)} sub={`${rev.pendingCount} معاملة`} />
-          <Tile icon={<AlertCircle className="h-5 w-5 text-rose-300" />} label="عمليات فاشلة (فعلي)" value={String(rev.failedCount)} tone={rev.failedCount > 0 ? "warn" : undefined} />
-        </div>
-      </section>
+      {/* Revenue — explicitly labelled ACTUAL / DERIVED */}
+      <Section title="الإيرادات">
+        <MetricBand
+          items={[
+            { label: "إجمالي المُحصّل (فعلي)", value: usd(rev.grossPaidUsd), sub: `${rev.paidCount} دفعة ناجحة` },
+            { label: "الاستردادات (فعلي)", value: usd(rev.refundsUsd), sub: `${rev.refundCount} عملية` },
+            { label: "الصافي المُحصّل (مُشتق)", value: usd(rev.netCollectedUsd), sub: "الإجمالي − الاستردادات" },
+            { label: "الخصومات (فعلي)", value: usd(rev.discountsUsd), sub: "مُطبّقة مسبقاً" },
+            { label: "قيد الانتظار", value: usd(rev.pendingUsd), sub: `${rev.pendingCount} معاملة` },
+            { label: "فاشلة", value: String(rev.failedCount) },
+          ]}
+        />
+      </Section>
 
       {/* Plan economics */}
       <section>
@@ -155,17 +157,6 @@ export default async function AdminFinancePage() {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function Tile({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: "ok" | "warn" }) {
-  const border = tone === "warn" ? "border-rose-500/25" : tone === "ok" ? "border-emerald-500/20" : "border-white/[0.06]";
-  return (
-    <div className={`rounded-xl border ${border} bg-white/[0.02] p-4`}>
-      <div className="mb-2 flex items-center gap-2 text-sm text-slate-400">{icon}<span>{label}</span></div>
-      <div className="text-2xl font-extrabold tabular-nums text-white">{value}</div>
-      {sub && <div className="mt-1 text-[11px] text-slate-500">{sub}</div>}
     </div>
   );
 }

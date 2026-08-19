@@ -1,0 +1,309 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   WKEYONE Admin — enterprise control language.
+
+   Scoped entirely under `.adm` so it NEVER leaks into the customer product.
+   Principles: flat neutral surfaces, hairline separators, restrained brand,
+   information over decoration. No gradient glass, no glow, no blur, no motion
+   beyond functional transitions. Emerald #01433E = identity; gold #C9A24B =
+   emphasis only. Everything else stays neutral.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.adm {
+  --adm-bg: #0a0a0c;
+  --adm-bg-raised: #101013;
+  --adm-bg-rail: #08080a;
+  --adm-line: rgba(255, 255, 255, 0.08);
+  --adm-line-soft: rgba(255, 255, 255, 0.05);
+  --adm-line-strong: rgba(255, 255, 255, 0.14);
+  --adm-fill: rgba(255, 255, 255, 0.022);
+  --adm-fill-hover: rgba(255, 255, 255, 0.045);
+  --adm-text: #f4f5f6;
+  --adm-text-2: #b7bcc4;
+  --adm-text-3: #7c828c;
+  --adm-text-4: #5b616b;
+  --adm-brand: #2f9384;
+  --adm-brand-deep: #01433E;
+  --adm-gold: #C9A24B;
+
+  color: var(--adm-text-2);
+}
+
+/* ── App shell ─────────────────────────────────────────────────────────────*/
+.adm-shell { display: flex; min-height: 100vh; background: var(--adm-bg); }
+
+.adm-rail {
+  position: sticky; top: 0; align-self: flex-start;
+  width: 232px; flex-shrink: 0; height: 100vh;
+  display: flex; flex-direction: column;
+  background: var(--adm-bg-rail);
+  border-inline-end: 1px solid var(--adm-line);
+}
+.adm-rail-brand {
+  display: flex; align-items: center; gap: 10px;
+  height: 56px; padding: 0 16px; flex-shrink: 0;
+  border-bottom: 1px solid var(--adm-line-soft);
+}
+.adm-rail-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 26px; width: 26px; border-radius: 7px; flex-shrink: 0;
+  background: var(--adm-brand-deep);
+  border: 1px solid rgba(201, 162, 75, 0.35);
+  color: var(--adm-gold);
+}
+.adm-rail-title { font-size: 13px; font-weight: 600; color: var(--adm-text); line-height: 1.1; letter-spacing: -0.01em; }
+.adm-rail-sub { font-size: 10.5px; color: var(--adm-text-4); line-height: 1.2; margin-top: 1px; }
+
+.adm-nav { flex: 1; overflow-y: auto; padding: 10px 10px 16px; }
+.adm-nav::-webkit-scrollbar { width: 8px; }
+.adm-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
+
+.adm-nav-group { margin-top: 14px; }
+.adm-nav-group:first-child { margin-top: 2px; }
+.adm-nav-eyebrow {
+  padding: 0 8px 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--adm-text-4);
+}
+.adm-nav-link {
+  position: relative; display: flex; align-items: center; gap: 9px;
+  padding: 6px 9px; border-radius: 7px; margin-bottom: 1px;
+  font-size: 12.5px; font-weight: 500; color: var(--adm-text-3);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.adm-nav-link:hover { background: var(--adm-fill-hover); color: var(--adm-text); }
+.adm-nav-link svg { height: 15px; width: 15px; flex-shrink: 0; opacity: 0.75; }
+.adm-nav-link.is-active {
+  background: rgba(47, 147, 132, 0.10); color: var(--adm-text);
+}
+.adm-nav-link.is-active svg { opacity: 1; color: var(--adm-brand); }
+.adm-nav-link.is-active::before {
+  content: ""; position: absolute; inset-inline-start: -10px; top: 50%;
+  transform: translateY(-50%); height: 16px; width: 2px; border-radius: 0 2px 2px 0;
+  background: var(--adm-gold);
+}
+.adm-rail-foot { padding: 10px; border-top: 1px solid var(--adm-line-soft); }
+
+/* ── Top bar ───────────────────────────────────────────────────────────────*/
+.adm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.adm-topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 12px;
+  height: 56px; padding: 0 24px; flex-shrink: 0;
+  background: rgba(10, 10, 12, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--adm-line);
+}
+.adm-crumb { font-size: 13px; color: var(--adm-text-3); }
+.adm-crumb b { color: var(--adm-text); font-weight: 600; }
+.adm-topbar-search {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid var(--adm-line); background: var(--adm-fill);
+  color: var(--adm-text-4); font-size: 12.5px; min-width: 200px;
+  transition: border-color 120ms ease;
+}
+.adm-topbar-search:hover { border-color: var(--adm-line-strong); }
+.adm-topbar-search kbd {
+  margin-inline-start: auto; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  border: 1px solid var(--adm-line); color: var(--adm-text-4); font-family: inherit;
+}
+.adm-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 32px; width: 32px; border-radius: 8px; color: var(--adm-text-3);
+  border: 1px solid transparent; transition: background-color 120ms ease, color 120ms ease;
+}
+.adm-icon-btn:hover { background: var(--adm-fill-hover); color: var(--adm-text); }
+
+.adm-content { flex: 1; padding: 24px; max-width: 1440px; width: 100%; }
+
+/* ── Page header ───────────────────────────────────────────────────────────*/
+.adm-page-head { margin-bottom: 20px; }
+.adm-eyebrow {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--adm-gold); margin-bottom: 6px;
+}
+.adm-title { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; color: var(--adm-text); }
+.adm-subtitle { font-size: 13px; color: var(--adm-text-3); margin-top: 3px; max-width: 68ch; line-height: 1.5; }
+
+/* ── Section ───────────────────────────────────────────────────────────────*/
+.adm-section { margin-top: 22px; }
+.adm-section-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 10px;
+}
+.adm-section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--adm-text-3); }
+
+/* ── Surfaces ──────────────────────────────────────────────────────────────*/
+.adm-panel { border: 1px solid var(--adm-line); border-radius: 10px; background: var(--adm-fill); }
+.adm-panel-pad { padding: 16px; }
+
+/* ── Metric band ───────────────────────────────────────────────────────────*/
+.adm-band {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  border: 1px solid var(--adm-line); border-radius: 10px; overflow: hidden;
+  background: var(--adm-fill);
+}
+.adm-metric { padding: 13px 16px; border-inline-start: 1px solid var(--adm-line-soft); }
+.adm-metric:first-child { border-inline-start: none; }
+.adm-metric-label { font-size: 11px; color: var(--adm-text-3); display: flex; align-items: center; gap: 5px; }
+.adm-metric-value { font-size: 21px; font-weight: 600; color: var(--adm-text); margin-top: 3px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.adm-metric-sub { font-size: 11px; color: var(--adm-text-4); margin-top: 2px; }
+@media (max-width: 720px) {
+  .adm-band { grid-auto-flow: row; grid-auto-columns: unset; }
+  .adm-metric { border-inline-start: none; border-top: 1px solid var(--adm-line-soft); }
+  .adm-metric:first-child { border-top: none; }
+}
+
+/* ── Tables ────────────────────────────────────────────────────────────────*/
+.adm-tablewrap { border: 1px solid var(--adm-line); border-radius: 10px; overflow: hidden; }
+.adm-tablewrap .adm-tablescroll { overflow-x: auto; }
+table.adm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adm-table thead th {
+  text-align: start; padding: 9px 14px; font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--adm-text-4);
+  border-bottom: 1px solid var(--adm-line); white-space: nowrap; background: rgba(255,255,255,0.012);
+}
+.adm-table tbody td { padding: 10px 14px; border-bottom: 1px solid var(--adm-line-soft); color: var(--adm-text-2); vertical-align: middle; }
+.adm-table tbody tr:last-child td { border-bottom: none; }
+.adm-table tbody tr { transition: background-color 100ms ease; }
+.adm-table tbody tr:hover { background: rgba(255,255,255,0.018); }
+.adm-table .num { font-variant-numeric: tabular-nums; }
+.adm-table-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; border-top: 1px solid var(--adm-line); font-size: 12px; color: var(--adm-text-3);
+}
+
+/* ── Toolbar / filters ─────────────────────────────────────────────────────*/
+.adm-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px; border: 1px solid var(--adm-line); border-radius: 10px; background: var(--adm-fill);
+}
+.adm-field {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px;
+  border-radius: 8px; border: 1px solid var(--adm-line); background: rgba(0,0,0,0.15);
+  color: var(--adm-text); font-size: 12.5px;
+}
+.adm-field:focus-within { border-color: var(--adm-line-strong); }
+.adm-field input, .adm-field select { background: transparent; border: none; outline: none; color: var(--adm-text); font-size: 12.5px; width: 100%; }
+.adm-field input::placeholder { color: var(--adm-text-4); }
+select.adm-select { height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--adm-line); background: rgba(0,0,0,0.15); color: var(--adm-text); font-size: 12.5px; }
+input.adm-input { height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--adm-line); background: rgba(0,0,0,0.15); color: var(--adm-text); font-size: 12.5px; }
+input.adm-input::placeholder { color: var(--adm-text-4); }
+
+/* ── Buttons ───────────────────────────────────────────────────────────────*/
+.adm-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--adm-text-2);
+  border: 1px solid var(--adm-line); background: var(--adm-fill); transition: all 120ms ease;
+}
+.adm-btn:hover { border-color: var(--adm-line-strong); background: var(--adm-fill-hover); color: var(--adm-text); }
+.adm-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.adm-btn-primary {
+  color: #fff; background: var(--adm-brand-deep); border-color: rgba(201,162,75,0.28);
+}
+.adm-btn-primary:hover { background: #045b52; border-color: rgba(201,162,75,0.5); color: #fff; }
+
+/* ── Status pills ──────────────────────────────────────────────────────────*/
+.adm-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 500; border: 1px solid transparent; white-space: nowrap;
+}
+.adm-pill .dot { height: 6px; width: 6px; border-radius: 50%; flex-shrink: 0; }
+.adm-pill-ok { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.18); }
+.adm-pill-ok .dot { background: #34d399; }
+.adm-pill-warn { color: #fcd34d; background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+.adm-pill-warn .dot { background: #fbbf24; }
+.adm-pill-bad { color: #fda4af; background: rgba(244,63,94,0.08); border-color: rgba(244,63,94,0.22); }
+.adm-pill-bad .dot { background: #f43f5e; }
+.adm-pill-info { color: #7dd3fc; background: rgba(14,165,233,0.08); border-color: rgba(14,165,233,0.2); }
+.adm-pill-info .dot { background: #38bdf8; }
+.adm-pill-neutral { color: var(--adm-text-3); background: rgba(255,255,255,0.03); border-color: var(--adm-line); }
+.adm-pill-neutral .dot { background: var(--adm-text-4); }
+
+/* ── Attention rows (command center) ───────────────────────────────────────*/
+.adm-attn { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--adm-line); border-radius: 10px; background: var(--adm-fill); transition: background-color 120ms ease; }
+.adm-attn:hover { background: var(--adm-fill-hover); }
+.adm-attn-index { flex-shrink: 0; height: 22px; width: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.adm-attn.crit { border-inline-start: 2px solid #f43f5e; }
+.adm-attn.crit .adm-attn-index { background: rgba(244,63,94,0.12); color: #fda4af; }
+.adm-attn.warn { border-inline-start: 2px solid #f59e0b; }
+.adm-attn.warn .adm-attn-index { background: rgba(245,158,11,0.12); color: #fcd34d; }
+.adm-attn.info .adm-attn-index { background: rgba(255,255,255,0.05); color: var(--adm-text-3); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCOPED OVERRIDES — reskin the shared global classes for admin pages only.
+   These rules are UNLAYERED, so they beat globals.css's `@layer components`
+   definitions regardless of specificity, and they are scoped under `.adm`, so
+   the customer product is never affected. This flattens every admin page that
+   still uses the shared design system to the enterprise language for free:
+   no gradients, no glow, hairline borders, modest radius, restrained brand.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.adm .card,
+.adm .ai-card,
+.adm .card-hover,
+.adm .kpi-card {
+  border-radius: 10px;
+  border: 1px solid var(--adm-line);
+  background: var(--adm-fill);
+  background-image: none;
+  box-shadow: none;
+}
+.adm .card-hover:hover {
+  transform: none;
+  border-color: var(--adm-line-strong);
+  background: var(--adm-fill-hover);
+  box-shadow: none;
+}
+
+.adm .page-title { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; color: var(--adm-text); }
+.adm .page-desc { font-size: 13px; color: var(--adm-text-3); }
+.adm .section-title { font-size: 13px; font-weight: 600; color: var(--adm-text); }
+.adm .kpi-value { font-size: 21px; font-weight: 600; color: var(--adm-text); }
+.adm .kpi-label { font-size: 11px; color: var(--adm-text-3); }
+
+.adm .btn-primary {
+  border-radius: 8px; padding: 0 12px; height: 34px; font-size: 12.5px; font-weight: 600;
+  background: var(--adm-brand-deep); background-image: none; color: #fff;
+  border: 1px solid rgba(201, 162, 75, 0.28); box-shadow: none; --tw-ring-color: transparent;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.adm .btn-primary:hover { background: #045b52; box-shadow: none; border-color: rgba(201, 162, 75, 0.5); transform: none; }
+
+.adm .btn-ghost, .adm .btn-secondary {
+  border-radius: 8px; padding: 0 12px; height: 34px; font-size: 12.5px; font-weight: 600;
+  background: var(--adm-fill); border: 1px solid var(--adm-line); color: var(--adm-text-2); box-shadow: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.adm .btn-ghost:hover, .adm .btn-secondary:hover { background: var(--adm-fill-hover); border-color: var(--adm-line-strong); color: var(--adm-text); transform: none; }
+
+.adm .btn-danger {
+  border-radius: 8px; padding: 0 12px; height: 34px; font-size: 12.5px; font-weight: 600;
+  background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.22); color: #fda4af; box-shadow: none;
+}
+.adm .btn-danger:hover { background: rgba(244, 63, 94, 0.16); transform: none; }
+
+.adm .ai-badge {
+  border-radius: 6px; border: 1px solid var(--adm-line); background: rgba(255, 255, 255, 0.03);
+  color: var(--adm-text-3); font-weight: 500; padding: 2px 8px;
+}
+
+.adm .filter-tab { border-radius: 8px; }
+.adm .filter-tab-active { background: rgba(47, 147, 132, 0.10); color: var(--adm-text); border-color: transparent; }
+
+/* Shared data-table skin → hairline enterprise table */
+.adm .data-table thead th,
+.adm .table-header {
+  border-bottom: 1px solid var(--adm-line); color: var(--adm-text-4);
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 9px 14px;
+}
+.adm .data-table tbody td,
+.adm .table-cell { border-bottom: 1px solid var(--adm-line-soft); color: var(--adm-text-2); padding: 10px 14px; }
+.adm .data-table tbody tr:hover { background: rgba(255, 255, 255, 0.018); }
+
+/* ── Utilities ─────────────────────────────────────────────────────────────*/
+.adm-empty { padding: 40px 16px; text-align: center; color: var(--adm-text-4); font-size: 13px; }
+.adm-note { font-size: 11px; color: var(--adm-text-4); line-height: 1.6; }
+.adm-link { color: var(--adm-brand); }
+.adm-link:hover { color: #46b3a2; }
+.adm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+.adm-divider { height: 1px; background: var(--adm-line-soft); border: none; margin: 0; }
