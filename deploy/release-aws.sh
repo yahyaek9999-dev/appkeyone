@@ -21,15 +21,15 @@ set -euo pipefail
 # Usage:
 #   deploy/release-aws.sh [<commit-ish>]        # default HEAD
 # Env overrides:
-#   KEYONE_SSH_KEY   (default ~/Downloads/keyone.pem)
-#   KEYONE_HOST      (default ubuntu@13.63.79.43)
+#   KEYONE_SSH_KEY   (default ~/Downloads/1.pem)
+#   KEYONE_HOST      (default ubuntu@16.171.230.84  — eu-north-1, Ubuntu 24.04)
 #   KEYONE_URL       (default https://w.keyone1.com)
 #   ALLOW_DIRTY=1    skip the clean-tree check (not recommended)
 # ─────────────────────────────────────────────────────────────────────────────
 
 COMMIT="${1:-HEAD}"
-SSH_KEY="${KEYONE_SSH_KEY:-$HOME/Downloads/keyone.pem}"
-HOST="${KEYONE_HOST:-ubuntu@13.63.79.43}"
+SSH_KEY="${KEYONE_SSH_KEY:-$HOME/Downloads/1.pem}"
+HOST="${KEYONE_HOST:-ubuntu@16.171.230.84}"
 URL="${KEYONE_URL:-https://w.keyone1.com}"
 SSH=(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=25)
 
@@ -84,7 +84,10 @@ if ! npm run build >/tmp/deploy-build.log 2>&1; then
 fi
 rm -rf .next.deploybak
 echo "  · gateway deps"; ( cd ~/bridge-gateway && npm install --omit=dev --no-audit --no-fund --silent >/tmp/deploy-gw.log 2>&1 )
-echo "  · restart services"; sudo systemctl restart keyone.service keyone-bridge-gateway.service
+echo "  · restart services"
+sudo systemctl restart keyone.service
+# bridge gateway is optional / provisioned separately — restart only if present
+systemctl list-unit-files | grep -q keyone-bridge-gateway.service && sudo systemctl restart keyone-bridge-gateway.service || true
 sleep 2
 systemctl is-active keyone.service keyone-bridge-gateway.service keyone-wa.service || true
 echo "  · DEPLOYED_COMMIT=$(cat ~/keyone/DEPLOYED_COMMIT)"
