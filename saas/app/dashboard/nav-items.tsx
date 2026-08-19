@@ -283,6 +283,8 @@ const ADMIN_WORKSPACE: Workspace = {
   icon: Sliders,
   home: "/dashboard/feature-center",
   items: [
+    // Hidden root item to ensure workspaceForPath recognizes /dashboard as admin
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, perm: "billing" },
     // ── Platform Control ──────────────────────────────────────────────────────
     { href: "/dashboard/feature-center", label: "Feature Center", icon: Sliders, perm: "billing" },
     { href: "/admin/feature-control", label: "Feature Control", icon: Sliders, perm: "billing" },
@@ -741,14 +743,16 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
           if (isPlatformAdmin) {
             console.log(`[Admin Debug] viewed.id=${viewed.id}, itemsToRender.length=${itemsToRender.length}, ADMIN_WORKSPACE.items.length=${ADMIN_WORKSPACE.items.length}`);
           }
-          return itemsToRender.map((it) => (
-            <ContextRow
-              key={it.href}
-              item={it}
-              active={isActivePath(pathname, it.href)}
-              locked={navItemLocked(it, { role, ...accessOpts })}
-            />
-          ));
+          return itemsToRender
+            .filter((it) => !(viewed.id === "platform_admin" && it.href === "/dashboard"))
+            .map((it) => (
+              <ContextRow
+                key={it.href}
+                item={it}
+                active={isActivePath(pathname, it.href)}
+                locked={navItemLocked(it, { role, ...accessOpts })}
+              />
+            ));
         })()}
         {activated && <NavModeToggle simple={simple} toggle={toggleMode} />}
       </nav>
