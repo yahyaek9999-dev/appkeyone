@@ -740,9 +740,6 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
         {(() => {
           // Platform admin workspace must show ALL items without filtering
           const itemsToRender = viewed.id === "platform_admin" ? ADMIN_WORKSPACE.items : viewed.items;
-          if (isPlatformAdmin) {
-            console.log(`[Admin Debug] viewed.id=${viewed.id}, itemsToRender.length=${itemsToRender.length}, ADMIN_WORKSPACE.items.length=${ADMIN_WORKSPACE.items.length}`);
-          }
           return itemsToRender
             .filter((it) => !(viewed.id === "platform_admin" && it.href === "/dashboard"))
             .map((it) => (
