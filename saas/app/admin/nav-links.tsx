@@ -50,12 +50,15 @@ export const ADMIN_GROUPS: AdminGroup[] = [
 
   // ── C. MEMBERSHIPS & BILLING ──────────────────────────────────────────────
   { title: "الباقات والفوترة", icon: Crown, items: [
+    { href: "/admin/finance", label: "المركز المالي", icon: Coins, core: true },
     { href: "/admin/plans", label: "الباقات والحدود", icon: Crown, core: true },
     { href: "/admin/promotions", label: "العروض والتخفيضات", icon: Send, core: true },
     { href: "/admin/commercial", label: "التحكم التجاري", icon: Coins, core: true },
     { href: "/admin/payment-reviews", label: "مراجعة المدفوعات", icon: CreditCard, core: true },
     { href: "/admin/upgrade-requests", label: "طلبات الترقية", icon: Rocket, core: true },
     { href: "/admin/payments", label: "المدفوعات", icon: CreditCard, core: true },
+    { href: "/admin/payments/reconciliation", label: "تسوية المدفوعات", icon: Shield },
+    { href: "/admin/invoices", label: "الفواتير", icon: ScrollText },
     { href: "/admin/payment-gateways", label: "بوابات الدفع", icon: CreditCard, core: true },
     { href: "/admin/wallet", label: "المحفظة وفوترة Meta", icon: Wallet },
     { href: "/admin/payment-methods", label: "طرق الدفع", icon: CreditCard },

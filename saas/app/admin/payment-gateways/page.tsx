@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CreditCard, Plus, Star, FlaskConical, CheckCircle2, AlertCircle, Trash2, Edit2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import GatewayHealth from "./gateway-health";
 
 interface Gateway {
   id: string;
@@ -128,6 +129,9 @@ export default function PaymentGatewaysPage() {
           <Plus className="h-4 w-4" /> إضافة بوابة
         </button>
       </div>
+
+      {/* Real gateway health derived from actual payment transactions */}
+      <GatewayHealth />
 
       {/* Create form */}
       {showCreate && (

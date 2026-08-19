@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { CheckCircle2, ChevronLeft, Rocket, ToggleLeft, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import PlatformHealthStrip from "./platform-health-strip";
+import { getFinanceAttentionSignals } from "@/lib/admin/finance-reconcile";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +47,18 @@ async function getDaily() {
 type Action = { area: string; problem: string; cta: string; href: string; urgent: boolean };
 
 export default async function AdminHome() {
-  const s = await getDaily();
+  const [s, finance] = await Promise.all([
+    getDaily(),
+    getFinanceAttentionSignals().catch(() => []),
+  ]);
 
   // Build the action list — ONE line per real problem, ordered urgent-first.
   const actions: Action[] = [];
+
+  // Finance signals feed the SAME attention list (no duplicate architecture).
+  for (const f of finance) {
+    actions.push({ area: f.area, problem: f.problem, cta: f.cta, href: f.href, urgent: f.severity === "critical" });
+  }
   if (s.pendingProofs > 0) actions.push({ area: "الإيرادات", problem: `${s.pendingProofs} دفعة بانتظار مراجعتك`, cta: "راجع المدفوعات", href: "/admin/payment-reviews", urgent: true });
   if (s.disconnected > 0) actions.push({ area: "واتساب", problem: `${s.disconnected} تاجر مشترك واتسابه غير متصل`, cta: "حالة واتساب", href: "/admin/whatsapp", urgent: true });
   if (s.openIncidents > 0) actions.push({ area: "العملاء", problem: `${s.openIncidents} حادثة مفتوحة تحتاج حلاً`, cta: "الحوادث", href: "/admin/incidents", urgent: true });

@@ -11,6 +11,8 @@ import { getPaymentStats } from "@/lib/payments";
 import { formatUsd } from "@/lib/wallet/money";
 import { CreditCard, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { ReconcileButton } from "./admin-payments-client";
+import PaymentsControl from "./payments-control";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,8 @@ export default async function AdminPaymentsPage() {
     .catch(() => []);
 
   const t = stats.totals;
+  // Real provider list for the filter dropdown — derived from actual stats.
+  const providers = stats.byProvider.map((p) => p.provider);
 
   return (
     <div className="space-y-6">
@@ -67,7 +71,12 @@ export default async function AdminPaymentsPage() {
             مدفوعات شحن المحفظة عبر Paymob و Stripe والتحويل اليدوي — تُحسب من السجلات الفعلية (آخر {stats.days} يوم).
           </p>
         </div>
-        <ReconcileButton />
+        <div className="flex items-center gap-2">
+          <Link href="/admin/payments/reconciliation" className="btn-ghost flex items-center gap-1.5 text-sm">
+            <AlertCircle className="h-3.5 w-3.5" /> التسوية
+          </Link>
+          <ReconcileButton />
+        </div>
       </div>
 
       {t.uncreditedPaid > 0 && (
@@ -130,39 +139,12 @@ export default async function AdminPaymentsPage() {
       </div>
 
       {/* Recent transactions */}
-      <div className="card p-5">
-        <h2 className="font-bold text-lg mb-4">أحدث العمليات</h2>
-        {recent.length === 0 ? (
-          <div className="text-slate-500 text-sm py-8 text-center">لا توجد عمليات بعد.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-slate-400 border-b border-white/5">
-                  <th className="text-right p-2">التاريخ</th>
-                  <th className="text-right p-2">البوابة</th>
-                  <th className="text-right p-2">المبلغ</th>
-                  <th className="text-right p-2">الحالة</th>
-                  <th className="text-right p-2">مرجع البوابة</th>
-                  <th className="text-right p-2">التاجر</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((r) => (
-                  <tr key={r.id} className="border-t border-white/5">
-                    <td className="p-2 text-slate-400 whitespace-nowrap">{new Date(r.createdAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}</td>
-                    <td className="p-2">{PROVIDER_LABELS[r.provider] || r.provider}</td>
-                    <td className="p-2 font-semibold whitespace-nowrap">{formatUsd(r.amountUsd)}</td>
-                    <td className={"p-2 whitespace-nowrap " + statusTone(r.status)}>{STATUS_LABELS[r.status] || r.status}</td>
-                    <td className="p-2 text-[11px] text-slate-500 font-mono truncate max-w-[160px]">{r.providerRef || "—"}</td>
-                    <td className="p-2 text-[11px] text-slate-500 font-mono truncate max-w-[140px]">{r.userId}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* Payment Control Center — server-side search / filter / sort / pagination */}
+      <div>
+        <h2 className="mb-3 text-lg font-bold">كل المعاملات</h2>
+        <PaymentsControl providers={providers} />
       </div>
+
     </div>
   );
 }
