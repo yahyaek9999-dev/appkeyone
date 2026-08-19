@@ -735,14 +735,18 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
         <div className="px-2.5 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
           {viewed.label}
         </div>
-        {viewed.items.map((it) => (
-          <ContextRow
-            key={it.href}
-            item={it}
-            active={isActivePath(pathname, it.href)}
-            locked={navItemLocked(it, { role, ...accessOpts })}
-          />
-        ))}
+        {(() => {
+          // Platform admin workspace must show ALL items without filtering
+          const itemsToRender = viewed.id === "platform_admin" ? ADMIN_WORKSPACE.items : viewed.items;
+          return itemsToRender.map((it) => (
+            <ContextRow
+              key={it.href}
+              item={it}
+              active={isActivePath(pathname, it.href)}
+              locked={navItemLocked(it, { role, ...accessOpts })}
+            />
+          ));
+        })()}
         {activated && <NavModeToggle simple={simple} toggle={toggleMode} />}
       </nav>
     </div>
