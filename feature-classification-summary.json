@@ -1,0 +1,88 @@
+{
+  "report": {
+    "title": "KEYONE Feature Classification Report",
+    "date": "2026-08-18",
+    "totalFeaturesAnalyzed": 77,
+    "discoveryMethod": "code-first registry scan",
+    "notes": "Registry-wide search across all implemented features with complete type mapping"
+  },
+  "classification_summary": {
+    "customer_feature": {
+      "count": 51,
+      "description": "Main customer-facing features with dedicated routes (Start-Pro tiers)",
+      "defaults": {
+        "adminVisible": true,
+        "customerVisible": true,
+        "releaseState": "production"
+      }
+    },
+    "customer_subfeature": {
+      "count": 21,
+      "description": "Features embedded within customer features or with no dedicated routes",
+      "defaults": {
+        "adminVisible": true,
+        "customerVisible": true,
+        "releaseState": "production"
+      }
+    },
+    "admin_feature": {
+      "count": 5,
+      "description": "Platform admin-only features (system health, white label, audit logs)",
+      "defaults": {
+        "adminVisible": true,
+        "customerVisible": false,
+        "releaseState": "internal"
+      }
+    },
+    "internal_operational": {
+      "count": 0,
+      "description": "Implemented but not advertised or discoverable features",
+      "defaults": {
+        "adminVisible": true,
+        "customerVisible": false,
+        "releaseState": "internal"
+      }
+    },
+    "qa_testing": {
+      "count": 0,
+      "description": "Testing harness, playground, testing arena features",
+      "defaults": {
+        "adminVisible": false,
+        "customerVisible": false,
+        "releaseState": "testing"
+      }
+    },
+    "deprecated": {
+      "count": 0,
+      "description": "No longer maintained features",
+      "defaults": {
+        "adminVisible": false,
+        "customerVisible": false,
+        "releaseState": "deprecated"
+      }
+    }
+  },
+  "breakdown_by_category": {
+    "conversations": 9,
+    "customers": 6,
+    "sales": 7,
+    "marketing": 7,
+    "automation": 9,
+    "analytics": 7,
+    "settings": 22,
+    "admin": 3
+  },
+  "breakdown_by_tier": {
+    "start": 14,
+    "growth": 17,
+    "pro": 27,
+    "enterprise": 8,
+    "admin_only": 5
+  },
+  "status": {
+    "implemented": 77,
+    "in_progress": 0,
+    "pending": 0,
+    "deprecated": 0
+  }
+}

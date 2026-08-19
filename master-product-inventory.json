@@ -1,0 +1,1936 @@
+{
+  "metadata": {
+    "discoveredAt": "2026-08-18T00:00:00Z",
+    "discoveryMethod": "code-first registry scan + feature-control database analysis",
+    "totalFeatures": 77,
+    "versionId": "v1.0",
+    "lastUpdated": "2026-08-18",
+    "breakdownByType": {
+      "admin_feature": 3,
+      "customer_feature": 61,
+      "subfeature": 13
+    },
+    "breakdownByImplementationStatus": {
+      "implemented": 77,
+      "partial": 0,
+      "prototype": 0,
+      "planned": 0
+    }
+  },
+  "features": [
+    {
+      "id": "ADMIN-001",
+      "key": "system_health",
+      "name": {
+        "ar": "صحة النظام",
+        "en": "System Health"
+      },
+      "type": "admin_feature",
+      "status": "active",
+      "category": "admin",
+      "workspace": "admin",
+      "routes": [
+        "/dashboard/system-health"
+      ],
+      "apiFamilies": [
+        "/api/health/*",
+        "/api/monitoring/*"
+      ],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": false,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "ADMIN-002",
+      "key": "audit_log",
+      "name": {
+        "ar": "سجل التدقيق",
+        "en": "Audit Log"
+      },
+      "type": "admin_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/audit-log"
+      ],
+      "apiFamilies": [
+        "/api/audit-log/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "ADMIN-003",
+      "key": "white_label",
+      "name": {
+        "ar": "الملصق الأبيض",
+        "en": "White Label"
+      },
+      "type": "admin_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/white-label"
+      ],
+      "apiFamilies": [
+        "/api/white-label/*"
+      ],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": false,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-001",
+      "key": "overview",
+      "name": {
+        "ar": "نظرة عامة على لوحة التحكم",
+        "en": "Dashboard Overview"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "home",
+      "workspace": "home",
+      "routes": [
+        "/dashboard"
+      ],
+      "apiFamilies": [
+        "/api/dashboard/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-002",
+      "key": "my_work",
+      "name": {
+        "ar": "عملي",
+        "en": "My Work"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "home",
+      "workspace": "home",
+      "routes": [
+        "/dashboard/my-work"
+      ],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-003",
+      "key": "inbox",
+      "name": {
+        "ar": "صندوق الوارد",
+        "en": "Inbox"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [
+        "/dashboard/inbox"
+      ],
+      "apiFamilies": [
+        "/api/inbox/*",
+        "/api/messages/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-004",
+      "key": "escalations",
+      "name": {
+        "ar": "التصعيدات",
+        "en": "Escalations"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [
+        "/dashboard/escalations"
+      ],
+      "apiFamilies": [
+        "/api/escalations/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-005",
+      "key": "quick_replies",
+      "name": {
+        "ar": "الردود السريعة",
+        "en": "Quick Replies"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [
+        "/dashboard/quick-replies"
+      ],
+      "apiFamilies": [
+        "/api/quick-replies/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-006",
+      "key": "whatsapp_connection_health",
+      "name": {
+        "ar": "صحة اتصال WhatsApp",
+        "en": "WhatsApp Connection Health"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [
+        "/dashboard/whatsapp-health"
+      ],
+      "apiFamilies": [
+        "/api/whatsapp/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-007",
+      "key": "meta_connection_health",
+      "name": {
+        "ar": "صحة اتصال ميتا",
+        "en": "Meta Connection Health"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [
+        "/dashboard/meta-health"
+      ],
+      "apiFamilies": [
+        "/api/meta/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-008",
+      "key": "customer_management",
+      "name": {
+        "ar": "العملاء",
+        "en": "Customers"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "customers",
+      "workspace": "customers",
+      "routes": [
+        "/dashboard/customers",
+        "/dashboard/customers/[id]"
+      ],
+      "apiFamilies": [
+        "/api/customers/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-009",
+      "key": "leads",
+      "name": {
+        "ar": "العملاء المحتملون",
+        "en": "Leads"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "customers",
+      "workspace": "customers",
+      "routes": [
+        "/dashboard/leads"
+      ],
+      "apiFamilies": [
+        "/api/leads/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-010",
+      "key": "segments",
+      "name": {
+        "ar": "القطاعات",
+        "en": "Segments"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "customers",
+      "workspace": "customers",
+      "routes": [
+        "/dashboard/segments"
+      ],
+      "apiFamilies": [
+        "/api/segments/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-011",
+      "key": "customer_import",
+      "name": {
+        "ar": "استيراد العملاء",
+        "en": "Customer Import"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "customers",
+      "workspace": "customers",
+      "routes": [
+        "/dashboard/customers/import"
+      ],
+      "apiFamilies": [
+        "/api/import/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-012",
+      "key": "orders",
+      "name": {
+        "ar": "الطلبات",
+        "en": "Orders"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "sales",
+      "workspace": "sales",
+      "routes": [
+        "/dashboard/orders",
+        "/dashboard/orders/[id]"
+      ],
+      "apiFamilies": [
+        "/api/orders/*",
+        "/api/commerce/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-013",
+      "key": "products",
+      "name": {
+        "ar": "المنتجات",
+        "en": "Products"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "sales",
+      "workspace": "sales",
+      "routes": [
+        "/dashboard/products"
+      ],
+      "apiFamilies": [
+        "/api/products/*",
+        "/api/commerce/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-014",
+      "key": "coupons",
+      "name": {
+        "ar": "القسائم والخصومات",
+        "en": "Coupons & Discounts"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "sales",
+      "workspace": "sales",
+      "routes": [
+        "/dashboard/coupons"
+      ],
+      "apiFamilies": [
+        "/api/coupons/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-015",
+      "key": "shipments",
+      "name": {
+        "ar": "الشحنات والتتبع",
+        "en": "Shipments & Tracking"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "sales",
+      "workspace": "sales",
+      "routes": [
+        "/dashboard/shipments"
+      ],
+      "apiFamilies": [
+        "/api/shipments/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-016",
+      "key": "broadcasts",
+      "name": {
+        "ar": "الحملات الإعلانية",
+        "en": "Broadcasts"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [
+        "/dashboard/broadcasts-pro"
+      ],
+      "apiFamilies": [
+        "/api/broadcasts/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-017",
+      "key": "customer_recovery",
+      "name": {
+        "ar": "استعادة العملاء",
+        "en": "Customer Recovery"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [
+        "/dashboard/recovery"
+      ],
+      "apiFamilies": [
+        "/api/recovery/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-018",
+      "key": "sms_messaging",
+      "name": {
+        "ar": "رسائل SMS",
+        "en": "SMS Messaging"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [
+        "/dashboard/sms",
+        "/dashboard/sms/messages",
+        "/dashboard/sms/templates"
+      ],
+      "apiFamilies": [
+        "/api/sms/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-019",
+      "key": "broadcast_queue",
+      "name": {
+        "ar": "قائمة الحملات",
+        "en": "Broadcast Queue"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [
+        "/dashboard/qr-queue"
+      ],
+      "apiFamilies": [
+        "/api/qr-queue/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-020",
+      "key": "bot_configuration",
+      "name": {
+        "ar": "تكوين البوت",
+        "en": "Bot Configuration"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/bot"
+      ],
+      "apiFamilies": [
+        "/api/bot/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-021",
+      "key": "bot_builder",
+      "name": {
+        "ar": "منشئ البوت",
+        "en": "Bot Builder"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/bot-builder"
+      ],
+      "apiFamilies": [
+        "/api/bot/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-022",
+      "key": "automations",
+      "name": {
+        "ar": "التلقائيات",
+        "en": "Automations"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/automations"
+      ],
+      "apiFamilies": [
+        "/api/automations/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-023",
+      "key": "knowledge_base",
+      "name": {
+        "ar": "قاعدة المعرفة",
+        "en": "Knowledge Base"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/knowledge"
+      ],
+      "apiFamilies": [
+        "/api/knowledge/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-024",
+      "key": "working_hours",
+      "name": {
+        "ar": "ساعات العمل",
+        "en": "Working Hours"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/working-hours"
+      ],
+      "apiFamilies": [
+        "/api/working-hours/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-025",
+      "key": "flow_builder",
+      "name": {
+        "ar": "منشئ تدفقات البيانات",
+        "en": "Flow Builder"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/flow-builder"
+      ],
+      "apiFamilies": [
+        "/api/flows/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-026",
+      "key": "agents",
+      "name": {
+        "ar": "المساعدات الذكية",
+        "en": "Agents"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/agents"
+      ],
+      "apiFamilies": [
+        "/api/agents/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-027",
+      "key": "ai_operations",
+      "name": {
+        "ar": "عمليات الذكاء الاصطناعي",
+        "en": "AI Operations"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [
+        "/dashboard/ai-operations"
+      ],
+      "apiFamilies": [
+        "/api/ai-control/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-028",
+      "key": "analytics_overview",
+      "name": {
+        "ar": "نظرة عامة على التحليلات",
+        "en": "Analytics Overview"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "analytics",
+      "workspace": "analytics",
+      "routes": [
+        "/dashboard/analytics"
+      ],
+      "apiFamilies": [
+        "/api/analytics/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-029",
+      "key": "business_intelligence",
+      "name": {
+        "ar": "ذكاء الأعمال",
+        "en": "Business Intelligence"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "analytics",
+      "workspace": "analytics",
+      "routes": [
+        "/dashboard/business-intelligence"
+      ],
+      "apiFamilies": [
+        "/api/analytics/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-030",
+      "key": "funnel_analytics",
+      "name": {
+        "ar": "تحليل القمع",
+        "en": "Funnel Analytics"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "analytics",
+      "workspace": "analytics",
+      "routes": [
+        "/dashboard/funnel"
+      ],
+      "apiFamilies": [
+        "/api/funnel/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-031",
+      "key": "revenue_copilot",
+      "name": {
+        "ar": "مساعد الإيرادات",
+        "en": "Revenue Copilot"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "analytics",
+      "workspace": "analytics",
+      "routes": [
+        "/dashboard/revenue-copilot"
+      ],
+      "apiFamilies": [
+        "/api/revenue-copilot/*",
+        "/api/copilot/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-032",
+      "key": "business_performance",
+      "name": {
+        "ar": "أداء الأعمال",
+        "en": "Business Performance"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "analytics",
+      "workspace": "analytics",
+      "routes": [
+        "/dashboard/business"
+      ],
+      "apiFamilies": [
+        "/api/analytics/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-033",
+      "key": "revenue_pro",
+      "name": {
+        "ar": "عائدات احترافية",
+        "en": "Revenue Pro"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "analytics",
+      "workspace": "analytics",
+      "routes": [
+        "/dashboard/revenue-pro"
+      ],
+      "apiFamilies": [
+        "/api/revenue-pro/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-034",
+      "key": "data_export",
+      "name": {
+        "ar": "تصدير البيانات",
+        "en": "Data Export"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "analytics",
+      "workspace": "analytics",
+      "routes": [
+        "/dashboard/export"
+      ],
+      "apiFamilies": [
+        "/api/export/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-035",
+      "key": "account_settings",
+      "name": {
+        "ar": "إعدادات الحساب",
+        "en": "Account Settings"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings"
+      ],
+      "apiFamilies": [
+        "/api/settings/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-036",
+      "key": "billing_and_payments",
+      "name": {
+        "ar": "الفواتير والدفع",
+        "en": "Billing & Payments"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/billing"
+      ],
+      "apiFamilies": [
+        "/api/payments/*",
+        "/api/billing/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-037",
+      "key": "usage_and_limits",
+      "name": {
+        "ar": "الاستخدام والحدود",
+        "en": "Usage & Limits"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/usage"
+      ],
+      "apiFamilies": [
+        "/api/usage/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-038",
+      "key": "wallet",
+      "name": {
+        "ar": "المحفظة والأرصدة",
+        "en": "Wallet & Credits"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/wallet"
+      ],
+      "apiFamilies": [
+        "/api/wallet/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-039",
+      "key": "integrations",
+      "name": {
+        "ar": "التكاملات",
+        "en": "Integrations"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/integrations",
+        "/dashboard/settings/providers",
+        "/dashboard/settings/providers/[domain]"
+      ],
+      "apiFamilies": [
+        "/api/settings/*",
+        "/api/integrations/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-040",
+      "key": "branches",
+      "name": {
+        "ar": "الفروع",
+        "en": "Branches"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/branches"
+      ],
+      "apiFamilies": [
+        "/api/branches/*"
+      ],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-041",
+      "key": "approval_workflows",
+      "name": {
+        "ar": "سير العمل الموافقة",
+        "en": "Approval Workflows"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/approvals"
+      ],
+      "apiFamilies": [
+        "/api/approvals/*"
+      ],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-042",
+      "key": "audit_log",
+      "name": {
+        "ar": "سجل التدقيق",
+        "en": "Audit Log"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/audit-log"
+      ],
+      "apiFamilies": [
+        "/api/audit-log/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-043",
+      "key": "ai_provider_settings",
+      "name": {
+        "ar": "إعدادات مزود الذكاء الاصطناعي",
+        "en": "AI Provider Settings"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings/ai-provider"
+      ],
+      "apiFamilies": [
+        "/api/settings/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-044",
+      "key": "bridge_configuration",
+      "name": {
+        "ar": "تكوين الجسر",
+        "en": "Bridge Configuration"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings/bridge",
+        "/dashboard/settings/bridge/download",
+        "/dashboard/settings/bridge/link"
+      ],
+      "apiFamilies": [
+        "/api/bridge/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-045",
+      "key": "business_profile",
+      "name": {
+        "ar": "ملف العمل التجاري",
+        "en": "Business Profile"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings/business-profile"
+      ],
+      "apiFamilies": [
+        "/api/settings/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-046",
+      "key": "meta_cloud_api",
+      "name": {
+        "ar": "إعداد Meta Cloud API",
+        "en": "Meta Cloud API Setup"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings/meta-cloud"
+      ],
+      "apiFamilies": [
+        "/api/meta/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-047",
+      "key": "order_settings",
+      "name": {
+        "ar": "إعدادات الطلبات",
+        "en": "Order Settings"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings/orders"
+      ],
+      "apiFamilies": [
+        "/api/settings/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-048",
+      "key": "team_management",
+      "name": {
+        "ar": "إدارة الفريق",
+        "en": "Team Management"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings/team"
+      ],
+      "apiFamilies": [
+        "/api/team/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-049",
+      "key": "whatsapp_numbers",
+      "name": {
+        "ar": "أرقام WhatsApp",
+        "en": "WhatsApp Numbers"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/settings/numbers",
+        "/dashboard/settings/numbers/[id]"
+      ],
+      "apiFamilies": [
+        "/api/numbers/*"
+      ],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-050",
+      "key": "developer_api",
+      "name": {
+        "ar": "واجهة برمجة التطبيقات للمطورين",
+        "en": "Developer API"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/developer",
+        "/dashboard/developer/docs",
+        "/dashboard/developer/sdk"
+      ],
+      "apiFamilies": [
+        "/api/developer/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-051",
+      "key": "system_health",
+      "name": {
+        "ar": "صحة النظام",
+        "en": "System Health"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/system-health"
+      ],
+      "apiFamilies": [
+        "/api/health/*",
+        "/api/monitoring/*"
+      ],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": false,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-052",
+      "key": "white_label",
+      "name": {
+        "ar": "الملصق الأبيض",
+        "en": "White Label"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [
+        "/dashboard/white-label"
+      ],
+      "apiFamilies": [
+        "/api/white-label/*"
+      ],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": false,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-053",
+      "key": "message_templates",
+      "name": {
+        "ar": "قوالب الرسائل",
+        "en": "Message Templates"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "automation",
+      "workspace": "automation",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-054",
+      "key": "employee_access_control",
+      "name": {
+        "ar": "التحكم في وصول الموظفين",
+        "en": "Employee Access Control"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [],
+      "apiFamilies": [
+        "/api/team/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-055",
+      "key": "message_routing",
+      "name": {
+        "ar": "توجيه الرسائل",
+        "en": "Message Routing"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [
+        "/api/team/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-056",
+      "key": "campaign_scheduling",
+      "name": {
+        "ar": "جدولة الحملات",
+        "en": "Campaign Scheduling"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [],
+      "apiFamilies": [
+        "/api/broadcasts/*"
+      ],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-057",
+      "key": "sla_management",
+      "name": {
+        "ar": "إدارة اتفاقيات مستويات الخدمة",
+        "en": "SLA Management"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [
+        "/api/escalations/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-058",
+      "key": "customer_segmentation_advanced",
+      "name": {
+        "ar": "تقسيم العملاء المتقدم",
+        "en": "Advanced Customer Segmentation"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "customers",
+      "workspace": "customers",
+      "routes": [],
+      "apiFamilies": [
+        "/api/segments/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-059",
+      "key": "loyalty_rewards",
+      "name": {
+        "ar": "المكافآت والولاء",
+        "en": "Loyalty & Rewards"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "sales",
+      "workspace": "sales",
+      "routes": [],
+      "apiFamilies": [
+        "/api/coupons/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-060",
+      "key": "sms_credits",
+      "name": {
+        "ar": "إدارة أرصدة SMS",
+        "en": "SMS Credits Management"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [
+        "/dashboard/sms/credits"
+      ],
+      "apiFamilies": [
+        "/api/sms/*",
+        "/api/broadcast-credits/*"
+      ],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "FEAT-061",
+      "key": "multi_whatsapp",
+      "name": {
+        "ar": "دعم WhatsApp المتعدد",
+        "en": "Multi WhatsApp Support"
+      },
+      "type": "customer_feature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [
+        "/api/numbers/*"
+      ],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "HIDDEN-001",
+      "key": "message_templates",
+      "name": {
+        "ar": "قوالب الرسائل",
+        "en": "Message Templates"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-003"
+    },
+    {
+      "id": "HIDDEN-002",
+      "key": "message_routing",
+      "name": {
+        "ar": "توجيه الرسائل",
+        "en": "Message Routing"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-048"
+    },
+    {
+      "id": "HIDDEN-003",
+      "key": "employee_access_control",
+      "name": {
+        "ar": "التحكم في وصول الموظفين",
+        "en": "Employee Access Control"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "settings",
+      "workspace": "settings",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-048"
+    },
+    {
+      "id": "HIDDEN-004",
+      "key": "multi_whatsapp",
+      "name": {
+        "ar": "دعم WhatsApp المتعدد",
+        "en": "Multi WhatsApp Support"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "enterprise",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-049"
+    },
+    {
+      "id": "HIDDEN-005",
+      "key": "campaign_scheduling",
+      "name": {
+        "ar": "جدولة الحملات",
+        "en": "Campaign Scheduling"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-016"
+    },
+    {
+      "id": "HIDDEN-006",
+      "key": "sla_management",
+      "name": {
+        "ar": "إدارة اتفاقيات مستويات الخدمة",
+        "en": "SLA Management"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-004"
+    },
+    {
+      "id": "HIDDEN-007",
+      "key": "advanced_segmentation",
+      "name": {
+        "ar": "تقسيم العملاء المتقدم",
+        "en": "Advanced Segmentation"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "customers",
+      "workspace": "customers",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-010"
+    },
+    {
+      "id": "HIDDEN-008",
+      "key": "sms_templates",
+      "name": {
+        "ar": "قوالب SMS",
+        "en": "SMS Templates"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [
+        "/dashboard/sms/templates"
+      ],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-018"
+    },
+    {
+      "id": "HIDDEN-009",
+      "key": "sms_providers",
+      "name": {
+        "ar": "موفرو خدمات SMS",
+        "en": "SMS Providers"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [
+        "/dashboard/sms/providers"
+      ],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-018"
+    },
+    {
+      "id": "HIDDEN-010",
+      "key": "loyalty_and_rewards",
+      "name": {
+        "ar": "البرنامج ومكافآت الولاء",
+        "en": "Loyalty & Rewards"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "sales",
+      "workspace": "sales",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "pro",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-014"
+    },
+    {
+      "id": "HIDDEN-011",
+      "key": "message_export",
+      "name": {
+        "ar": "تصدير الرسائل",
+        "en": "Message Export"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "conversations",
+      "workspace": "conversations",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-003"
+    },
+    {
+      "id": "HIDDEN-012",
+      "key": "broadcast_analytics",
+      "name": {
+        "ar": "تحليلات الحملات",
+        "en": "Broadcast Analytics"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "marketing",
+      "workspace": "marketing",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "growth",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-016"
+    },
+    {
+      "id": "HIDDEN-013",
+      "key": "customer_import_templates",
+      "name": {
+        "ar": "قوالب استيراد العملاء",
+        "en": "Customer Import Templates"
+      },
+      "type": "subfeature",
+      "status": "active",
+      "category": "customers",
+      "workspace": "customers",
+      "routes": [],
+      "apiFamilies": [],
+      "models": [],
+      "minimumPlan": "start",
+      "adminVisible": true,
+      "customerVisible": true,
+      "implementation_status": "implemented",
+      "parentFeature": "FEAT-011"
+    }
+  ],
+  "categories": {
+    "customer_workspaces": [
+      {
+        "id": "conversations",
+        "name": {
+          "ar": "المحادثات",
+          "en": "Conversations"
+        },
+        "description": "WhatsApp inbox, escalations, quick replies, health monitoring",
+        "order": 1
+      },
+      {
+        "id": "customers",
+        "name": {
+          "ar": "العملاء",
+          "en": "Customers"
+        },
+        "description": "CRM, leads, segments, customer import",
+        "order": 2
+      },
+      {
+        "id": "sales",
+        "name": {
+          "ar": "المبيعات",
+          "en": "Sales"
+        },
+        "description": "Orders, products, coupons, shipments, loyalty",
+        "order": 3
+      },
+      {
+        "id": "marketing",
+        "name": {
+          "ar": "التسويق",
+          "en": "Marketing"
+        },
+        "description": "Broadcasts, customer recovery, SMS, campaign scheduling",
+        "order": 4
+      },
+      {
+        "id": "automation",
+        "name": {
+          "ar": "التلقائيات",
+          "en": "Automation"
+        },
+        "description": "Bot builder, automations, flows, knowledge base, agents, AI",
+        "order": 5
+      },
+      {
+        "id": "analytics",
+        "name": {
+          "ar": "التحليلات",
+          "en": "Analytics"
+        },
+        "description": "Dashboards, BI, funnels, revenue insights, reports",
+        "order": 6
+      },
+      {
+        "id": "settings",
+        "name": {
+          "ar": "الإعدادات",
+          "en": "Settings"
+        },
+        "description": "Account, billing, team, integrations, technical config",
+        "order": 7
+      },
+      {
+        "id": "home",
+        "name": {
+          "ar": "الصفحة الرئيسية",
+          "en": "Home"
+        },
+        "description": "Dashboard overview, my work",
+        "order": 0
+      }
+    ],
+    "admin_categories": [
+      {
+        "id": "admin",
+        "name": {
+          "ar": "الإدارة",
+          "en": "Administration"
+        },
+        "description": "System-level features for platform admins",
+        "order": 1
+      }
+    ]
+  },
+  "statistics": {
+    "total_features": 77,
+    "by_type": {
+      "admin_feature": 3,
+      "customer_feature": 61,
+      "subfeature": 13
+    },
+    "by_plan": {
+      "enterprise": 8,
+      "pro": 30,
+      "start": 23,
+      "growth": 16
+    },
+    "by_workspace": {
+      "admin": 1,
+      "settings": 22,
+      "home": 2,
+      "conversations": 13,
+      "customers": 7,
+      "sales": 6,
+      "marketing": 10,
+      "automation": 9,
+      "analytics": 7
+    },
+    "by_status": {
+      "active": 77
+    },
+    "visibility": {
+      "customer_visible": 0,
+      "admin_only": 4,
+      "both": 73
+    }
+  },
+  "gateways": {
+    "admin_visibility_rules": [
+      {
+        "id": "admin_all_always",
+        "name": "Admin sees all features",
+        "description": "All features are visible to admins regardless of status",
+        "logic": "adminVisible = true (always)"
+      },
+      {
+        "id": "admin_feature_type",
+        "name": "Admin feature type",
+        "description": "Features marked as admin_feature are visible to admins only",
+        "logic": "type = 'admin_feature' AND adminVisible = true AND customerVisible = false"
+      }
+    ],
+    "customer_visibility_rules": [
+      {
+        "id": "customer_plan_gating",
+        "name": "Plan-based feature gating",
+        "description": "Customer can see features where minimumPlan <= accountPlan",
+        "logic": "customerVisible = true AND minimumPlan <= userPlan"
+      },
+      {
+        "id": "customer_not_admin_features",
+        "name": "Hide admin-only features",
+        "description": "Admin-only features are not shown to regular customers",
+        "logic": "type != 'admin_feature' OR (type = 'admin_feature' AND customerVisible = true)"
+      },
+      {
+        "id": "customer_active_status",
+        "name": "Show active and coming soon features",
+        "description": "Only active and coming_soon features are visible; beta, disabled, deprecated are gated",
+        "logic": "status IN ('active', 'coming_soon')"
+      },
+      {
+        "id": "customer_subfeature_with_parent",
+        "name": "Subfeatures follow parent visibility",
+        "description": "Subfeatures are only visible if parent feature is visible",
+        "logic": "type != 'subfeature' OR (parentFeature exists AND parentFeature is visible)"
+      }
+    ],
+    "implementation_gating": [
+      {
+        "id": "route_guard",
+        "name": "Route-level feature guard",
+        "description": "Routes are protected by feature visibility check before rendering",
+        "check_point": "middleware",
+        "logic": "isFeatureEnabled(featureId) && isCustomerVisible() || isAdmin()"
+      },
+      {
+        "id": "api_guard",
+        "name": "API family authorization",
+        "description": "API endpoints check feature entitlement and customer plan",
+        "check_point": "api_middleware",
+        "logic": "verifyFeatureAccess(featureId, userPlan)"
+      }
+    ]
+  }
+}
