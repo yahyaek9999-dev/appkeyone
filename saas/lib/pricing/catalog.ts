@@ -167,6 +167,22 @@ export const CAPABILITIES: Capability[] = [
   { key: "custom_dev",          category: "enterprise", minTierIndex: 3, label: { ar: "تطوير مخصّص",                    en: "Custom Development" } },
   { key: "sla",                 category: "enterprise", minTierIndex: 3, label: { ar: "اتفاقية مستوى خدمة (SLA)",       en: "SLA Agreement" } },
   { key: "custom_billing",      category: "enterprise", minTierIndex: 3, label: { ar: "فوترة مخصّصة",                   en: "Custom Billing" } },
+
+  // ── INTERNAL/QA — testing & diagnostics (Enterprise + admin only) ─────────
+  { key: "playground",          category: "operations", minTierIndex: 3, label: { ar: "ملعب العمل (QA)",                 en: "Playground (QA)" } },
+  { key: "ai_audit",            category: "operations", minTierIndex: 3, label: { ar: "مراجعة الذكاء الاصطناعي (QA)",      en: "AI Audit (QA)" } },
+  { key: "testing_arena",       category: "operations", minTierIndex: 3, label: { ar: "ساحة الاختبار (QA)",              en: "Testing Arena (QA)" } },
+  { key: "arena",               category: "operations", minTierIndex: 3, label: { ar: "ساحة العمل (QA)",                 en: "Arena (QA)" } },
+  { key: "command_center",      category: "operations", minTierIndex: 3, label: { ar: "مركز التحكم",                     en: "Command Center" } },
+  { key: "system_intelligence", category: "operations", minTierIndex: 3, label: { ar: "استخبارات النظام",                en: "System Intelligence" } },
+  { key: "brain",               category: "operations", minTierIndex: 3, label: { ar: "دماغ النظام",                     en: "System Brain" } },
+  { key: "knowledge_brain",     category: "operations", minTierIndex: 3, label: { ar: "دماغ المعرفة",                    en: "Knowledge Brain" } },
+  { key: "sales_brain",         category: "operations", minTierIndex: 3, label: { ar: "دماغ المبيعات",                   en: "Sales Brain" } },
+  { key: "demo",                category: "operations", minTierIndex: 3, label: { ar: "عرض توضيحي",                      en: "Demo Mode" } },
+  { key: "monitoring",          category: "operations", minTierIndex: 3, label: { ar: "المراقبة والتنبيهات (Ops)",       en: "Monitoring & Alerts (Ops)" } },
+  { key: "feature_center",      category: "operations", minTierIndex: 3, label: { ar: "مركز الميزات (Admin)",            en: "Feature Center (Admin)" } },
+  { key: "memberships",         category: "operations", minTierIndex: 3, label: { ar: "إدارة العضويات",                 en: "Memberships Management" } },
+  { key: "suggestions",         category: "operations", minTierIndex: 3, label: { ar: "الاقتراحات والتوصيات",             en: "Suggestions & Recommendations" } },
 ];
 
 export interface TierLimits {
