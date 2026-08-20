@@ -544,20 +544,6 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/settings":             "wallet",
   "/dashboard/usage":                "wallet",
   "/dashboard/revenue-forecast":     "forecasting",
-  "/dashboard/playground":           "playground",
-  "/dashboard/ai-audit":             "ai_audit",
-  "/dashboard/testing-arena":        "testing_arena",
-  "/dashboard/arena":                "arena",
-  "/dashboard/command-center":       "command_center",
-  "/dashboard/intel":                "system_intelligence",
-  "/dashboard/brain":                "brain",
-  "/dashboard/knowledge-brain":      "knowledge_brain",
-  "/dashboard/sales-brain":          "sales_brain",
-  "/dashboard/demo":                 "demo",
-  "/dashboard/monitoring":           "monitoring",
-  "/dashboard/feature-center":       "feature_center",
-  "/dashboard/memberships":          "memberships",
-  "/dashboard/suggestions":          "suggestions",
 };
 
 /**
