@@ -128,6 +128,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
       { href: "/dashboard/whatsapp-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "qr" },
       { href: "/dashboard/meta-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "meta" },
+      { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
     ],
   },
 
@@ -206,6 +207,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },
       { href: "/dashboard/funnel", label: "قمع التحويل", icon: Filter, perm: "analytics" },
       { href: "/dashboard/revenue-copilot", label: "فرص الإيرادات", icon: TrendingUp, perm: "analytics" },
+      { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/business", label: "أداء النشاط", icon: Building2, perm: "analytics" },
       { href: "/dashboard/revenue-pro", label: "تحليلات الإيرادات المتقدمة", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/export", label: "تصدير البيانات", icon: Download, perm: "customers" },
@@ -511,6 +513,7 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/system-health":        "system_health",
   "/dashboard/settings":             "wallet",
   "/dashboard/usage":                "wallet",
+  "/dashboard/revenue-forecast":     "forecasting",
 };
 
 /**
