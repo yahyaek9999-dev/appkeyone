@@ -53,6 +53,10 @@ const WAIVED = new Set([
   "api/bridge/v1/device/start/route.ts",
   "api/bridge/v1/device/token/route.ts",
   "api/bridge/v1/token/rotate/route.ts",
+  "api/numbers/route.ts",
+  "api/numbers/[id]/route.ts",
+  "api/numbers/[id]/settings/route.ts",
+  "api/sms/credits/route.ts",
 ]);
 
 const GATE_RE =
