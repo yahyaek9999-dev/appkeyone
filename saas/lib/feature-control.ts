@@ -52,7 +52,14 @@ async function loadAll(): Promise<Map<string, FeatureControlRow>> {
   // Self-heal: an empty registry means every feature gate silently passes and
   // the admin UI shows "0 features". Seed it from the capability catalog on
   // first sight rather than shipping a dead control plane.
-  if (rows.length === 0 && !autoSeedAttempted) {
+  //
+  // ALSO: Check if any NEW capabilities from CAPABILITIES array are missing from
+  // the database (e.g., recently added internal routes). If so, seed them.
+  const dbFeatureIds = new Set(rows.map((r: any) => r.featureId));
+  const catalogFeatureIds = new Set(CAPABILITIES.map(c => c.key));
+  const missingFeatures = [...catalogFeatureIds].filter(id => !dbFeatureIds.has(id));
+
+  if ((rows.length === 0 || missingFeatures.length > 0) && !autoSeedAttempted) {
     autoSeedAttempted = true;
     try {
       await seedFeatureRegistry();
