@@ -8,7 +8,7 @@ import { apiGate } from "@/lib/membership/gate";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const gate = await apiGate("smart_campaign_builder");
+  const gate = await apiGate("coupons_discounts");
   if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });

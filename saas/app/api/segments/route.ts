@@ -10,7 +10,7 @@ import { computeSegments, resolveSegmentCustomers } from "@/lib/analytics/segmen
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const gate = await apiGate("customer_segmentation");
+  const gate = await apiGate("segments");
   if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
