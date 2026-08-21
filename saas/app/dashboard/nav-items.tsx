@@ -242,31 +242,6 @@ export const WORKSPACES: Workspace[] = [
       { href: "/docs", label: "مركز المساعدة", icon: BookOpen, perm: "analytics" },
     ],
   },
-
-  // ── 9. داخلي (Internal/QA) ────────────────────────────────────────────────
-  {
-    id: "internal",
-    label: "داخلي",
-    short: "داخلي",
-    icon: Code2,
-    home: "/dashboard/playground",
-    items: [
-      { href: "/dashboard/playground", label: "ملعب العمل", icon: Gamepad2, perm: "settings" },
-      { href: "/dashboard/ai-audit", label: "مراجعة الذكاء الاصطناعي", icon: Zap, perm: "settings" },
-      { href: "/dashboard/testing-arena", label: "ساحة الاختبار", icon: Shield, perm: "settings" },
-      { href: "/dashboard/arena", label: "ساحة العمل", icon: Layers, perm: "settings" },
-      { href: "/dashboard/command-center", label: "مركز التحكم", icon: Cpu, perm: "settings" },
-      { href: "/dashboard/intel", label: "استخبارات النظام", icon: Activity, perm: "settings" },
-      { href: "/dashboard/brain", label: "دماغ النظام", icon: Brain, perm: "settings" },
-      { href: "/dashboard/knowledge-brain", label: "دماغ المعرفة", icon: BookOpen, perm: "settings" },
-      { href: "/dashboard/sales-brain", label: "دماغ المبيعات", icon: TrendingUp, perm: "settings" },
-      { href: "/dashboard/demo", label: "عرض توضيحي", icon: Play, perm: "settings" },
-      { href: "/dashboard/monitoring", label: "المراقبة", icon: Eye, perm: "settings" },
-      { href: "/dashboard/feature-center", label: "مركز الميزات", icon: Sparkles, perm: "settings" },
-      { href: "/dashboard/memberships", label: "العضويات", icon: Users, perm: "settings" },
-      { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "settings" },
-    ],
-  },
 ];
 
 /**
@@ -544,6 +519,21 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/settings":             "wallet",
   "/dashboard/usage":                "wallet",
   "/dashboard/revenue-forecast":     "forecasting",
+  // Internal/QA routes — mapped for navigation gating
+  "/dashboard/playground":           "playground",
+  "/dashboard/ai-audit":             "ai_audit",
+  "/dashboard/testing-arena":        "testing_arena",
+  "/dashboard/arena":                "arena",
+  "/dashboard/command-center":       "command_center",
+  "/dashboard/intel":                "system_intelligence",
+  "/dashboard/brain":                "brain",
+  "/dashboard/knowledge-brain":      "knowledge_brain",
+  "/dashboard/sales-brain":          "sales_brain",
+  "/dashboard/demo":                 "demo",
+  "/dashboard/monitoring":           "monitoring",
+  "/dashboard/feature-center":       "feature_center",
+  "/dashboard/memberships":          "memberships",
+  "/dashboard/suggestions":          "suggestions",
 };
 
 /**
