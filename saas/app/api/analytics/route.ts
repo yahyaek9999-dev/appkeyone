@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { startOfLocalDay, localYmd } from "@/lib/tz";
 
@@ -25,6 +26,8 @@ export const dynamic = "force-dynamic";
  *   savings       { quickReplyShare, estLlmCallsSaved, currency, estUsdSaved }
  */
 export async function GET(req: Request) {
+  const gate = await apiGate("advanced_analytics");
+  if (gate.response) return gate.response;
   const uid = await getUserId();
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
