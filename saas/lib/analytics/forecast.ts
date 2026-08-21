@@ -6,6 +6,7 @@
 // daily aggregate, revenue intelligence and follow-up detector.
 
 import { prisma } from "@/lib/db";
+import { REVENUE_ELIGIBLE_STATUSES } from "@/lib/revenue/engine";
 import { getOrderRollup } from "./order-rollup";
 import { aggregateForUser } from "@/lib/daily-report/aggregate";
 import { revenueIntelligence } from "@/lib/sales-brain/revenue";
@@ -63,7 +64,7 @@ export async function computeForecast(userId: string): Promise<ForecastResult> {
 
   const [orders, rollup, agg, rev, followUps] = await Promise.all([
     prisma.order.findMany({
-      where: { userId, createdAt: { gte: since }, status: { not: "canceled" } },
+      where: { userId, createdAt: { gte: since }, status: { in: REVENUE_ELIGIBLE_STATUSES } },
       select: { total: true, createdAt: true },
       take: 40_000,
     }),

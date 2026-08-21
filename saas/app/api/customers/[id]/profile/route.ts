@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { REVENUE_ELIGIBLE_STATUSES } from "@/lib/revenue/engine";
 import { readNegotiation } from "@/lib/sales-engine";
 import { decideNextBestAction } from "@/lib/intelligence/next-best-action";
 import { recommendProduct } from "@/lib/intelligence/product-recs";
@@ -59,7 +60,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       include: { items: { take: 1 } },
     }) as Promise<any>,
     prisma.order.aggregate({
-      where: { userId: uid, customerId: c.id, status: { not: "canceled" } },
+      where: { userId: uid, customerId: c.id, status: { in: REVENUE_ELIGIBLE_STATUSES } },
       _count: { _all: true },
       _sum: { total: true },
     }),

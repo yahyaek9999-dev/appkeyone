@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { evaluateSubscription, getSiteConfig } from "@/lib/admin";
+import { REVENUE_ELIGIBLE_STATUSES } from "@/lib/revenue/engine";
 import { redirect } from "next/navigation";
 import {
   Crown, Clock, DollarSign, ArrowUpRight,
@@ -93,8 +94,8 @@ export default async function DashboardOverview() {
     isAdmin ? Promise.resolve(null) : syncUserMilestones(user.id).catch(() => null),
     prisma.order.count({ where: { userId: user.id, createdAt: { gte: start7 } } }).catch(() => 0),
     prisma.order.count({ where: { userId: user.id, createdAt: { gte: start14, lt: start7 } } }).catch(() => 0),
-    prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start7 }, status: { not: "canceled" } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
-    prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start14, lt: start7 }, status: { not: "canceled" } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
+    prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start7 }, status: { in: REVENUE_ELIGIBLE_STATUSES } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
+    prisma.order.aggregate({ where: { userId: user.id, createdAt: { gte: start14, lt: start7 }, status: { in: REVENUE_ELIGIBLE_STATUSES } }, _sum: { total: true } }).catch(() => ({ _sum: { total: null } })),
     prisma.order.count({ where: { userId: user.id, status: { in: ["pending", "confirmed"] } } }).catch(() => 0),
     prisma.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 5, select: { id: true, customerName: true, customerPhone: true, total: true, currency: true, status: true, createdAt: true } }).catch(() => []),
     prisma.providerUsage.aggregate({ where: { userId: user.id, day: { gte: start7.toISOString().slice(0, 10) } }, _sum: { calls: true } }).catch(() => ({ _sum: { calls: null } })),

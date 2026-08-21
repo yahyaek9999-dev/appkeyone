@@ -9,6 +9,15 @@
 import { prisma } from "@/lib/db";
 import { resolveBusinessContext } from "@/lib/business-context";
 
+// Revenue eligibility: only counted for completed transactions, not pending/returned/refunded/canceled
+export const REVENUE_ELIGIBLE_STATUSES = [
+  "confirmed",
+  "preparing",
+  "shipped",
+  "out_for_delivery",
+  "delivered",
+];
+
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 const DAY = 86_400_000;
 const monthKey = (d: Date) => d.toISOString().slice(0, 7);
@@ -21,11 +30,11 @@ export async function computeRevenue(userId: string) {
   const [rev30Agg, revPrevAgg, customers] = await Promise.all([
     prisma.order.aggregate({
       _sum: { total: true },
-      where: { userId, status: { not: "canceled" }, createdAt: { gte: d30 } },
+      where: { userId, status: { in: REVENUE_ELIGIBLE_STATUSES }, createdAt: { gte: d30 } },
     }),
     prisma.order.aggregate({
       _sum: { total: true },
-      where: { userId, status: { not: "canceled" }, createdAt: { gte: d60, lt: d30 } },
+      where: { userId, status: { in: REVENUE_ELIGIBLE_STATUSES }, createdAt: { gte: d60, lt: d30 } },
     }),
     prisma.customer.findMany({
       where: { userId },
