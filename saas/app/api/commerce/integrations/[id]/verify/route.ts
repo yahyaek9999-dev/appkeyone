@@ -6,6 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { readIntegrationConfig } from "@/lib/commerce/catalog-sync";
@@ -29,6 +30,8 @@ async function ping(url: string, headers: Record<string, string>): Promise<{ ok:
 }
 
 export async function POST(_req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("custom_integrations", "settings");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }

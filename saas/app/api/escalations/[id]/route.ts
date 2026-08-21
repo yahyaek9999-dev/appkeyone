@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 import { acknowledgeEscalation, resolveEscalation } from "@/lib/escalation";
 
@@ -13,6 +14,8 @@ const Body = z.object({
 });
 
 export async function GET(_req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("escalations");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requirePermission("escalations"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
@@ -24,6 +27,8 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("escalations");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requirePermission("escalations"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }

@@ -6,11 +6,14 @@
  */
 import { NextResponse } from "next/server";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { checkAvailability, suggestNextSlot, qrQueueFlags } from "@/lib/qr-queue";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const gate = await apiGate("qr_broadcast_queue");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

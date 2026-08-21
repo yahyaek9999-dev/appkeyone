@@ -6,6 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { reservationById, queuePositionFor, cancelReservation } from "@/lib/qr-queue";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,8 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
+  const gate = await apiGate("qr_broadcast_queue");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -28,6 +31,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
+  const gate = await apiGate("qr_broadcast_queue");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

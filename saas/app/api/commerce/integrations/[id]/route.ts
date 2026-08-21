@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { COMMERCE_PLATFORMS } from "@/lib/commerce/types";
@@ -18,6 +19,8 @@ const PatchBody = z.object({
 });
 
 export async function GET(req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("custom_integrations", "settings");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
@@ -36,6 +39,8 @@ export async function GET(req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("custom_integrations", "settings");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
@@ -69,6 +74,8 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
 }
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("custom_integrations", "settings");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }

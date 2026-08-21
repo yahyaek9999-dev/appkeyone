@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { recordCommerceWebhookEvent } from "@/lib/commerce/events";
@@ -10,6 +11,8 @@ import { sha256 } from "@/lib/commerce/security";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
+  const gate = await apiGate("custom_integrations", "settings");
+  if (gate.response) return gate.response;
   let user;
   try { user = await requirePermission("settings"); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }

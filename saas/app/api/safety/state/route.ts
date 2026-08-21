@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { prisma } from "@/lib/db";
 import { loadState } from "@/lib/safety/store";
 import { getStageLimits, type StageLimits } from "@/lib/safety/warmup";
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 type ReasonCount = { reason: string; count: number };
 
 export async function GET() {
+  const gate = await apiGate("safety_controls");
+  if (gate.response) return gate.response;
   const user = await requireUser();
   const userId = user.id;
   const state = await loadState(userId);

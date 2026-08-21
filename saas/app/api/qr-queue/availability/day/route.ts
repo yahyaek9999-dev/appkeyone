@@ -2,11 +2,14 @@
 import { NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth";
 import { can } from "@/lib/rbac";
+import { apiGate } from "@/lib/membership/gate";
 import { dayAvailability } from "@/lib/qr-queue/capacity";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const gate = await apiGate("qr_broadcast_queue");
+  if (gate.response) return gate.response;
   const ctx = await getAuthContext();
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!can(ctx.role, "broadcasts")) return NextResponse.json({ error: "forbidden" }, { status: 403 });
