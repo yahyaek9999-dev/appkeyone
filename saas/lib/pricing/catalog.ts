@@ -107,6 +107,7 @@ export const CAPABILITIES: Capability[] = [
   { key: "wallet",                category: "operations", minTierIndex: 0, label: { ar: "المحفظة والرصيد",               en: "Wallet & Credits" } },
   { key: "my_work",               category: "operations", minTierIndex: 0, label: { ar: "عملي اليوم",                   en: "My Work Today" } },
   { key: "whatsapp_health",       category: "operations", minTierIndex: 0, label: { ar: "صحة جلسة واتساب",              en: "WhatsApp Session Health" } },
+  { key: "whatsapp_bridge",       category: "messaging",  minTierIndex: 1, label: { ar: "جسر واتساب المستضاف",             en: "Customer-Hosted WhatsApp Bridge" } },
 
   // ── GROWTH — revenue automation + campaigns ───────────────────────────
   { key: "advanced_automations",  category: "automation", minTierIndex: 1, label: { ar: "أتمتة متقدّمة",              en: "Advanced Automations" } },

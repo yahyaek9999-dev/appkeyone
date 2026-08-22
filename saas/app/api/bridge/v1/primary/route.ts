@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requirePermission, authErrorStatus } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { bridgeEnabled } from "@/lib/bridge/flags";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
@@ -27,6 +28,8 @@ export async function POST(req: Request) {
   if (!bridgeEnabled()) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  const gate = await apiGate("whatsapp_bridge");
+  if (gate.response) return gate.response;
 
   let user;
   try {

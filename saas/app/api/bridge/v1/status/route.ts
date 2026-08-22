@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePermission, authErrorStatus } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { bridgeEnabled } from "@/lib/bridge/flags";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,8 @@ export async function GET() {
   if (!bridgeEnabled()) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  const gate = await apiGate("whatsapp_bridge");
+  if (gate.response) return gate.response;
 
   let user;
   try {
