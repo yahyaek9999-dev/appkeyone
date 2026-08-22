@@ -3,9 +3,106 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      skip_verify:
+        description: Skip pre-deploy verification
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: saas
+
     steps:
-      - run: echo "Test"
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: saas/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: ./node_modules/.bin/prisma generate
+
+      - name: Typecheck
+        run: ./node_modules/.bin/tsc --noEmit
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Prune dev dependencies
+        run: npm prune --production
+
+      - name: Package artifact
+        run: |
+          HASH=$(git rev-parse --short HEAD)
+          DATE=$(date -u '+%Y%m%d-%H%M%S')
+          RELEASE="keyone-${HASH}-${DATE}"
+          TMP=$(mktemp -d)
+          mkdir -p "${TMP}/${RELEASE}/.next" "${TMP}/${RELEASE}/public" "${TMP}/${RELEASE}/prisma" "${TMP}/${RELEASE}/workers"
+
+          cp -r .next/* "${TMP}/${RELEASE}/.next/"
+          cp -r public/* "${TMP}/${RELEASE}/public/"
+          cp -r prisma/* "${TMP}/${RELEASE}/prisma/"
+          cp -r node_modules "${TMP}/${RELEASE}/"
+          cp package.json next.config.js "${TMP}/${RELEASE}/" 2>/dev/null || true
+          [ -d workers ] && cp -r workers/* "${TMP}/${RELEASE}/workers/" 2>/dev/null || true
+
+          cat > "${TMP}/${RELEASE}/.build-info" <<-EOF
+          RELEASE=$RELEASE
+          HASH=$HASH
+          DATE=$DATE
+          EOF
+
+          cd "$TMP"
+          tar czf "${GITHUB_WORKSPACE}/${RELEASE}.tar.gz" "$RELEASE"
+          rm -rf "$TMP"
+
+          echo "RELEASE_NAME=$RELEASE" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: ${{ github.workspace }}/${{ env.RELEASE_NAME }}.tar.gz
+          retention-days: 3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.KEYONE_SSH_KEY }}" > ~/.ssh/keyone-prod.pem
+          chmod 600 ~/.ssh/keyone-prod.pem
+
+      - name: Deploy to AWS production
+        run: |
+          export KEYONE_SSH_KEY=~/.ssh/keyone-prod.pem
+          export KEYONE_HOST=${{ secrets.KEYONE_HOST }}
+          export KEYONE_URL=${{ secrets.KEYONE_URL }}
+          bash deploy/release-aws.sh
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/keyone-prod.pem
