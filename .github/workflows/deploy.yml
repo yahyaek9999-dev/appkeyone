@@ -82,91 +82,27 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          name: release
+          fetch-depth: 0
 
-      - name: Deploy to VPS
-        env:
-          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          SSH_HOST: ${{ secrets.VPS_HOST }}
-          SSH_PORT: ${{ secrets.VPS_PORT || '22' }}
-          APP_DIR: ${{ secrets.VPS_APP_DIR || 'C:\app' }}
-          RELEASES_DIR: ${{ secrets.VPS_RELEASES_DIR || 'C:\app\releases' }}
-          SERVICE_NAME: ${{ secrets.VPS_SERVICE_NAME || 'mse-saas' }}
+      - name: Setup SSH key
         run: |
-          ARCHIVE=$(ls *.tar.gz | head -1)
-          echo "→ Uploading $ARCHIVE…"
-
-          # Install SSH key
           mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.KEYONE_SSH_KEY }}" > ~/.ssh/keyone-prod.pem
+          chmod 600 ~/.ssh/keyone-prod.pem
 
-          # Upload via SCP
-          scp -i ~/.ssh/id_ed25519 -P "$SSH_PORT" \
-            -o StrictHostKeyChecking=no \
-            "$ARCHIVE" "${SSH_HOST}:${RELEASES_DIR}/"
-
-          # Deploy via SSH
-          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" \
-            -o StrictHostKeyChecking=no \
-            "$SSH_HOST" powershell.exe -Command "
-            \$ErrorActionPreference = 'Stop'
-            Write-Host '→ Extracting…'
-            \$gz = Join-Path '${RELEASES_DIR}' '${ARCHIVE}'
-
-            \$tmp = Join-Path '${RELEASES_DIR}' 'extract'
-            if (Test-Path \$tmp) { Remove-Item -Recurse -Force \$tmp }
-            New-Item -ItemType Directory -Path \$tmp -Force | Out-Null
-
-            tar -xzf \$gz -C \$tmp
-            Remove-Item \$gz -Force
-
-            \$rel = (Get-ChildItem \$tmp | Select-Object -First 1).Name
-            \$relPath = Join-Path \$tmp \$rel
-
-            # Prune old releases (keep last 3)
-            \$existing = Get-ChildItem '${RELEASES_DIR}' -Directory | Where-Object { \$_.Name -ne 'extract' } | Sort-Object LastWriteTime
-            while (\$existing.Count -gt 3) { Remove-Item -Recurse -Force \$existing[0].FullName; \$existing = Get-ChildItem '${RELEASES_DIR}' -Directory | Where-Object { \$_.Name -ne 'extract' } | Sort-Object LastWriteTime }
-
-            Write-Host '→ Stopping service…'
-            nssm stop '${SERVICE_NAME}'
-            Start-Sleep 2
-            Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
-            Start-Sleep 1
-
-            # Backup current for rollback
-            \$backup = Join-Path '${RELEASES_DIR}' 'previous'
-            if (Test-Path \$backup) { Remove-Item -Recurse -Force \$backup }
-            if (Test-Path '${APP_DIR}\saas\.next') {
-              New-Item -ItemType Directory -Path \$backup -Force | Out-Null
-              Copy-Item '${APP_DIR}\saas\.next' \$backup -Recurse
-            }
-
-            # Remove old
-            if (Test-Path '${APP_DIR}\saas\.next') { Remove-Item -Recurse -Force '${APP_DIR}\saas\.next' }
-            if (Test-Path '${APP_DIR}\saas\node_modules') { Remove-Item -Recurse -Force '${APP_DIR}\saas\node_modules' }
-
-            # Copy new
-            Copy-Item \"\$relPath\*\" '${APP_DIR}\saas' -Recurse -Force
-
-            Write-Host '→ Prisma…'
-            Set-Location '${APP_DIR}\saas'
-            .\node_modules\.bin\prisma generate
-
-            Write-Host '→ Starting service…'
-            nssm start '${SERVICE_NAME}'
-            Start-Sleep 5
-            \$s = nssm status '${SERVICE_NAME}'
-            if (\$s -ne 'SERVICE_RUNNING') { throw \"Service status: \$s\" }
-            Write-Host '✅ Deployed'
-          "
-
-      - name: Health check
+      - name: Deploy to AWS production
         run: |
-          sleep 10
-          curl -sf --max-time 15 "${{ secrets.HEALTH_CHECK_URL || 'https://app.keyone1.com/api/ready' }}" && echo "✅ Health OK" || echo "⚠️ Health check failed"
+          export KEYONE_SSH_KEY=~/.ssh/keyone-prod.pem
+          export KEYONE_HOST=${{ secrets.KEYONE_HOST }}
+          export KEYONE_URL=${{ secrets.KEYONE_URL }}
+          bash deploy/release-aws.sh
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/keyone-prod.pem
