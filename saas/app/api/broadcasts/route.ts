@@ -3,11 +3,14 @@ import { prisma } from "@/lib/db";
 import { getUserIdForPermission, getAuthContext } from "@/lib/auth";
 import { auditCtx } from "@/lib/audit/log";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { apiGate } from "@/lib/membership/gate";
 import { createBroadcastFromSettings, type BroadcastSettings } from "@/lib/broadcasts/create";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("broadcasts");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -20,6 +23,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const gate = await apiGate("broadcasts");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

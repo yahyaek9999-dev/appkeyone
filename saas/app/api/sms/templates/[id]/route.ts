@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 
+import { apiGate } from "@/lib/membership/gate";
 export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({
@@ -17,6 +18,8 @@ const PatchBody = z.object({
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("k1sms", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -44,6 +47,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("k1sms", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

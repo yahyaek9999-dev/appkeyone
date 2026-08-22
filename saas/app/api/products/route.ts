@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
 import { httpUrlOrNull } from "@/lib/url-safe";
 import { isInternalProductImage } from "@/lib/media/product-image";
+import { apiGate } from "@/lib/membership/gate";
 
 /** Accept a device-uploaded internal image path; keep legacy http for back-compat. */
 function productImage(v: any): string | null {
@@ -19,6 +20,8 @@ function productImages(v: any): string[] {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("products", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   const items = await prisma.product.findMany({
@@ -35,6 +38,8 @@ function clampInt(v: any, min = 0, max = 100_000_000): number {
 }
 
 export async function POST(req: Request) {
+  const gate = await apiGate("products", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
