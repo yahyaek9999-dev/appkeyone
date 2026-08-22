@@ -512,7 +512,7 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/settings/team":        "team",
   "/dashboard/settings/ai-provider": "knowledge_base",
   "/dashboard/settings/meta-cloud":  "meta_cloud",
-  "/dashboard/settings/bridge":      "whatsapp_connection",
+  "/dashboard/settings/bridge":      "whatsapp_bridge",
   "/dashboard/ai-operations":        "ai_operations",
   "/dashboard/whatsapp-health":      "whatsapp_health",
   "/dashboard/meta-health":          "meta_cloud",
