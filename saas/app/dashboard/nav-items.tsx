@@ -469,6 +469,7 @@ export interface NavAccess {
  * Only customer-facing routes need entries here. Admin routes are irrelevant.
  */
 export const NAV_FEATURE_BY_HREF: Record<string, string> = {
+  "/dashboard":                      "inbox",
   "/dashboard/inbox":                "inbox",
   "/dashboard/escalations":          "escalations",
   "/dashboard/quick-replies":        "quick_replies",
@@ -507,6 +508,7 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/audit-log":            "audit_log",
   "/dashboard/white-label":          "white_label",
   "/dashboard/settings/numbers":     "multi_whatsapp",
+  "/dashboard/settings/providers":   "integrations",
   "/dashboard/settings/team":        "team",
   "/dashboard/settings/ai-provider": "knowledge_base",
   "/dashboard/settings/meta-cloud":  "meta_cloud",
