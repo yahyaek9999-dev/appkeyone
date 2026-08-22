@@ -83,11 +83,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        shell: bash
 
     steps:
+      - name: Test workflow can start
+        run: echo "Workflow started successfully"
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -102,8 +102,8 @@ jobs:
       - name: Deploy to AWS production
         run: |
           export KEYONE_SSH_KEY=~/.ssh/keyone-prod.pem
-          export KEYONE_HOST="${{ secrets.KEYONE_HOST }}"
-          export KEYONE_URL="${{ secrets.KEYONE_URL }}"
+          export KEYONE_HOST=${{ secrets.KEYONE_HOST }}
+          export KEYONE_URL=${{ secrets.KEYONE_URL }}
           bash deploy/release-aws.sh
 
       - name: Cleanup SSH key
