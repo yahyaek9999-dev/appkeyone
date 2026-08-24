@@ -9,7 +9,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requirePermission } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin";
 import { chat as llmChat, buildMessages } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
 import { retrieveRelevantKb } from "@/lib/kb-cache";
@@ -32,8 +32,9 @@ const SCENARIOS = [
 const FALLBACK = "عذراً، يبدو أن هناك خلل تقني مؤقت";
 
 export async function POST() {
+  // Internal diagnostic surface — platform-admin only, matching the page guard.
   let user;
-  try { user = await requirePermission("settings"); }
+  try { user = await requireAdmin(); }
   catch { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
   const uid = user.id;
 

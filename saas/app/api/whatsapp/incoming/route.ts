@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { chat as llmChat, buildMessages, detectOrderIntent } from "@/lib/llm";
 import { botProviderOverride } from "@/lib/providers/bot-provider";
+import { triggerBotFlow } from "@/lib/bot/executor";
 import { generateBotReply } from "@/lib/integrations/ai/reply";
 import { getCached, setCached } from "@/lib/llm-cache";
 import { transcribeAudio, describeImage } from "@/lib/media";
@@ -650,6 +651,21 @@ export async function POST(req: Request) {
       blocked:
         currentHandoff === "ai_active" ? "manual_takeover" : currentHandoff,
     });
+  }
+
+  // ---- Bot flow execution (ConvFlow automation) ----
+  const flowResult = await triggerBotFlow({
+    userId,
+    customerId: customer.id,
+    phone: customer.phone,
+    incomingMessage: messageText,
+  }).catch((e) => {
+    console.error("[flow] trigger failed:", e?.message);
+    return { triggered: false };
+  });
+
+  if (flowResult.triggered) {
+    return NextResponse.json({ ok: true, reply: null });
   }
 
   // ---- Real escalation: create ticket + notify admin before any AI response.

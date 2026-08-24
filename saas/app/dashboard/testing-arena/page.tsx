@@ -1,14 +1,17 @@
 import { redirect } from "next/navigation";
-import { getAuthContext } from "@/lib/auth";
-import { can } from "@/lib/rbac";
+import { requireAdmin } from "@/lib/admin";
 import TestingArenaClient from "./testing-arena-client";
 
 export const dynamic = "force-dynamic";
 
+// Internal testing/diagnostic surface: listed only in ADMIN_WORKSPACE and it
+// carries no upsell path, so it was never wired to be sold. Platform-admin only.
 export default async function TestingArenaPage() {
-  const ctx = await getAuthContext();
-  if (!ctx) redirect("/login");
-  if (!can(ctx.role, "settings")) redirect("/dashboard");
+  try {
+    await requireAdmin();
+  } catch {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="space-y-6">

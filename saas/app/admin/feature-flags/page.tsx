@@ -22,6 +22,7 @@ import { brainFlags } from "@/lib/brain/flags";
 import { creditFlags } from "@/lib/credits/flags";
 import { qrPoolFlags } from "@/lib/qr-pool/flags";
 import { qrQueueFlags } from "@/lib/qr-queue/flags";
+import { paymentFlags } from "@/lib/payments/flags";
 
 export const dynamic = "force-dynamic";
 
@@ -66,19 +67,26 @@ const FLAGS: { key: string; label: string; description: string; on: boolean }[] 
     key: "PAYMENTS_MANUAL_ENABLED",
     label: "الدفع اليدوي",
     description: "يفعّل مسار رفع إثبات الدفع اليدوي (تحويل بنكي/محفظة).",
-    on: process.env.PAYMENTS_MANUAL_ENABLED === "1" || process.env.PAYMENTS_MANUAL_ENABLED === "true",
+    // Default-ON: the consumer is paymentFlags.manualEnabled ("ON unless
+    // explicitly disabled"). Comparing against "1" reported this money path
+    // as OFF whenever the var was simply unset.
+    on: paymentFlags.manualEnabled,
   },
   {
     key: "SIGNUP_AUTO_APPROVE",
     label: "الموافقة التلقائية على التسجيل",
     description: "يمنح وصول فوري بدون مراجعة يدوية عند التسجيل الذاتي.",
-    on: process.env.SIGNUP_AUTO_APPROVE === "1" || process.env.SIGNUP_AUTO_APPROVE === "true",
+    // Default-ON: app/api/auth/signup/route.ts gates on `!== "0"`, so an unset
+    // var means signups ARE auto-approved. The old `=== "1"` check displayed
+    // the opposite of the running behaviour.
+    on: process.env.SIGNUP_AUTO_APPROVE !== "0",
   },
   {
     key: "WA_SMART_QUEUE_ENABLED",
     label: "طابور QR الذكي",
     description: "يفعّل جدولة سعة جلسات QR بدل التخصيص المباشر.",
-    on: process.env.WA_SMART_QUEUE_ENABLED === "1" || process.env.WA_SMART_QUEUE_ENABLED === "true",
+    // Default-ON: lib/wa.ts gates on `!== "0"`.
+    on: process.env.WA_SMART_QUEUE_ENABLED !== "0",
   },
   // Scaling optimizations (lib/scaling-flags.ts) — all default OFF, opt-in per box.
   {

@@ -7,10 +7,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  // audit_log is a Pro (tier 2) capability and the page is gated on it; gate the
+  // data boundary too so the entitlement isn't readable straight from the API.
+  const gate = await apiGate("audit_log", "team");
+  if (gate.response) return gate.response;
   const user = await getUserForPermission("team");
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

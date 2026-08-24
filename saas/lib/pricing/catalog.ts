@@ -170,7 +170,7 @@ export const CAPABILITIES: Capability[] = [
 
   // ── INTERNAL/QA — testing & diagnostics (Enterprise + admin only) ─────────
   { key: "playground",          category: "operations", minTierIndex: 3, label: { ar: "ملعب العمل (QA)",                 en: "Playground (QA)" } },
-  { key: "ai_audit",            category: "operations", minTierIndex: 3, label: { ar: "مراجعة الذكاء الاصطناعي (QA)",      en: "AI Audit (QA)" } },
+  { key: "ai_audit",            category: "operations", minTierIndex: 3, label: { ar: "مراجعة جاهزية المساعد",            en: "AI Assistant Audit" } },
   { key: "testing_arena",       category: "operations", minTierIndex: 3, label: { ar: "ساحة الاختبار (QA)",              en: "Testing Arena (QA)" } },
   { key: "arena",               category: "operations", minTierIndex: 3, label: { ar: "ساحة العمل (QA)",                 en: "Arena (QA)" } },
   { key: "command_center",      category: "operations", minTierIndex: 3, label: { ar: "مركز التحكم",                     en: "Command Center" } },

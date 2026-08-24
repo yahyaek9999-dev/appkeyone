@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,11 @@ async function getFlow(id: string, uid: string) {
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  // flow_builder is a Growth (tier 1) capability. The pages were gated but
+  // this API was not, so any Start-tier tenant could create flows — which now
+  // actually execute via the incoming-message pipeline. Gate at the data boundary.
+  const gate = await apiGate("flow_builder", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -41,6 +47,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  // flow_builder is a Growth (tier 1) capability. The pages were gated but
+  // this API was not, so any Start-tier tenant could create flows — which now
+  // actually execute via the incoming-message pipeline. Gate at the data boundary.
+  const gate = await apiGate("flow_builder", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -75,6 +86,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  // flow_builder is a Growth (tier 1) capability. The pages were gated but
+  // this API was not, so any Start-tier tenant could create flows — which now
+  // actually execute via the incoming-message pipeline. Gate at the data boundary.
+  const gate = await apiGate("flow_builder", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

@@ -64,6 +64,7 @@ import {
   Eye,
   Sparkles,
   type LucideIcon,
+  Truck,
 } from "lucide-react";
 
 export type NavItem = {
@@ -163,6 +164,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingBag, perm: "customers" },
       { href: "/dashboard/products", label: "المنتجات", icon: Package, perm: "settings" },
       { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket, perm: "settings" },
+      { href: "/dashboard/shipments", label: "الشحن والتتبّع", icon: Truck, perm: "customers" },
     ],
   },
 
@@ -318,6 +320,7 @@ const ADMIN_WORKSPACE: Workspace = {
     { href: "/dashboard/orders", label: "Orders", icon: ShoppingBag, perm: "billing" },
     { href: "/dashboard/products", label: "Products", icon: Package, perm: "billing" },
     { href: "/dashboard/coupons", label: "Coupons", icon: Ticket, perm: "billing" },
+    { href: "/dashboard/shipments", label: "Shipments", icon: Truck, perm: "billing" },
 
     // ── Marketing & Growth ────────────────────────────────────────────────────
     { href: "/dashboard/broadcasts-pro", label: "Broadcasts (QR)", icon: Send, perm: "billing" },
@@ -481,8 +484,9 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/orders":               "order_management",
   "/dashboard/products":             "products",
   "/dashboard/coupons":              "coupons_discounts",
+  "/dashboard/shipments":            "shipping_tracking",
   "/dashboard/broadcasts-pro":       "broadcast_credits",
-  "/dashboard/broadcasts":           "broadcast_campaigns",
+  "/dashboard/broadcasts":           "broadcasts",
   "/dashboard/recovery":             "recovery",
   "/dashboard/qr-queue":             "qr_broadcast_queue",
   "/dashboard/sms":                  "sms_messaging",
@@ -515,7 +519,9 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/settings/bridge":      "whatsapp_connection",
   "/dashboard/ai-operations":        "ai_operations",
   "/dashboard/whatsapp-health":      "whatsapp_health",
+  "/dashboard/meta":                 "meta_cloud",
   "/dashboard/meta-health":          "meta_cloud",
+  "/dashboard/safety":               "safety_controls",
   "/dashboard/compliance":           "compliance_monitoring",
   "/dashboard/system-health":        "system_health",
   "/dashboard/settings":             "wallet",
@@ -572,6 +578,10 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/broadcasts": "broadcasts",
   "/dashboard/leads": "lead_scoring",
   "/dashboard/knowledge": "knowledge_base",
+  "/dashboard/bot-builder": "flow_builder",
+  "/dashboard/flow-builder": "flow_builder",
+  "/dashboard/agents": "smart_assistant",
+  "/dashboard/white-label": "white_label",
   "/dashboard/knowledge-brain": "smart_assistant",
   "/dashboard/brain": "smart_assistant",
   "/dashboard/suggestions": "smart_assistant",
@@ -586,6 +596,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/segments": "segments",
   "/dashboard/recovery": "recovery",
   "/dashboard/coupons": "coupons_discounts",
+  "/dashboard/shipments": "shipping_tracking",
   "/dashboard/business": "advanced_reporting",
   "/dashboard/automations": "advanced_automations",
   "/dashboard/branches": "multi_branch",
@@ -598,7 +609,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/wallet": "wallet",
   "/dashboard/escalations": "escalations",
   "/dashboard/audit-log": "audit_log",
-  "/dashboard/customer-import": "customer_import",
+  "/dashboard/import": "customer_import",
   "/dashboard/broadcasts-pro": "broadcast_credits",
   "/dashboard/monitoring": "monitoring_center",
   "/dashboard/compliance": "compliance_monitoring",

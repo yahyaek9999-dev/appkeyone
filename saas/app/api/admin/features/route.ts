@@ -5,7 +5,7 @@
  * Admin users can see ALL features regardless of plan or status.
  */
 
-import { requireUser, getAuthContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -13,9 +13,13 @@ export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
   try {
-    const authContext = await getAuthContext();
-
-    if (!authContext?.user?.id) {
+    // Platform-admin only: this returns the FULL registry regardless of plan or
+    // customerVisible, so a bare session check would hand every signed-in
+    // tenant the complete internal feature list. Matches the guard used by the
+    // other 87 routes under /api/admin.
+    try {
+      await requireAdmin();
+    } catch {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
