@@ -175,6 +175,7 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard/broadcasts-pro",
     items: [
       { href: "/dashboard/broadcasts-pro", label: "الحملات", icon: Send, perm: "broadcasts" },
+      { href: "/dashboard/broadcasts", label: "حملات البثّ (متقدمة)", icon: Send, perm: "broadcasts" },
       { href: "/dashboard/recovery", label: "استعادة العملاء", icon: RotateCcw, perm: "broadcasts" },
       { href: "/dashboard/sms", label: "رسائل SMS", icon: MessageCircle, perm: "settings" },
       { href: "/dashboard/qr-queue", label: "حجز جلسات الإرسال", icon: CalendarClock, perm: "broadcasts" },
@@ -481,6 +482,7 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/products":             "products",
   "/dashboard/coupons":              "coupons_discounts",
   "/dashboard/broadcasts-pro":       "broadcast_credits",
+  "/dashboard/broadcasts":           "broadcast_campaigns",
   "/dashboard/recovery":             "recovery",
   "/dashboard/qr-queue":             "qr_broadcast_queue",
   "/dashboard/sms":                  "sms_messaging",
