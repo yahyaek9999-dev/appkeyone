@@ -132,7 +132,6 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
-      { href: "/dashboard/whatsapp-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "qr" },
       { href: "/dashboard/meta-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "meta" },
       { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
     ],
@@ -180,7 +179,6 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/broadcasts", label: "حملات البثّ (متقدمة)", icon: Send, perm: "broadcasts" },
       { href: "/dashboard/recovery", label: "استعادة العملاء", icon: RotateCcw, perm: "broadcasts" },
       { href: "/dashboard/sms", label: "رسائل SMS", icon: MessageCircle, perm: "settings" },
-      { href: "/dashboard/qr-queue", label: "حجز جلسات الإرسال", icon: CalendarClock, perm: "broadcasts" },
     ],
   },
 
@@ -473,6 +471,7 @@ export interface NavAccess {
  * Only customer-facing routes need entries here. Admin routes are irrelevant.
  */
 export const NAV_FEATURE_BY_HREF: Record<string, string> = {
+  "/dashboard":                      "inbox",
   "/dashboard/inbox":                "inbox",
   "/dashboard/escalations":          "escalations",
   "/dashboard/quick-replies":        "quick_replies",
@@ -513,6 +512,7 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/audit-log":            "audit_log",
   "/dashboard/white-label":          "white_label",
   "/dashboard/settings/numbers":     "multi_whatsapp",
+  "/dashboard/settings/providers":   "integrations",
   "/dashboard/settings/team":        "team",
   "/dashboard/settings/ai-provider": "knowledge_base",
   "/dashboard/settings/meta-cloud":  "meta_cloud",

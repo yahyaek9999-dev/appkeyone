@@ -10,6 +10,7 @@
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth";
 import { can } from "@/lib/rbac";
+import { requireAdmin } from "@/lib/admin";
 import { getQueueSnapshot, myReservations, qrQueueFlags } from "@/lib/qr-queue";
 import { CalendarClock, Users, Activity, Clock } from "lucide-react";
 import QrQueueClient from "./qr-queue-client";
@@ -20,6 +21,14 @@ export default async function QrQueuePage() {
   const ctx = await getAuthContext();
   if (!ctx) redirect("/login");
   if (!can(ctx.role, "broadcasts")) redirect("/dashboard");
+  // QR session booking is retired as a customer product. The scheduler/queue
+  // infrastructure stays (QR_QUEUE_ENABLED etc. still tick internally), but the
+  // surface is admin-only now — customers connect via Bridge or Meta Cloud.
+  try {
+    await requireAdmin();
+  } catch {
+    redirect("/dashboard");
+  }
 
   const [snapshot, rows] = await Promise.all([
     getQueueSnapshot(),

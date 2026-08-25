@@ -227,7 +227,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
           <StepShell
             stepNum={6}
             title="جاهز للإطلاق"
-            subtitle="راجع الإعدادات. بعد ما تدوس 'تفعيل البوت'، هنوديك لصفحة ربط الواتس اب بـQR."
+            subtitle="راجع الإعدادات. بعد ما تدوس 'تفعيل البوت'، هنوديك لصفحة ربط واتساب."
           >
             <ReviewCard
               brand={brand}
