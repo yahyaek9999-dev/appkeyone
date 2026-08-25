@@ -66,9 +66,19 @@ scp -q -i "$SSH_KEY" "$TMP/DEPLOYED_COMMIT" "$HOST:keyone/DEPLOYED_COMMIT"
 
 # ---- 3. build + migrate + restart on the server -----------------------------
 echo "▶ remote build + migrate + restart"
-"${SSH[@]}" "$HOST" 'bash -s' <<'REMOTE'
+"${SSH[@]}" "$HOST" "bash -s -- $SHORT" <<'REMOTE'
 set -euo pipefail
+SHORT="${1:-unknown}"
 cd ~/keyone
+# Stamp the build identity so /api/health reports the real deployed version
+# instead of falling back to "dev" (health/route.ts reads BUILD_ID).
+BUILD_ID="$SHORT-$(date -u +%Y%m%d)"
+if grep -q '^BUILD_ID=' .env; then
+  sed -i "s|^BUILD_ID=.*|BUILD_ID=$BUILD_ID|" .env
+else
+  echo "BUILD_ID=$BUILD_ID" >> .env
+fi
+echo "  · BUILD_ID=$BUILD_ID"
 echo "  · npm install (saas)"; npm install --no-audit --no-fund --silent >/tmp/deploy-npm.log 2>&1
 set -a; . ./.env; set +a
 echo "  · prisma generate"; ./node_modules/.bin/prisma generate --schema prisma/schema.postgres.prisma >/tmp/deploy-prisma.log 2>&1

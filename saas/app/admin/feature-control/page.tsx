@@ -38,7 +38,7 @@ type ViewMode = "table" | "category" | "release";
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string; icon: React.ComponentType<any> }> = {
   enabled:    { label: "مفعّل",  color: "text-emerald-400", dot: "bg-emerald-400", icon: CheckCircle2 },
   disabled:   { label: "معطّل",  color: "text-red-400",     dot: "bg-red-400",     icon: XCircle },
-  hidden:     { label: "مخفي",   color: "text-slate-400",   dot: "bg-slate-500",   icon: EyeOff },
+  hidden:     { label: "غير متاح",   color: "text-slate-400",   dot: "bg-slate-500",   icon: EyeOff },
   beta:       { label: "تجريبي", color: "text-amber-400",   dot: "bg-amber-400",   icon: AlertTriangle },
   coming_soon:{ label: "قريباً", color: "text-sky-400",     dot: "bg-sky-400",     icon: Clock },
   deprecated: { label: "قديم",   color: "text-orange-400",  dot: "bg-orange-400",  icon: Archive },
@@ -393,7 +393,7 @@ export default function FeatureControlPage() {
 
             {/* Customer visible */}
             <div className="flex items-center justify-between rounded-lg border border-white/[0.07] px-3 py-2.5">
-              <span className="text-sm text-slate-300">مرئي للعملاء</span>
+              <span className="text-sm text-slate-300">ظهور للعملاء</span>
               <button
                 onClick={() => setDrawerEdits((d) => ({ ...d, customerVisible: !(drawerEdits.customerVisible ?? drawer.customerVisible) }))}
                 className={`relative h-5 w-9 rounded-full transition-colors ${(drawerEdits.customerVisible ?? drawer.customerVisible) ? "bg-brand-500" : "bg-white/[0.08]"}`}
@@ -461,7 +461,7 @@ function FeatureTable({
       <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-white/[0.06]">
-            {["الميزة", "الفئة", "الحالة", "الباقة", "الإصدار", "الظهور", ""].map((h) => (
+            {["الميزة", "الفئة", "الحالة", "الباقة", "الإصدار", "ظهور للعملاء", ""].map((h) => (
               <th key={h} className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${h ? "text-start" : ""}`}>{h}</th>
             ))}
           </tr>
@@ -533,7 +533,7 @@ function TableRow({
       </td>
       <td className="px-4 py-2.5 text-[11px]">
         <span className={f.customerVisible ? "text-emerald-400" : f.adminOnly ? "text-violet-400" : "text-slate-600"}>
-          {f.customerVisible ? "عملاء" : f.adminOnly ? "مشرف" : "مخفي"}
+          {f.customerVisible ? "ظاهر للعملاء" : f.adminOnly ? "مشرف فقط" : "مخفي عن العملاء"}
         </span>
       </td>
       <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
