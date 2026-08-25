@@ -73,11 +73,16 @@ cd ~/keyone
 # Stamp the build identity so /api/health reports the real deployed version
 # instead of falling back to "dev" (health/route.ts reads BUILD_ID).
 BUILD_ID="$SHORT-$(date -u +%Y%m%d)"
-if grep -q '^BUILD_ID=' .env; then
-  sed -i "s|^BUILD_ID=.*|BUILD_ID=$BUILD_ID|" .env
-else
-  echo "BUILD_ID=$BUILD_ID" >> .env
-fi
+# Next inlines process.env.* into the server bundle at build time, so a
+# runtime-only BUILD_ID folds to the "dev" fallback. NEXT_PUBLIC_BUILD_ID is
+# guaranteed to be inlined from .env, so write both.
+for k in BUILD_ID NEXT_PUBLIC_BUILD_ID; do
+  if grep -q "^$k=" .env; then
+    sed -i "s|^$k=.*|$k=$BUILD_ID|" .env
+  else
+    echo "$k=$BUILD_ID" >> .env
+  fi
+done
 echo "  · BUILD_ID=$BUILD_ID"
 echo "  · npm install (saas)"; npm install --no-audit --no-fund --silent >/tmp/deploy-npm.log 2>&1
 set -a; . ./.env; set +a
