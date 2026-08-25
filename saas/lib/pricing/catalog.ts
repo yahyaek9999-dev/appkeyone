@@ -107,6 +107,7 @@ export const CAPABILITIES: Capability[] = [
   { key: "wallet",                category: "operations", minTierIndex: 0, label: { ar: "المحفظة والرصيد",               en: "Wallet & Credits" } },
   { key: "my_work",               category: "operations", minTierIndex: 0, label: { ar: "عملي اليوم",                   en: "My Work Today" } },
   { key: "whatsapp_health",       category: "operations", minTierIndex: 0, label: { ar: "صحة جلسة واتساب",              en: "WhatsApp Session Health" } },
+  { key: "whatsapp_bridge",       category: "messaging",  minTierIndex: 1, label: { ar: "جسر واتساب المستضاف",             en: "Customer-Hosted WhatsApp Bridge" } },
 
   // ── GROWTH — revenue automation + campaigns ───────────────────────────
   { key: "advanced_automations",  category: "automation", minTierIndex: 1, label: { ar: "أتمتة متقدّمة",              en: "Advanced Automations" } },
@@ -123,7 +124,7 @@ export const CAPABILITIES: Capability[] = [
   { key: "qr_broadcast_queue",    category: "messaging",  minTierIndex: 1, label: { ar: "جدولة جلسات الإرسال",        en: "Broadcast Session Queue" } },
   { key: "escalations",           category: "operations", minTierIndex: 1, label: { ar: "التصعيدات والمتابعة",         en: "Escalations & Follow-ups" } },
   { key: "compliance_monitoring", category: "operations", minTierIndex: 1, label: { ar: "لوحة الامتثال وصحة التسليم", en: "Compliance & Delivery Health" } },
-  { key: "meta_cloud",            category: "messaging",  minTierIndex: 1, label: { ar: "مركز تكامل Meta والفوترة",   en: "Meta Cloud Integration Center" } },
+  { key: "meta_cloud",            category: "messaging",  minTierIndex: 0, label: { ar: "مركز تكامل Meta والفوترة",   en: "Meta Cloud Integration Center" } },
   { key: "monitoring_center",     category: "operations", minTierIndex: 1, label: { ar: "مركز المراقبة والتنبيهات",    en: "Business Monitoring Center" } },
 
   // ── PRO — full revenue OS + AI intelligence + K1SMS + shipping + support ──
@@ -241,7 +242,7 @@ export const TIERS: TierDef[] = [
       { ar: "روّاد الأعمال الأفراد",    en: "Solo Founders" },
     ],
     internalTier:    "basic",
-    metaAccess:      "none",
+    metaAccess:      "limited",
     analyticsAccess: "basic",
     limits: { messages: 2000, ai: 1000, broadcasts: 0, whatsapp: 1, team: 1, automations: 0, kbDocs: 0, customers: 2000 },
   },
@@ -263,7 +264,7 @@ export const TIERS: TierDef[] = [
       { ar: "فرق المبيعات الصغيرة",         en: "Small Sales Teams" },
     ],
     internalTier:    "pro",
-    metaAccess:      "none",
+    metaAccess:      "limited",
     analyticsAccess: "basic",
     limits: { messages: 10000, ai: 5000, broadcasts: 8, whatsapp: 1, team: 5, automations: 15, kbDocs: 0, customers: 10000 },
   },
