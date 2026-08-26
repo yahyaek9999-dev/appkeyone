@@ -133,6 +133,11 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
       { href: "/dashboard/meta-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "meta" },
+      // QR-mode counterpart to meta-health, so every tenant has exactly one
+      // connection-health destination. whatsapp_health is a minTierIndex 0
+      // capability — every paying customer buys it — but its only nav entry
+      // used to live in ADMIN_WORKSPACE, so no customer could reach it.
+      { href: "/dashboard/whatsapp-health", label: "صحة جلسة واتساب", icon: Activity, perm: "settings", mode: "qr" },
       { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
     ],
   },
@@ -198,6 +203,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/flow-builder", label: "منشئ تدفقات البيانات", icon: Workflow, perm: "settings" },
       { href: "/dashboard/agents", label: "المساعدات الذكية", icon: Brain, perm: "settings" },
       { href: "/dashboard/ai-operations", label: "عمليات الذكاء الاصطناعي", icon: Lightbulb, perm: "settings" },
+      { href: "/dashboard/ai-audit", label: "مراجعة جاهزية المساعد", icon: Beaker, perm: "settings" },
     ],
   },
 
@@ -238,6 +244,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
       { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
       { href: "/dashboard/system-health", label: "صحة النظام", icon: Activity, perm: "settings" },
+      { href: "/dashboard/safety", label: "لوحة السلامة والحماية", icon: ShieldAlert, perm: "settings" },
       { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/developer", label: "مركز المطوّرين", icon: Code2, perm: "settings" },
       { href: "/docs", label: "مركز المساعدة", icon: BookOpen, perm: "analytics" },
@@ -248,39 +255,29 @@ export const WORKSPACES: Workspace[] = [
 /**
  * Destinations intentionally NOT in customer navigation.
  *
- * Internal diagnostics / technical surfaces — a merchant should never be shown
- * these; they leak implementation detail and have no business meaning:
- *   /dashboard/command-center   internal ops console
- *   /dashboard/ai-operations    assistant internals
- *   /dashboard/intel            monitoring internals
- *   /dashboard/safety           anti-ban internals
- *   /dashboard/compliance       deliverability internals
- *   /dashboard/testing-arena    QA harness
- *   /dashboard/playground       QA harness
- *   /dashboard/ai-audit         QA harness
- *   /dashboard/demo             seeds fake data
+ * The POLICY, not a list — an enumerated list drifted badly here once and went
+ * on describing `ai-operations`, `compliance`, `revenue-forecast`, `revenue-pro`,
+ * `broadcasts`, `flow-builder`, `agents` and `white-label` as hidden long after
+ * all eight had been added to the customer sidebar.
  *
- * Consolidated duplicates (a single canonical destination already covers them):
- *   /dashboard/knowledge-brain  → /dashboard/knowledge
- *   /dashboard/sales-brain      → /dashboard/business-intelligence
- *   /dashboard/brain            → /dashboard/knowledge
- *   /dashboard/suggestions      → /dashboard/revenue-copilot
- *   /dashboard/revenue-forecast → /dashboard/revenue-copilot
- *   /dashboard/monitoring       → /dashboard/analytics
- *   /dashboard/arena            → (QA harness, hidden)
- *   /dashboard/revenue-pro      → /dashboard/revenue-copilot
- *   /dashboard/broadcasts       → /dashboard/broadcasts-pro
- *   /dashboard/whatsapp         → /dashboard/settings/numbers
- *   /dashboard/plan             → /dashboard/usage
- *   /dashboard/meta             → /dashboard/billing
+ * A destination belongs in ADMIN_WORKSPACE and nowhere else when EITHER:
  *
- * Not production-ready:
- *   /dashboard/flow-builder     flows do not execute
- *   /dashboard/agents           workflow incomplete
- *   /dashboard/white-label      branding not applied at runtime
+ *   1. its page calls requireAdmin() — platform-operator tooling that would
+ *      bounce a customer to /dashboard (arena, playground, testing-arena, demo,
+ *      qr-queue, feature-center, memberships), or
+ *   2. it is an operator console with no customer meaning (command-center,
+ *      intel, brain, knowledge-brain, sales-brain, monitoring, suggestions) or a
+ *      legacy alias kept only for support (whatsapp, meta, plan).
  *
- * All of the above remain reachable by direct URL for support/debugging; they
- * are simply not advertised in the sidebar or ⌘K palette.
+ * The inverse is the rule that matters: a page built with pageGate() +
+ * <LockedFeature> IS a customer surface and MUST have a customer nav entry.
+ * whatsapp_health (minTierIndex 0), safety_controls and ai_audit each sat only
+ * in ADMIN_WORKSPACE while being sold to customers, so nobody who paid for them
+ * could find them. Being un-entitled is never a reason to omit the entry —
+ * navItemLocked() renders the lock and the upgrade path.
+ *
+ * Everything here stays reachable by direct URL for support; it is simply not
+ * advertised in the sidebar or the ⌘K palette.
  */
 
 /** Platform-admin-only workspace — ALL 59 existing real/internal product pages visible to admin. */
@@ -605,6 +602,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/working-hours": "working_hours",
   "/dashboard/settings/numbers": "multi_whatsapp",
   // Capabilities added in catalog expansion (catalog.ts)
+  "/dashboard/ai-audit": "smart_assistant",
   "/dashboard/my-work": "my_work",
   "/dashboard/products": "products",
   "/dashboard/wallet": "wallet",
