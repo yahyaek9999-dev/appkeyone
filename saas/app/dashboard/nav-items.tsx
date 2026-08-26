@@ -535,7 +535,6 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/brain":                "brain",
   "/dashboard/knowledge-brain":      "knowledge_brain",
   "/dashboard/sales-brain":          "sales_brain",
-  "/dashboard/plan":                 "plan",
   "/dashboard/demo":                 "demo",
   "/dashboard/monitoring":           "monitoring",
   "/dashboard/feature-center":       "feature_center",
@@ -571,7 +570,7 @@ const NAV_MODULE_BY_HREF: Record<string, ModuleKey> = {
  * plan can't open (the page itself renders the upgrade CTA on direct URL access).
  * Derived from app/dashboard/<page>/page.tsx pageGate() calls.
  */
-const NAV_CAP_BY_HREF: Record<string, string> = {
+export const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/analytics": "advanced_analytics",
   "/dashboard/command-center": "advanced_analytics",
   "/dashboard/broadcasts": "broadcasts",
@@ -621,7 +620,6 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/whatsapp-health": "whatsapp_health",
   "/dashboard/ai-operations": "ai_operations",
   "/dashboard/system-health": "system_health",
-  "/dashboard/plan": "plan",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */

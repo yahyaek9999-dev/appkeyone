@@ -22,6 +22,7 @@ import {
   navItemLocked,
   visibleNavItems,
   NAV_FEATURE_BY_HREF,
+  NAV_CAP_BY_HREF,
   WORKSPACES,
   type NavItem,
 } from "@/app/dashboard/nav-items";
@@ -122,5 +123,58 @@ describe("every customer destination resolves to a real capability", () => {
       .filter(([, fid]) => !catalog.has(fid))
       .map(([href, fid]) => `${href} -> ${fid}`);
     expect(bad, `nav maps hrefs to non-capability ids: ${bad.join(", ")}`).toEqual([]);
+  });
+});
+
+/**
+ * The gate BELOW customerVisible: a nav item whose NAV_CAP_BY_HREF value is not
+ * a real catalog capability locks FOREVER — `caps[cap]` is `undefined` for every
+ * principal at every tier, so navItemLocked() returns true even for Enterprise.
+ * The destination is visible but permanently wearing an upgrade CTA nobody can
+ * satisfy. This is how /dashboard/plan (a plan-overview page with no capability
+ * of its own) shipped locked to a paying Enterprise customer.
+ */
+describe("capability mappings resolve to real catalog capabilities", () => {
+  it("every NAV_CAP_BY_HREF value is a genuine capability", () => {
+    const catalog = new Set(CAPABILITIES.map((c) => c.key));
+    const bad = Object.entries(NAV_CAP_BY_HREF)
+      .filter(([, cap]) => !catalog.has(cap))
+      .map(([href, cap]) => `${href} -> ${cap}`);
+    expect(bad, `nav gates hrefs on non-capability ids: ${bad.join(", ")}`).toEqual([]);
+  });
+
+  it("the top tier owns every capability, so NOTHING renders locked for it", () => {
+    const opts = { role: "owner" as const, ...base, enforce: true, caps: capsForTier(3) };
+    const locked = CUSTOMER_ITEMS.filter((i) => navItemLocked(i, opts)).map((i) => i.href);
+    expect(locked, `Enterprise sees locked destinations: ${locked.join(", ")}`).toEqual([]);
+  });
+});
+
+/**
+ * Surfacing regression lock. These six were reachable only by typing the URL:
+ * they had pages, capabilities and entitlement, but no workspace listed them, so
+ * no customer could discover them. Re-hiding one must fail the build.
+ */
+describe("audited destinations stay discoverable in a customer workspace", () => {
+  const SURFACED: [string, string][] = [
+    ["/dashboard/plan", "home"],
+    ["/dashboard/knowledge-brain", "automation"],
+    ["/dashboard/brain", "automation"],
+    ["/dashboard/sales-brain", "analytics"],
+    ["/dashboard/suggestions", "analytics"],
+    ["/dashboard/monitoring", "analytics"],
+  ];
+
+  it.each(SURFACED)("%s is listed in the %s workspace", (href, wsId) => {
+    const ws = WORKSPACES.find((w) => w.id === wsId);
+    expect(ws, `workspace ${wsId} is gone`).toBeTruthy();
+    expect(ws!.items.some((i) => i.href === href)).toBe(true);
+  });
+
+  it.each(SURFACED)("%s is visible AND unlocked for an Enterprise owner", (href) => {
+    const item = CUSTOMER_ITEMS.find((i) => i.href === href)!;
+    const opts = { role: "owner" as const, ...base, enforce: true, caps: capsForTier(3) };
+    expect(navItemVisible(item, opts), `${href} is hidden`).toBe(true);
+    expect(navItemLocked(item, opts), `${href} is locked`).toBe(false);
   });
 });
