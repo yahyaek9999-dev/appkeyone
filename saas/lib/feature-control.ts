@@ -464,6 +464,7 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
     const deps = REAL_DEPENDENCIES[cap.key] ?? [];
     const workspace = WORKSPACE_BY_KEY[cap.key] ?? WORKSPACE_BY_CATEGORY[cap.category] ?? "settings";
     const releaseId = RELEASE_BY_KEY[cap.key] ?? RELEASE_BY_CATEGORY[cap.category] ?? "core";
+    const customerVisible = !cap.comingSoon;
 
     await (prisma as any).featureControl.upsert({
       where: { featureId: cap.key },
@@ -475,7 +476,7 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
         workspace,
         // comingSoon capabilities ship hidden — visible to admin, not to customers.
         status:              cap.comingSoon ? "hidden" : "enabled",
-        customerVisible:     !cap.comingSoon,
+        customerVisible,
         adminOnly:           false,
         beta:                Boolean(cap.comingSoon),
         requiredPlan,
@@ -496,8 +497,11 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
         dependencies:        JSON.stringify(deps),
         requiredIntegration: REQUIRED_INTEGRATION[cap.key] ?? null,
         releaseId,
-        // …but status / killSwitch / customerVisible / rolloutPct are the
-        // admin's to own. Never reset them here.
+        // FIX: customerVisible MUST be derived from catalog, not kept hidden based on plan.
+        // Rule: All 82 canonical features (except comingSoon white_label) are customer-visible.
+        // Plan tier controls entitlement access, not visibility/discoverability.
+        customerVisible,
+        // …but status / killSwitch / rolloutPct remain admin-owned.
       },
     });
   }
