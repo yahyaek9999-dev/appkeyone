@@ -535,6 +535,7 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/brain":                "brain",
   "/dashboard/knowledge-brain":      "knowledge_brain",
   "/dashboard/sales-brain":          "sales_brain",
+  "/dashboard/plan":                 "plan",
   "/dashboard/demo":                 "demo",
   "/dashboard/monitoring":           "monitoring",
   "/dashboard/feature-center":       "feature_center",
@@ -620,6 +621,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/whatsapp-health": "whatsapp_health",
   "/dashboard/ai-operations": "ai_operations",
   "/dashboard/system-health": "system_health",
+  "/dashboard/plan": "plan",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */
