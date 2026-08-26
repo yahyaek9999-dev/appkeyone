@@ -8,6 +8,8 @@
 
 import { requirePagePermission } from "@/lib/auth";
 import { bridgeEnabled } from "@/lib/bridge/flags";
+import { pageGate } from "@/lib/membership/gate";
+import LockedFeature from "@/components/billing/LockedFeature";
 import { getBridgeOverview } from "@/lib/bridge/overview";
 import { BridgeControlCenter } from "./control-center";
 
@@ -15,6 +17,24 @@ export const dynamic = "force-dynamic";
 
 export default async function BridgePage() {
   const { user } = await requirePagePermission("settings");
+
+  // whatsapp_bridge is a Growth (tier 1) capability and /api/bridge/v1/* enforces
+  // it. Without the same gate here a Start tenant saw the full control centre and
+  // then got 402 from every action — a feature advertised but not usable. Start
+  // connects via Meta Cloud instead, which is available on every plan.
+  const gate = await pageGate("whatsapp_bridge");
+  if (!gate.allowed) {
+    return (
+      <div className="p-6">
+        <LockedFeature
+          locale="ar"
+          recommendedTier={gate.recommendedTier}
+          title="KEYONE Bridge"
+          description="موصّل النقل المستضاف ذاتياً لربط واتساب من جهازك. متاح في باقة Growth فأعلى."
+        />
+      </div>
+    );
+  }
 
   if (!bridgeEnabled()) {
     return (

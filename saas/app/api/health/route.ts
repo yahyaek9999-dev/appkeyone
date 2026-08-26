@@ -14,6 +14,26 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/db";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+// Deployed build identity. Next inlines `process.env.*` into the server bundle
+// at build time, so a runtime-only env var folds to the fallback and the probe
+// reports a stale value forever. The deploy writes the pinned SHA to
+// DEPLOYED_COMMIT next to the app, so read that at runtime instead — it is the
+// same marker release-aws.sh verifies after every deploy.
+let cachedVersion: string | null = null;
+function deployedVersion(): string {
+  if (cachedVersion) return cachedVersion;
+  try {
+    const sha = readFileSync(join(process.cwd(), "DEPLOYED_COMMIT"), "utf8").trim();
+    if (sha) return (cachedVersion = sha.slice(0, 7));
+  } catch {
+    // not deployed (local dev) — fall through
+  }
+  cachedVersion = process.env.NEXT_PUBLIC_BUILD_ID ?? process.env.BUILD_ID ?? "dev";
+  return cachedVersion;
+}
 
 type DbStatus = "ok" | "error";
 type OverallStatus = "ok" | "degraded";
@@ -49,7 +69,7 @@ export async function GET() {
     uptime: Math.floor(process.uptime()),
     // BUILD_ID is injected by Next.js at build time via the env. Falls back
     // to "dev" in local development where it is not set.
-    version: process.env.NEXT_PUBLIC_BUILD_ID ?? process.env.BUILD_ID ?? "dev",
+    version: deployedVersion(),
     timestamp: new Date().toISOString(),
     latencyMs: Date.now() - start,
     // Only present when degraded — helps monitors triage without a Sentry lookup
