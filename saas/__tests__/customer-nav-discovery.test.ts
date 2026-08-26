@@ -143,10 +143,18 @@ describe("capability mappings resolve to real catalog capabilities", () => {
     expect(bad, `nav gates hrefs on non-capability ids: ${bad.join(", ")}`).toEqual([]);
   });
 
-  it("the top tier owns every capability, so NOTHING renders locked for it", () => {
+  it("the top tier owns every SHIPPED capability, so nothing shipped renders locked", () => {
+    // comingSoon capabilities are deliberately excluded: the plan record does not
+    // grant them yet, so production correctly renders them visible-and-locked even
+    // for Enterprise (white_label is the live example). Asserting over them would
+    // make this test disagree with the product on purpose.
+    const soon = new Set(CAPABILITIES.filter((c) => c.comingSoon).map((c) => c.key));
     const opts = { role: "owner" as const, ...base, enforce: true, caps: capsForTier(3) };
-    const locked = CUSTOMER_ITEMS.filter((i) => navItemLocked(i, opts)).map((i) => i.href);
-    expect(locked, `Enterprise sees locked destinations: ${locked.join(", ")}`).toEqual([]);
+    const locked = CUSTOMER_ITEMS
+      .filter((i) => navItemLocked(i, opts))
+      .filter((i) => !soon.has(NAV_CAP_BY_HREF[i.href]))
+      .map((i) => i.href);
+    expect(locked, `Enterprise sees locked shipped destinations: ${locked.join(", ")}`).toEqual([]);
   });
 });
 
