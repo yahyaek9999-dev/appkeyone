@@ -241,11 +241,53 @@ Full suite: **205 passing, 0 failing.** Typecheck and production build clean.
 
 ---
 
-## Still outstanding
+## Real-browser verification — PASSED
 
-The real-browser pass (clicking each workspace rail glyph and reading the
-rendered sidebar) has not been run — the Browser pane has no authenticated
-session. Everything above is measured from production HTTP responses, the live
-entitlement API, production SQL, and an exact reproduction of `navItemVisible()`
-/ `navItemLocked()` against the real runtime inputs. The browser pass would
-confirm the same facts visually.
+Run in the authenticated Browser pane against production, signed in as a real
+Enterprise customer (`test1` / `test@wkeyone.com`, KEYONE Enterprise), commit
+`ddc2ad8`. No membership, entitlement or FeatureControl data touched.
+
+**Default nav mode.** The toggle rendered **"الأساسيات فقط"**, which is the
+button offering to switch *to* essentials — i.e. the customer landed in
+EXPANDED mode. Before the fix the same account rendered "عرض كل الأدوات"
+(currently compact). The default flipped, as intended.
+
+**All 8 workspace rail glyphs present**, each clicked and enumerated:
+
+| workspace | destinations |
+|---|---|
+| الرئيسية | 2 — `/dashboard`, `/dashboard/my-work` |
+| المحادثات | 6 — inbox, escalations, quick-replies, settings/numbers, **whatsapp-health**, compliance |
+| العملاء | 4 — customers, leads, segments, import |
+| المبيعات | 4 — orders, products, coupons, shipments |
+| التسويق | 4 — broadcasts-pro, broadcasts, recovery, sms |
+| الأتمتة | 9 — bot, bot-builder, automations, knowledge, working-hours, flow-builder, agents, ai-operations, **ai-audit** |
+| التحليلات | 8 — analytics, business-intelligence, funnel, revenue-copilot, revenue-forecast, business, revenue-pro, export |
+| الإعدادات | 14 — settings, billing, usage, wallet, providers, integrations, branches, approvals, audit-log, system-health, **safety**, white-label **[LOCKED]**, developer, /docs |
+
+**Total: 51 destinations** — matching the simulation exactly. All three
+newly-surfaced features confirmed visible in the live sidebar.
+
+**LOCKED ≠ hidden, proven visually.** `/dashboard/white-label` is present in the
+Settings panel, greyed with a lock glyph. Opening it renders the upgrade page —
+lock icon, feature description, badge "متاح في باقة KEYONE Enterprise", and a
+**ترقية الباقة** call to action. `is404: false`. Visible = YES, access = NO,
+display = LOCKED. Obtained with **zero** membership changes, because
+`k_enterprise.featureFlags.white_label = false` already makes this Enterprise
+customer un-entitled to a visible feature.
+
+**Newly-surfaced features open and are usable** (entitled → not locked):
+
+| route | `h1` | locked? |
+|---|---|---|
+| `/dashboard/whatsapp-health` | صحة جلسة واتساب | no |
+| `/dashboard/safety` | (renders) | no |
+| `/dashboard/ai-audit` | تدقيق جاهزية المساعد | no |
+| `/dashboard/branches` | الفروع | no |
+
+**Beginner mode still works and persists.** Clicking "الأساسيات فقط" reduced the
+Settings panel 14 → 4 and wrote `keyone_nav_simple="1"`; clicking
+"عرض كل الأدوات" restored 14 and wrote `"0"`. The mode was never removed — it
+simply stopped being the default nobody chose.
+
+**Verdict: customer dashboard surfacing VERIFIED.**
