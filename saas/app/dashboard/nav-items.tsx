@@ -221,6 +221,7 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard/analytics",
     items: [
       { href: "/dashboard/analytics", label: "نظرة عامة", icon: BarChart3, perm: "analytics" },
+      { href: "/dashboard/command-center", label: "مركز القيادة", icon: Gauge, perm: "analytics" },
       { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },
       { href: "/dashboard/funnel", label: "قمع التحويل", icon: Filter, perm: "analytics" },
       { href: "/dashboard/revenue-copilot", label: "فرص الإيرادات", icon: TrendingUp, perm: "analytics" },
