@@ -163,6 +163,9 @@ describe("audited destinations stay discoverable in a customer workspace", () =>
     ["/dashboard/sales-brain", "analytics"],
     ["/dashboard/suggestions", "analytics"],
     ["/dashboard/monitoring", "analytics"],
+    ["/dashboard/intel", "analytics"],
+    ["/dashboard/settings/bridge", "conversations"],
+    ["/dashboard/meta", "conversations"],
   ];
 
   it.each(SURFACED)("%s is listed in the %s workspace", (href, wsId) => {
@@ -173,7 +176,9 @@ describe("audited destinations stay discoverable in a customer workspace", () =>
 
   it.each(SURFACED)("%s is visible AND unlocked for an Enterprise owner", (href) => {
     const item = CUSTOMER_ITEMS.find((i) => i.href === href)!;
-    const opts = { role: "owner" as const, ...base, enforce: true, caps: capsForTier(3) };
+    // A mode-scoped destination is only reachable by a tenant on that mode —
+    // judge it under its own mode, never as if it were unconditional.
+    const opts = { role: "owner" as const, ...base, metaMode: item.mode ?? "qr", enforce: true, caps: capsForTier(3) };
     expect(navItemVisible(item, opts), `${href} is hidden`).toBe(true);
     expect(navItemLocked(item, opts), `${href} is locked`).toBe(false);
   });

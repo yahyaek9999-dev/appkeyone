@@ -133,6 +133,8 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
+      { href: "/dashboard/settings/bridge", label: "ربط واتساب", icon: Plug, perm: "settings" },
+      { href: "/dashboard/meta", label: "مركز Meta والفوترة", icon: Cpu, perm: "settings", mode: "meta" },
       { href: "/dashboard/meta-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "meta" },
       // QR-mode counterpart to meta-health, so every tenant has exactly one
       // connection-health destination. whatsapp_health is a minTierIndex 0
@@ -225,6 +227,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/business", label: "أداء النشاط", icon: Building2, perm: "analytics" },
       { href: "/dashboard/revenue-pro", label: "تحليلات الإيرادات المتقدمة", icon: TrendingUp, perm: "analytics" },
+      { href: "/dashboard/intel", label: "رؤى متقدّمة عن العملاء", icon: Sparkles, perm: "analytics" },
       { href: "/dashboard/sales-brain", label: "ذكاء المبيعات", icon: Brain, perm: "analytics" },
       { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "analytics" },
       { href: "/dashboard/monitoring", label: "مركز الرصد", icon: Activity, perm: "analytics" },
@@ -271,9 +274,16 @@ export const WORKSPACES: Workspace[] = [
  *   1. its page calls requireAdmin() — platform-operator tooling that would
  *      bounce a customer to /dashboard (arena, playground, testing-arena, demo,
  *      qr-queue, feature-center, memberships), or
- *   2. it is an operator console with no customer meaning (command-center,
- *      intel, brain, knowledge-brain, sales-brain, monitoring, suggestions) or a
- *      legacy alias kept only for support (whatsapp, meta, plan).
+ *   2. it is an operator console with no customer meaning (command-center) or a
+ *      legacy alias kept only for support (whatsapp).
+ *
+ * This list drifted again and had to be corrected on 2026-08-27: it still named
+ * brain, knowledge-brain, sales-brain, monitoring, suggestions, plan, intel and
+ * meta as admin-only. All eight are pageGate() + <LockedFeature> pages built on
+ * sold capabilities (brain, knowledge_brain, sales_brain, monitoring_center,
+ * suggestions, advanced_insights, meta_cloud), so all eight now carry a customer
+ * nav entry. Calling a customer surface an "operator console" in a comment does
+ * not make it one — check the page for requireAdmin() before adding a name here.
  *
  * The inverse is the rule that matters: a page built with pageGate() +
  * <LockedFeature> IS a customer surface and MUST have a customer nav entry.
@@ -620,6 +630,7 @@ export const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/whatsapp-health": "whatsapp_health",
   "/dashboard/ai-operations": "ai_operations",
   "/dashboard/system-health": "system_health",
+  "/dashboard/settings/bridge": "whatsapp_bridge",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */
