@@ -22,7 +22,7 @@ interface Release {
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   active:   { label: "نشط",    color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
   beta:     { label: "تجريبي", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
-  hidden:   { label: "مخفي",   color: "text-slate-400 bg-white/5 border-white/10" },
+  hidden:   { label: "مسودة",  color: "text-slate-400 bg-white/5 border-white/10" },
   archived: { label: "أرشيف",  color: "text-red-400 bg-red-500/10 border-red-500/20" },
 };
 
@@ -127,7 +127,7 @@ export default function ReleasesPage() {
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.06] pb-5">
         <div>
           <h1 className="page-title mb-1">الإصدارات</h1>
-          <p className="page-desc">تحكّم في إطلاق الميزات عبر مراحل: مخفي → تجريبي → نشط</p>
+          <p className="page-desc">تحكّم في إطلاق الميزات عبر مراحل: مسودة → تجريبي → نشط</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={load} disabled={loading} className="btn-ghost flex items-center gap-1.5 text-sm">
@@ -196,7 +196,7 @@ export default function ReleasesPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={create} className="btn-primary text-sm flex items-center gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> إنشاء (مخفي)
+              <Plus className="h-3.5 w-3.5" /> إنشاء (مسودة)
             </button>
             <button onClick={() => setShowCreate(false)} className="btn-ghost text-sm">
               إلغاء
@@ -331,7 +331,7 @@ export default function ReleasesPage() {
         <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">دورة حياة الإصدار</div>
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
           {[
-            { label: "مخفي", color: "text-slate-400 bg-white/5 border-white/10" },
+            { label: "مسودة", color: "text-slate-400 bg-white/5 border-white/10" },
             { label: "→", color: "text-slate-600" },
             { label: "تجريبي", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
             { label: "→", color: "text-slate-600" },
@@ -345,7 +345,7 @@ export default function ReleasesPage() {
           ))}
         </div>
         <p className="mt-2 text-[11px] text-slate-600">
-          الميزات المرتبطة بإصدار "مخفي" غير متاحة للعملاء حتى لو كانت حالتها "مفعّلة" في مركز الميزات.
+          الميزات المرتبطة بإصدار "مسودة" غير متاحة للعملاء حتى لو كانت حالتها "مفعّلة" في مركز الميزات.
         </p>
       </div>
     </div>
