@@ -393,7 +393,12 @@ export default function FeatureControlPage() {
 
             {/* Customer visible */}
             <div className="flex items-center justify-between rounded-lg border border-white/[0.07] px-3 py-2.5">
-              <span className="text-sm text-slate-300">ظهور للعملاء</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-slate-300">ظهور للعملاء</span>
+                <span className={`text-xs ${(drawerEdits.customerVisible ?? drawer.customerVisible) ? "text-emerald-400" : "text-slate-500"}`}>
+                  {(drawerEdits.customerVisible ?? drawer.customerVisible) ? "ظاهر للعملاء" : "مخفي عن العملاء"}
+                </span>
+              </div>
               <button
                 onClick={() => setDrawerEdits((d) => ({ ...d, customerVisible: !(drawerEdits.customerVisible ?? drawer.customerVisible) }))}
                 className={`relative h-5 w-9 rounded-full transition-colors ${(drawerEdits.customerVisible ?? drawer.customerVisible) ? "bg-brand-500" : "bg-white/[0.08]"}`}
