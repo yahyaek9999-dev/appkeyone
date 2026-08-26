@@ -117,6 +117,7 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
       { href: "/dashboard/my-work", label: "عملي اليوم", icon: ClipboardList, perm: "inbox" },
+      { href: "/dashboard/plan", label: "لوحة الباقة", icon: Briefcase, perm: "analytics" },
     ],
   },
 
@@ -199,11 +200,13 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/bot-builder", label: "منشئ المحادثات", icon: GitBranch, perm: "settings" },
       { href: "/dashboard/automations", label: "قواعد الأتمتة", icon: Zap, perm: "settings" },
       { href: "/dashboard/knowledge", label: "قاعدة المعرفة", icon: BookOpen, perm: "settings" },
+      { href: "/dashboard/knowledge-brain", label: "ذاكرة المعرفة", icon: Brain, perm: "settings" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: CalendarClock, perm: "settings" },
       { href: "/dashboard/flow-builder", label: "منشئ تدفقات البيانات", icon: Workflow, perm: "settings" },
       { href: "/dashboard/agents", label: "المساعدات الذكية", icon: Brain, perm: "settings" },
       { href: "/dashboard/ai-operations", label: "عمليات الذكاء الاصطناعي", icon: Lightbulb, perm: "settings" },
       { href: "/dashboard/ai-audit", label: "مراجعة جاهزية المساعد", icon: Beaker, perm: "settings" },
+      { href: "/dashboard/brain", label: "مركز البيانات", icon: Brain, perm: "settings" },
     ],
   },
 
@@ -222,6 +225,9 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/business", label: "أداء النشاط", icon: Building2, perm: "analytics" },
       { href: "/dashboard/revenue-pro", label: "تحليلات الإيرادات المتقدمة", icon: TrendingUp, perm: "analytics" },
+      { href: "/dashboard/sales-brain", label: "ذكاء المبيعات", icon: Brain, perm: "analytics" },
+      { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "analytics" },
+      { href: "/dashboard/monitoring", label: "مركز الرصد", icon: Activity, perm: "analytics" },
       { href: "/dashboard/export", label: "تصدير البيانات", icon: Download, perm: "customers" },
     ],
   },
@@ -332,8 +338,6 @@ const ADMIN_WORKSPACE: Workspace = {
     { href: "/dashboard/agents", label: "AI Agents", icon: Brain, perm: "billing" },
     { href: "/dashboard/ai-operations", label: "AI Operations", icon: Lightbulb, perm: "billing" },
     { href: "/dashboard/knowledge", label: "Knowledge Base", icon: BookOpen, perm: "billing" },
-    { href: "/dashboard/knowledge-brain", label: "Knowledge Brain", icon: Brain, perm: "billing" },
-    { href: "/dashboard/brain", label: "Brain", icon: Brain, perm: "billing" },
     { href: "/dashboard/working-hours", label: "Working Hours", icon: CalendarClock, perm: "billing" },
 
     // ── Analytics & Revenue ───────────────────────────────────────────────────
@@ -343,10 +347,7 @@ const ADMIN_WORKSPACE: Workspace = {
     { href: "/dashboard/revenue-copilot", label: "Revenue Copilot", icon: TrendingUp, perm: "billing" },
     { href: "/dashboard/revenue-forecast", label: "Revenue Forecast", icon: TrendingUp, perm: "billing" },
     { href: "/dashboard/revenue-pro", label: "Revenue Pro", icon: TrendingUp, perm: "billing" },
-    { href: "/dashboard/sales-brain", label: "Sales Brain", icon: Brain, perm: "billing" },
     { href: "/dashboard/business", label: "Business Performance", icon: Building2, perm: "billing" },
-    { href: "/dashboard/suggestions", label: "Suggestions", icon: Lightbulb, perm: "billing" },
-    { href: "/dashboard/monitoring", label: "Monitoring", icon: Activity, perm: "billing" },
     { href: "/dashboard/plan", label: "Plan", icon: CreditCard, perm: "billing" },
 
     // ── Account & Settings ────────────────────────────────────────────────────
