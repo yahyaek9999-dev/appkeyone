@@ -15,6 +15,7 @@ import MergeCustomerButton from "./merge-button";
 import { timeAgo } from "@/lib/utils";
 import { OrderStatusPill, type OrderStatus } from "@/components/ui/order-status-pill";
 import { decideNextBestAction } from "@/lib/intelligence/next-best-action";
+import { hasCapability } from "@/lib/membership/entitlements";
 import { classifyValueTier, valueTierLabel } from "@/lib/intelligence/value-tier";
 import {
   computeChurnProbability, churnBand, churnBandLabel,
@@ -256,6 +257,8 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
     discountAsks: memDiscountAsks,
   });
 
+  // next_best_action is Pro (tier 2) — hide the recommendation banner below it.
+  const nbaAllowed = await hasCapability(user.id, "next_best_action");
   const nbaStyle = nbaBannerStyle(nba.action);
   const cta = nbaCta(nba.action, customer.id);
 
@@ -370,7 +373,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       </div>
 
       {/* ── NBA action banner ────────────────────────────────────────────── */}
-      {nba.action !== "hold" && (
+      {nbaAllowed && nba.action !== "hold" && (
         <div className={`mb-5 rounded-xl border ${nbaStyle.border} ${nbaStyle.bg} px-4 py-4`}>
           <div className="flex items-start gap-3">
             <div className="mt-0.5 shrink-0">{nbaIcon(nba.action)}</div>

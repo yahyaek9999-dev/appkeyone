@@ -11,6 +11,7 @@ import { getUserIdForPermission } from "@/lib/auth";
 import { REVENUE_ELIGIBLE_STATUSES } from "@/lib/revenue/engine";
 import { readNegotiation } from "@/lib/sales-engine";
 import { decideNextBestAction } from "@/lib/intelligence/next-best-action";
+import { hasCapability } from "@/lib/membership/entitlements";
 import { recommendProduct } from "@/lib/intelligence/product-recs";
 import {
   classifyValueTier,
@@ -157,6 +158,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   // (generic upsell phrasing) on any error.
   const recommendedProduct = await recommendProduct(uid, c.id).catch(() => null);
 
+  // next_best_action is a Pro (tier 2) capability. Compute it only when the
+  // tenant is entitled; unentitled plans get the profile without the
+  // recommendation rather than a hard failure.
+  const nbaAllowed = await hasCapability(uid, "next_best_action");
   const nba = decideNextBestAction({
     customerName: c.name,
     leadScore: c.leadScore || 0,
@@ -236,14 +241,17 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       sentimentTrend,
       sentimentTrendLabel: sentimentTrendLabel(sentimentTrend),
       daysSinceLastInbound,
-      nextBestAction: {
-        action: nba.action,
-        title: nba.title,
-        reason: nba.reason,
-        confidence: nba.confidence,
-        suggestedMessage: nba.suggestedMessage,
-        factors: nba.factors,
-      },
+      nextBestAction: nbaAllowed
+        ? {
+            action: nba.action,
+            title: nba.title,
+            reason: nba.reason,
+            confidence: nba.confidence,
+            suggestedMessage: nba.suggestedMessage,
+            factors: nba.factors,
+          }
+        : null,
+      nextBestActionLocked: !nbaAllowed,
     },
   });
 }
