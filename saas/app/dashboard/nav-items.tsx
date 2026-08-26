@@ -676,9 +676,22 @@ function accessibleWorkspaces(role: Role, simple = false, pathname = "", access:
   })).filter((w) => w.items.length > 0);
 }
 
+/**
+ * Nav density preference. DISCOVERY-FIRST DEFAULT: a principal who has never
+ * expressed a preference sees every destination they may reach.
+ *
+ * This used to default to compact (`getItem(key) !== "0"` — and an untouched
+ * key is null, so everyone started compact). The effect was that a paying
+ * customer's first sight of the product was 17 of 48 destinations, with 30
+ * fully-entitled features suppressed by a density filter they never chose.
+ * Beginner mode is a deliberate choice, not a starting state.
+ *
+ * Only an explicit stored "1" means compact, so anyone who actually picked
+ * "الأساسيات فقط" keeps it, and an explicit "0" keeps expanded.
+ */
 function useNavMode(): [boolean, () => void] {
-  const [simple, setSimple] = useState(true);
-  useEffect(() => { try { setSimple(localStorage.getItem(NAV_MODE_KEY) !== "0"); } catch {} }, []);
+  const [simple, setSimple] = useState(false);
+  useEffect(() => { try { setSimple(localStorage.getItem(NAV_MODE_KEY) === "1"); } catch {} }, []);
   const toggle = () => setSimple((v) => { const n = !v; try { localStorage.setItem(NAV_MODE_KEY, n ? "1" : "0"); } catch {} return n; });
   return [simple, toggle];
 }
@@ -727,8 +740,13 @@ function ContextRow({ item, active, locked = false }: { item: NavItem; active: b
 export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, isPlatformAdmin = false, disabledFeatures }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; isPlatformAdmin?: boolean; disabledFeatures?: Set<string> }) {
   const pathname = usePathname();
   const [_simple, toggleMode] = useNavMode();
-  // Admins (enforce=false) always see full nav regardless of localStorage preference.
-  const simple = enforce ? _simple : false;
+  // Nav DENSITY is a user preference, never a function of the plan. This was
+  // `enforce ? _simple : false`, which keyed density off an ENTITLEMENT flag:
+  // enforced k_* customers got the compact nav while legacy/unenforced tenants
+  // always got the full one — so the paying customer saw fewer of their own
+  // features. Platform admins keep the always-full nav (they also carry
+  // ADMIN_WORKSPACE); everyone else gets their own preference.
+  const simple = isPlatformAdmin ? false : _simple;
   const baseSpaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules, disabledFeatures });
   const spaces = isPlatformAdmin ? [...baseSpaces, ADMIN_WORKSPACE] : baseSpaces;
   const currentWs = workspaceForPath(pathname, spaces);
@@ -805,8 +823,8 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
  */
 export function NavLinks({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, disabledFeatures }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; disabledFeatures?: Set<string> }) {
   const pathname = usePathname();
-  const [_simple, toggleMode] = useNavMode();
-  const simple = enforce ? _simple : false;
+  const [simple, toggleMode] = useNavMode();
+  // Same rule as the sidebar: density is the user's preference, not the plan's.
   const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules, disabledFeatures });
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
