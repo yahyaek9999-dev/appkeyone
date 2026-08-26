@@ -532,8 +532,8 @@ function TableRow({
         )}
       </td>
       <td className="px-4 py-2.5 text-[11px]">
-        <span className={f.customerVisible ? "text-emerald-400" : f.adminOnly ? "text-violet-400" : "text-slate-600"}>
-          {f.customerVisible ? "ظاهر للعملاء" : f.adminOnly ? "مشرف فقط" : "مخفي عن العملاء"}
+        <span className={f.customerVisible ? "text-emerald-400" : "text-slate-600"}>
+          {f.customerVisible ? "ظاهر للعملاء" : "مخفي عن العملاء"}
         </span>
       </td>
       <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
