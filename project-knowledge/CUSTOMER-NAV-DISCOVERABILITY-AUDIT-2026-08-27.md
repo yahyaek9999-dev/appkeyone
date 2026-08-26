@@ -182,76 +182,170 @@ string is "قريباً", not an upgrade prompt.
 
 ---
 
-## 4. The 83 canonical capabilities
+## 4. The 83 canonical capabilities — full matrix
 
-Reconciled mechanically against three signals — `NAV_FEATURE_BY_HREF`,
-`NAV_CAP_BY_HREF`, and `pageGate("<cap>")` found by scanning every
-`app/dashboard/**/page.tsx`.
+Reconciled mechanically against `NAV_FEATURE_BY_HREF`, `NAV_CAP_BY_HREF`, and
+`pageGate("<cap>")` found by scanning every `app/dashboard/**/page.tsx`, then each
+non-nav capability classified from the page or the code rather than asserted.
 
-| Bucket | Count |
+| Status | Count | Meaning |
+|---|---|---|
+| **PASS** | 68 | icon, label, visible, clicked, correct page — all five checked |
+| **ADMIN-INTERNAL** | 7 | `requireAdmin()` / `adminOnly` / non-admin redirect |
+| **CONTRACTUAL** | 4 | commercial term, no software surface |
+| **INTERNAL-NO-UI** | 1 | internal machinery, never a customer destination |
+| **LOCKED** | 1 | `white_label` — `comingSoon`, correctly visible + locked |
+| **MODE-SPECIFIC** | 1 | `meta_cloud` — see §5 |
+| **BLOCKER** | 1 | `multi_team` — see §4.1 |
+| **Total** | **83** | zero unclassified |
+
+| # | Feature | Plan | Customer surface | Workspace | Status |
+|---|---|---|---|---|---|
+| 1 | `arena` | ENTERPRISE | requireAdmin() | — | **ADMIN-INTERNAL** |
+| 2 | `demo` | ENTERPRISE | requireAdmin() | — | **ADMIN-INTERNAL** |
+| 3 | `feature_center` | ENTERPRISE | adminOnly | — | **ADMIN-INTERNAL** |
+| 4 | `memberships` | ENTERPRISE | non-admin redirect | — | **ADMIN-INTERNAL** |
+| 5 | `playground` | ENTERPRISE | requireAdmin() | — | **ADMIN-INTERNAL** |
+| 6 | `qr_broadcast_queue` | GROWTH | requireAdmin() — bounce verified in browser | — | **ADMIN-INTERNAL** |
+| 7 | `testing_arena` | ENTERPRISE | requireAdmin() | — | **ADMIN-INTERNAL** |
+| 8 | `multi_team` | ENTERPRISE | no Team model; allowedNumberIds/conversationScope unsettable | — | **BLOCKER** |
+| 9 | `custom_billing` | ENTERPRISE | billing term, no software surface | — | **CONTRACTUAL** |
+| 10 | `custom_dev` | ENTERPRISE | services term, no software surface | — | **CONTRACTUAL** |
+| 11 | `dedicated_infra` | ENTERPRISE | infrastructure term, no software surface | — | **CONTRACTUAL** |
+| 12 | `priority_support` | ENTERPRISE | support term, no software surface | — | **CONTRACTUAL** |
+| 13 | `sla` | ENTERPRISE | lib/admin/attention.ts — internal SLA tracking | — | **INTERNAL-NO-UI** |
+| 14 | `white_label` | ENTERPRISE | العلامة البيضاء — `/dashboard/white-label` | الإعدادات | **LOCKED** |
+| 15 | `meta_cloud` | START | مركز Meta والفوترة — `/dashboard/meta` | المحادثات | **MODE-SPECIFIC** |
+| 16 | `advanced_analytics` | PRO | ذكاء الأعمال — `/dashboard/business-intelligence` | التحليلات | **PASS** |
+| 17 | `advanced_automations` | GROWTH | قواعد الأتمتة — `/dashboard/automations` | الأتمتة | **PASS** |
+| 18 | `advanced_insights` | PRO | رؤى متقدّمة عن العملاء — `/dashboard/intel` | التحليلات | **PASS** |
+| 19 | `advanced_reporting` | ENTERPRISE | أداء النشاط — `/dashboard/business` | التحليلات | **PASS** |
+| 20 | `ai_audit` | PRO | مراجعة جاهزية المساعد — `/dashboard/ai-audit` | الأتمتة | **PASS** |
+| 21 | `ai_operations` | PRO | عمليات الذكاء الاصطناعي — `/dashboard/ai-operations` | الأتمتة | **PASS** |
+| 22 | `api_access` | PRO | مركز المطوّرين — `/dashboard/developer` | الإعدادات | **PASS** |
+| 23 | `approval_workflows` | ENTERPRISE | الموافقات — `/dashboard/approvals` | الإعدادات | **PASS** |
+| 24 | `audit_log` | PRO | سجل النشاط — `/dashboard/audit-log` | الإعدادات | **PASS** |
+| 25 | `auto_reply` | START | الردود التلقائية · /dashboard/bot | — | **PASS** |
+| 26 | `basic_analytics` | START | نظرة عامة — `/dashboard/analytics` | التحليلات | **PASS** |
+| 27 | `bot_configuration` | START | الردود التلقائية — `/dashboard/bot` | الأتمتة | **PASS** |
+| 28 | `brain` | ENTERPRISE | مركز البيانات — `/dashboard/brain` | الأتمتة | **PASS** |
+| 29 | `broadcast_credits` | GROWTH | الحملات — `/dashboard/broadcasts-pro` | التسويق | **PASS** |
+| 30 | `broadcasts` | GROWTH | حملات البثّ (متقدمة) — `/dashboard/broadcasts` | التسويق | **PASS** |
+| 31 | `business_performance` | PRO | أداء النشاط — `/dashboard/business` | التحليلات | **PASS** |
+| 32 | `command_center` | ENTERPRISE | مركز القيادة — `/dashboard/command-center` | التحليلات | **PASS** |
+| 33 | `compliance_monitoring` | GROWTH | الامتثال والتسليم — `/dashboard/compliance` | المحادثات | **PASS** |
+| 34 | `coupons_discounts` | GROWTH | الكوبونات — `/dashboard/coupons` | المبيعات | **PASS** |
+| 35 | `custom_integrations` | ENTERPRISE | التكاملات · /api/commerce/integrations | — | **PASS** |
+| 36 | `customer_import` | START | استيراد العملاء — `/dashboard/import` | العملاء | **PASS** |
+| 37 | `customer_management` | START | كل العملاء — `/dashboard/customers` | العملاء | **PASS** |
+| 38 | `customer_segmentation` | PRO | الشرائح · /dashboard/segments (audit.ts PROTECTED) | — | **PASS** |
+| 39 | `data_export` | START | تصدير البيانات — `/dashboard/export` | التحليلات | **PASS** |
+| 40 | `escalations` | GROWTH | التصعيدات — `/dashboard/escalations` | المحادثات | **PASS** |
+| 41 | `flow_builder` | GROWTH | منشئ المحادثات — `/dashboard/bot-builder` | الأتمتة | **PASS** |
+| 42 | `forecasting` | PRO | توقّع الإيرادات — `/dashboard/revenue-forecast` | التحليلات | **PASS** |
+| 43 | `funnel_analytics` | PRO | قمع التحويل — `/dashboard/funnel` | التحليلات | **PASS** |
+| 44 | `human_handoff` | GROWTH | صندوق المحادثات · /api/inbox/.../pause | — | **PASS** |
+| 45 | `inbox` | START | نظرة عامة — `/dashboard` | الرئيسية | **PASS** |
+| 46 | `integrations` | PRO | التكاملات — `/dashboard/integrations` | الإعدادات | **PASS** |
+| 47 | `k1sms` | PRO | رسائل SMS — `/dashboard/sms` | التسويق | **PASS** |
+| 48 | `knowledge_base` | PRO | قاعدة المعرفة — `/dashboard/knowledge` | الأتمتة | **PASS** |
+| 49 | `knowledge_brain` | ENTERPRISE | ذاكرة المعرفة — `/dashboard/knowledge-brain` | الأتمتة | **PASS** |
+| 50 | `lead_scoring` | GROWTH | العملاء المحتملون — `/dashboard/leads` | العملاء | **PASS** |
+| 51 | `loyalty_rewards` | PRO | تفاصيل العميل + منشئ قواعد الأتمتة | — | **PASS** |
+| 52 | `monitoring` | ENTERPRISE | مركز الرصد — `/dashboard/monitoring` | التحليلات | **PASS** |
+| 53 | `monitoring_center` | GROWTH | مركز الرصد — `/dashboard/monitoring` | التحليلات | **PASS** |
+| 54 | `multi_branch` | ENTERPRISE | الفروع — `/dashboard/branches` | الإعدادات | **PASS** |
+| 55 | `multi_whatsapp` | ENTERPRISE | أرقام واتساب — `/dashboard/settings/numbers` | المحادثات | **PASS** |
+| 56 | `my_work` | START | عملي اليوم — `/dashboard/my-work` | الرئيسية | **PASS** |
+| 57 | `next_best_action` | PRO | تفاصيل العميل · /api/customers/[id]/profile | — | **PASS** |
+| 58 | `order_management` | START | الطلبات — `/dashboard/orders` | المبيعات | **PASS** |
+| 59 | `products` | START | المنتجات — `/dashboard/products` | المبيعات | **PASS** |
+| 60 | `quick_replies` | START | الردود السريعة — `/dashboard/quick-replies` | المحادثات | **PASS** |
+| 61 | `recovery` | GROWTH | استعادة العملاء — `/dashboard/recovery` | التسويق | **PASS** |
+| 62 | `revenue_attribution` | PRO | توقّع الإيرادات · revenue-forecast (audit.ts PROTECTED) | — | **PASS** |
+| 63 | `revenue_copilot` | PRO | فرص الإيرادات — `/dashboard/revenue-copilot` | التحليلات | **PASS** |
+| 64 | `revenue_pro` | PRO | تحليلات الإيرادات المتقدمة — `/dashboard/revenue-pro` | التحليلات | **PASS** |
+| 65 | `safety_controls` | PRO | لوحة السلامة والحماية — `/dashboard/safety` | الإعدادات | **PASS** |
+| 66 | `sales_brain` | ENTERPRISE | ذكاء المبيعات — `/dashboard/sales-brain` | التحليلات | **PASS** |
+| 67 | `sales_pipeline` | PRO | ذكاء المبيعات — `/dashboard/sales-brain` | التحليلات | **PASS** |
+| 68 | `segments` | GROWTH | الشرائح — `/dashboard/segments` | العملاء | **PASS** |
+| 69 | `shipping_tracking` | PRO | الشحن والتتبّع — `/dashboard/shipments` | المبيعات | **PASS** |
+| 70 | `smart_assistant` | PRO | المساعدات الذكية — `/dashboard/agents` | الأتمتة | **PASS** |
+| 71 | `smart_campaign_builder` | PRO | استعادة العملاء · /api/recovery | — | **PASS** |
+| 72 | `sms_messaging` | PRO | رسائل SMS — `/dashboard/sms` | التسويق | **PASS** |
+| 73 | `suggestions` | ENTERPRISE | الاقتراحات — `/dashboard/suggestions` | التحليلات | **PASS** |
+| 74 | `support_inbox` | PRO | صندوق المحادثات · /api/inbox/assign | — | **PASS** |
+| 75 | `system_health` | PRO | صحة النظام — `/dashboard/system-health` | الإعدادات | **PASS** |
+| 76 | `system_intelligence` | ENTERPRISE | رؤى متقدّمة عن العملاء — `/dashboard/intel` | التحليلات | **PASS** |
+| 77 | `team` | GROWTH | إدارة الفريق · settings/team (sub-page, clicked) | — | **PASS** |
+| 78 | `team_routing` | PRO | صندوق المحادثات · /api/inbox/assign | — | **PASS** |
+| 79 | `wallet` | START | المحفظة والرصيد — `/dashboard/wallet` | الإعدادات | **PASS** |
+| 80 | `whatsapp_bridge` | GROWTH | ربط واتساب — `/dashboard/settings/bridge` | المحادثات | **PASS** |
+| 81 | `whatsapp_connection` | START | ربط واتساب — `/dashboard/settings/bridge` | المحادثات | **PASS** |
+| 82 | `whatsapp_health` | START | صحة جلسة واتساب — `/dashboard/whatsapp-health` | المحادثات | **PASS** |
+| 83 | `working_hours` | GROWTH | ساعات العمل — `/dashboard/working-hours` | الأتمتة | **PASS** |
+
+### 4.1 `multi_team` — resolved: (C) sold, not deliverable
+
+The catalog sells it on Enterprise as **"فرق متعدّدة مع صلاحيات منفصلة"**
+(Multi-Team with Isolated Permissions), distinct from `team` ("أعضاء الفريق حتى 5",
+Growth), `team_routing` (Pro) and `multi_branch` (Enterprise). Every source was
+checked:
+
+| Source | Finding |
 |---|---|
-| Has a customer nav destination | **59** |
-| Reachable only through a nav parent | 0 |
-| **Buried — customer surface, no way to reach it** | **0** |
-| No nav destination of its own | 24 |
+| `prisma/schema.postgres.prisma` | **no `Team` model exists.** `TeamMember` is a flat list of members under one owner. `Branch` has no member relation — branches carry name/phone/address/manager, no permission scoping |
+| `TeamMember` fields | isolation primitives DO exist: `allowedNumberIds` (per-member WhatsApp-number access) and `conversationScope` (`own_only` \| `team` \| `all`) |
+| Who writes them | **nothing.** `app/api/settings/team/route.ts` writes `role` only; no other endpoint, script or UI sets either field |
+| Who reads them | `allowedNumberIds` in `app/api/inbox/conversations/route.ts` only. `conversationScope` is read **nowhere** — declared in the schema, never used |
+| UI | `settings/team` manages members, roles and a fixed permission matrix. No team creation, no per-member number or scope control |
+| Production `FeatureControl` | `status=enabled, customerVisible=true` |
 
-The 24 without a destination of their own, each justified from the page or the
-code rather than asserted:
+So the isolation is enforced at read time but can never be configured — every
+member keeps the defaults (`"[]"` = all numbers, `""` = role-based). A customer
+cannot create a second team, and cannot give one team an isolated permission set.
 
-**Platform tooling — `requireAdmin()` or an admin redirect, proven (7):**
-`playground`, `testing_arena`, `arena`, `demo`, `qr_broadcast_queue`,
-`feature_center`, `memberships`. `qr_broadcast_queue` was confirmed in the
-browser: requesting `/dashboard/qr-queue` as the Enterprise customer lands on
-`/dashboard`. `memberships` redirects any non-admin; `feature_center` uses
-`adminOnly`.
+**Verdict: (C) — a capability sold on the top plan that the product cannot
+deliver as described.** No UI was invented for it. By the Enterprise rule this is
+the audit's single **FAIL**: `customerVisible=true`, not admin, not contractual,
+not `comingSoon`, and no customer-discoverable surface.
 
-**Behaviour inside a destination that IS in the nav (13):** `auto_reply`
-(الردود التلقائية), `team` + `team_routing` + `support_inbox` + `human_handoff`
-(صندوق المحادثات and إدارة الفريق, `/api/inbox/assign`, `/api/settings/team`),
-`customer_segmentation` (الشرائح — confirmed by `lib/membership/audit.ts`
-`PROTECTED`), `revenue_attribution` (توقّع الإيرادات, same source),
-`smart_campaign_builder` (استعادة العملاء, `/api/recovery`), `next_best_action`
-(customer detail, `/api/customers/[id]/profile`), `custom_integrations`
-(التكاملات, `/api/commerce/integrations`), `loyalty_rewards` (customer detail and
-the automation rule builder), plus `sla` (internal tracking in
-`lib/admin/attention.ts`).
+It is a commercial decision, not a navigation one. The options are to build
+multi-team properly (a `Team` entity, or exposing `allowedNumberIds` +
+`conversationScope` in `settings/team`), to remap the capability onto what
+الفروع + إدارة الفريق actually deliver, or to withdraw it from the Enterprise
+plan. **Blocks membership sales while Enterprise plan comparisons advertise it.**
 
-**Commercial terms with no software surface (3):** `dedicated_infra`,
-`priority_support`, `custom_dev`, `custom_billing`.
-
-**One capability I could not account for:** `multi_team` (ENTERPRISE) is
-referenced by nothing but `lib/pricing/catalog.ts` and the FeatureControl
-auto-seeder — no page, no API route, no library code. In production its row reads
-`status=enabled, customerVisible=true`. It may be the commercial name for
-الفروع + إدارة الفريق, both of which are reachable, or it may be sold and
-undelivered. I could not prove which, and it is a pricing question rather than a
-visibility one, so nothing was changed. **Worth resolving before membership
-sales**, since plan comparisons will advertise it.
-
----
-
-## 5. Meta connection mode — the one thing not proven in a browser
+## 5. Meta connection mode — UNVERIFIED, and why
 
 `/dashboard/meta` and `/dashboard/meta-health` carry `mode: "meta"`, so they
 appear only for tenants on Meta Cloud. This account is on QR.
 
-What is proven:
+Every sanctioned route to a Meta tenant was checked and none exists:
+
+| Route | Finding |
+|---|---|
+| An existing Meta tenant | **none.** `SELECT connectionMode, count(*) FROM "Bot" GROUP BY 1` in production returns exactly one row: `qr \| 4`. Not one tenant in production has ever been on Meta Cloud |
+| A seed / demo / test-tenant script | none in `scripts/` |
+| A test mode or override | none. `metaMode` derives solely from `user.bot.connectionMode` (`app/dashboard/layout.tsx:78`) — no env flag, no query param, no dev switch |
+| Creating a tenant | that is creating an account — not something I will do |
+| Flipping this account's mode | modifies a live account's WhatsApp connection configuration on a production SaaS. Explicitly out of bounds |
+
+What IS proven:
 
 - Both pages open for this account and render unlocked content (`/dashboard/meta`
   returned 200 with no `<LockedFeature>`; `meta_cloud` is minTierIndex 0).
-- Both are listed in the Conversations workspace, visible and unlocked under
-  `metaMode: "meta"` and hidden under `"qr"` — asserted by regression test.
-- The mode mechanism itself works in the live UI: the QR counterpart,
+- Both are listed in Conversations, visible and unlocked under `metaMode: "meta"`
+  and hidden under `"qr"` — asserted by regression test.
+- The mode mechanism works in the live UI: the QR counterpart,
   `صحة جلسة واتساب`, renders and clicks for this tenant, and the Meta pair does not.
 
 What is **not** proven: a browser click on those two nav items as a Meta tenant.
+Recorded as **UNVERIFIED**, not folded into PASS.
 
-There is no sanctioned way to get one. Creating a tenant means creating an
-account; flipping this tenant's connection mode would modify a live customer's
-WhatsApp configuration on a production SaaS. Both were rejected. Recorded as
-**UNVERIFIED by browser**, proven by test and by page behaviour.
-
----
+Worth noting for the launch independently of this audit: **the Meta Cloud surface
+has zero tenants in production**, so it has never been exercised by a real
+merchant.
 
 ## 6. Regression tests
 
@@ -330,12 +424,18 @@ entitlement matrix, customer data, and the WhatsApp send pipeline.
 
 | Measure | Result |
 |---|---|
-| Missing customer nav entry | **0** |
-| Missing icon | **0** |
+| Customer feature with no surface | **1** — `multi_team` (§4.1) |
+| Customer feature with no icon | **0** |
 | Broken click | **0** |
 | Wrong destination | **0** |
+| Hidden by entitlement | **0** |
 | Customer-safe page with no entry | **0** |
-| Buried capability | **0** |
+| Enterprise entitlement/surface mismatch | **1** — `multi_team` |
 | Locked for Enterprise | 1 — `white_label`, correct (`comingSoon`) |
-| Unverified by browser | 2 — the Meta-mode pair, no sanctioned tenant (§5) |
-| Open question for the business | 1 — `multi_team` has no implementation (§4) |
+| **UNVERIFIED** | 2 routes — the Meta-mode pair, no sanctioned tenant exists (§5) |
+
+**NOT APPROVED for membership sales.** Navigation and discoverability are closed:
+68 of 83 capabilities PASS with all five checks, and every remaining one is
+classified with evidence. The blocker is commercial, not navigational —
+`multi_team` is sold on the top plan and the product cannot deliver it. That
+decision is the owner's, and no UI was invented to paper over it.
