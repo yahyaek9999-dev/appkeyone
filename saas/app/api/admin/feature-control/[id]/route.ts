@@ -4,11 +4,12 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { upsertFeature, getAllFeatures } from "@/lib/feature-control";
 import { audit } from "@/lib/audit/log";
+import { FEATURE_STATUSES } from "@/lib/feature-status";
 
 export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({
-  status: z.enum(["enabled", "disabled", "hidden", "beta", "deprecated"]).optional(),
+  status: z.enum(FEATURE_STATUSES).optional(),
   customerVisible: z.boolean().optional(),
   adminOnly: z.boolean().optional(),
   beta: z.boolean().optional(),

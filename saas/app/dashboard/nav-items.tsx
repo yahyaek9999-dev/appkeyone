@@ -117,6 +117,7 @@ export const WORKSPACES: Workspace[] = [
     items: [
       { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard, perm: "analytics" },
       { href: "/dashboard/my-work", label: "عملي اليوم", icon: ClipboardList, perm: "inbox" },
+      { href: "/dashboard/plan", label: "لوحة الباقة", icon: Briefcase, perm: "analytics" },
     ],
   },
 
@@ -132,7 +133,14 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/escalations", label: "التصعيدات", icon: AlertTriangle, perm: "escalations" },
       { href: "/dashboard/quick-replies", label: "الردود السريعة", icon: MessageSquare, perm: "settings" },
       { href: "/dashboard/settings/numbers", label: "أرقام واتساب", icon: Phone, perm: "settings" },
+      { href: "/dashboard/settings/bridge", label: "ربط واتساب", icon: Plug, perm: "settings" },
+      { href: "/dashboard/meta", label: "مركز Meta والفوترة", icon: Cpu, perm: "settings", mode: "meta" },
       { href: "/dashboard/meta-health", label: "حالة الاتصال", icon: Activity, perm: "settings", mode: "meta" },
+      // QR-mode counterpart to meta-health, so every tenant has exactly one
+      // connection-health destination. whatsapp_health is a minTierIndex 0
+      // capability — every paying customer buys it — but its only nav entry
+      // used to live in ADMIN_WORKSPACE, so no customer could reach it.
+      { href: "/dashboard/whatsapp-health", label: "صحة جلسة واتساب", icon: Activity, perm: "settings", mode: "qr" },
       { href: "/dashboard/compliance", label: "الامتثال والتسليم", icon: ShieldCheck, perm: "settings" },
     ],
   },
@@ -194,10 +202,13 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/bot-builder", label: "منشئ المحادثات", icon: GitBranch, perm: "settings" },
       { href: "/dashboard/automations", label: "قواعد الأتمتة", icon: Zap, perm: "settings" },
       { href: "/dashboard/knowledge", label: "قاعدة المعرفة", icon: BookOpen, perm: "settings" },
+      { href: "/dashboard/knowledge-brain", label: "ذاكرة المعرفة", icon: Brain, perm: "settings" },
       { href: "/dashboard/working-hours", label: "ساعات العمل", icon: CalendarClock, perm: "settings" },
       { href: "/dashboard/flow-builder", label: "منشئ تدفقات البيانات", icon: Workflow, perm: "settings" },
       { href: "/dashboard/agents", label: "المساعدات الذكية", icon: Brain, perm: "settings" },
       { href: "/dashboard/ai-operations", label: "عمليات الذكاء الاصطناعي", icon: Lightbulb, perm: "settings" },
+      { href: "/dashboard/ai-audit", label: "مراجعة جاهزية المساعد", icon: Beaker, perm: "settings" },
+      { href: "/dashboard/brain", label: "مركز البيانات", icon: Brain, perm: "settings" },
     ],
   },
 
@@ -210,12 +221,17 @@ export const WORKSPACES: Workspace[] = [
     home: "/dashboard/analytics",
     items: [
       { href: "/dashboard/analytics", label: "نظرة عامة", icon: BarChart3, perm: "analytics" },
+      { href: "/dashboard/command-center", label: "مركز القيادة", icon: Gauge, perm: "analytics" },
       { href: "/dashboard/business-intelligence", label: "ذكاء الأعمال", icon: PieChart, perm: "analytics" },
       { href: "/dashboard/funnel", label: "قمع التحويل", icon: Filter, perm: "analytics" },
       { href: "/dashboard/revenue-copilot", label: "فرص الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/revenue-forecast", label: "توقّع الإيرادات", icon: TrendingUp, perm: "analytics" },
       { href: "/dashboard/business", label: "أداء النشاط", icon: Building2, perm: "analytics" },
       { href: "/dashboard/revenue-pro", label: "تحليلات الإيرادات المتقدمة", icon: TrendingUp, perm: "analytics" },
+      { href: "/dashboard/intel", label: "رؤى متقدّمة عن العملاء", icon: Sparkles, perm: "analytics" },
+      { href: "/dashboard/sales-brain", label: "ذكاء المبيعات", icon: Brain, perm: "analytics" },
+      { href: "/dashboard/suggestions", label: "الاقتراحات", icon: Lightbulb, perm: "analytics" },
+      { href: "/dashboard/monitoring", label: "مركز الرصد", icon: Activity, perm: "analytics" },
       { href: "/dashboard/export", label: "تصدير البيانات", icon: Download, perm: "customers" },
     ],
   },
@@ -238,6 +254,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
       { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
       { href: "/dashboard/system-health", label: "صحة النظام", icon: Activity, perm: "settings" },
+      { href: "/dashboard/safety", label: "لوحة السلامة والحماية", icon: ShieldAlert, perm: "settings" },
       { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/developer", label: "مركز المطوّرين", icon: Code2, perm: "settings" },
       { href: "/docs", label: "مركز المساعدة", icon: BookOpen, perm: "analytics" },
@@ -248,39 +265,36 @@ export const WORKSPACES: Workspace[] = [
 /**
  * Destinations intentionally NOT in customer navigation.
  *
- * Internal diagnostics / technical surfaces — a merchant should never be shown
- * these; they leak implementation detail and have no business meaning:
- *   /dashboard/command-center   internal ops console
- *   /dashboard/ai-operations    assistant internals
- *   /dashboard/intel            monitoring internals
- *   /dashboard/safety           anti-ban internals
- *   /dashboard/compliance       deliverability internals
- *   /dashboard/testing-arena    QA harness
- *   /dashboard/playground       QA harness
- *   /dashboard/ai-audit         QA harness
- *   /dashboard/demo             seeds fake data
+ * The POLICY, not a list — an enumerated list drifted badly here once and went
+ * on describing `ai-operations`, `compliance`, `revenue-forecast`, `revenue-pro`,
+ * `broadcasts`, `flow-builder`, `agents` and `white-label` as hidden long after
+ * all eight had been added to the customer sidebar.
  *
- * Consolidated duplicates (a single canonical destination already covers them):
- *   /dashboard/knowledge-brain  → /dashboard/knowledge
- *   /dashboard/sales-brain      → /dashboard/business-intelligence
- *   /dashboard/brain            → /dashboard/knowledge
- *   /dashboard/suggestions      → /dashboard/revenue-copilot
- *   /dashboard/revenue-forecast → /dashboard/revenue-copilot
- *   /dashboard/monitoring       → /dashboard/analytics
- *   /dashboard/arena            → (QA harness, hidden)
- *   /dashboard/revenue-pro      → /dashboard/revenue-copilot
- *   /dashboard/broadcasts       → /dashboard/broadcasts-pro
- *   /dashboard/whatsapp         → /dashboard/settings/numbers
- *   /dashboard/plan             → /dashboard/usage
- *   /dashboard/meta             → /dashboard/billing
+ * A destination belongs in ADMIN_WORKSPACE and nowhere else when EITHER:
  *
- * Not production-ready:
- *   /dashboard/flow-builder     flows do not execute
- *   /dashboard/agents           workflow incomplete
- *   /dashboard/white-label      branding not applied at runtime
+ *   1. its page calls requireAdmin() — platform-operator tooling that would
+ *      bounce a customer to /dashboard (arena, playground, testing-arena, demo,
+ *      qr-queue, feature-center, memberships), or
+ *   2. it is an operator console with no customer meaning (command-center) or a
+ *      legacy alias kept only for support (whatsapp).
  *
- * All of the above remain reachable by direct URL for support/debugging; they
- * are simply not advertised in the sidebar or ⌘K palette.
+ * This list drifted again and had to be corrected on 2026-08-27: it still named
+ * brain, knowledge-brain, sales-brain, monitoring, suggestions, plan, intel and
+ * meta as admin-only. All eight are pageGate() + <LockedFeature> pages built on
+ * sold capabilities (brain, knowledge_brain, sales_brain, monitoring_center,
+ * suggestions, advanced_insights, meta_cloud), so all eight now carry a customer
+ * nav entry. Calling a customer surface an "operator console" in a comment does
+ * not make it one — check the page for requireAdmin() before adding a name here.
+ *
+ * The inverse is the rule that matters: a page built with pageGate() +
+ * <LockedFeature> IS a customer surface and MUST have a customer nav entry.
+ * whatsapp_health (minTierIndex 0), safety_controls and ai_audit each sat only
+ * in ADMIN_WORKSPACE while being sold to customers, so nobody who paid for them
+ * could find them. Being un-entitled is never a reason to omit the entry —
+ * navItemLocked() renders the lock and the upgrade path.
+ *
+ * Everything here stays reachable by direct URL for support; it is simply not
+ * advertised in the sidebar or the ⌘K palette.
  */
 
 /** Platform-admin-only workspace — ALL 59 existing real/internal product pages visible to admin. */
@@ -335,8 +349,6 @@ const ADMIN_WORKSPACE: Workspace = {
     { href: "/dashboard/agents", label: "AI Agents", icon: Brain, perm: "billing" },
     { href: "/dashboard/ai-operations", label: "AI Operations", icon: Lightbulb, perm: "billing" },
     { href: "/dashboard/knowledge", label: "Knowledge Base", icon: BookOpen, perm: "billing" },
-    { href: "/dashboard/knowledge-brain", label: "Knowledge Brain", icon: Brain, perm: "billing" },
-    { href: "/dashboard/brain", label: "Brain", icon: Brain, perm: "billing" },
     { href: "/dashboard/working-hours", label: "Working Hours", icon: CalendarClock, perm: "billing" },
 
     // ── Analytics & Revenue ───────────────────────────────────────────────────
@@ -346,10 +358,7 @@ const ADMIN_WORKSPACE: Workspace = {
     { href: "/dashboard/revenue-copilot", label: "Revenue Copilot", icon: TrendingUp, perm: "billing" },
     { href: "/dashboard/revenue-forecast", label: "Revenue Forecast", icon: TrendingUp, perm: "billing" },
     { href: "/dashboard/revenue-pro", label: "Revenue Pro", icon: TrendingUp, perm: "billing" },
-    { href: "/dashboard/sales-brain", label: "Sales Brain", icon: Brain, perm: "billing" },
     { href: "/dashboard/business", label: "Business Performance", icon: Building2, perm: "billing" },
-    { href: "/dashboard/suggestions", label: "Suggestions", icon: Lightbulb, perm: "billing" },
-    { href: "/dashboard/monitoring", label: "Monitoring", icon: Activity, perm: "billing" },
     { href: "/dashboard/plan", label: "Plan", icon: CreditCard, perm: "billing" },
 
     // ── Account & Settings ────────────────────────────────────────────────────
@@ -572,7 +581,7 @@ const NAV_MODULE_BY_HREF: Record<string, ModuleKey> = {
  * plan can't open (the page itself renders the upgrade CTA on direct URL access).
  * Derived from app/dashboard/<page>/page.tsx pageGate() calls.
  */
-const NAV_CAP_BY_HREF: Record<string, string> = {
+export const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/analytics": "advanced_analytics",
   "/dashboard/command-center": "advanced_analytics",
   "/dashboard/broadcasts": "broadcasts",
@@ -605,6 +614,8 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/working-hours": "working_hours",
   "/dashboard/settings/numbers": "multi_whatsapp",
   // Capabilities added in catalog expansion (catalog.ts)
+  "/dashboard/ai-audit": "smart_assistant",
+  "/dashboard/my-work": "my_work",
   "/dashboard/products": "products",
   "/dashboard/wallet": "wallet",
   "/dashboard/escalations": "escalations",
@@ -620,6 +631,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/whatsapp-health": "whatsapp_health",
   "/dashboard/ai-operations": "ai_operations",
   "/dashboard/system-health": "system_health",
+  "/dashboard/settings/bridge": "whatsapp_bridge",
 };
 
 /** Single source of truth for "can this principal see this nav destination". */
@@ -665,18 +677,32 @@ function accessibleWorkspaces(role: Role, simple = false, pathname = "", access:
       // Items hidden by role/mode/module/customerVisible are never shown.
       if (!navItemVisible(i, { role, ...access })) return false;
       if (!access.activated) return true;
-      // Locked items (plan-gated) are shown but rendered differently.
-      // Keep them visible so users know what's available — not a blank wall.
-      const locked = navItemLocked(i, { role, ...access });
-      if (locked) return !simple; // only show locked items in expanded mode
+      // Plan-locked items are STILL shown — rendered with a lock + upgrade CTA
+      // by ContextRow. Entitlement decides how a destination looks, never
+      // whether it exists: the compact/expanded density rule below is applied
+      // identically to locked and unlocked items so nothing ever disappears
+      // merely because of the customer's tier.
       return !simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href);
     }),
   })).filter((w) => w.items.length > 0);
 }
 
+/**
+ * Nav density preference. DISCOVERY-FIRST DEFAULT: a principal who has never
+ * expressed a preference sees every destination they may reach.
+ *
+ * This used to default to compact (`getItem(key) !== "0"` — and an untouched
+ * key is null, so everyone started compact). The effect was that a paying
+ * customer's first sight of the product was 17 of 48 destinations, with 30
+ * fully-entitled features suppressed by a density filter they never chose.
+ * Beginner mode is a deliberate choice, not a starting state.
+ *
+ * Only an explicit stored "1" means compact, so anyone who actually picked
+ * "الأساسيات فقط" keeps it, and an explicit "0" keeps expanded.
+ */
 function useNavMode(): [boolean, () => void] {
-  const [simple, setSimple] = useState(true);
-  useEffect(() => { try { setSimple(localStorage.getItem(NAV_MODE_KEY) !== "0"); } catch {} }, []);
+  const [simple, setSimple] = useState(false);
+  useEffect(() => { try { setSimple(localStorage.getItem(NAV_MODE_KEY) === "1"); } catch {} }, []);
   const toggle = () => setSimple((v) => { const n = !v; try { localStorage.setItem(NAV_MODE_KEY, n ? "1" : "0"); } catch {} return n; });
   return [simple, toggle];
 }
@@ -725,8 +751,13 @@ function ContextRow({ item, active, locked = false }: { item: NavItem; active: b
 export function SidebarNav({ adminLink, role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, isPlatformAdmin = false, disabledFeatures }: { adminLink?: React.ReactNode; role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; isPlatformAdmin?: boolean; disabledFeatures?: Set<string> }) {
   const pathname = usePathname();
   const [_simple, toggleMode] = useNavMode();
-  // Admins (enforce=false) always see full nav regardless of localStorage preference.
-  const simple = enforce ? _simple : false;
+  // Nav DENSITY is a user preference, never a function of the plan. This was
+  // `enforce ? _simple : false`, which keyed density off an ENTITLEMENT flag:
+  // enforced k_* customers got the compact nav while legacy/unenforced tenants
+  // always got the full one — so the paying customer saw fewer of their own
+  // features. Platform admins keep the always-full nav (they also carry
+  // ADMIN_WORKSPACE); everyone else gets their own preference.
+  const simple = isPlatformAdmin ? false : _simple;
   const baseSpaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules, disabledFeatures });
   const spaces = isPlatformAdmin ? [...baseSpaces, ADMIN_WORKSPACE] : baseSpaces;
   const currentWs = workspaceForPath(pathname, spaces);
@@ -803,8 +834,8 @@ export function SidebarNav({ adminLink, role = "owner", activated = true, metaMo
  */
 export function NavLinks({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, disabledFeatures }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; disabledFeatures?: Set<string> }) {
   const pathname = usePathname();
-  const [_simple, toggleMode] = useNavMode();
-  const simple = enforce ? _simple : false;
+  const [simple, toggleMode] = useNavMode();
+  // Same rule as the sidebar: density is the user's preference, not the plan's.
   const spaces = accessibleWorkspaces(role, simple, pathname, { activated, metaMode, enforce, caps, modules, disabledFeatures });
   return (
     <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">

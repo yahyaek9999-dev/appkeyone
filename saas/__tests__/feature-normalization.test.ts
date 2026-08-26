@@ -32,11 +32,11 @@ describe('navItemVisible — disabledFeatures gate', () => {
     expect(navItemVisible(item, { ...baseOpts })).toBe(true);
   });
 
-  it('hides inbox when whatsapp_inbox is in disabledFeatures', () => {
+  it('hides inbox when inbox is in disabledFeatures', () => {
     const item = { href: '/dashboard/inbox', label: 'Inbox', icon: {} as any, perm: 'inbox' as any };
     expect(navItemVisible(item, {
       ...baseOpts,
-      disabledFeatures: new Set(['whatsapp_inbox']),
+      disabledFeatures: new Set(['inbox']),
     })).toBe(false);
   });
 
@@ -57,11 +57,11 @@ describe('navItemVisible — disabledFeatures gate', () => {
     })).toBe(true);
   });
 
-  it('hides analytics when analytics_dashboard is disabled', () => {
+  it('hides analytics when basic_analytics is disabled', () => {
     const item = { href: '/dashboard/analytics', label: 'Analytics', icon: {} as any, perm: 'analytics' as any };
     expect(navItemVisible(item, {
       ...baseOpts,
-      disabledFeatures: new Set(['analytics_dashboard']),
+      disabledFeatures: new Set(['basic_analytics']),
     })).toBe(false);
   });
 });
@@ -76,24 +76,24 @@ describe('NAV_FEATURE_BY_HREF', () => {
     expect(mapped.length / allHrefs.length).toBeGreaterThanOrEqual(0.6);
   });
 
-  it('maps inbox to whatsapp_inbox', () => {
-    expect(NAV_FEATURE_BY_HREF['/dashboard/inbox']).toBe('whatsapp_inbox');
+  it('maps inbox to inbox', () => {
+    expect(NAV_FEATURE_BY_HREF['/dashboard/inbox']).toBe('inbox');
   });
 
-  it('maps broadcasts-pro to broadcasts_pro', () => {
-    expect(NAV_FEATURE_BY_HREF['/dashboard/broadcasts-pro']).toBe('broadcasts_pro');
+  it('maps broadcasts-pro to broadcast_credits', () => {
+    expect(NAV_FEATURE_BY_HREF['/dashboard/broadcasts-pro']).toBe('broadcast_credits');
   });
 
   it('maps customers to customer_management', () => {
     expect(NAV_FEATURE_BY_HREF['/dashboard/customers']).toBe('customer_management');
   });
 
-  it('maps analytics to analytics_dashboard', () => {
-    expect(NAV_FEATURE_BY_HREF['/dashboard/analytics']).toBe('analytics_dashboard');
+  it('maps analytics to basic_analytics', () => {
+    expect(NAV_FEATURE_BY_HREF['/dashboard/analytics']).toBe('basic_analytics');
   });
 
-  it('maps wallet to wallet_credits', () => {
-    expect(NAV_FEATURE_BY_HREF['/dashboard/wallet']).toBe('wallet_credits');
+  it('maps wallet to wallet', () => {
+    expect(NAV_FEATURE_BY_HREF['/dashboard/wallet']).toBe('wallet');
   });
 });
 

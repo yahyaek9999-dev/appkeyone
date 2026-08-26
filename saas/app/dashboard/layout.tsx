@@ -77,8 +77,9 @@ export default async function DashboardLayout({
   // Connection-mode visibility: Meta merchants never see QR pages and vice-versa.
   const metaMode: "qr" | "meta" =
     normalizeConnectionMode((user as any).bot?.connectionMode) === "meta_cloud" ? "meta" : "qr";
-  // Per-plan feature visibility: hide destinations the plan doesn't own (k_* only;
-  // legacy/fallback plans keep full nav — non-regressive, matches backend gating).
+  // Per-plan ENTITLEMENT (not visibility): destinations the plan doesn't own are
+  // still listed, rendered with a lock + upgrade CTA. k_* plans only; legacy /
+  // fallback plans aren't enforced — non-regressive, matches backend gating.
   // Platform admin bypasses all capability gates (sees all existing pages).
   const ent = await getEntitlements(user.id).catch(() => null);
   const enforce = isAdmin ? false : !!ent?.enforce;
@@ -172,7 +173,7 @@ export default async function DashboardLayout({
     <ToastProvider>
       <ConfirmProvider>
         <ActivationGuard activated={activated} />
-        <CommandPalette role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} />
+        <CommandPalette role={role} activated={activated} metaMode={metaMode} enforce={enforce} caps={caps} modules={modules} disabledFeatures={disabledFeatures} />
         {(cfg as any).maintenanceMode ? <MaintenanceBanner message={(cfg as any).maintenanceMessage} /> : null}
         <div className="ai-page min-h-screen md:flex" style={brandColor ? ({ ["--wl-primary" as any]: brandColor } as React.CSSProperties) : undefined}>
           <MobileNav brandName={brand}>

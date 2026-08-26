@@ -9,6 +9,7 @@ import {
   Layers, Save,
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { FEATURE_STATUSES, FEATURE_STATUS_LABELS, type FeatureStatus } from "@/lib/feature-status";
 
 interface Feature {
   featureId: string;
@@ -35,14 +36,27 @@ interface Release {
 
 type ViewMode = "table" | "category" | "release";
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string; icon: React.ComponentType<any> }> = {
-  enabled:    { label: "مفعّل",  color: "text-emerald-400", dot: "bg-emerald-400", icon: CheckCircle2 },
-  disabled:   { label: "معطّل",  color: "text-red-400",     dot: "bg-red-400",     icon: XCircle },
-  hidden:     { label: "غير متاح",   color: "text-slate-400",   dot: "bg-slate-500",   icon: EyeOff },
-  beta:       { label: "تجريبي", color: "text-amber-400",   dot: "bg-amber-400",   icon: AlertTriangle },
-  coming_soon:{ label: "قريباً", color: "text-sky-400",     dot: "bg-sky-400",     icon: Clock },
-  deprecated: { label: "قديم",   color: "text-orange-400",  dot: "bg-orange-400",  icon: Archive },
+/**
+ * Feature LIFECYCLE status — presentation only. The values and Arabic labels
+ * come from lib/feature-status, the same constant the PATCH zod schema is built
+ * from, so this dropdown can never offer a status the API rejects.
+ *
+ * This is NOT the visibility control. Visibility is the "ظهور للعملاء" toggle
+ * and reads FeatureControl.customerVisible — nothing here affects it.
+ */
+const STATUS_STYLE: Record<FeatureStatus, { color: string; dot: string; icon: React.ComponentType<any> }> = {
+  enabled:    { color: "text-emerald-400", dot: "bg-emerald-400", icon: CheckCircle2 },
+  disabled:   { color: "text-red-400",     dot: "bg-red-400",     icon: XCircle },
+  hidden:     { color: "text-slate-400",   dot: "bg-slate-500",   icon: EyeOff },
+  beta:       { color: "text-amber-400",   dot: "bg-amber-400",   icon: AlertTriangle },
+  coming_soon:{ color: "text-sky-400",     dot: "bg-sky-400",     icon: Clock },
+  deprecated: { color: "text-orange-400",  dot: "bg-orange-400",  icon: Archive },
 };
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string; icon: React.ComponentType<any> }> =
+  Object.fromEntries(
+    FEATURE_STATUSES.map((s) => [s, { label: FEATURE_STATUS_LABELS[s], ...STATUS_STYLE[s] }]),
+  );
 
 const PLAN_CONFIG: Record<string, { label: string; color: string }> = {
   k_start:     { label: "Start",      color: "text-slate-300 bg-slate-500/10 border-slate-500/20" },
@@ -139,7 +153,9 @@ export default function FeatureControlPage() {
       releaseId: f.releaseId ?? undefined,
       rolloutPct: f.rolloutPct,
       status: f.status,
-      customerVisible: f.customerVisible,
+      // customerVisible is intentionally NOT staged here — it is owned by the
+      // table-row toggle and persists immediately. Staging it would let a stale
+      // drawer value overwrite a newer row toggle on Save.
       killSwitch: f.killSwitch,
     });
   }
@@ -169,6 +185,8 @@ export default function FeatureControlPage() {
     beta: features.filter((f) => f.status === "beta").length,
     disabled: features.filter((f) => f.status === "disabled" || f.killSwitch).length,
     comingSoon: features.filter((f) => f.status === "coming_soon").length,
+    visible: features.filter((f) => f.customerVisible).length,
+    hiddenFromCustomers: features.filter((f) => !f.customerVisible).length,
   }), [features]);
 
   const categories = useMemo(() => Array.from(new Set(features.map((f) => f.category))).sort(), [features]);
@@ -189,6 +207,9 @@ export default function FeatureControlPage() {
           <div>
             <h1 className="page-title mb-0.5">مركز الميزات</h1>
             <p className="page-desc">{stats.total} ميزة — {stats.enabled} مفعّلة · {stats.beta} تجريبية · {stats.comingSoon} قريباً · {stats.disabled} معطّلة</p>
+            <p className="page-desc mt-0.5" data-testid="visibility-summary" data-visible={stats.visible} data-hidden={stats.hiddenFromCustomers}>
+              الظهور — <span className="text-emerald-400">{stats.visible} ظاهر للعملاء</span> · <span className={stats.hiddenFromCustomers ? "text-amber-400" : "text-slate-500"}>{stats.hiddenFromCustomers} مخفي عن العملاء</span>
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={load} disabled={loading} className="btn-ghost flex items-center gap-1.5 text-sm">
@@ -391,20 +412,22 @@ export default function FeatureControlPage() {
               </div>
             </div>
 
-            {/* Customer visible */}
+            {/*
+              Customer visibility — state only, deliberately NOT editable here.
+              There is exactly ONE visibility control in this screen: the
+              "ظهور للعملاء" toggle in the table row. A second toggle here staged
+              its change into drawerEdits and only persisted on Save, so the same
+              field had two different save semantics — which is what made the
+              toggle look like it "didn't stick".
+            */}
             <div className="flex items-center justify-between rounded-lg border border-white/[0.07] px-3 py-2.5">
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-slate-300">ظهور للعملاء</span>
-                <span className={`text-xs ${(drawerEdits.customerVisible ?? drawer.customerVisible) ? "text-emerald-400" : "text-slate-500"}`}>
-                  {(drawerEdits.customerVisible ?? drawer.customerVisible) ? "ظاهر للعملاء" : "مخفي عن العملاء"}
-                </span>
+                <span className="text-[10px] text-slate-600">يُغيَّر من عمود «ظهور للعملاء» في الجدول</span>
               </div>
-              <button
-                onClick={() => setDrawerEdits((d) => ({ ...d, customerVisible: !(drawerEdits.customerVisible ?? drawer.customerVisible) }))}
-                className={`relative h-5 w-9 rounded-full transition-colors ${(drawerEdits.customerVisible ?? drawer.customerVisible) ? "bg-brand-500" : "bg-white/[0.08]"}`}
-              >
-                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(drawerEdits.customerVisible ?? drawer.customerVisible) ? "start-4" : "start-0.5"}`} />
-              </button>
+              <span className={`text-xs ${drawer.customerVisible ? "text-emerald-400" : "text-slate-500"}`}>
+                {drawer.customerVisible ? "ظاهر للعملاء" : "مخفي عن العملاء"}
+              </span>
             </div>
 
             {/* Dependencies */}
@@ -536,10 +559,31 @@ function TableRow({
           <span className="text-slate-600">—</span>
         )}
       </td>
-      <td className="px-4 py-2.5 text-[11px]">
-        <span className={f.customerVisible ? "text-emerald-400" : "text-slate-600"}>
-          {f.customerVisible ? "ظاهر للعملاء" : "مخفي عن العملاء"}
-        </span>
+      {/*
+        THE visibility control. Exactly two states, persisted straight to
+        FeatureControl.customerVisible — no third state, no derived state.
+        Entitlement ("الباقة") is a separate column and never affects this.
+      */}
+      <td className="px-4 py-2.5 text-[11px]" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={f.customerVisible}
+          aria-label="ظهور للعملاء"
+          data-testid={`visibility-toggle-${f.featureId}`}
+          data-visible={f.customerVisible ? "true" : "false"}
+          disabled={saving}
+          onClick={() => onPatch({ customerVisible: !f.customerVisible })}
+          className="flex items-center gap-2 disabled:opacity-50"
+          title={f.customerVisible ? "اضغط للإخفاء عن العملاء" : "اضغط لإظهاره للعملاء"}
+        >
+          <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${f.customerVisible ? "bg-brand-500" : "bg-white/[0.08]"}`}>
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${f.customerVisible ? "start-4" : "start-0.5"}`} />
+          </span>
+          <span className={f.customerVisible ? "text-emerald-400" : "text-slate-500"}>
+            {f.customerVisible ? "ظاهر للعملاء" : "مخفي عن العملاء"}
+          </span>
+        </button>
       </td>
       <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1">
