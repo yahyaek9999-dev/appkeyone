@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { getAllFeatures, seedFeatureRegistry, upsertFeature } from "@/lib/feature-control";
 import { z } from "zod";
+import { FEATURE_STATUSES } from "@/lib/feature-status";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ const BulkBody = z.object({
   action: z.enum(["seed"]).optional(),
   feature: z.object({
     featureId: z.string(),
-    status: z.enum(["enabled", "disabled", "hidden", "beta", "deprecated"]).optional(),
+    status: z.enum(FEATURE_STATUSES).optional(),
     customerVisible: z.boolean().optional(),
     killSwitch: z.boolean().optional(),
     beta: z.boolean().optional(),

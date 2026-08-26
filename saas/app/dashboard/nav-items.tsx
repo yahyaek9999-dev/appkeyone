@@ -605,6 +605,7 @@ const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/working-hours": "working_hours",
   "/dashboard/settings/numbers": "multi_whatsapp",
   // Capabilities added in catalog expansion (catalog.ts)
+  "/dashboard/my-work": "my_work",
   "/dashboard/products": "products",
   "/dashboard/wallet": "wallet",
   "/dashboard/escalations": "escalations",
@@ -665,10 +666,11 @@ function accessibleWorkspaces(role: Role, simple = false, pathname = "", access:
       // Items hidden by role/mode/module/customerVisible are never shown.
       if (!navItemVisible(i, { role, ...access })) return false;
       if (!access.activated) return true;
-      // Locked items (plan-gated) are shown but rendered differently.
-      // Keep them visible so users know what's available — not a blank wall.
-      const locked = navItemLocked(i, { role, ...access });
-      if (locked) return !simple; // only show locked items in expanded mode
+      // Plan-locked items are STILL shown — rendered with a lock + upgrade CTA
+      // by ContextRow. Entitlement decides how a destination looks, never
+      // whether it exists: the compact/expanded density rule below is applied
+      // identically to locked and unlocked items so nothing ever disappears
+      // merely because of the customer's tier.
       return !simple || CORE_HREFS.has(i.href) || isActivePath(pathname, i.href);
     }),
   })).filter((w) => w.items.length > 0);

@@ -184,7 +184,9 @@ const PAGE_GATED_KEYS: ReadonlySet<string> = new Set([
 const NAV_CAP_VALUES: ReadonlySet<string> = new Set([
   "advanced_analytics",
   "advanced_automations",
+  "advanced_insights",
   "advanced_reporting",
+  "ai_operations",
   "api_access",
   "approval_workflows",
   "audit_log",
@@ -203,6 +205,7 @@ const NAV_CAP_VALUES: ReadonlySet<string> = new Set([
   "monitoring_center",
   "multi_branch",
   "multi_whatsapp",
+  "my_work",
   "products",
   "recovery",
   "revenue_copilot",
@@ -210,9 +213,11 @@ const NAV_CAP_VALUES: ReadonlySet<string> = new Set([
   "safety_controls",
   "sales_pipeline",
   "segments",
+  "shipping_tracking",
   "smart_assistant",
-  "smart_campaign_builder",      // Pro-tier builder; /dashboard/coupons now uses coupons_discounts
+  "system_health",
   "wallet",
+  "whatsapp_health",
   "white_label",
   "working_hours",
 ]);

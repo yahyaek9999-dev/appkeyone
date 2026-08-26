@@ -14,7 +14,7 @@ import { visibleNavItems, type NavMode } from "./nav-items";
  * current role can reach. RTL-aware (uses logical properties + dir inherited
  * from <html dir="rtl">). No external dependency — plain React + lucide.
  */
-export default function CommandPalette({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>> }) {
+export default function CommandPalette({ role = "owner", activated = true, metaMode = "qr", enforce = false, caps, modules, disabledFeatures }: { role?: Role; activated?: boolean; metaMode?: NavMode; enforce?: boolean; caps?: Record<string, boolean>; modules?: Partial<Record<ModuleKey, boolean>>; disabledFeatures?: Set<string> }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -22,8 +22,9 @@ export default function CommandPalette({ role = "owner", activated = true, metaM
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Same visibility rules as the sidebar: role + activation + Meta/QR mode + plan caps.
-  const items = useMemo(() => visibleNavItems(role, { activated, metaMode, enforce, caps, modules }), [role, activated, metaMode, enforce, caps, modules]);
+  // Same visibility rules as the sidebar — including FeatureControl.customerVisible,
+  // so ⌘K can never surface a destination the sidebar hides (or vice versa).
+  const items = useMemo(() => visibleNavItems(role, { activated, metaMode, enforce, caps, modules, disabledFeatures }), [role, activated, metaMode, enforce, caps, modules, disabledFeatures]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

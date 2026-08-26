@@ -1,10 +1,24 @@
-// Feature Control — DB-backed feature flag system
-// Admin can enable/disable/hide/beta any feature independently of env vars.
-// Customer navigation + API routes check feature visibility before rendering.
+// Feature Control — DB-backed feature flag system.
 //
-// Rule: killSwitch=true → always disabled for customers (admin still sees it).
-// Rule: !customerVisible → hidden from nav but route still accessible to admin.
-// Rule: beta=true → shown only to allowed users (future: beta list).
+// ── THE INVARIANT ───────────────────────────────────────────────────────────
+// VISIBILITY ≠ ENTITLEMENT. They are two independent axes and must never be
+// derived from one another.
+//
+//   customerVisible  → DISCOVERY. The ONLY visibility control. Exactly two
+//                      states: true = "ظاهر للعملاء", false = "مخفي عن العملاء".
+//                      Every canonical catalog feature is true by default.
+//                      NOTHING else may hide a feature from customers — not
+//                      requiredPlan, minTierIndex, Plan.featureFlags, status,
+//                      adminOnly, killSwitch, comingSoon or release state.
+//
+//   the plan         → ACCESS. A visible feature the customer is not entitled
+//                      to renders LOCKED with an upgrade path (navItemLocked →
+//                      pageGate → <LockedFeature>; apiGate → 402). It is never
+//                      hidden and never 404s.
+//
+// Availability inputs (killSwitch / status / release train / dependency chain)
+// live in isFeatureEnabled() and getDisabledFeatureIds(), which feed the
+// ENTITLEMENT layer only — see lib/membership/entitlements.ts Step 5.
 
 import { prisma } from "@/lib/db";
 import { CAPABILITIES, PUBLIC_TIERS } from "@/lib/pricing/catalog";
@@ -31,6 +45,15 @@ export interface FeatureControlRow {
   featureType: string;     // "feature" | "subfeature" | "admin_internal" | "legacy_unmapped" | "legacy_mapped"
   adminVisible: boolean;
 }
+
+/**
+ * The canonical product surface: one id per purchasable capability in the
+ * pricing catalog. Anything in this set is a PRODUCT feature and is always
+ * customer-visible; only rows outside it may be seeded as admin-internal.
+ */
+export const CANONICAL_FEATURE_IDS: ReadonlySet<string> = new Set(
+  CAPABILITIES.map((c) => c.key),
+);
 
 let cache: Map<string, FeatureControlRow> | null = null;
 let cacheAt = 0;
@@ -204,16 +227,23 @@ export async function featureBlockedBy(
   return null;
 }
 
-/** Check if a feature is visible to customers in navigation. */
+/**
+ * Check if a feature is visible to customers in navigation.
+ *
+ * VISIBILITY ≠ ENTITLEMENT. `customerVisible` is the ONLY input. A feature the
+ * customer cannot use is still DISCOVERABLE — it renders locked with an upgrade
+ * path (see navItemLocked() + pageGate()). Deriving visibility from killSwitch,
+ * adminOnly, status, requiredPlan, minTierIndex or release state is exactly the
+ * bug this function used to have: a locked feature vanished instead of
+ * prompting an upgrade.
+ *
+ * Availability lives in isFeatureEnabled() / getDisabledFeatureIds().
+ */
 export async function isFeatureVisible(featureId: string): Promise<boolean> {
   const all = await loadAll();
   const f = all.get(featureId);
   if (!f) return true;
-  if (f.killSwitch) return false;
-  if (!f.customerVisible) return false;
-  if (f.adminOnly) return false;
-  if (f.status === "disabled" || f.status === "hidden" || f.status === "deprecated") return false;
-  return true;
+  return f.customerVisible;
 }
 
 /** Get all features for admin display (all statuses). */
@@ -464,7 +494,6 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
     const deps = REAL_DEPENDENCIES[cap.key] ?? [];
     const workspace = WORKSPACE_BY_KEY[cap.key] ?? WORKSPACE_BY_CATEGORY[cap.category] ?? "settings";
     const releaseId = RELEASE_BY_KEY[cap.key] ?? RELEASE_BY_CATEGORY[cap.category] ?? "core";
-    const customerVisible = !cap.comingSoon;
 
     await (prisma as any).featureControl.upsert({
       where: { featureId: cap.key },
@@ -474,9 +503,16 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
         description:         cap.label.en,
         category:            cap.category,
         workspace,
-        // comingSoon capabilities ship hidden — visible to admin, not to customers.
-        status:              cap.comingSoon ? "hidden" : "enabled",
-        customerVisible,
+        // A not-yet-built capability gets the "coming soon" LIFECYCLE state, which
+        // withholds ACCESS (getDisabledFeatureIds treats any non enabled/beta
+        // status as unavailable). It stays DISCOVERABLE: customerVisible is true
+        // for every canonical feature, so the customer sees it locked rather than
+        // never learning it exists.
+        status:              cap.comingSoon ? "coming_soon" : "enabled",
+        // INVARIANT: every canonical catalog feature ships customer-visible.
+        // Never derive this from comingSoon / minTierIndex / adminOnly — those
+        // decide what a plan may USE, not what a customer may SEE.
+        customerVisible:     true,
         adminOnly:           false,
         beta:                Boolean(cap.comingSoon),
         requiredPlan,
@@ -497,11 +533,14 @@ export async function seedFeatureRegistry(): Promise<{ features: number; release
         dependencies:        JSON.stringify(deps),
         requiredIntegration: REQUIRED_INTEGRATION[cap.key] ?? null,
         releaseId,
-        // FIX: customerVisible MUST be derived from catalog, not kept hidden based on plan.
-        // Rule: All 82 canonical features (except comingSoon white_label) are customer-visible.
-        // Plan tier controls entitlement access, not visibility/discoverability.
-        customerVisible,
-        // …but status / killSwitch / rolloutPct remain admin-owned.
+        // …but customerVisible / status / killSwitch / rolloutPct are ADMIN-OWNED
+        // and are deliberately absent from this update block.
+        //
+        // Do NOT add customerVisible here. This runs on every boot
+        // (instrumentation.ts) and on "مزامنة من الكتالوج". Writing visibility
+        // from catalog metadata means the next deploy silently reverses whatever
+        // the admin chose in /admin/feature-control. Seeding may CREATE a missing
+        // row; it must never overwrite a visibility decision.
       },
     });
   }
@@ -613,13 +652,17 @@ export async function syncRegistryFromJson(
         category:        f.category,
         workspace:       f.category,
         status:          'enabled',
-        customerVisible: isAdmin ? false : (f.customerVisible ?? true),
-        adminOnly:       isAdmin,
+        // Canonical catalog features are ALWAYS created customer-visible —
+        // discovery is not a function of type/plan (see seedFeatureRegistry).
+        // Only rows that exist purely as admin-internal plumbing and are absent
+        // from the capability catalog may start hidden.
+        customerVisible: isAdmin && !CANONICAL_FEATURE_IDS.has(f.key) ? false : true,
+        adminOnly:       isAdmin && !CANONICAL_FEATURE_IDS.has(f.key),
         beta:            false,
         requiredPlan:    f.requiredPlan ?? null,
         dependencies:    '[]',
         requiredIntegration: null,
-        mobileVisible:   !isAdmin,
+        mobileVisible:   !(isAdmin && !CANONICAL_FEATURE_IDS.has(f.key)),
         killSwitch:      false,
         rolloutPct:      100,
         releaseId:       null,

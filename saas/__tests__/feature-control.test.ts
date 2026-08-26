@@ -34,6 +34,9 @@ function addFeature(featureId: string, overrides: Partial<{
   killSwitch: boolean;
   customerVisible: boolean;
   adminOnly: boolean;
+  beta: boolean;
+  rolloutPct: number;
+  requiredPlan: string | null;
   dependencies: string[];
 }> = {}) {
   featureDB.set(featureId, {
@@ -184,16 +187,31 @@ describe("Feature Control — featureBlockedBy", () => {
   });
 });
 
-describe("Feature Control — isFeatureVisible", () => {
+/**
+ * VISIBILITY ≠ ENTITLEMENT.
+ *
+ * customerVisible is the ONLY input to isFeatureVisible(). Exactly two states.
+ * Everything else — killSwitch, adminOnly, status, requiredPlan, release train —
+ * decides whether the customer may USE the feature, never whether they may SEE
+ * it. An unusable-but-visible feature renders LOCKED with an upgrade path; it
+ * must not vanish from the product.
+ *
+ * FV2/FV4/FV5 previously asserted the opposite (kill switch / adminOnly /
+ * disabled status hid a feature from nav). That conflation is the bug: a
+ * customer who can't use something silently lost all evidence it exists.
+ */
+describe("Feature Control — isFeatureVisible (customerVisible is the ONLY control)", () => {
   beforeEach(clearFeatures);
 
   it("FV1. unknown feature: visible by default", async () => {
     expect(await isFeatureVisible("unknown")).toBe(true);
   });
 
-  it("FV2. killSwitch=true: not visible", async () => {
+  it("FV2. killSwitch=true: STILL visible (kill switch removes access, not discovery)", async () => {
     addFeature("inbox", { killSwitch: true });
-    expect(await isFeatureVisible("inbox")).toBe(false);
+    expect(await isFeatureVisible("inbox")).toBe(true);
+    // …and access is still revoked on the entitlement axis:
+    expect(await isFeatureEnabled("inbox")).toBe(false);
   });
 
   it("FV3. customerVisible=false: not visible to customers", async () => {
@@ -201,19 +219,54 @@ describe("Feature Control — isFeatureVisible", () => {
     expect(await isFeatureVisible("admin-panel")).toBe(false);
   });
 
-  it("FV4. adminOnly=true: not visible to customers", async () => {
+  it("FV4. adminOnly=true: STILL visible — adminOnly is not a visibility state", async () => {
     addFeature("analytics", { adminOnly: true });
-    expect(await isFeatureVisible("analytics")).toBe(false);
+    expect(await isFeatureVisible("analytics")).toBe(true);
   });
 
-  it("FV5. status=disabled: not visible", async () => {
+  it("FV5. status=disabled: STILL visible (lifecycle removes access, not discovery)", async () => {
     addFeature("reports", { status: "disabled" });
-    expect(await isFeatureVisible("reports")).toBe(false);
+    expect(await isFeatureVisible("reports")).toBe(true);
+    expect(await isFeatureEnabled("reports")).toBe(false);
+  });
+
+  it("FV5b. status=coming_soon: STILL visible, but not usable", async () => {
+    addFeature("white_label", { status: "coming_soon" });
+    expect(await isFeatureVisible("white_label")).toBe(true);
+    expect(await isFeatureEnabled("white_label")).toBe(false);
+  });
+
+  it("FV5c. requiredPlan set: visibility is indifferent to plan tier", async () => {
+    addFeature("enterprise_thing", { requiredPlan: "k_enterprise" });
+    expect(await isFeatureVisible("enterprise_thing")).toBe(true);
   });
 
   it("FV6. fully visible feature: returns true", async () => {
     addFeature("inbox");
     expect(await isFeatureVisible("inbox")).toBe(true);
+  });
+
+  it("FV7. ONLY customerVisible can flip visibility — every other field is inert", async () => {
+    addFeature("kitchen_sink", {
+      killSwitch: true,
+      adminOnly: true,
+      status: "deprecated",
+      requiredPlan: "k_enterprise",
+      beta: true,
+      rolloutPct: 0,
+      customerVisible: true,
+    });
+    expect(await isFeatureVisible("kitchen_sink")).toBe(true);
+
+    clearFeatures();
+    addFeature("kitchen_sink", {
+      killSwitch: false,
+      adminOnly: false,
+      status: "enabled",
+      requiredPlan: null,
+      customerVisible: false,
+    });
+    expect(await isFeatureVisible("kitchen_sink")).toBe(false);
   });
 });
 
