@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { WORKSPACES } from "@/app/dashboard/nav-items";
 
 // ── Dashboard label map ────────────────────────────────────────────────────
 const DASHBOARD_LABELS: Record<string, { label: string; workspace?: string }> = {
@@ -149,11 +150,30 @@ function Sep() {
   return <ChevronLeft className="h-3 w-3 shrink-0 text-slate-600" aria-hidden />;
 }
 
+/**
+ * Route → the crumb the customer's own navigation implies.
+ *
+ * DASHBOARD_LABELS below is a SECOND hand-maintained copy of names the sidebar
+ * already owns, and the two had drifted apart on 30 routes. Worse than the
+ * labels was the section: the map still describes a retired IA — "العمليات",
+ * "النمو", "ذكاء الأعمال", "البيانات" — none of which are workspaces in the
+ * rail. So a customer who clicked "مركز الرصد" inside التحليلات was told they
+ * were in "العمليات › الرصد": a section they cannot find and a name they never
+ * saw.
+ *
+ * The nav is the authority, because it is the thing that was clicked. The map
+ * stays as the fallback for routes the nav does not list — sub-pages such as
+ * /dashboard/settings/bridge/download, and admin-only destinations.
+ */
+const NAV_CRUMBS: Record<string, { label: string; workspace?: string }> = Object.fromEntries(
+  WORKSPACES.flatMap((w) => w.items.map((i) => [i.href, { label: i.label, workspace: w.label }])),
+);
+
 export function DashboardBreadcrumb() {
   const pathname = usePathname();
 
   // Exact match first, then longest-prefix match (for dynamic routes)
-  let entry = DASHBOARD_LABELS[pathname];
+  let entry = NAV_CRUMBS[pathname] ?? DASHBOARD_LABELS[pathname];
   if (!entry) {
     const sorted = Object.keys(DASHBOARD_LABELS).sort((a, b) => b.length - a.length);
     const prefix = sorted.find((k) => pathname.startsWith(k + "/"));

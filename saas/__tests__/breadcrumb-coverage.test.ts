@@ -55,6 +55,46 @@ describe("breadcrumbs cover every customer destination", () => {
     expect(missing, report).toEqual([]);
   });
 
+  it("the crumb is derived from the nav, not a second hand-kept copy", () => {
+    // 30 routes had drifted between the two, and the map still names a retired
+    // IA ("العمليات", "النمو", "ذكاء الأعمال") whose sections are not in the
+    // rail at all — so a customer was told they were somewhere they could not
+    // navigate to. The nav is the authority because it is what was clicked.
+    const src = fs.readFileSync(BREADCRUMB, "utf8");
+    expect(src, "breadcrumb no longer reads the nav").toMatch(/WORKSPACES\.flatMap/);
+    expect(src, "the nav must win over the legacy map").toMatch(
+      /NAV_CRUMBS\[pathname\]\s*\?\?\s*DASHBOARD_LABELS\[pathname\]/,
+    );
+  });
+
+  it("the legacy map still names sections that are NOT in the rail — which is why nav must win", () => {
+    // Not a tautology: this reads the workspace names out of DASHBOARD_LABELS
+    // and checks them against the actual rail. Several ("العمليات", "النمو",
+    // "ذكاء الأعمال", "البيانات") are from a retired IA and match no workspace
+    // a customer can open. They are harmless only while NAV_CRUMBS takes
+    // precedence for every route the nav lists — the assertion above.
+    const src = fs.readFileSync(BREADCRUMB, "utf8");
+    const legacyWorkspaces = new Set(
+      [...src.matchAll(/workspace:\s*"([^"]+)"/g)].map((m) => m[1]),
+    );
+    const rail = new Set(WORKSPACES.map((w) => w.label));
+    const orphaned = [...legacyWorkspaces].filter((w) => !rail.has(w));
+    expect(
+      orphaned.length,
+      `expected the legacy map to still contain non-rail sections (${[...legacyWorkspaces].join(", ")}); ` +
+        `if it no longer does, the nav-first precedence can be simplified away`,
+    ).toBeGreaterThan(0);
+  });
+
+  it("every route the nav lists resolves from the nav, never from the legacy map", () => {
+    const src = fs.readFileSync(BREADCRUMB, "utf8");
+    // NAV_CRUMBS is built from every workspace item, so coverage is total by
+    // construction; this pins that construction rather than a snapshot.
+    expect(src).toMatch(/WORKSPACES\.flatMap\(\(w\) => w\.items\.map/);
+    const navRoutes = new Set(NAV_ROUTES);
+    expect(navRoutes.size).toBe(NAV_ROUTES.length);
+  });
+
   it("the /dashboard fallback is what makes a missing entry dangerous", () => {
     // Documents the mechanism the test exists to catch: prefix matching means
     // an unmapped route silently inherits the Home crumb instead of rendering
