@@ -238,6 +238,7 @@ export function TeamSettingsUi({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="الاسم (اختياري)"
+            aria-label="اسم العضو (اختياري)"
             className="input sm:w-40"
           />
           <input
@@ -245,6 +246,7 @@ export function TeamSettingsUi({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="user@example.com"
+            aria-label="البريد الإلكتروني للعضو"
             dir="ltr"
             className="input flex-1"
           />
@@ -306,6 +308,7 @@ function RoleSelector({ value, onChange }: { value: Exclude<Role, "owner">; onCh
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as Exclude<Role, "owner">)}
+        aria-label="دور العضو"
         className="appearance-none input py-2 pr-8 pl-3 text-sm cursor-pointer"
       >
         {ROLES.filter(r => r.value !== "owner").map(r => (
