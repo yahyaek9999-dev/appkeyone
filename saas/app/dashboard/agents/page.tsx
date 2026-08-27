@@ -19,12 +19,12 @@ export default async function AgentsPage() {
     <div className="space-y-6">
       <h1 className="page-title mb-1">نظام الوكلاء</h1>
       <p className="page-desc">
-        وكلاء المبيعات والدعم وCRM والطلبات والفوترة يعملون بذاكرة مشتركة، ويُشغَّلون
-        تلقائيًا مع محادثات عملائك. للتشغيل البرمجي، راجع{" "}
+        وكلاء المبيعات والدعم وCRM والطلبات والفوترة يعملون بذاكرة مشتركة. تُشغَّل
+        الوكلاء برمجيًا حاليًا — راجع{" "}
         <Link href="/dashboard/developer" className="text-brand-300 underline hover:text-brand-200">
           مركز المطوّرين
-        </Link>
-        .
+        </Link>{" "}
+        لربطها بسير عملك.
       </p>
       <div className="grid grid-cols-3 gap-3">
         <Tile label="تنفيذات" value={agents.executions} />
