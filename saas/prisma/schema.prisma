@@ -63,6 +63,7 @@ model User {
   bot            Bot?
   subscription   Subscription?
   teamMembers    TeamMember[] @relation("TeamOwner")
+  teams          Team[]       @relation("WorkspaceTeams")
   customers      Customer[]
   documents      Document[]
   apiCalls       ApiCall[]
@@ -127,6 +128,37 @@ model User {
   @@index([resetTokenHash])
 }
 
+/// A named team inside one workspace — the Enterprise `multi_team` capability
+/// ("فرق متعدّدة مع صلاحيات منفصلة"). Additive: a workspace with zero Team rows
+/// behaves exactly as it did before this model existed, because TeamMember.teamId
+/// stays null and the scope resolver falls back to the historical own_only rule.
+///
+/// A Team carries the ISOLATION POLICY its members inherit. Those two columns are
+/// the same shape as the per-member overrides on TeamMember — `conversationScope`
+/// and `allowedNumberIds` — which shipped as dead configuration with no writer.
+/// The team is the writer: an owner sets the policy once per team instead of
+/// per person, and a member override still wins where one is set.
+model Team {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation("WorkspaceTeams", fields: [ownerId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @default("")
+  /// own_only | team | all — how wide this team's members see conversations.
+  /// "team" (the default for a new team) means: every conversation assigned to
+  /// any member of THIS team, and nothing belonging to another team.
+  conversationScope String @default("team")
+  /// JSON array of WhatsAppNumber.id. Empty = every number in the workspace.
+  allowedNumberIds  String @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     TeamMember[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
 /// Team members who can log into a workspace under the OWNER's account with a
 /// scoped role. The owner is the original User; members authenticate with their
 /// own email + password but every query still scopes to `ownerId` (= the
@@ -150,8 +182,15 @@ model TeamMember {
   // JSON array of WhatsAppNumber.id; empty = access all numbers in workspace
   allowedNumberIds String  @default("[]")
   // ---- Conversation permission scope ----
-  // own_only | team | all (override for this member; default = role-based)
+  // own_only | team | all. Per-member OVERRIDE: when set it wins over the
+  // member's Team policy. Empty string = inherit (team policy, else own_only).
   conversationScope String @default("")
+  // ---- Team membership (Enterprise multi_team) ----
+  // Nullable on purpose: every pre-existing member keeps teamId = null and so
+  // keeps the historical own_only + all-numbers behaviour untouched. SetNull on
+  // delete so removing a team never deletes the people in it.
+  teamId          String?
+  team            Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

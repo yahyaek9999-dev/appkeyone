@@ -65,6 +65,7 @@ import {
   Sparkles,
   type LucideIcon,
   Truck,
+  UsersRound,
 } from "lucide-react";
 
 export type NavItem = {
@@ -251,6 +252,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/settings/providers", label: "المزوّدون", icon: Plug, perm: "settings" },
       { href: "/dashboard/integrations", label: "التكاملات", icon: Plug, perm: "settings" },
       { href: "/dashboard/branches", label: "الفروع", icon: Building2, perm: "settings" },
+      { href: "/dashboard/teams", label: "الفرق والصلاحيات", icon: UsersRound, perm: "team" },
       { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
       { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
       { href: "/dashboard/system-health", label: "صحة النظام", icon: Activity, perm: "settings" },
@@ -369,6 +371,7 @@ const ADMIN_WORKSPACE: Workspace = {
     { href: "/dashboard/integrations", label: "Integrations", icon: Plug, perm: "billing" },
     { href: "/dashboard/developer", label: "Developer", icon: Code2, perm: "billing" },
     { href: "/dashboard/branches", label: "Branches", icon: Building2, perm: "billing" },
+    { href: "/dashboard/teams", label: "Teams", icon: UsersRound, perm: "billing" },
     { href: "/dashboard/approvals", label: "Approvals", icon: CheckSquare, perm: "billing" },
     { href: "/dashboard/export", label: "Export", icon: Download, perm: "billing" },
 
@@ -517,6 +520,7 @@ export const NAV_FEATURE_BY_HREF: Record<string, string> = {
   "/dashboard/integrations":         "integrations",
   "/dashboard/developer":            "api_access",
   "/dashboard/branches":             "multi_branch",
+  "/dashboard/teams":                "multi_team",
   "/dashboard/approvals":            "approval_workflows",
   "/dashboard/audit-log":            "audit_log",
   "/dashboard/white-label":          "white_label",
@@ -609,6 +613,7 @@ export const NAV_CAP_BY_HREF: Record<string, string> = {
   "/dashboard/business": "advanced_reporting",
   "/dashboard/automations": "advanced_automations",
   "/dashboard/branches": "multi_branch",
+  "/dashboard/teams": "multi_team",
   "/dashboard/approvals": "approval_workflows",
   "/dashboard/developer": "api_access",
   "/dashboard/working-hours": "working_hours",

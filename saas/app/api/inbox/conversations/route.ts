@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthContext } from "@/lib/auth";
+import { resolveMemberScope, assigneeScopeIds } from "@/lib/teams/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -19,25 +20,24 @@ export async function GET(req: NextRequest) {
   const where: any = { userId: uid, archivedAt: null };
 
   if (isMember && memberId) {
-    // Team member — restrict to own assigned conversations
-    where.conversation = { assignedStaffId: memberId };
+    // Team member — the visible slice is whatever their resolved isolation
+    // allows. resolveMemberScope() returns own_only + all-numbers for a member
+    // with no team and no override, which is byte-for-byte the restriction this
+    // route enforced before teams existed, so nobody's view changes until an
+    // owner puts them on a team.
+    const resolved = await resolveMemberScope(memberId);
+    const assignees = await assigneeScopeIds(memberId, resolved);
 
-    // Number-level access: if the member has an allowedNumberIds restriction,
-    // filter to only conversations on those numbers. Empty list = all numbers.
-    try {
-      const memberRow = await (prisma as any).teamMember.findUnique({
-        where: { id: memberId },
-        select: { allowedNumberIds: true },
-      });
-      if (memberRow) {
-        const allowed: string[] = JSON.parse(memberRow.allowedNumberIds || "[]");
-        if (allowed.length > 0) {
-          where.conversation.numberId = { in: allowed };
-        }
-      }
-    } catch {
-      // Fail-open: if lookup fails, don't block member from seeing their conversations
+    // Built conditionally: an "all"-scope member with no number restriction gets
+    // NO `conversation` filter at all, rather than an empty relation filter
+    // (which Prisma would read as "a conversation must exist").
+    const convWhere: any = {};
+    // null = "all" scope: no assignee restriction at all.
+    if (assignees) convWhere.assignedStaffId = { in: assignees };
+    if (resolved.allowedNumberIds.length > 0) {
+      convWhere.numberId = { in: resolved.allowedNumberIds };
     }
+    if (Object.keys(convWhere).length > 0) where.conversation = convWhere;
   }
 
   if (q) {

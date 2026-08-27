@@ -174,6 +174,9 @@ describe("audited destinations stay discoverable in a customer workspace", () =>
     ["/dashboard/intel", "analytics"],
     ["/dashboard/settings/bridge", "conversations"],
     ["/dashboard/meta", "conversations"],
+    // multi_team: sold on Enterprise with no product behind it until the Team
+    // model, the /api/teams surface and this destination shipped together.
+    ["/dashboard/teams", "settings"],
   ];
 
   it.each(SURFACED)("%s is listed in the %s workspace", (href, wsId) => {
