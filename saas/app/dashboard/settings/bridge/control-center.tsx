@@ -6,6 +6,7 @@
 // connection controls, updates, diagnostics, logs, empty states, and onboarding.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useRouter } from "next/navigation";
 import type { BridgeOverview, BridgeView, BridgeStatus } from "@/lib/bridge/overview";
 import { QrImage } from "./qr-code";
@@ -60,6 +61,7 @@ export function BridgeControlCenter({ initial, downloadHref }: { initial: Bridge
 function BridgeCard({
   b, latest, releaseUrl, onChange,
 }: { b: BridgeView; latest: string | null; releaseUrl: string | null; onChange: () => void }) {
+  const mutate = useMutate();
   const router = useRouter();
   const confirm = useConfirm();
   const [busy, setBusy] = useState<string | null>(null);
@@ -98,10 +100,10 @@ function BridgeCard({
     if (!ok) return;
     setBusy("unlink");
     try {
-      await fetch("/api/bridge/v1/revoke", {
+      if (!(await mutate("/api/bridge/v1/revoke", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bridge_id: b.id }),
-      });
+      }))) return;
       await onChange(); router.refresh();
     } finally { setBusy(null); }
   }

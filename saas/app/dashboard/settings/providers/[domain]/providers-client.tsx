@@ -6,6 +6,7 @@
 // the rest of the dashboard; field labels come from the registry (bilingual).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   Plus, Trash2, FlaskConical, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff,
   ChevronUp, ChevronDown, Activity, ShieldCheck, ShieldAlert, ShieldQuestion,
@@ -210,6 +211,7 @@ function ProviderRow({
   const [open, setOpen] = useState(false);
   const meta = STATUS_META[cred.status] || STATUS_META.unknown;
   const confirm = useConfirm();
+  const mutate = useMutate();
 
   async function test() {
     setBusy("test");
@@ -250,7 +252,7 @@ function ProviderRow({
     if (!ok) return;
     setBusy("delete");
     try {
-      await fetch(`/api/settings/providers/${slug}?provider=${encodeURIComponent(cred.provider)}`, { method: "DELETE" });
+      if (!(await mutate(`/api/settings/providers/${slug}?provider=${encodeURIComponent(cred.provider)}`, { method: "DELETE" }))) return;
       onSuccess("تم الحذف");
       onChanged();
     } finally { setBusy(null); }

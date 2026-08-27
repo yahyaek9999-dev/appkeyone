@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   DownloadCloud, Loader2, CheckCircle2, XCircle, AlertTriangle, Clock,
   ScanLine, DatabaseZap, Users, MessageSquare, Brain, Inbox, RefreshCw,
@@ -44,6 +45,7 @@ function stepIndex(status: string): number {
 }
 
 export default function ImportClient() {
+  const mutate = useMutate();
   const [session, setSession] = useState<ImportSession | null>(null);
   const [queuePosition, setQueuePosition] = useState(0);
   const [logs, setLogs] = useState<ImportLog[]>([]);
@@ -94,7 +96,7 @@ export default function ImportClient() {
   async function connectWa() {
     setWaBusy(true);
     try {
-      await fetch("/api/whatsapp/start", { method: "POST" });
+      if (!(await mutate("/api/whatsapp/start", { method: "POST" }))) return;
       await checkWa();
     } catch {} finally { setWaBusy(false); }
   }

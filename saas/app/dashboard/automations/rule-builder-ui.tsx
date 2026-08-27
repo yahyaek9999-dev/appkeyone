@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   Zap, Plus, Trash2, ToggleLeft, ToggleRight,
   Loader2, X, ChevronDown, AlertTriangle,
@@ -316,6 +317,7 @@ function ActionConfigEditor({
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export default function RuleBuilderUi() {
+  const mutate = useMutate();
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<typeof BLANK | null>(null);
@@ -336,18 +338,18 @@ export default function RuleBuilderUi() {
   }
 
   async function toggle(rule: Rule) {
-    await fetch("/api/automations/rules", {
+    if (!(await mutate("/api/automations/rules", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: rule.id, enabled: !rule.enabled }),
-    });
+    }))) return;
     setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: !r.enabled } : r));
   }
 
   async function deleteRule(id: string) {
     const ok = await confirm({ title: "حذف القاعدة؟", confirmLabel: "حذف", danger: true });
     if (!ok) return;
-    await fetch(`/api/automations/rules?id=${id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/automations/rules?id=${id}`, { method: "DELETE" }))) return;
     setRules((prev) => prev.filter((r) => r.id !== id));
   }
 

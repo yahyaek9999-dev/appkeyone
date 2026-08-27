@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 
 type Template = {
@@ -34,6 +35,7 @@ function countSms(body: string) {
 const emptyForm = { name: "", purpose: "custom", body: "", language: "ar" };
 
 export default function SmsTemplatesPage() {
+  const mutate = useMutate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
@@ -56,9 +58,9 @@ export default function SmsTemplatesPage() {
     const { charCount, segCount } = countSms(form.body);
     const payload = { ...form, charCount, segCount };
     if (editId) {
-      await fetch(`/api/sms/templates/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!(await mutate(`/api/sms/templates/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }))) return;
     } else {
-      await fetch("/api/sms/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!(await mutate("/api/sms/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }))) return;
     }
     setShowForm(false);
     setEditId(null);
@@ -74,7 +76,7 @@ export default function SmsTemplatesPage() {
 
   async function del(id: string) {
     if (!confirm("حذف القالب؟")) return;
-    await fetch(`/api/sms/templates/${id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/sms/templates/${id}`, { method: "DELETE" }))) return;
     load();
   }
 

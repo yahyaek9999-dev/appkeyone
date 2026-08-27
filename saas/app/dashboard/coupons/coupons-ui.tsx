@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Ticket, Plus, Loader2, Trash2, X, Zap, Percent, BadgeDollarSign, CalendarClock } from "lucide-react";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -30,6 +31,7 @@ const EMPTY: any = { code: "", type: "percent", value: 10, active: true, autoOff
 
 
 export default function CouponsUi() {
+  const mutate = useMutate();
   const [items, setItems] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState<any | null>(null);
@@ -72,12 +74,12 @@ export default function CouponsUi() {
   }
 
   async function patch(c: Coupon, data: any) {
-    await fetch(`/api/coupons/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    if (!(await mutate(`/api/coupons/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }))) return;
     load();
   }
   async function remove(c: Coupon) {
     if (!(await confirm({ title: "حذف كوبون", body: `حذف الكوبون ${c.code}؟`, confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/coupons/${c.id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/coupons/${c.id}`, { method: "DELETE" }))) return;
     load();
   }
 

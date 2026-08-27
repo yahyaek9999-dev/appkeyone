@@ -13,6 +13,10 @@ export default function WhatsappHealthClient({ initial, warnings, warnCount }: {
   const [checkedAt, setCheckedAt] = useState<string>("");
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
+  // Whether `msg` is a failure. These controls used to announce success before
+  // the request resolved, so a 500 from the session service still read as
+  // "بدأ إعادة الربط" — the customer was told the opposite of what happened.
+  const [msgFailed, setMsgFailed] = useState(false);
 
   async function refresh() {
     try {
@@ -24,18 +28,38 @@ export default function WhatsappHealthClient({ initial, warnings, warnCount }: {
   }
   useEffect(() => { refresh(); const t = setInterval(refresh, 6000); return () => clearInterval(t); }, []);
 
+  /**
+   * Session control call. Reports the REAL outcome — the calls themselves are
+   * unchanged; only whether the screen believes them is. Returns false on any
+   * non-2xx so a multi-step action (restart = logout then start) stops instead
+   * of reporting a restart that never happened.
+   */
+  async function post(url: string): Promise<boolean> {
+    try {
+      const r = await fetch(url, { method: "POST" });
+      return r.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  function fail(what: string) {
+    setMsgFailed(true);
+    setMsg(`تعذّر ${what}. حدّث الصفحة وحاول مجددًا، وإن تكرر تواصل مع الدعم.`);
+  }
+
   async function action(kind: "reconnect" | "restart" | "replace") {
-    setBusy(kind); setMsg("");
+    setBusy(kind); setMsg(""); setMsgFailed(false);
     try {
       if (kind === "reconnect") {
-        await fetch("/api/whatsapp/start", { method: "POST" });
+        if (!(await post("/api/whatsapp/start"))) return fail("بدء إعادة الربط");
         setMsg("بدأ إعادة الربط — افتح صفحة الربط لمسح الكود إن لزم.");
       } else if (kind === "restart") {
-        await fetch("/api/whatsapp/logout", { method: "POST" });
-        await fetch("/api/whatsapp/start", { method: "POST" });
+        if (!(await post("/api/whatsapp/logout"))) return fail("إيقاف الجلسة");
+        if (!(await post("/api/whatsapp/start"))) return fail("إعادة تشغيل الجلسة");
         setMsg("أُعيد تشغيل الجلسة.");
       } else if (kind === "replace") {
-        await fetch("/api/whatsapp/logout", { method: "POST" });
+        if (!(await post("/api/whatsapp/logout"))) return fail("فصل الجلسة الحالية");
         setMsg("فُصلت الجلسة الحالية — اربط رقمًا جديدًا من صفحة الربط.");
       }
       setTimeout(refresh, 1500);
@@ -86,7 +110,7 @@ export default function WhatsappHealthClient({ initial, warnings, warnCount }: {
         <button onClick={() => action("restart")} disabled={!!busy} className="rounded bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50">إعادة تشغيل الجلسة</button>
         <button onClick={() => action("replace")} disabled={!!busy} className="rounded bg-rose-500/10 text-rose-300 px-3 py-1.5 text-sm disabled:opacity-50">استبدال الجلسة (فصل)</button>
         <Link href="/dashboard/whatsapp" className="rounded bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">صفحة الربط (QR)</Link>
-        {msg && <span className="text-xs text-slate-300">{msg}</span>}
+        {msg && <span className={`text-xs ${msgFailed ? "text-rose-300" : "text-slate-300"}`}>{msg}</span>}
       </div>
 
       <div className="card p-5">

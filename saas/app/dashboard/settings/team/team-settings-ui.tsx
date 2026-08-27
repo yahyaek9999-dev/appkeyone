@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   Users, Shield, Eye, ShoppingBag, Headphones,
   Plus, Trash2, ChevronDown, Info, Crown, Copy, Check, Link2,
@@ -38,6 +39,7 @@ export function TeamSettingsUi({
   ownerName: string;
   initialMembers: Member[];
 }) {
+  const mutate = useMutate();
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -98,11 +100,11 @@ export function TeamSettingsUi({
 
   async function changeRole(id: string, newRole: Exclude<Role, "owner">) {
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, role: newRole } : m)));
-    await fetch("/api/settings/team", {
+    if (!(await mutate("/api/settings/team", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, role: newRole }),
-    });
+    }))) return;
   }
 
   function copyLink() {

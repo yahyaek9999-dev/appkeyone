@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Building2, Plus, Loader2, Trash2, Star, MapPin } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -18,6 +19,7 @@ interface Branch {
 }
 
 export default function BranchesUi() {
+  const mutate = useMutate();
   const { success, error, info } = useToast();
   const confirm = useConfirm();
   const [items, setItems] = useState<Branch[]>([]);
@@ -66,17 +68,17 @@ export default function BranchesUi() {
   }
 
   async function makeDefault(b: Branch) {
-    await fetch(`/api/branches/${b.id}`, {
+    if (!(await mutate(`/api/branches/${b.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isDefault: true }),
-    });
+    }))) return;
     load();
   }
 
   async function remove(b: Branch) {
     if (!(await confirm({ title: "حذف الفرع", body: `حذف فرع "${b.name}"؟`, confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/branches/${b.id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/branches/${b.id}`, { method: "DELETE" }))) return;
     load();
   }
 

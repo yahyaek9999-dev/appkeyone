@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { Shield, AlertTriangle, Activity, Zap, Power, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
@@ -60,6 +61,7 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 export default function SafetyDashboard() {
+  const mutate = useMutate();
   const [data, setData] = useState<SafetyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
@@ -82,7 +84,7 @@ export default function SafetyDashboard() {
   async function clearKill() {
     if (!(await confirm({ title: "إلغاء الإيقاف الطارئ", body: "سيتم إلغاء الإيقاف الطارئ والسماح بالإرسال مرة أخرى. متأكد؟", confirmLabel: "تأكيد", cancelLabel: "إلغاء", danger: true }))) return;
     setClearing(true);
-    await fetch("/api/safety/clear-kill", { method: "POST" });
+    if (!(await mutate("/api/safety/clear-kill", { method: "POST" }))) return;
     await load();
     setClearing(false);
   }

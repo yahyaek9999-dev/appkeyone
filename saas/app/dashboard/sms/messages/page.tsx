@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { Send, RefreshCw } from "lucide-react";
 
 type Msg = {
@@ -31,6 +32,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function SmsMessagesPage() {
+  const mutate = useMutate();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -50,11 +52,11 @@ export default function SmsMessagesPage() {
   useEffect(() => { load(); }, [page]);
 
   async function sendManual() {
-    await fetch("/api/sms/messages", {
+    if (!(await mutate("/api/sms/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to: sendForm.to, body: sendForm.body }),
-    });
+    }))) return;
     setShowSend(false);
     setSendForm({ to: "", body: "" });
     load(1);

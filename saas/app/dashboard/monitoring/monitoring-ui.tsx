@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   Loader2,
   Activity,
@@ -105,6 +106,7 @@ function Delta({ now, prev }: { now: number; prev: number }) {
 }
 
 export default function MonitoringUi() {
+  const mutate = useMutate();
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -130,7 +132,7 @@ export default function MonitoringUi() {
   async function scan() {
     setScanning(true);
     try {
-      await fetch("/api/monitoring/scan", { method: "POST" });
+      if (!(await mutate("/api/monitoring/scan", { method: "POST" }))) return;
       await load();
     } finally {
       setScanning(false);
@@ -139,7 +141,7 @@ export default function MonitoringUi() {
   async function resolve(id: string) {
     setBusy(id);
     try {
-      await fetch(`/api/monitoring/alerts/${id}/resolve`, { method: "POST" });
+      if (!(await mutate(`/api/monitoring/alerts/${id}/resolve`, { method: "POST" }))) return;
       await load();
     } finally {
       setBusy(null);

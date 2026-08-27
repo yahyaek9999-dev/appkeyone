@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   Zap, Plus, Save, Trash2, ToggleLeft, ToggleRight,
   Loader2, X, ChevronDown, ShoppingBag, CreditCard,
@@ -58,6 +59,7 @@ interface Automation {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function AutomationBuilderUi() {
+  const mutate = useMutate();
   const [items, setItems] = useState<Automation[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Automation | null>(null);
@@ -79,11 +81,11 @@ export default function AutomationBuilderUi() {
   }
 
   async function toggle(item: Automation) {
-    await fetch("/api/commerce/automations", {
+    if (!(await mutate("/api/commerce/automations", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: item.id, enabled: !item.enabled }),
-    });
+    }))) return;
     setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, enabled: !i.enabled } : i));
   }
 

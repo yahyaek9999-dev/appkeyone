@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { Package, Plus, Loader2, Pencil, Trash2, X, ImageIcon, Boxes, Tag as TagIcon, Link as LinkIcon } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,6 +40,7 @@ function galleryOf(p: Partial<Product>): string[] {
 const EMPTY: Partial<Product> = { name: "", price: 0, stock: 0, active: true };
 
 export default function ProductsUi() {
+  const mutate = useMutate();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
@@ -120,16 +122,16 @@ export default function ProductsUi() {
 
   async function remove(p: Product) {
     if (!(await confirm({ title: "حذف منتج", body: `حذف "${p.name}"؟`, confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/products/${p.id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/products/${p.id}`, { method: "DELETE" }))) return;
     load();
   }
 
   async function toggleActive(p: Product) {
-    await fetch(`/api/products/${p.id}`, {
+    if (!(await mutate(`/api/products/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !p.active }),
-    });
+    }))) return;
     load();
   }
 

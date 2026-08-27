@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { Plus, Trash2, RefreshCw, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 
 type Provider = {
@@ -28,6 +29,7 @@ function HealthBadge({ health, ok }: { health: string; ok?: boolean | null }) {
 }
 
 export default function SmsProvidersPage() {
+  const mutate = useMutate();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -45,11 +47,11 @@ export default function SmsProvidersPage() {
   useEffect(() => { load(); }, []);
 
   async function create() {
-    await fetch("/api/sms/providers", {
+    if (!(await mutate("/api/sms/providers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
-    });
+    }))) return;
     setShowForm(false);
     setForm({ name: "", type: "manual", apiKey: "", apiSecret: "", senderId: "", endpoint: "" });
     load();
@@ -57,27 +59,27 @@ export default function SmsProvidersPage() {
 
   async function testProvider(id: string) {
     setTesting(id);
-    await fetch(`/api/sms/providers/${id}`, {
+    if (!(await mutate(`/api/sms/providers/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "test" }),
-    });
+    }))) return;
     await load();
     setTesting(null);
   }
 
   async function deleteProvider(id: string) {
     if (!confirm("حذف المزوّد؟")) return;
-    await fetch(`/api/sms/providers/${id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/sms/providers/${id}`, { method: "DELETE" }))) return;
     load();
   }
 
   async function toggleDefault(id: string) {
-    await fetch(`/api/sms/providers/${id}`, {
+    if (!(await mutate(`/api/sms/providers/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isDefault: true }),
-    });
+    }))) return;
     load();
   }
 

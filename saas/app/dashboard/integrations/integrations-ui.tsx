@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -150,6 +151,7 @@ function connectionStatusLabel(item: Integration): string {
 }
 
 export default function IntegrationsUi() {
+  const mutate = useMutate();
   const [items, setItems] = useState<Integration[]>([]);
   const [events, setEvents] = useState<EventLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,7 +246,7 @@ export default function IntegrationsUi() {
   async function toggle(item: Integration) {
     setBusyId(item.id);
     try {
-      await fetch(`/api/commerce/integrations/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !item.enabled }) });
+      if (!(await mutate(`/api/commerce/integrations/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !item.enabled }) }))) return;
       showSuccess(item.enabled ? "تم إيقاف التكامل" : "تم تفعيل التكامل");
       await load(false);
     } finally { setBusyId(null); }
@@ -254,7 +256,7 @@ export default function IntegrationsUi() {
     if (!(await confirm({ title: "حذف التكامل نهائياً", body: "سيتم حذف التكامل وجميع أحداثه وأتمتته بشكل نهائي. لا يمكن التراجع عن هذا الإجراء. متابعة؟", confirmLabel: "حذف نهائياً", cancelLabel: "إلغاء", danger: true }))) return;
     setBusyId(item.id);
     try {
-      await fetch(`/api/commerce/integrations/${item.id}`, { method: "DELETE" });
+      if (!(await mutate(`/api/commerce/integrations/${item.id}`, { method: "DELETE" }))) return;
       showSuccess("تم حذف التكامل نهائياً");
       await load(false);
     } finally { setBusyId(null); }

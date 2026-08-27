@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Zap, Plus, Loader2, Trash2, Workflow } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -24,6 +25,7 @@ const TRIGGERS: { value: string; label: string }[] = [
 ];
 
 export default function FlowBuilderUi() {
+  const mutate = useMutate();
   const { success, error, info } = useToast();
   const confirm = useConfirm();
   const [items, setItems] = useState<Flow[]>([]);
@@ -73,17 +75,17 @@ export default function FlowBuilderUi() {
   }
 
   async function toggle(f: Flow) {
-    await fetch(`/api/flows/${f.id}`, {
+    if (!(await mutate(`/api/flows/${f.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: !f.enabled }),
-    });
+    }))) return;
     load();
   }
 
   async function remove(f: Flow) {
     if (!(await confirm({ title: "حذف المسار", body: `حذف "${f.name}"؟`, confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/flows/${f.id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/flows/${f.id}`, { method: "DELETE" }))) return;
     load();
   }
 

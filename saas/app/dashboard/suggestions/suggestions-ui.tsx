@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Lightbulb,
@@ -26,6 +27,7 @@ type Gap = {
 };
 
 export default function SuggestionsUi() {
+  const mutate = useMutate();
   const [items, setItems] = useState<Gap[]>([]);
   const [loading, setLoading] = useState(true);
   const [answering, setAnswering] = useState<Gap | null>(null);
@@ -93,17 +95,17 @@ export default function SuggestionsUi() {
   }
 
   async function dismiss(g: Gap) {
-    await fetch(`/api/knowledge-gaps/${g.id}`, {
+    if (!(await mutate(`/api/knowledge-gaps/${g.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "dismiss" }),
-    });
+    }))) return;
     load();
   }
 
   async function remove(g: Gap) {
     if (!(await confirm({ title: "حذف الاقتراح", body: "هل تريد حذف هذا الاقتراح؟", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/knowledge-gaps/${g.id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/knowledge-gaps/${g.id}`, { method: "DELETE" }))) return;
     load();
   }
 

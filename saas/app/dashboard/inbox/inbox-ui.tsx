@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/skeleton";
 import { formatCustomerPhone } from "@/lib/phone";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 
 type Conv = {
   customerId: string;
@@ -66,6 +67,7 @@ export default function InboxUi({
 }: {
   initialCustomerId: string | null;
 }) {
+  const mutate = useMutate();
   const [convs, setConvs] = useState<Conv[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(initialCustomerId);
@@ -250,11 +252,11 @@ export default function InboxUi({
   async function togglePause() {
     if (!active?.conversation || !activeId) return;
     const next = !active.conversation.botPaused;
-    await fetch(`/api/inbox/conversation/${activeId}/pause`, {
+    if (!(await mutate(`/api/inbox/conversation/${activeId}/pause`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paused: next }),
-    });
+    }))) return;
     const fresh = await fetch(`/api/inbox/conversation/${activeId}`, {
       cache: "no-store",
     });
@@ -265,11 +267,11 @@ export default function InboxUi({
     if (!activeId) return;
     setSavingNotes(true);
     try {
-      await fetch(`/api/inbox/conversation/${activeId}/notes`, {
+      if (!(await mutate(`/api/inbox/conversation/${activeId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: notesDraft }),
-      });
+      }))) return;
     } finally {
       setSavingNotes(false);
     }
@@ -279,11 +281,11 @@ export default function InboxUi({
     if (!activeId) return;
     setAssignSaving(true);
     try {
-      await fetch(`/api/customers/${activeId}/crm`, {
+      if (!(await mutate(`/api/customers/${activeId}/crm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "assign", assignedAdmin: assignDraft.trim() }),
-      });
+      }))) return;
       loadConversations();
     } finally {
       setAssignSaving(false);

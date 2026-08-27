@@ -5,6 +5,7 @@ import { Plus, Phone, Settings2, Star, Wifi, WifiOff, AlertCircle, ChevronRight,
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 
 interface WaNumber {
   id: string;
@@ -42,6 +43,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function NumbersClient({ numbers, numberLimit, canAddMore, tier }: Props) {
+  const mutate = useMutate();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -76,11 +78,11 @@ export function NumbersClient({ numbers, numberLimit, canAddMore, tier }: Props)
   }
 
   async function handleSetPrimary(id: string) {
-    await fetch(`/api/numbers/${id}`, {
+    if (!(await mutate(`/api/numbers/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ isPrimary: true }),
-    });
+    }))) return;
     router.refresh();
   }
 

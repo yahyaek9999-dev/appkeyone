@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
@@ -58,6 +59,7 @@ function timeAgo(dt: string | null | undefined): string {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function KnowledgeUI({ docs }: { docs: Doc[] }) {
+  const mutate = useMutate();
   const r = useRouter();
   const confirm = useConfirm();
   const [editing, setEditing] = useState<Partial<Doc> | null>(null);
@@ -86,7 +88,7 @@ export default function KnowledgeUI({ docs }: { docs: Doc[] }) {
 
   async function del(id: string) {
     if (!(await confirm({ title: "حذف المستند", body: "هل أنت متأكد من الحذف؟", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/knowledge/${id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/knowledge/${id}`, { method: "DELETE" }))) return;
     r.refresh();
   }
 

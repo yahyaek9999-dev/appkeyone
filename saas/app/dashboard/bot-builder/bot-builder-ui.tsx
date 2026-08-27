@@ -8,6 +8,7 @@ import {
   Workflow, Eye, PenLine, Copy
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import NodeEditor from "./node-editor";
@@ -80,6 +81,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BotBuilderUi() {
+  const mutate = useMutate();
   const { success, error: toastError } = useToast();
   const confirm = useConfirm();
 
@@ -158,7 +160,7 @@ export default function BotBuilderUi() {
   async function deleteFlow(flow: ConvFlow) {
     const ok = await confirm({ title: "حذف المسار", body: `هل أنت متأكد من حذف "${flow.name}"؟` });
     if (!ok) return;
-    await fetch(`/api/conv-flows/${flow.id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/conv-flows/${flow.id}`, { method: "DELETE" }))) return;
     setFlows((prev) => prev.filter((f) => f.id !== flow.id));
     if (selectedFlow?.id === flow.id) { setSelectedFlow(null); setNodes([]); setEdges([]); }
     success("تم الحذف");

@@ -6,6 +6,7 @@
 // live Bot.systemPrompt, and it always requires an explicit click — nothing
 // on this page runs automatically.
 import { useCallback, useEffect, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import {
   Loader2, Play, Copy, CheckCircle2, RotateCcw, Archive, Plus,
   FlaskConical, Wand2, Radio,
@@ -14,6 +15,7 @@ import {
 type Version = { id: string; title: string; body: string; status: string; version: number; publishedAt?: string | null };
 
 export default function PromptLab() {
+  const mutate = useMutate();
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string>("");
@@ -59,7 +61,7 @@ export default function PromptLab() {
   async function act(id: string, action: "duplicate" | "publish" | "archive") {
     setBusyId(id);
     try {
-      await fetch(`/api/prompts/${id}/${action}`, { method: "POST" });
+      if (!(await mutate(`/api/prompts/${id}/${action}`, { method: "POST" }))) return;
       await load();
     } finally { setBusyId(null); }
   }

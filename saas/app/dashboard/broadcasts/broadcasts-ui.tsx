@@ -30,6 +30,7 @@ import {
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
 import { useToast } from "@/components/ui/toast";
+import { useMutate } from "@/components/ui/use-mutate";
 import UpgradeModal, { type UpgradeVariant } from "@/components/billing/UpgradeModal";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -118,6 +119,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string; icon: any }> = 
 };
 
 export default function BroadcastsUi() {
+  const mutate = useMutate();
   const [items, setItems] = useState<Bc[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -399,17 +401,17 @@ export default function BroadcastsUi() {
 
   async function cancel(bc: Bc) {
     if (!(await confirm({ title: "إلغاء الحملة نهائياً", body: "الرسائل المرسلة لن تتراجع، ولن يمكن استئناف الحملة بعد الإلغاء. لإيقاف مؤقت قابل للاستئناف استخدم زر \"إيقاف مؤقت\".", confirmLabel: "إلغاء نهائي", cancelLabel: "تراجع", danger: true }))) return;
-    await fetch(`/api/broadcasts/${bc.id}`, {
+    if (!(await mutate(`/api/broadcasts/${bc.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "cancel" }),
-    });
+    }))) return;
     load();
   }
 
   async function remove(bc: Bc) {
     if (!(await confirm({ title: "حذف الحملة", body: "سيتم حذف الحملة وكل سجلاتها.", confirmLabel: "حذف", cancelLabel: "إلغاء", danger: true }))) return;
-    await fetch(`/api/broadcasts/${bc.id}`, { method: "DELETE" });
+    if (!(await mutate(`/api/broadcasts/${bc.id}`, { method: "DELETE" }))) return;
     load();
   }
 

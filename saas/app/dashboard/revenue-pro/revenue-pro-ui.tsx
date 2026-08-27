@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { Loader2, Play, TrendingUp, Lightbulb, Layers } from "lucide-react";
 import { Sparkline } from "@/components/ui/sparkline";
 
@@ -57,6 +58,7 @@ function color(s: number) {
 }
 
 export default function RevenueProUi() {
+  const mutate = useMutate();
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -77,7 +79,7 @@ export default function RevenueProUi() {
   async function scan() {
     setScanning(true);
     try {
-      await fetch("/api/revenue-pro/scan", { method: "POST" });
+      if (!(await mutate("/api/revenue-pro/scan", { method: "POST" }))) return;
       await load();
     } finally {
       setScanning(false);

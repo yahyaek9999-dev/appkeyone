@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutate } from "@/components/ui/use-mutate";
 import { Clock, Save, Loader2, Bell, Flame, AlertTriangle, Sunrise } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -18,6 +19,7 @@ function defaultSlots(): Slot[] {
 }
 
 export default function WorkingHoursUi() {
+  const mutate = useMutate();
   const [enabled, setEnabled] = useState(false);
   const [slots, setSlots] = useState<Slot[]>(defaultSlots());
   const [oooMsg, setOooMsg] = useState("");
@@ -58,7 +60,7 @@ export default function WorkingHoursUi() {
   async function save() {
     setSaving(true); setSaved(false);
     try {
-      await fetch("/api/working-hours", {
+      if (!(await mutate("/api/working-hours", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,7 +74,7 @@ export default function WorkingHoursUi() {
           dailyReportHour,
           timezone,
         }),
-      });
+      }))) return;
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
