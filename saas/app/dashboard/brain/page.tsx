@@ -7,6 +7,7 @@ import { pageGate } from "@/lib/membership/gate";
 import LockedFeature from "@/components/billing/LockedFeature";
 import { getBrainTenantStats } from "@/lib/brain/stats";
 import { Brain } from "lucide-react";
+import AnalyzeButton from "./analyze-button";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,9 @@ export default async function BrainPage() {
       <div className="border-b border-white/[0.05] pb-5 mb-6">
         <h1 className="page-title mb-1">مركز البيانات</h1>
         <p className="page-desc">ذاكرة عملائك، تصنيفاتهم، درجات الأهلية، الاستهلاك، والرصيد.</p>
+        <div className="mt-4">
+          <AnalyzeButton />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
