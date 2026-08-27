@@ -20,6 +20,19 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Build output directory. Defaults to Next's own ".next", so nothing changes
+  // for local dev or for `next start`.
+  //
+  // The deploy sets NEXT_DIST_DIR to build into a SIDE directory instead. The
+  // release script used to run `next build` straight into the live ".next"
+  // while the production server was still serving from it — Next resolves route
+  // chunks lazily off disk, so replacing them under a running process made live
+  // pages return 500 for the whole build (~4 minutes, every single release).
+  // Observed directly: /dashboard/products, /dashboard/leads and
+  // /dashboard/flow-builder all 500'd mid-deploy while /api/health still
+  // reported the OLD build and a multi-hour uptime — i.e. the server had not
+  // restarted, its files had simply been pulled out from under it.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   reactStrictMode: true,
   // Suppress the framework "X-Powered-By: Next.js" response header so the stack
   // version isn't leaked to clients/scanners.

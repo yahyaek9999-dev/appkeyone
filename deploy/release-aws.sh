@@ -12,7 +12,8 @@ set -euo pipefail
 #   2. Ships the saas/ Next app + bridge-gateway/ at that commit via rsync
 #      (runtime dirs excluded: node_modules/.next/.env/*.db/uploads).
 #   3. On the server: install deps → prisma generate + additive schema sync →
-#      next build → gateway deps → restart services → stamp DEPLOYED_COMMIT.
+#      out-of-place next build + atomic swap → gateway deps → restart
+#      services → stamp DEPLOYED_COMMIT.
 #   4. Verifies /api/health + DEPLOYED_COMMIT after restart.
 #
 # The WhatsApp send pipeline is untouched; BRIDGE_ENABLED stays whatever the
@@ -91,13 +92,33 @@ echo "  · prisma generate"; ./node_modules/.bin/prisma generate --schema prisma
 # --accept-data-loss), so an accidental drop aborts the deploy instead of
 # destroying data. Additive tables/columns apply cleanly.
 echo "  · prisma db push (additive)"; ./node_modules/.bin/prisma db push --schema prisma/schema.postgres.prisma --skip-generate >>/tmp/deploy-prisma.log 2>&1
-echo "  · next build (previous .next backed up; restored on failure)"
-rm -rf .next.deploybak; cp -r .next .next.deploybak 2>/dev/null || true
-if ! npm run build >/tmp/deploy-build.log 2>&1; then
-  echo "  ✗ build FAILED — restoring previous .next, NOT restarting"; rm -rf .next; mv .next.deploybak .next 2>/dev/null || true
+# Build OUT-OF-PLACE, then swap. `next build` used to write straight into the
+# live .next while the running server was still serving from it; Next resolves
+# route chunks lazily off disk, so replacing them under the live process made
+# customer pages return 500 for the WHOLE build — minutes, on every release.
+# Observed: /dashboard/products, /dashboard/leads and /dashboard/flow-builder
+# all 500'd mid-deploy while /api/health still reported the OLD version and a
+# multi-hour uptime, i.e. the process had not restarted — its files had been
+# pulled out from under it.
+#
+# Now the live .next is not touched until the new build is complete AND
+# verified, which also makes a failed build a true no-op instead of a
+# backup/restore dance.
+echo "  · next build (out-of-place → .next.new)"
+rm -rf .next.new .next.old
+if ! NEXT_DIST_DIR=.next.new npm run build >/tmp/deploy-build.log 2>&1; then
+  echo "  ✗ build FAILED — live .next untouched, NOT restarting"; rm -rf .next.new
   tail -25 /tmp/deploy-build.log; exit 1
 fi
-rm -rf .next.deploybak
+# A complete build always writes a non-empty BUILD_ID and a server/ tree. Refuse
+# to swap in a half-written directory (an OOM-killed build leaves one behind).
+if [ ! -s .next.new/BUILD_ID ] || [ ! -d .next.new/server ]; then
+  echo "  ✗ build output incomplete — live .next untouched, NOT restarting"; rm -rf .next.new
+  tail -25 /tmp/deploy-build.log; exit 1
+fi
+echo "  · swap .next (live pages break only for the restart, not the build)"
+mv .next .next.old 2>/dev/null || true
+mv .next.new .next
 echo "  · gateway deps"; ( cd ~/bridge-gateway && npm install --omit=dev --no-audit --no-fund --silent >/tmp/deploy-gw.log 2>&1 )
 echo "  · restart services"
 sudo systemctl restart keyone.service
@@ -105,6 +126,7 @@ sudo systemctl restart keyone.service
 systemctl list-unit-files | grep -q keyone-bridge-gateway.service && sudo systemctl restart keyone-bridge-gateway.service || true
 sleep 2
 systemctl is-active keyone.service keyone-bridge-gateway.service keyone-wa.service || true
+rm -rf ~/keyone/.next.old
 echo "  · DEPLOYED_COMMIT=$(cat ~/keyone/DEPLOYED_COMMIT)"
 REMOTE
 
