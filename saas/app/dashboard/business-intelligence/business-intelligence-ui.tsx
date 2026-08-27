@@ -45,6 +45,8 @@ type Report = {
 type LoadError =
   | { kind: "auth"; detail?: string }
   | { kind: "network"; detail?: string }
+  | { kind: "locked"; detail?: string }
+  | { kind: "forbidden"; detail?: string }
   | { kind: "server"; detail?: string };
 
 const egp = (n: number) => `${Math.round(n).toLocaleString("ar-EG")} ج.م`;
@@ -60,8 +62,27 @@ export default function BusinessIntelligenceUi() {
     setLoading(true);
     try {
       const r = await fetch("/api/intel/anomalies", { cache: "no-store" });
-      if (r.status === 401 || r.status === 403) {
+      if (r.status === 401) {
         setError({ kind: "auth" });
+        setData(null);
+        return;
+      }
+      // /api/intel/anomalies does not return 403 today (apiGate only does so
+      // when given a permission, and it is not). Handled separately anyway so
+      // that adding one later cannot silently start claiming the session died.
+      if (r.status === 403) {
+        setError({ kind: "forbidden" });
+        setData(null);
+        return;
+      }
+      // 402 is the paywall, not a fault. /api/intel/anomalies gates on
+      // advanced_insights while this page gates on advanced_analytics; they sit
+      // on the same tier today, so this is only reachable if the capability is
+      // disabled for a tenant on its own — but falling through to !r.ok showed
+      // a customer "تعذّر تحميل البيانات · HTTP 402", i.e. a locked feature
+      // rendered as a crash instead of an upgrade path.
+      if (r.status === 402) {
+        setError({ kind: "locked" });
         setData(null);
         return;
       }
@@ -312,6 +333,18 @@ function BiSkeleton() {
 function ErrorState({ error, onRetry, retrying }: { error: LoadError | null; onRetry: () => void; retrying: boolean }) {
   const kind = error?.kind ?? "server";
   const copy = {
+    forbidden: {
+      title: "لا تملك صلاحية عرض هذه البيانات",
+      desc: "حسابك لا يملك صلاحية الاطّلاع على ذكاء الأعمال. تواصل مع مالك المساحة لمنحك الصلاحية.",
+      cta: null,
+      href: null,
+    },
+    locked: {
+      title: "هذه الميزة غير مفعّلة على حسابك",
+      desc: "رؤى الأعمال المتقدّمة غير متاحة في وضع حسابك الحالي. رقِّ باقتك لعرضها، أو تواصل مع الدعم إن كنت تتوقع أنها مفعّلة.",
+      cta: "عرض الباقات",
+      href: "/pricing?lang=ar#plans",
+    },
     auth: {
       title: "انتهت الجلسة",
       desc: "يبدو أن جلستك انتهت. سجّل الدخول مرة أخرى لعرض ذكاء الأعمال.",

@@ -27,6 +27,11 @@ type Metric = {
 // instead of one catch-all "failed to load" message.
 type LoadError =
   | { kind: "auth"; detail?: string }
+  // 403, not 401. /api/system/health is platform-ops only by design — it
+  // exposes host CPU/RAM, DB size and CROSS-TENANT counts, so it refuses every
+  // tenant. Collapsing it into "auth" told a signed-in customer their session
+  // had expired and offered a login button that could never change the answer.
+  | { kind: "forbidden"; detail?: string }
   | { kind: "network"; detail?: string }
   | { kind: "server"; detail?: string };
 
@@ -59,8 +64,13 @@ export default function SystemHealthUi() {
     setLoading(true);
     try {
       const r = await fetch("/api/system/health", { cache: "no-store" });
-      if (r.status === 401 || r.status === 403) {
+      if (r.status === 401) {
         setError({ kind: "auth" });
+        setData(null);
+        return;
+      }
+      if (r.status === 403) {
+        setError({ kind: "forbidden" });
         setData(null);
         return;
       }
@@ -297,6 +307,14 @@ function ErrorState({ error, onRetry, retrying }: { error: LoadError | null; onR
       cta: "تسجيل الدخول",
       href: "/login",
     },
+    forbidden: {
+      title: "هذه اللوحة للمنصّة وليست لحسابك",
+      desc:
+        "مؤشرات الخادم وقاعدة البيانات هنا على مستوى منصّة KEYONE كاملة، لذلك لا تُعرض داخل حساب تاجر. " +
+        "لمتابعة صحة حسابك أنت، افتح «صحة جلسة واتساب» — حالة الاتصال والتحذيرات وحدود الإرسال الخاصة برقمك.",
+      cta: "صحة جلسة واتساب",
+      href: "/dashboard/whatsapp-health",
+    },
     network: {
       title: "تعذّر الاتصال",
       desc: "لم نتمكن من الوصول للخادم. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة.",
@@ -314,7 +332,7 @@ function ErrorState({ error, onRetry, retrying }: { error: LoadError | null; onR
   return (
     <div className="card p-10 text-center">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/10">
-        {kind === "network" ? <Wifi className="h-6 w-6 text-rose-400" /> : kind === "auth" ? <Shield className="h-6 w-6 text-amber-400" /> : <AlertTriangle className="h-6 w-6 text-rose-400" />}
+        {kind === "network" ? <Wifi className="h-6 w-6 text-rose-400" /> : kind === "auth" || kind === "forbidden" ? <Shield className="h-6 w-6 text-amber-400" /> : <AlertTriangle className="h-6 w-6 text-rose-400" />}
       </div>
       <h3 className="text-base font-semibold text-white">{copy.title}</h3>
       <p className="mx-auto mt-2 max-w-sm text-sm text-slate-400">{copy.desc}</p>
