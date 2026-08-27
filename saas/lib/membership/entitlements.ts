@@ -27,6 +27,7 @@ import {
   capabilitiesForIndex,
   type TierSlug,
 } from "@/lib/pricing/catalog";
+import { UNLIMITED_WHATSAPP_SESSIONS } from "@/lib/pricing/seed-catalog-plans";
 
 export interface Entitlements {
   tier: EffectivePlan["tier"];
@@ -130,7 +131,7 @@ export async function getEntitlements(userId: string): Promise<Entitlements> {
     team:        numFlag(flags, "team", plan.tier === "basic" ? 1 : 0),
     automations: numFlag(flags, "automations", 0),
     kbDocs:      numFlag(flags, "kbDocs", 0),
-    whatsapp:    plan.whatsappSessions,
+    whatsapp:    plan.whatsappSessions >= UNLIMITED_WHATSAPP_SESSIONS ? 0 : plan.whatsappSessions,
     broadcasts:  plan.broadcastsMonthly,
     ai:          plan.aiRequestsMonthly,
     messages:    plan.monthlyMsgs,

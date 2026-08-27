@@ -16,6 +16,16 @@
 import type { PrismaClient } from "@prisma/client";
 import { TIERS, CAPABILITIES, featureFlagsForTier, type TierDef } from "./catalog";
 
+/**
+ * The Plan table has no "unlimited" encoding for whatsappSessions, so the seed
+ * writes this sentinel where the catalog says 0 (= unlimited). Every reader must
+ * translate it back — see getEntitlements(), whose contract is "0 = unlimited".
+ * Exported rather than repeated: a copy of the number in the reader is exactly
+ * how an Enterprise customer came to see "0 من 9999 رقمة مستخدمة" on their own
+ * numbers page while the plan page said unlimited.
+ */
+export const UNLIMITED_WHATSAPP_SESSIONS = 9999;
+
 function featureBullets(tier: TierDef): string[] {
   const unlocked = CAPABILITIES.filter((c) => tier.capIndex >= c.minTierIndex);
   const bullets: string[] = [];
@@ -86,7 +96,7 @@ export async function seedCatalogPlans(prisma: PrismaClient): Promise<SeedCatalo
         tier: tier.internalTier,
         aiRequestsMonthly: tier.limits.ai,
         broadcastsMonthly: tier.limits.broadcasts,
-        whatsappSessions: tier.limits.whatsapp === 0 ? 9999 : tier.limits.whatsapp,
+        whatsappSessions: tier.limits.whatsapp === 0 ? UNLIMITED_WHATSAPP_SESSIONS : tier.limits.whatsapp,
         metaAccess: tier.metaAccess,
         analyticsAccess: tier.analyticsAccess,
         queuePriority: tier.index * 4,

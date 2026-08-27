@@ -94,7 +94,7 @@ export function NumbersClient({ numbers, numberLimit, canAddMore, tier }: Props)
           <p className="page-desc">
             {numberLimit === 0
               ? "أرقام واتساب غير محدودة"
-              : `${numbers.length} من ${numberLimit} رقم${numberLimit === 1 ? "" : "ة"} مستخدم${numbers.length === 1 ? "" : "ة"}`}
+              : `${numbers.length} من ${numberLimit} ${numberLimit === 1 ? "رقم" : "أرقام"} مستخدمة`}
           </p>
         </div>
         {canAddMore && (
