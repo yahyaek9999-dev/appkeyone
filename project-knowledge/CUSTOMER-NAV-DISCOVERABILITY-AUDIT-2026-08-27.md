@@ -190,13 +190,13 @@ non-nav capability classified from the page or the code rather than asserted.
 
 | Status | Count | Meaning |
 |---|---|---|
-| **PASS** | 68 | icon, label, visible, clicked, correct page — all five checked |
+| **PASS** | 69 | icon, label, visible, clicked, correct page — all five checked |
 | **ADMIN-INTERNAL** | 7 | `requireAdmin()` / `adminOnly` / non-admin redirect |
 | **CONTRACTUAL** | 4 | commercial term, no software surface |
 | **INTERNAL-NO-UI** | 1 | internal machinery, never a customer destination |
 | **LOCKED** | 1 | `white_label` — `comingSoon`, correctly visible + locked |
 | **MODE-SPECIFIC** | 1 | `meta_cloud` — see §5 |
-| **BLOCKER** | 1 | `multi_team` — see §4.1 |
+| **BLOCKER** | 0 | — `multi_team` was the only one; closed 2026-08-27, see §4.1 |
 | **Total** | **83** | zero unclassified |
 
 | # | Feature | Plan | Customer surface | Workspace | Status |
@@ -208,7 +208,7 @@ non-nav capability classified from the page or the code rather than asserted.
 | 5 | `playground` | ENTERPRISE | requireAdmin() | — | **ADMIN-INTERNAL** |
 | 6 | `qr_broadcast_queue` | GROWTH | requireAdmin() — bounce verified in browser | — | **ADMIN-INTERNAL** |
 | 7 | `testing_arena` | ENTERPRISE | requireAdmin() | — | **ADMIN-INTERNAL** |
-| 8 | `multi_team` | ENTERPRISE | no Team model; allowedNumberIds/conversationScope unsettable | — | **BLOCKER** |
+| 8 | `multi_team` | ENTERPRISE | `/dashboard/teams` — create/list/details/roster/scope/numbers | الإعدادات | **PASS** |
 | 9 | `custom_billing` | ENTERPRISE | billing term, no software surface | — | **CONTRACTUAL** |
 | 10 | `custom_dev` | ENTERPRISE | services term, no software surface | — | **CONTRACTUAL** |
 | 11 | `dedicated_infra` | ENTERPRISE | infrastructure term, no software surface | — | **CONTRACTUAL** |
@@ -285,7 +285,45 @@ non-nav capability classified from the page or the code rather than asserted.
 | 82 | `whatsapp_health` | START | صحة جلسة واتساب — `/dashboard/whatsapp-health` | المحادثات | **PASS** |
 | 83 | `working_hours` | GROWTH | ساعات العمل — `/dashboard/working-hours` | الأتمتة | **PASS** |
 
-### 4.1 `multi_team` — resolved: (C) sold, not deliverable
+### 4.1 `multi_team` — CLOSED 2026-08-27 (was: sold, not deliverable)
+
+> **Status: BUILT AND SHIPPED.** Commit `ed4c8da`, live on production, verified in
+> the browser on the Enterprise tenant. The finding below is the original
+> diagnosis and is kept verbatim as the record of what was wrong. What closed it:
+>
+> | Gap found | What shipped |
+> |---|---|
+> | no `Team` model | `Team` — one workspace, many named teams, each carrying its own isolation policy. `TeamMember.teamId` nullable, `onDelete: SetNull` |
+> | `conversationScope` read nowhere | `lib/teams/scope.ts` resolves it; `app/api/inbox/conversations/route.ts` now enforces the resolved scope instead of assuming `own_only` |
+> | nothing writes either column | `POST/DELETE /api/teams/:id/members` writes both; the team-level policy is written by `POST/PATCH /api/teams` |
+> | no screen | `/dashboard/teams` — create, list, details, roster, scope selector, number picker, empty state |
+> | not in navigation | **الفرق والصلاحيات** in the الإعدادات workspace, `perm: "team"`, gated on `multi_team` |
+>
+> Non-regression: precedence is *member override → team policy → historical
+> default*, where the default is `own_only` over all numbers. A member row with
+> `teamId = NULL` and an empty override — every row that existed before this —
+> resolves to exactly the restriction the inbox already hard-coded. Production
+> held **0 `TeamMember` rows** at migration time, so no member behaviour could
+> change. Migration DDL, backup and rollback: `MULTI-TEAM-MIGRATION-2026-08-27.md`.
+>
+> Production verification, on `test@wkeyone.com` (KEYONE Enterprise, a test
+> tenant — no real customer was used): nav item visible with icon → clicked →
+> page opened → team created (`تم إنشاء الفريق`) → scope changed to
+> `كل محادثات المساحة` and saved (`تم حفظ إعدادات الفريق`, confirmed as
+> `conversationScope='all'` in the database) → plan temporarily swapped to
+> `k_growth`, which rendered the **locked** upgrade card while the nav entry
+> stayed visible → plan restored to `k_enterprise/active` → test team deleted
+> (`تم حذف الفريق`). Final state: 0 teams, 0 members, 4 users, 3 active
+> Enterprise subscriptions — identical to before. All three writes are in
+> `AuditLog` as `team.created` / `team.updated` / `team.deleted`.
+>
+> Locked by 54 tests across `__tests__/multi-team.test.ts` and
+> `__tests__/multi-team-db.test.ts` (the latter runs against a real PostgreSQL
+> for tenant isolation). Deleting the nav entry fails
+> `customer-surface-coverage` — verified by actually deleting it.
+
+#### Original finding (2026-08-27, before the fix)
+
 
 The catalog sells it on Enterprise as **"فرق متعدّدة مع صلاحيات منفصلة"**
 (Multi-Team with Isolated Permissions), distinct from `team` ("أعضاء الفريق حتى 5",
@@ -424,13 +462,13 @@ entitlement matrix, customer data, and the WhatsApp send pipeline.
 
 | Measure | Result |
 |---|---|
-| Customer feature with no surface | **1** — `multi_team` (§4.1) |
+| Customer feature with no surface | **0** — `multi_team` closed 2026-08-27 (§4.1) |
 | Customer feature with no icon | **0** |
 | Broken click | **0** |
 | Wrong destination | **0** |
 | Hidden by entitlement | **0** |
 | Customer-safe page with no entry | **0** |
-| Enterprise entitlement/surface mismatch | **1** — `multi_team` |
+| Enterprise entitlement/surface mismatch | **0** — `multi_team` closed 2026-08-27 |
 | Locked for Enterprise | 1 — `white_label`, correct (`comingSoon`) |
 | **UNVERIFIED** | 2 routes — the Meta-mode pair, no sanctioned tenant exists (§5) |
 
