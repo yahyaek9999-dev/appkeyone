@@ -54,7 +54,7 @@ export default async function BrainPage() {
         </div>
         <div className="card p-5 md:col-span-2">
           <h2 className="font-bold mb-3">أعلى العملاء (درجة الأهلية)</h2>
-          {s.topProfiles.length === 0 ? <p className="text-slate-500 text-sm">لم تُبنَ ملفات الدماغ بعد — استدعِ /api/brain/memory لإثرائها.</p> : (
+          {s.topProfiles.length === 0 ? <p className="text-slate-500 text-sm">لم تُبنَ ملفات الدماغ بعد. تُبنى الملفات من تحليل محادثات عملائك — إن كانت لديك محادثات ولم تظهر ملفات هنا، <a href="/support" className="text-brand-300 underline hover:text-brand-200">تواصل مع الدعم</a> لتفعيل التحليل على حسابك.</p> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-slate-400 text-xs"><th className="p-1.5 text-right">العميل</th><th className="p-1.5 text-right">القطاع</th><th className="p-1.5 text-right">اللهجة</th><th className="p-1.5 text-right">المرحلة</th><th className="p-1.5 text-left">الدرجة</th></tr></thead>

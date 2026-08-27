@@ -1,5 +1,6 @@
 /** /dashboard/agents — tenant Multi-Agent center (Phase 2). Gated: smart_assistant. */
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { pageGate } from "@/lib/membership/gate";
 import LockedFeature from "@/components/billing/LockedFeature";
 import { getAgentStats } from "@/lib/agents/orchestrator";
@@ -17,7 +18,14 @@ export default async function AgentsPage() {
   return (
     <div className="space-y-6">
       <h1 className="page-title mb-1">نظام الوكلاء</h1>
-      <p className="page-desc">وكلاء المبيعات/الدعم/CRM/الطلبات/الفوترة بذاكرة مشتركة. شغّلهم عبر <code className="font-mono text-xs">/api/agents/run</code>.</p>
+      <p className="page-desc">
+        وكلاء المبيعات والدعم وCRM والطلبات والفوترة يعملون بذاكرة مشتركة، ويُشغَّلون
+        تلقائيًا مع محادثات عملائك. للتشغيل البرمجي، راجع{" "}
+        <Link href="/dashboard/developer" className="text-brand-300 underline hover:text-brand-200">
+          مركز المطوّرين
+        </Link>
+        .
+      </p>
       <div className="grid grid-cols-3 gap-3">
         <Tile label="تنفيذات" value={agents.executions} />
         <Tile label="قرارات" value={agents.decisions} />

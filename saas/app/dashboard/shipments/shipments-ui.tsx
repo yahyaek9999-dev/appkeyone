@@ -158,7 +158,12 @@ export default function ShipmentsUi() {
         </div>
         {providers.length === 0 ? (
           <p className="text-sm text-amber-200/90">
-            لا يوجد مزوّد شحن مُفعّل بعد. يتم إعداد المزوّدين من لوحة الإدارة.
+            لا يوجد مزوّد شحن مُفعّل على حسابك بعد. تعاقدات شركات الشحن تُدار من
+            فريق KEYONE —{" "}
+            <a href="/support" className="underline hover:text-amber-100">
+              تواصل مع الدعم
+            </a>{" "}
+            لتفعيل مزوّد شحن، وستتمكّن بعدها من إنشاء الشحنات ومتابعتها من هنا.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
