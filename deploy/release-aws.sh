@@ -106,7 +106,16 @@ echo "  · prisma db push (additive)"; ./node_modules/.bin/prisma db push --sche
 # backup/restore dance.
 echo "  · next build (out-of-place → .next.new)"
 rm -rf .next.new .next.old
-if ! NEXT_DIST_DIR=.next.new npm run build >/tmp/deploy-build.log 2>&1; then
+# Seed the webpack/SWC cache from the live build. Next keeps it at
+# <distDir>/cache, so building into a fresh directory would otherwise discard it
+# and make EVERY deploy a cold build — which is exactly what happened on the
+# first run of this change: the cold build exhausted V8's default heap and
+# aborted ("Ineffective mark-compacts near heap limit"). Copying the cache
+# restores incremental builds; the raised heap below covers the cold case
+# (first deploy after this change, or a cache miss).
+mkdir -p .next.new
+cp -r .next/cache .next.new/cache 2>/dev/null || true
+if ! NODE_OPTIONS="--max-old-space-size=4096" NEXT_DIST_DIR=.next.new npm run build >/tmp/deploy-build.log 2>&1; then
   echo "  ✗ build FAILED — live .next untouched, NOT restarting"; rm -rf .next.new
   tail -25 /tmp/deploy-build.log; exit 1
 fi
