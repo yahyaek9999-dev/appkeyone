@@ -255,7 +255,7 @@ export const WORKSPACES: Workspace[] = [
       { href: "/dashboard/teams", label: "الفرق والصلاحيات", icon: UsersRound, perm: "team" },
       { href: "/dashboard/approvals", label: "الموافقات", icon: CheckSquare, perm: "team" },
       { href: "/dashboard/audit-log", label: "سجل النشاط", icon: ScrollText, perm: "team" },
-      { href: "/dashboard/system-health", label: "صحة النظام", icon: Activity, perm: "settings" },
+      { href: "/dashboard/system-health", label: "صحة حسابك", icon: Activity, perm: "settings" },
       { href: "/dashboard/safety", label: "لوحة السلامة والحماية", icon: ShieldAlert, perm: "settings" },
       { href: "/dashboard/white-label", label: "العلامة البيضاء", icon: Palette, perm: "settings" },
       { href: "/dashboard/developer", label: "مركز المطوّرين", icon: Code2, perm: "settings" },
