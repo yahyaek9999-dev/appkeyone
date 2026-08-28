@@ -50,12 +50,25 @@ import {
   Lightbulb,
   Search,
   RefreshCw,
+  Brain,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCustomerPhone } from "@/lib/phone";
 import { fmtMoney, fmtDate, timeAgo } from "@/lib/format";
 
 type Profile = {
+  /**
+   * KEYONE Brain's read of this customer. Present only once Brain has analysed
+   * them (مركز البيانات → "حلّل محادثات عملائي"); null otherwise, which is why
+   * the card below renders nothing rather than an empty shell.
+   */
+  brain?: {
+    industry: string | null;
+    dialect: string | null;
+    stage: string | null;
+    insights: string[];
+    updatedAt: string | null;
+  } | null;
   customer: {
     id: string;
     name: string | null;
@@ -471,6 +484,10 @@ export default function Customer360({
                 {/* ── AI intelligence ── */}
                 <Section title="ذكاء العميل" icon={<Target className="h-3.5 w-3.5" />}>
                   <LeadTempCard intel={intel!} />
+                  {/* Brain's per-customer read. Produced by مركز البيانات and,
+                      until now, visible only as an aggregate there — never on
+                      the customer the merchant is actually replying to. */}
+                  <BrainCard brain={profile?.brain ?? null} />
                   <div className="grid grid-cols-2 gap-2">
                     <ScoreCard icon={<Target className="h-4 w-4" />} label="نية الشراء" value={intel!.purchaseIntent} tone="brand" />
                     <ScoreCard icon={<TrendingUp className="h-4 w-4" />} label="فرصة التحويل" value={intel!.conversionScore} tone="emerald" />
@@ -888,6 +905,55 @@ function ScoreCard({
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
         <div className={`h-full rounded-full ${TONE_BAR[tone]}`} style={{ width: `${v}%` }} />
+      </div>
+    </div>
+  );
+}
+
+const BRAIN_INSIGHT_AR: Record<string, string> = {
+  BUYING_SIGNAL: "نية شراء",
+  DISCOUNT_REQUEST: "طلب خصم",
+  COMPLAINT: "شكوى",
+  PRICE_QUESTION: "سؤال عن السعر",
+  SHIPPING_QUESTION: "سؤال عن الشحن",
+  URGENCY: "استعجال",
+};
+
+const BRAIN_STAGE_AR: Record<string, string> = {
+  new: "عميل جديد",
+  engaged: "متفاعل",
+  negotiating: "يتفاوض",
+  buyer: "اشترى",
+  dormant: "خامل",
+};
+
+/**
+ * Renders nothing when Brain has not analysed this customer — an empty card
+ * would imply the feature is broken rather than simply not run yet.
+ */
+function BrainCard({ brain }: { brain: Profile["brain"] }) {
+  if (!brain) return null;
+  const chips = [
+    brain.stage ? BRAIN_STAGE_AR[brain.stage] || brain.stage : null,
+    brain.industry,
+    brain.dialect ? `لهجة: ${brain.dialect}` : null,
+  ].filter(Boolean) as string[];
+  if (chips.length === 0 && brain.insights.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-slate-300">
+        <Brain className="h-3.5 w-3.5 text-brand-300" /> قراءة الدماغ
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {chips.map((t) => (
+          <span key={t} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-slate-300">{t}</span>
+        ))}
+        {brain.insights.map((t) => (
+          <span key={t} className="rounded-full border border-brand-500/30 bg-brand-500/10 px-2 py-0.5 text-[10px] text-brand-200">
+            {BRAIN_INSIGHT_AR[t] || t}
+          </span>
+        ))}
       </div>
     </div>
   );

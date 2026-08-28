@@ -50,6 +50,39 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
   if (!c) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+  // ---- Brain (KEYONE Brain) ----
+  // Brain builds a per-customer profile — dialect, industry, stage, eligibility
+  // and insight types — but until now it surfaced ONLY as an aggregate table on
+  // /dashboard/brain. The merchant never saw it where they actually use it:
+  // this customer's own profile, while replying to them. Read-only, scoped by
+  // the same customer id this route already resolved under `userId`, and
+  // fail-soft so a Brain hiccup can never blank the profile.
+  let brain: {
+    industry: string | null; dialect: string | null; stage: string | null;
+    insights: string[]; updatedAt: string | null;
+  } | null = null;
+  try {
+    const bp: any = await (prisma as any).brainProfile.findFirst({
+      where: { customerId: c.id, userId: uid },
+    });
+    if (bp) {
+      const ins: any[] = await (prisma as any).brainInsight.findMany({
+        where: { customerId: c.id, userId: uid },
+        select: { type: true },
+        take: 6,
+      });
+      brain = {
+        industry: bp.industry ?? null,
+        dialect: bp.dialect ?? null,
+        stage: bp.stage ?? null,
+        insights: [...new Set(ins.map((i) => String(i.type)).filter(Boolean))],
+        updatedAt: bp.updatedAt ? new Date(bp.updatedAt).toISOString() : null,
+      };
+    }
+  } catch {
+    brain = null;
+  }
+
   // Order facts come from the Order table directly — the denormalized
   // customer.orderCount / totalOrderValue counters are not maintained on the
   // write path, so trusting them would show "0 orders" for real buyers. One
@@ -183,6 +216,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
 
   return NextResponse.json({
+    brain,
     customer: {
       id: c.id,
       name: c.name,
