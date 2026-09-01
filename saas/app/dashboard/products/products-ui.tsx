@@ -159,7 +159,7 @@ export default function ProductsUi() {
             className="input h-9 w-48 px-3 text-sm"
             dir="rtl"
           />
-          <button onClick={() => setEditing({ ...EMPTY })} className="ai-btn ai-btn-primary px-4 py-2 text-sm">
+          <button onClick={() => setEditing({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
             <Plus className="h-4 w-4" /> منتج جديد
           </button>
         </div>
@@ -225,7 +225,7 @@ export default function ProductsUi() {
                 </div>
                 {p.description && <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">{p.description}</p>}
                 <div className="mt-3 flex items-center gap-1.5">
-                  <button onClick={() => setEditing(p)} className="ai-btn ai-btn-ghost flex-1 px-2 py-1.5 text-xs">
+                  <button onClick={() => setEditing(p)} className="btn-ghost flex-1 px-2 py-1.5 text-xs">
                     <Pencil className="h-3.5 w-3.5" /> تعديل
                   </button>
                   <button
@@ -299,7 +299,7 @@ export default function ProductsUi() {
               <Field label="رابط المنتج" icon={<LinkIcon className="h-3.5 w-3.5" />}>
                 <input value={editing.productLink || ""} onChange={(e) => setEditing({ ...editing, productLink: e.target.value })} dir="ltr" className="input px-3 py-2 text-sm" placeholder="https://..." />
               </Field>
-              <button onClick={save} disabled={saving || !editing.name?.trim()} className="ai-btn ai-btn-primary w-full px-4 py-2.5 text-sm">
+              <button onClick={save} disabled={saving || !editing.name?.trim()} className="btn-primary w-full px-4 py-2.5 text-sm">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 {editing.id ? "حفظ التعديلات" : "إضافة المنتج"}
               </button>

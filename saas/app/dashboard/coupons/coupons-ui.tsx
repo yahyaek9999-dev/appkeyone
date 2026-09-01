@@ -220,7 +220,7 @@ export default function CouponsUi() {
                   استخدام مرة واحدة لكل عميل
                 </label>
               </div>
-              <button onClick={save} disabled={saving || !creating.code?.trim()} className="ai-btn ai-btn-primary w-full px-4 py-2.5 text-sm">
+              <button onClick={save} disabled={saving || !creating.code?.trim()} className="btn-primary w-full px-4 py-2.5 text-sm">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 إنشاء الكوبون
               </button>

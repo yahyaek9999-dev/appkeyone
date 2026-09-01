@@ -266,7 +266,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
         <button
           onClick={back}
           disabled={step === 0 || submitting}
-          className="ai-btn ai-btn-ghost px-4 py-2 text-sm text-slate-300 disabled:opacity-30"
+          className="btn-ghost px-4 py-2 text-sm text-slate-300 disabled:opacity-30"
         >
           <ArrowRight className="w-4 h-4" />
           السابق
@@ -275,7 +275,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
           <button
             onClick={next}
             disabled={!canAdvance}
-            className="ai-btn ai-btn-primary px-5 py-2.5 text-sm disabled:opacity-40"
+            className="btn-primary px-5 py-2.5 text-sm disabled:opacity-40"
           >
             التالي
             <ArrowLeft className="w-4 h-4" />
@@ -284,7 +284,7 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
           <button
             onClick={submit}
             disabled={submitting || !!result}
-            className="ai-btn ai-btn-primary px-5 py-2.5 text-sm disabled:opacity-40"
+            className="btn-primary px-5 py-2.5 text-sm disabled:opacity-40"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
             {submitting ? "جاري الإعداد…" : result ? "تم" : "تفعيل البوت"}

@@ -105,7 +105,7 @@ export default function ImportUi() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => fileRef.current?.click()}
-            className="ai-btn ai-btn-ghost px-3 py-2 text-xs"
+            className="btn-ghost px-3 py-2 text-xs"
           >
             <Upload className="h-3.5 w-3.5" /> رفع ملف CSV
           </button>
@@ -163,7 +163,7 @@ export default function ImportUi() {
           <button
             onClick={submit}
             disabled={submitting || !preview.rows.length}
-            className="ai-btn ai-btn-primary w-full px-4 py-2.5 text-sm disabled:opacity-50"
+            className="btn-primary w-full px-4 py-2.5 text-sm disabled:opacity-50"
           >
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

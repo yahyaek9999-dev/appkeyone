@@ -588,7 +588,7 @@ export default function Customer360({
                         }
                       }}
                       disabled={!!busy || !tagDraft.trim()}
-                      className="ai-btn ai-btn-ghost shrink-0 px-3 py-2 text-xs"
+                      className="btn-ghost shrink-0 px-3 py-2 text-xs"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
@@ -607,7 +607,7 @@ export default function Customer360({
                   <button
                     onClick={() => crm("set_note", { notes: noteDraft })}
                     disabled={busy === "set_note"}
-                    className="ai-btn ai-btn-ghost w-full px-3 py-2 text-xs"
+                    className="btn-ghost w-full px-3 py-2 text-xs"
                   >
                     {busy === "set_note" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <StickyNote className="h-3.5 w-3.5" />}
                     حفظ الملاحظات
@@ -668,7 +668,7 @@ export default function Customer360({
                     <button
                       onClick={() => crm("assign", { assignedAdmin: assignDraft })}
                       disabled={busy === "assign"}
-                      className="ai-btn ai-btn-ghost shrink-0 px-3 py-2 text-xs"
+                      className="btn-ghost shrink-0 px-3 py-2 text-xs"
                     >
                       <UserCog className="h-3.5 w-3.5" /> إسناد
                     </button>
@@ -689,7 +689,7 @@ export default function Customer360({
                     <button
                       onClick={sendFollowUp}
                       disabled={busy === "follow_up" || !followUpText.trim()}
-                      className="ai-btn ai-btn-primary mt-2 w-full px-3 py-2 text-xs"
+                      className="btn-primary mt-2 w-full px-3 py-2 text-xs"
                     >
                       {busy === "follow_up" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                       إرسال المتابعة
@@ -698,7 +698,7 @@ export default function Customer360({
 
                   {/* manual order */}
                   {!showOrderForm ? (
-                    <button onClick={() => setShowOrderForm(true)} className="ai-btn ai-btn-ghost w-full px-3 py-2 text-xs">
+                    <button onClick={() => setShowOrderForm(true)} className="btn-ghost w-full px-3 py-2 text-xs">
                       <PackagePlus className="h-3.5 w-3.5" /> إنشاء طلب يدوي
                     </button>
                   ) : (
@@ -778,12 +778,12 @@ export default function Customer360({
                         <button
                           onClick={submitManualOrder}
                           disabled={busy === "manual_order"}
-                          className="ai-btn ai-btn-primary flex-1 px-3 py-2 text-xs"
+                          className="btn-primary flex-1 px-3 py-2 text-xs"
                         >
                           {busy === "manual_order" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackagePlus className="h-3.5 w-3.5" />}
                           حفظ الطلب
                         </button>
-                        <button onClick={() => setShowOrderForm(false)} className="ai-btn ai-btn-ghost px-3 py-2 text-xs">
+                        <button onClick={() => setShowOrderForm(false)} className="btn-ghost px-3 py-2 text-xs">
                           إلغاء
                         </button>
                       </div>

@@ -43,7 +43,7 @@ export default function ActivationGuard({ activated }: { activated: boolean }) {
         <p className="mb-5 text-sm leading-relaxed text-slate-400">
           هذه الأداة متاحة بعد تفعيل باقتك. اختر باقتك وأكمل الدفع لفتح كل أدوات KEYONE.
         </p>
-        <Link href="/dashboard/billing" className="ai-btn ai-btn-primary inline-flex px-5 py-2.5 text-sm">
+        <Link href="/dashboard/billing" className="btn-primary inline-flex px-5 py-2.5 text-sm">
           الذهاب للاشتراك والدفع
         </Link>
       </div>

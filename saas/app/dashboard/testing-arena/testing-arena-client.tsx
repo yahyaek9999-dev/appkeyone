@@ -42,7 +42,7 @@ export default function TestingArenaClient() {
         <div className="text-sm text-slate-400">
           يشغّل الفحص ٥ سيناريوهات حقيقية عبر نظام الردود التلقائية، ويراجع جاهزية الإعداد.
         </div>
-        <button onClick={run} disabled={busy} className="ai-btn ai-btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50">
+        <button onClick={run} disabled={busy} className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
           {busy ? "جارٍ الفحص…" : "تشغيل الفحص"}
         </button>

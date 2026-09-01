@@ -142,7 +142,7 @@ export default function SegmentsUi() {
                 <button
                   onClick={() => toggleOpen(s.key)}
                   disabled={s.count === 0}
-                  className="ai-btn ai-btn-ghost flex-1 px-3 py-2 text-xs disabled:opacity-40"
+                  className="btn-ghost flex-1 px-3 py-2 text-xs disabled:opacity-40"
                 >
                   <ChevronDown className={`h-3.5 w-3.5 transition ${openKey === s.key ? "rotate-180" : ""}`} />
                   عرض
@@ -150,7 +150,7 @@ export default function SegmentsUi() {
                 <button
                   onClick={() => setComposeKey(s.key)}
                   disabled={s.count === 0}
-                  className="ai-btn ai-btn-primary flex-1 px-3 py-2 text-xs disabled:opacity-40"
+                  className="btn-primary flex-1 px-3 py-2 text-xs disabled:opacity-40"
                 >
                   <Megaphone className="h-3.5 w-3.5" /> إرسال
                 </button>
@@ -268,7 +268,7 @@ function SegmentBroadcastModal({ segment, onClose }: { segment: Segment | null; 
               className="input min-h-[110px] w-full resize-none p-3 text-sm"
             />
             {err && <div className="mt-2 text-xs text-rose-300">{err}</div>}
-            <button onClick={submit} disabled={sending || !text.trim()} className="ai-btn ai-btn-primary mt-3 w-full px-4 py-2.5 text-sm">
+            <button onClick={submit} disabled={sending || !text.trim()} className="btn-primary mt-3 w-full px-4 py-2.5 text-sm">
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               إنشاء الحملة
             </button>

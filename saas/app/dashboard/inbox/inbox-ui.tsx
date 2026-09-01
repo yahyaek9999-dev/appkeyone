@@ -698,7 +698,7 @@ export default function InboxUi({
                   <button
                     onClick={send}
                     disabled={sending || !reply.trim()}
-                    className="ai-btn ai-btn-primary min-h-[44px] flex-1 px-4 py-3 text-sm sm:flex-none md:min-h-0 md:py-2"
+                    className="btn-primary min-h-[44px] flex-1 px-4 py-3 text-sm sm:flex-none md:min-h-0 md:py-2"
                   >
                     {sending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -711,7 +711,7 @@ export default function InboxUi({
                     onClick={loadSuggestions}
                     disabled={suggesting}
                     title="اقترح ردوداً جاهزة"
-                    className="ai-btn ai-btn-ghost min-h-[44px] flex-1 border-brand-500/30 px-4 py-2 text-xs text-brand-200 disabled:opacity-50 sm:flex-none"
+                    className="btn-ghost min-h-[44px] flex-1 border-brand-500/30 px-4 py-2 text-xs text-brand-200 disabled:opacity-50 sm:flex-none"
                   >
                     {suggesting ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -749,7 +749,7 @@ export default function InboxUi({
 
           <button
             onClick={() => setProfileOpen(true)}
-            className="ai-btn ai-btn-ghost w-full justify-center border-brand-500/30 px-3 py-2 text-xs text-brand-200"
+            className="btn-ghost w-full justify-center border-brand-500/30 px-3 py-2 text-xs text-brand-200"
           >
             <IdCard className="w-3.5 h-3.5" /> الملف الكامل 360
           </button>
@@ -797,7 +797,7 @@ export default function InboxUi({
             <button
               onClick={saveNotes}
               disabled={savingNotes}
-              className="ai-btn ai-btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
+              className="btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
             >
               {savingNotes ? "جاري الحفظ..." : "حفظ"}
             </button>
@@ -815,7 +815,7 @@ export default function InboxUi({
                 placeholder="اسم الموظف..."
                 className="input flex-1 rounded-2xl px-3 py-1.5 text-xs"
               />
-              <button onClick={assignAdmin} disabled={assignSaving} className="ai-btn ai-btn-ghost shrink-0 px-3 py-1.5 text-xs">
+              <button onClick={assignAdmin} disabled={assignSaving} className="btn-ghost shrink-0 px-3 py-1.5 text-xs">
                 {assignSaving ? "..." : "إسناد"}
               </button>
             </div>
@@ -848,7 +848,7 @@ export default function InboxUi({
             <button
               onClick={addInternalNote}
               disabled={postingNote || !noteThreadDraft.trim()}
-              className="ai-btn ai-btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
+              className="btn-ghost mt-2 w-full px-3 py-1.5 text-xs"
             >
               {postingNote ? "..." : "إضافة ملاحظة"}
             </button>
