@@ -40,8 +40,9 @@ export default function LoginPage() {
 
         <form onSubmit={onSubmit} className="space-y-5">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">البريد الإلكتروني</label>
+            <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-slate-300">البريد الإلكتروني</label>
             <input
+              id="login-email"
               name="email"
               type="email"
               required
@@ -54,12 +55,13 @@ export default function LoginPage() {
 
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-sm font-medium text-slate-300">كلمة المرور</label>
+              <label htmlFor="login-password" className="text-sm font-medium text-slate-300">كلمة المرور</label>
               <Link href="/forgot-password" className="text-xs font-medium text-brand-400 hover:text-brand-300 transition-colors">
                 نسيت كلمة المرور؟
               </Link>
             </div>
             <input
+              id="login-password"
               name="password"
               type="password"
               required
