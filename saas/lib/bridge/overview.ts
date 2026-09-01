@@ -166,7 +166,7 @@ async function latestVersionFromKeyone(): Promise<string | null> {
   if (verCache && Date.now() - verCache.at < 10 * 60_000) {
     return verCache.tag;
   }
-  const origin = process.env.NEXT_PUBLIC_BASE_URL || "https://w.keyone1.com";
+  const origin = process.env.NEXT_PUBLIC_BASE_URL || "https://wkeyone.app";
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 3000);

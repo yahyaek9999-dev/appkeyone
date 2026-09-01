@@ -14,7 +14,7 @@ if errorlevel 1 (
   echo.
   echo ============================================================
   echo  Installation FAILED - read the error message above.
-  echo  Need help? https://w.keyone1.com/dashboard/settings/bridge
+  echo  Need help? https://wkeyone.app/dashboard/settings/bridge
   echo ============================================================
 ) else (
   echo.

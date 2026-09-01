@@ -103,7 +103,7 @@ fi
 # token is still valid and the daemon reconnects automatically.
 CFG_FILE="$BRIDGE_HOME/config.json"
 if [ ! -f "$CFG_FILE" ] || ! python3 -c "import json,sys; d=json.load(open('$CFG_FILE')); exit(0 if d.get('token') and d.get('bridgeId') else 1)" 2>/dev/null; then
-  CLOUD_API="https://w.keyone1.com"
+  CLOUD_API="https://wkeyone.app"
   TMPLOG=$(mktemp /tmp/keyone-bridge-login.XXXXXX)
   # Run login as the user (inherits KEYONE_BRIDGE_HOME). Detach from postinstall
   # so the process survives after the installer exits.

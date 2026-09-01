@@ -129,7 +129,7 @@ if "%KEYONE_BRIDGE_HOME%"=="" set "KEYONE_BRIDGE_HOME=$HomeDir"
     } catch {}
   }
   if (-not $alreadyLinked) {
-    $CloudApi = "https://w.keyone1.com"
+    $CloudApi = "https://wkeyone.app"
     $TmpLog = Join-Path $env:TEMP "keyone-bridge-login-$([guid]::NewGuid().ToString('N')).log"
     try {
       Start-Process -FilePath $runCmd -ArgumentList "login" -WindowStyle Hidden `

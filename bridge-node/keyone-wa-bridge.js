@@ -55,8 +55,8 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
   }
 })();
 
-const CLOUD_API = process.env.KEYONE_CLOUD_API || "https://w.keyone1.com";
-const CLOUD_WS = process.env.KEYONE_CLOUD_WS || "wss://w.keyone1.com/bridge";
+const CLOUD_API = process.env.KEYONE_CLOUD_API || "https://wkeyone.app";
+const CLOUD_WS = process.env.KEYONE_CLOUD_WS || "wss://wkeyone.app/bridge";
 const HOME = process.env.KEYONE_BRIDGE_HOME || path.join(os.homedir(), ".keyone-wa-bridge");
 // WhatsApp engine: use the puppeteer-MATCHED Chromium (the exact build the
 // production Recovery/Import client pairs with). Proven root cause (2026-07-07):

@@ -26,7 +26,7 @@ func DownloadBase() string {
 	if b := os.Getenv("KEYONE_BRIDGE_DOWNLOAD_BASE"); b != "" {
 		return strings.TrimRight(b, "/")
 	}
-	return "https://w.keyone1.com/downloads/keyone-bridge"
+	return "https://wkeyone.app/downloads/keyone-bridge"
 }
 
 // PlatformAsset is one platform's downloadable in version.json.

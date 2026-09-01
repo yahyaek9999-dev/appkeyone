@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const DOWNLOAD_BASE = "/downloads/keyone-bridge";
 
 async function currentVersion(): Promise<string | null> {
-  const origin = process.env.NEXT_PUBLIC_BASE_URL || "https://w.keyone1.com";
+  const origin = process.env.NEXT_PUBLIC_BASE_URL || "https://wkeyone.app";
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 3000);

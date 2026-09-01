@@ -10,7 +10,7 @@ type OS = "windows" | "mac" | "linux" | "docker";
 
 export function DownloadCards({ base }: { base: string }) {
   const [detected, setDetected] = useState<OS>("linux");
-  const [origin, setOrigin] = useState("https://w.keyone1.com");
+  const [origin, setOrigin] = useState("https://wkeyone.app");
 
   useEffect(() => {
     setOrigin(window.location.origin);

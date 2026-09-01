@@ -31,7 +31,7 @@ set -euo pipefail
 COMMIT="${1:-HEAD}"
 SSH_KEY="${KEYONE_SSH_KEY:-$HOME/Downloads/1.pem}"
 HOST="${KEYONE_HOST:-ubuntu@16.171.230.84}"
-URL="${KEYONE_URL:-https://w.keyone1.com}"
+URL="${KEYONE_URL:-https://wkeyone.app}"
 SSH=(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=25)
 
 command -v rsync >/dev/null || { echo "rsync required"; exit 1; }

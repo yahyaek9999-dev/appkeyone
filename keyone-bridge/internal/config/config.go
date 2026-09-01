@@ -30,8 +30,8 @@ type Config struct {
 // Default returns a config with sane defaults for a fresh install.
 func Default() *Config {
 	return &Config{
-		CloudAPIBase: "https://w.keyone1.com",
-		CloudWSURL:   "wss://w.keyone1.com/bridge",
+		CloudAPIBase: "https://wkeyone.app",
+		CloudWSURL:   "wss://wkeyone.app/bridge",
 		Providers:    []string{"whatsapp"},
 	}
 }

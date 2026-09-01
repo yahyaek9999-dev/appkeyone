@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SmoothScroll from "@/components/smooth-scroll";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://w.keyone1.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://wkeyone.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

@@ -78,7 +78,7 @@ export default async function MetaCloudPage() {
           <p>3. أنشئ رمز وصول دائم (System User Token) من لوحة Meta وألصقه في خانة <b>رمز الوصول</b>.</p>
           <p>4. انسخ <b>سر التطبيق</b> من إعدادات Meta وألصقه — ضروري لتأمين الاتصال.</p>
           <p>5. اكتب كلمة مرور سرية في خانة <b>رمز التحقق</b> واستخدم نفس الكلمة عند إعداد الـ Webhook في Meta.</p>
-          <p>6. عيّن رابط الـ Webhook في Meta على الرابط التالي: <span className="font-mono text-brand-300 text-xs">https://app.keyone1.com/api/whatsapp/meta-webhook</span></p>
+          <p>6. عيّن رابط الـ Webhook في Meta على الرابط التالي: <span className="font-mono text-brand-300 text-xs">https://wkeyone.app/api/whatsapp/meta-webhook</span></p>
           <p className="text-slate-400 pt-2 border-t border-white/10">🔒 جميع المفاتيح والرموز محفوظة بتشفير كامل ولا تُعرض مجدداً بعد الحفظ.</p>
         </div>
       )}

@@ -55,7 +55,7 @@ export async function callOpenRouter(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${opts.apiKey}`,
-        "HTTP-Referer": process.env.PUBLIC_BASE_URL || "https://app.keyone1.com",
+        "HTTP-Referer": process.env.PUBLIC_BASE_URL || "https://wkeyone.app",
         "X-Title": "KEYONE",
       },
       body: JSON.stringify({
