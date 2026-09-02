@@ -11,6 +11,7 @@ import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/patterns/page-header";
 
 type Product = {
   id: string;
@@ -142,27 +143,32 @@ export default function ProductsUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
-        <div>
-          <h1 className="page-title">كتالوج المنتجات</h1>
-          <p className="page-desc mt-1">
-            {items.length} منتج
-            {lowStock > 0 && <span className="text-amber-300"> · {lowStock} مخزون منخفض</span>}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="بحث في المنتجات..."
-            className="input h-9 w-48 px-3 text-sm"
-            dir="rtl"
-          />
-          <button onClick={() => setEditing({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
-            <Plus className="h-4 w-4" /> منتج جديد
-          </button>
-        </div>
+      <div className="border-b border-white/[0.05] pb-5">
+        <PageHeader
+          title="كتالوج المنتجات"
+          description={
+            <>
+              {items.length} منتج
+              {lowStock > 0 && <span className="text-amber-300"> · {lowStock} مخزون منخفض</span>}
+            </>
+          }
+          actions={
+            <div className="flex items-center gap-2">
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="بحث في المنتجات..."
+                className="input h-9 w-48 px-3 text-sm"
+                dir="rtl"
+              />
+              <button onClick={() => setEditing({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
+                <Plus className="h-4 w-4" /> منتج جديد
+              </button>
+            </div>
+          }
+          className="flex-wrap"
+        />
       </div>
 
       {loading && items.length === 0 ? (

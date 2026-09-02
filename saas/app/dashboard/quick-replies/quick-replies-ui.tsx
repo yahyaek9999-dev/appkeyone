@@ -6,6 +6,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/patterns/page-header";
 
 type QR = {
   id: string;
@@ -90,8 +91,10 @@ export default function QuickRepliesUi() {
   return (
     <div className="space-y-6">
       <div className="border-b border-white/[0.05] pb-5">
-        <h1 className="page-title">الردود السريعة</h1>
-        <p className="page-desc mt-1">الكلمات المفتاحية تُشغّل ردوداً جاهزة — أسرع للعميل وأوفر لك.</p>
+        <PageHeader
+          title="الردود السريعة"
+          description="الكلمات المفتاحية تُشغّل ردوداً جاهزة — أسرع للعميل وأوفر لك."
+        />
       </div>
 
       {/* Add new */}

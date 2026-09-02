@@ -15,6 +15,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
 import { LimelightTabs } from "@/components/ui/limelight-tabs";
+import { PageHeader } from "@/components/patterns/page-header";
 
 function toOrderStatus(s: string): OrderStatus {
   if (s === "canceled") return "cancelled";
@@ -92,10 +93,10 @@ export default async function OrdersPage({
     <div className="space-y-5">
       {/* Header */}
       <div className="border-b border-white/[0.05] pb-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="page-title">الطلبات</h1>
-            <div className="mt-2 flex items-center gap-3 text-[12px]">
+        <PageHeader
+          title="الطلبات"
+          description={
+            <span className="flex items-center gap-3 text-[12px]">
               <span className="text-slate-400">{totalOrders.toLocaleString()} إجمالي</span>
               <span className="text-white/20">·</span>
               <span className="text-emerald-400">{(revenue / 100).toLocaleString()} ج مؤكد</span>
@@ -108,17 +109,20 @@ export default async function OrdersPage({
                   </span>
                 </>
               )}
-            </div>
-          </div>
-          <a
-            href="/api/export?type=orders&format=csv"
-            download
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
-          >
-            <Download className="h-3.5 w-3.5" />
-            تصدير CSV
-          </a>
-        </div>
+            </span>
+          }
+          actions={
+            <a
+              href="/api/export?type=orders&format=csv"
+              download
+              className="btn-ghost h-9 text-[13px] inline-flex items-center gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" />
+              تصدير CSV
+            </a>
+          }
+          className="flex-wrap"
+        />
       </div>
 
       {/* Status filter — limelight sliding indicator */}

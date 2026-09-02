@@ -6,6 +6,7 @@ import { timeAgo } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCustomerPhone } from "@/lib/phone";
+import { PageHeader } from "@/components/patterns/page-header";
 
 const PAGE_SIZE = 30;
 
@@ -50,36 +51,42 @@ export default async function CustomersPage({
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.05] pb-5">
-        <div>
-          <h1 className="page-title">العملاء</h1>
-          <div className="mt-2 flex items-center gap-3 text-[12px]">
-            <span className="text-slate-400">{total.toLocaleString("ar-EG")} إجمالي</span>
-            <span className="text-white/20">·</span>
-            <span className="text-emerald-400">{active7d.toLocaleString("ar-EG")} نشط هذا الأسبوع</span>
-            {q && <span className="text-slate-500">· نتائج "{q}"</span>}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <form action="/dashboard/customers" method="get" className="flex items-center gap-2">
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="بحث بالاسم أو الهاتف…"
-              className="h-9 w-44 rounded-lg border border-white/10 bg-white/5 px-3 text-[13px] text-white placeholder-slate-500 outline-none focus:border-brand-400/60"
-            />
-            <button type="submit" className="btn-ghost h-9 text-[13px]">بحث</button>
-          </form>
-          <a href="/api/export?type=customers&format=csv" download className="btn-ghost h-9 text-[13px] inline-flex items-center gap-1">
-            <Download className="h-3.5 w-3.5" />
-            تصدير CSV
-          </a>
-          <Link href="/dashboard/customers/import" className="btn-ghost h-9 text-[13px]">استيراد</Link>
-          <Link href="/dashboard/inbox" className="btn-ghost h-9 text-[13px]">
-            <MessageSquare className="h-4 w-4" />
-            صندوق المحادثات
-          </Link>
-        </div>
+      <div className="border-b border-white/[0.05] pb-5">
+        <PageHeader
+          title="العملاء"
+          description={
+            <span className="flex items-center gap-3 text-[12px]">
+              <span className="text-slate-400">{total.toLocaleString("ar-EG")} إجمالي</span>
+              <span className="text-white/20">·</span>
+              <span className="text-emerald-400">{active7d.toLocaleString("ar-EG")} نشط هذا الأسبوع</span>
+              {q && <span className="text-slate-500">· نتائج "{q}"</span>}
+            </span>
+          }
+          actions={
+            <>
+              <form action="/dashboard/customers" method="get" className="flex items-center gap-2">
+                <input
+                  name="q"
+                  defaultValue={q}
+                  placeholder="بحث بالاسم أو الهاتف…"
+                  className="input h-9 w-44 px-3 text-[13px]"
+                />
+                <button type="submit" className="btn-ghost h-9 text-[13px]">بحث</button>
+              </form>
+              <a href="/api/export?type=customers&format=csv" download className="btn-ghost h-9 text-[13px] inline-flex items-center gap-1">
+                <Download className="h-3.5 w-3.5" />
+                تصدير CSV
+              </a>
+              <Link href="/dashboard/customers/import" className="btn-ghost h-9 text-[13px]">استيراد</Link>
+              <Link href="/dashboard/inbox" className="btn-ghost h-9 text-[13px]">
+                <MessageSquare className="h-4 w-4" />
+                صندوق المحادثات
+              </Link>
+            </>
+          }
+          className="flex-wrap"
+          actionsClassName="w-full flex-wrap sm:w-auto"
+        />
       </div>
 
       {customers.length === 0 ? (
