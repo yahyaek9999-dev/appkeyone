@@ -42,6 +42,7 @@ import UpgradeModal, { type UpgradeVariant } from "@/components/billing/UpgradeM
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/patterns/page-header";
 
 type Bc = {
   id: string;
@@ -481,28 +482,31 @@ export default function BroadcastsUi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
-        <div>
-          <h1 className="page-title">حملات البث</h1>
-          <p className="page-desc mt-1">استهدف شريحة من عملائك وجدول الإرسال — كله يُرسل تدريجياً عبر نظام الحماية.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <LiveBadge
-            state={liveState}
-            label={
-              (snapshot?.totals.broadcastsActive || 0) > 0
-                ? `${snapshot?.totals.broadcastsActive} حملات نشطة`
-                : undefined
-            }
-          />
-          <button
-            onClick={() => setCreating(true)}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            <Megaphone className="w-4 h-4" />
-            حملة جديدة
-          </button>
-        </div>
+      <div className="border-b border-white/[0.05] pb-5">
+        <PageHeader
+          title="حملات البث"
+          description="استهدف شريحة من عملائك وجدول الإرسال — كله يُرسل تدريجياً عبر نظام الحماية."
+          actions={
+            <>
+              <LiveBadge
+                state={liveState}
+                label={
+                  (snapshot?.totals.broadcastsActive || 0) > 0
+                    ? `${snapshot?.totals.broadcastsActive} حملات نشطة`
+                    : undefined
+                }
+              />
+              <button
+                onClick={() => setCreating(true)}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Megaphone className="w-4 h-4" />
+                حملة جديدة
+              </button>
+            </>
+          }
+          className="flex-wrap"
+        />
       </div>
 
       {/* List */}
