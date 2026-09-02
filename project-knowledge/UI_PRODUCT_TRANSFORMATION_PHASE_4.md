@@ -108,4 +108,68 @@ Everything in `UI_DESIGN_SYSTEM_IMPLEMENTATION.md` §F still applies, minus the 
 
 ---
 
+## 9. Phase 4B — Dashboard shell, navigation, home experience
+
+**Method:** browser-first inspection of the authenticated shell/nav/home at desktop (1440×900), tablet (768×1024), and mobile (375×812), on the same test tenant, before writing any code. `read_page` (accessibility tree) and `getBoundingClientRect()` DOM checks were used alongside screenshots — two of the three defects below were only visible that way, not in a screenshot.
+
+**Assessment, re-confirmed:** having now inspected the rail+panel nav, the greeting header, the attention queue, the activation checklist, and the metric band directly in the running app (not just the source), §0's conclusion stands — this is a deliberate, coherent "Business OS" composition, not a template. No structural change was made to the shell or navigation. The concrete, verified defects found this pass were all small and mechanical, not structural:
+
+| # | Defect | How found | Fix |
+|---|---|---|---|
+| 1 | `ActivationChecklist`/`GettingStarted` dismiss (✕) buttons used `title` only, no accessible name | Same pattern as Phase 3; grepped `title="` across dashboard-home components | `aria-label` on both |
+| 2 | "فرص نشطة" (opportunity signals) was a styled `<span>`, not a heading; that section and "أداء النشاط" had no `aria-labelledby` | `read_page` accessibility-tree dump of dashboard home showed headings floating without landmark association | `<h2>` + `aria-labelledby` wiring, matching the attention-queue pattern from Phase 3 |
+| 3 | Unlimited-plan tenants (`monthlyMsgs === 0`, the codebase's own documented convention) saw "٠ / ٠ رسالة" — reads as a broken zero-message quota, not "unlimited" | Read the code, recognized the convention comment in `prisma/seed-admin-plan.ts`, confirmed the literal render on the live Enterprise test tenant via `get_page_text` | Render "غير محدودة" / "رسائل غير محدودة" pill instead of a 0/0 fraction and a 0%-width bar, on both Dashboard home and Settings |
+| 4 | HelpDrawer's floating trigger (`fixed bottom-5 left-5`, every dashboard page) fully covered the last row of content on pages whose content ends near the viewport bottom | `getBoundingClientRect()` overlap check at 375px on the dashboard-home usage footer — confirmed `overlapping: true`, the "التفاصيل" link was un-clickable | `.pb-safe` (single call site, `app/dashboard/layout.tsx`) increased from `max(1rem, safe-area-inset)` to `max(6rem, safe-area-inset + 5rem)` |
+
+Defects 3 and 4 are genuine "fix broken functionality" items (CLAUDE.md priority 1), not cosmetic polish — a real customer on an unlimited plan was seeing a number that reads as broken, and a real link was genuinely unclickable behind a floating button on mobile.
+
+**What was deliberately not done:** no rail/panel restructuring, no new color system, no new spacing scale, no icon replacement, no motion added. The brief's own rule — "if the current structure is already strong: PRESERVE STRUCTURE and improve only the weak visual areas" — was followed literally: the weak areas found were four specific, fixable defects, not the structure itself.
+
+### CHANGED
+- `app/dashboard/_activation-checklist.tsx`, `app/dashboard/_getting-started.tsx` — dismiss button `aria-label`
+- `app/dashboard/page.tsx` — 2 landmark labels + unlimited-plan footer rendering
+- `app/dashboard/settings/page.tsx` — unlimited-plan usage-meter rendering
+- `app/globals.css` — `.pb-safe` clearance fix
+
+### BROWSER VERIFIED
+All four fixes re-checked live post-fix: `aria-label` present via `querySelector`, `aria-labelledby` resolves to the right heading `id`, `get_page_text` shows "غير محدودة"/"رسائل غير محدودة" instead of "٠ / ٠", `getBoundingClientRect()` overlap check flips from `true` to `false`.
+
+### DESKTOP VERIFIED
+Dashboard home and Settings screenshotted at 1440×900 post-fix — zero visual regression on either (the a11y fixes are invisible by design; the unlimited-plan and padding fixes are the only visible changes, both intentional and confirmed correct).
+
+### MOBILE VERIFIED
+375×812: dashboard-home top-of-page (greeting, status, attention, checklist) and bottom-of-page (metric-band tail, recent-work empty states, usage footer) both screenshotted; the previously-covered "التفاصيل" link confirmed clear of the help button by DOM rect.
+
+### 768px (tablet) spot-checked
+Quick Replies at 768×1024 — full sidebar (not the mobile hamburger) renders correctly, PageHeader and skeleton loading states intact, zero console errors, help button has natural clearance (short page).
+
+### RTL VERIFIED
+No RTL-specific regression in any screenshot; `.pb-safe` and `aria-labelledby` are direction-agnostic.
+
+### ACCESSIBILITY VERIFIED
+Items 1–2 above. No accessibility regression introduced by items 3–4 (verified: the new "غير محدودة" pills are plain text, no interactive element lost its accessible name; the padding change affects layout only).
+
+### FEATURE DISCOVERY VERIFIED
+Not applicable this batch — no routes, nav entries, or visibility gates were touched.
+
+### PRESERVED
+Shell structure (rail + contextual panel), navigation architecture (workspace grouping, active/locked states, density toggle), dashboard-home composition (metric band, severity-ordered attention queue, activation checklist, 30-day trend), all gating logic (activation, entitlements, connection-mode, RBAC, feature-control). Locked-nav-item visual state was read and assessed (opacity-50, muted slate + lock icon) but not tested live — this test tenant is on an unlimited/Enterprise-equivalent plan with no locked destinations to observe.
+
+### DEFERRED
+Everything listed in §8 still stands. Additionally, not attempted this batch: a live check of the locked/entitlement-gated nav item's actual rendered contrast and hover state (needs a lower-tier test account, not available this session without provisioning one); a sweep for other pages that might share HelpDrawer's floating-button overlap in ways `.pb-safe`'s single call site doesn't reach (none found — it is genuinely the only call site — but only dashboard-shell pages were spot-checked, not every one of the ~250 files under `app/dashboard`).
+
+### UNKNOWN
+Whether any other page renders a `monthlyMsgs`-style "0 as unlimited" convention through a different code path not caught by the `grep -rln "monthlyMsgs"` sweep (e.g., a value computed and passed down rather than read directly from `plan.monthlyMsgs`).
+
+### REMAINING DEBT
+Unchanged from §8, plus: the locked-nav-item state should get one real visual check on a non-Enterprise test tenant before this shell is called fully verified end-to-end.
+
+### COMMITS
+| Commit | Change |
+|---|---|
+| `353d007` | `fix(a11y): name dismiss buttons and label remaining dashboard-home landmarks` |
+| `4a6169e` | `fix(ui): correct unlimited-plan display and floating-button overlap` |
+
+---
+
 **This phase is not finished, and this document does not claim the design system is complete or that the product is ready for customer reception.**
