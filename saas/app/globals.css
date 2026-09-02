@@ -384,7 +384,12 @@
             radial-gradient(40% 40% at 85% 10%, rgba(201, 162, 75, 0.10), transparent 70%);
     }
 
-    .pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+    /* 6rem clears HelpDrawer's floating trigger (fixed bottom-5, ~2.75rem tall)
+       so the last row of page content is never sat directly underneath it —
+       verified via DOM overlap check at 375px on the dashboard-home usage
+       footer, where env(safe-area-inset-bottom) alone (as little as 1rem on a
+       non-notched device) left the "التفاصيل" link fully covered by the button. */
+    .pb-safe { padding-bottom: max(6rem, calc(env(safe-area-inset-bottom) + 5rem)); }
     .mobile-scroll-x {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;

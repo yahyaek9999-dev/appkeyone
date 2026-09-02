@@ -16,6 +16,9 @@ export default async function SettingsPage() {
   const showTeam = can(ctx.role, "team");
 
   const displayName = ctx.member?.name || user.name || "—";
+  // monthlyMsgs === 0 is the documented "unlimited" convention (see
+  // prisma/seed-admin-plan.ts) — must not be read as a 0-message quota.
+  const isUnlimitedPlan = !!sub && sub.plan.monthlyMsgs === 0;
   const usagePct = sub && sub.plan.monthlyMsgs > 0
     ? Math.min(100, Math.round((sub.msgsUsed / sub.plan.monthlyMsgs) * 100))
     : 0;
@@ -84,20 +87,28 @@ export default async function SettingsPage() {
 
               {/* Usage meter */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-3.5">
-                <div className="mb-2 flex items-center justify-between text-[11px]">
+                <div className={`flex items-center justify-between text-[11px] ${isUnlimitedPlan ? "" : "mb-2"}`}>
                   <span className="flex items-center gap-1.5 font-medium text-slate-400">
                     <CreditCard className="h-3.5 w-3.5" /> الرسائل المستخدمة
                   </span>
-                  <span className="tabular-nums text-slate-400">
-                    {sub.msgsUsed.toLocaleString()} / {sub.plan.monthlyMsgs.toLocaleString()}
-                  </span>
+                  {isUnlimitedPlan ? (
+                    <span className="rounded-full border border-brand-500/20 bg-brand-500/[0.08] px-2 py-0.5 text-[10px] font-medium text-brand-300">
+                      غير محدودة
+                    </span>
+                  ) : (
+                    <span className="tabular-nums text-slate-400">
+                      {sub.msgsUsed.toLocaleString()} / {sub.plan.monthlyMsgs.toLocaleString()}
+                    </span>
+                  )}
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div
-                    className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`}
-                    style={{ width: `${usagePct}%` }}
-                  />
-                </div>
+                {!isUnlimitedPlan && (
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div
+                      className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`}
+                      style={{ width: `${usagePct}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ) : (

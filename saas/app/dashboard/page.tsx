@@ -144,6 +144,9 @@ export default async function DashboardOverview() {
     : null;
 
   const plan = sub.subscription?.plan;
+  // monthlyMsgs === 0 is the documented "unlimited" convention (see
+  // prisma/seed-admin-plan.ts) — must not be read as a 0-message quota.
+  const isUnlimitedPlan = !!plan && plan.monthlyMsgs === 0;
   const usagePct = plan && plan.monthlyMsgs > 0 && sub.subscription
     ? Math.min(100, Math.round((sub.subscription.msgsUsed / plan.monthlyMsgs) * 100))
     : 0;
@@ -588,15 +591,23 @@ export default async function DashboardOverview() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="shrink-0 text-[11px] font-medium text-slate-500">{plan.name}</div>
-              <div className="flex-1 h-1 overflow-hidden rounded-full bg-white/[0.06] max-w-[160px]">
-                <div
-                  className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`}
-                  style={{ width: `${usagePct}%` }}
-                />
-              </div>
-              <span className="shrink-0 text-[10px] tabular-nums text-slate-600">
-                {sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()} رسالة
-              </span>
+              {isUnlimitedPlan ? (
+                <span className="shrink-0 rounded-full border border-brand-500/20 bg-brand-500/[0.08] px-2 py-0.5 text-[10px] font-medium text-brand-300">
+                  رسائل غير محدودة
+                </span>
+              ) : (
+                <>
+                  <div className="flex-1 h-1 overflow-hidden rounded-full bg-white/[0.06] max-w-[160px]">
+                    <div
+                      className={`h-full rounded-full ${usagePct > 90 ? "bg-rose-500" : usagePct > 70 ? "bg-amber-500" : "bg-brand-500"}`}
+                      style={{ width: `${usagePct}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 text-[10px] tabular-nums text-slate-600">
+                    {sub.subscription.msgsUsed.toLocaleString()} / {plan.monthlyMsgs.toLocaleString()} رسالة
+                  </span>
+                </>
+              )}
             </div>
             <div className="shrink-0 flex items-center gap-3 text-[10px] text-slate-600">
               <span>{daysLeft} يوم متبقي</span>
