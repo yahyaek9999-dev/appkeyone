@@ -242,7 +242,7 @@ export default async function DashboardOverview() {
             {/* Business status sentence */}
             <div className="mt-3 flex items-center gap-2">
               <span className={`inline-block h-2 w-2 rounded-full ${statusOk ? "bg-emerald-400" : criticalCount > 0 ? "bg-rose-400" : "bg-amber-400"}`} />
-              <p className="text-[13px] text-slate-400">{statusLabel}
+              <p role="status" aria-live="polite" className="text-[13px] text-slate-400">{statusLabel}
                 {msgs30dToday > 0 && ` · ${msgs30dToday.toLocaleString("ar-EG")} رسالة اليوم`}
                 {modules.orders && (pendingOrderCount as number) > 0 && ` · ${(pendingOrderCount as number)} طلب ينتظر`}
               </p>
@@ -285,10 +285,10 @@ export default async function DashboardOverview() {
 
       {/* ══ ATTENTION QUEUE ══════════════════════════════════════════════════ */}
       {attention.length > 0 && (
-        <section className="py-6 border-b border-white/[0.05]">
+        <section aria-labelledby="attention-queue-heading" className="py-6 border-b border-white/[0.05]">
           <div className="mb-4 flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.10em] text-slate-500">يحتاج انتباهك</h2>
+            <h2 id="attention-queue-heading" className="text-[11px] font-semibold uppercase tracking-[0.10em] text-slate-500">يحتاج انتباهك</h2>
           </div>
           <div className="space-y-2">
             {attention.map((a) => {

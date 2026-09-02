@@ -101,10 +101,11 @@ export default function QuickRepliesUi() {
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">
+            <label htmlFor="qr-add-triggers" className="text-xs text-slate-400 mb-1 block">
               الكلمات المفتاحية (افصل بفاصلة) — مثال: مواعيد,اوقات,بنفتح
             </label>
             <input
+              id="qr-add-triggers"
               value={newTriggers}
               onChange={(e) => setNewTriggers(e.target.value)}
               placeholder="مواعيد,اوقات,ساعات العمل"
@@ -112,8 +113,9 @@ export default function QuickRepliesUi() {
             />
           </div>
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">الرد</label>
+            <label htmlFor="qr-add-reply" className="text-xs text-slate-400 mb-1 block">الرد</label>
             <textarea
+              id="qr-add-reply"
               value={newReply}
               onChange={(e) => setNewReply(e.target.value)}
               rows={3}
@@ -140,6 +142,7 @@ export default function QuickRepliesUi() {
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 type="search"
+                aria-label="بحث في الردود والكلمات المفتاحية"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="بحث في الردود والكلمات المفتاحية..."
@@ -252,7 +255,7 @@ function QuickReplyRow({
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => onUpdate(q.id, { enabled: !q.enabled })}
-              title={q.enabled ? "تعطيل" : "تفعيل"}
+              aria-label={q.enabled ? "تعطيل الرد السريع" : "تفعيل الرد السريع"}
               className={`p-1.5 rounded-md ${q.enabled ? "text-emerald-300 hover:bg-emerald-500/10" : "text-slate-500 hover:bg-white/5"}`}
             >
               {q.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
@@ -265,6 +268,7 @@ function QuickReplyRow({
             </button>
             <button
               onClick={() => onDelete(q.id)}
+              aria-label="حذف الرد السريع"
               className="p-1.5 rounded-md text-rose-300 hover:bg-rose-500/10"
             >
               <Trash2 className="w-4 h-4" />

@@ -766,8 +766,9 @@ export default function BroadcastsUi() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">عنوان (داخلي للمتابعة فقط)</label>
+                <label htmlFor="bc-create-title" className="text-xs text-slate-400 mb-1 block">عنوان (داخلي للمتابعة فقط)</label>
                 <input
+                  id="bc-create-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="مثال: عرض اليوم الوطني"
@@ -776,8 +777,9 @@ export default function BroadcastsUi() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">الجمهور المستهدف</label>
+                <label htmlFor="bc-create-audience" className="text-xs text-slate-400 mb-1 block">الجمهور المستهدف</label>
                 <select
+                  id="bc-create-audience"
                   value={audience}
                   onChange={(e) => setAudience(e.target.value)}
                   className="input"
@@ -808,12 +810,12 @@ export default function BroadcastsUi() {
                 {audience === "date_range" && (
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[11px] text-slate-500 mb-1 block">من</label>
-                      <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="input" />
+                      <label htmlFor="bc-create-date-from" className="text-[11px] text-slate-500 mb-1 block">من</label>
+                      <input id="bc-create-date-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="input" />
                     </div>
                     <div>
-                      <label className="text-[11px] text-slate-500 mb-1 block">إلى</label>
-                      <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="input" />
+                      <label htmlFor="bc-create-date-to" className="text-[11px] text-slate-500 mb-1 block">إلى</label>
+                      <input id="bc-create-date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="input" />
                     </div>
                   </div>
                 )}
@@ -837,8 +839,8 @@ export default function BroadcastsUi() {
                   ))}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                  <input value={genProduct} onChange={(e) => setGenProduct(e.target.value)} placeholder="المنتج/الخدمة (اختياري)" className="input" />
-                  <input value={genOffer} onChange={(e) => setGenOffer(e.target.value)} placeholder="تفاصيل العرض/الخصم (اختياري)" className="input" />
+                  <input aria-label="المنتج أو الخدمة" value={genProduct} onChange={(e) => setGenProduct(e.target.value)} placeholder="المنتج/الخدمة (اختياري)" className="input" />
+                  <input aria-label="تفاصيل العرض أو الخصم" value={genOffer} onChange={(e) => setGenOffer(e.target.value)} placeholder="تفاصيل العرض/الخصم (اختياري)" className="input" />
                 </div>
                 <button
                   onClick={generate}
@@ -851,11 +853,12 @@ export default function BroadcastsUi() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">
+                <label htmlFor="bc-create-template" className="text-xs text-slate-400 mb-1 block">
                   نص الرسالة (يدعم{" "}
                   <code dir="ltr" className="text-gold-300">{"{name}"}</code> لاسم العميل)
                 </label>
                 <textarea
+                  id="bc-create-template"
                   value={template}
                   onChange={(e) => setTemplate(e.target.value)}
                   rows={6}
@@ -871,10 +874,11 @@ export default function BroadcastsUi() {
               {/* A/B — Version B message */}
               {abMode && (
                 <div>
-                  <label className="text-xs text-brand-300 mb-1 block flex items-center gap-1">
+                  <label htmlFor="bc-create-template-b" className="text-xs text-brand-300 mb-1 block flex items-center gap-1">
                     <FlaskConical className="w-3.5 h-3.5" /> النسخة B (نص بديل للمقارنة)
                   </label>
                   <textarea
+                    id="bc-create-template-b"
                     value={templateB}
                     onChange={(e) => setTemplateB(e.target.value)}
                     rows={5}
@@ -940,12 +944,12 @@ export default function BroadcastsUi() {
               {/* Coupon + image link */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Ticket className="w-3.5 h-3.5" /> كود خصم (اختياري)</label>
-                  <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="SAVE25" className="input" />
+                  <label htmlFor="bc-create-coupon" className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Ticket className="w-3.5 h-3.5" /> كود خصم (اختياري)</label>
+                  <input id="bc-create-coupon" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="SAVE25" className="input" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> رابط صورة — تظهر كمعاينة (اختياري)</label>
-                  <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." dir="ltr" className="input" />
+                  <label htmlFor="bc-create-image" className="text-xs text-slate-400 mb-1 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> رابط صورة — تظهر كمعاينة (اختياري)</label>
+                  <input id="bc-create-image" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." dir="ltr" className="input" />
                 </div>
               </div>
 
@@ -1019,16 +1023,18 @@ export default function BroadcastsUi() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-slate-300 mb-1 block">عنوان الحملة</label>
+                <label htmlFor="bc-edit-title" className="text-sm text-slate-300 mb-1 block">عنوان الحملة</label>
                 <input
+                  id="bc-edit-title"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="input"
                 />
               </div>
               <div>
-                <label className="text-sm text-slate-300 mb-1 block">نص الرسالة</label>
+                <label htmlFor="bc-edit-template" className="text-sm text-slate-300 mb-1 block">نص الرسالة</label>
                 <textarea
+                  id="bc-edit-template"
                   value={editTemplate}
                   onChange={(e) => setEditTemplate(e.target.value)}
                   rows={5}
@@ -1037,16 +1043,18 @@ export default function BroadcastsUi() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-slate-300 mb-1 flex items-center gap-1"><Ticket className="w-3.5 h-3.5" /> كود كوبون (اختياري)</label>
+                  <label htmlFor="bc-edit-coupon" className="text-sm text-slate-300 mb-1 flex items-center gap-1"><Ticket className="w-3.5 h-3.5" /> كود كوبون (اختياري)</label>
                   <input
+                    id="bc-edit-coupon"
                     value={editCoupon}
                     onChange={(e) => setEditCoupon(e.target.value)}
                     className="input"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-slate-300 mb-1 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> رابط صورة (اختياري)</label>
+                  <label htmlFor="bc-edit-image" className="text-sm text-slate-300 mb-1 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> رابط صورة (اختياري)</label>
                   <input
+                    id="bc-edit-image"
                     value={editImageUrl}
                     onChange={(e) => setEditImageUrl(e.target.value)}
                     className="input"
@@ -1055,8 +1063,9 @@ export default function BroadcastsUi() {
                 </div>
               </div>
               <div>
-                <label className="text-sm text-slate-300 mb-1 flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> موعد الإرسال (فارغ = فوراً)</label>
+                <label htmlFor="bc-edit-scheduled-at" className="text-sm text-slate-300 mb-1 flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> موعد الإرسال (فارغ = فوراً)</label>
                 <input
+                  id="bc-edit-scheduled-at"
                   type="datetime-local"
                   value={editScheduledAt}
                   onChange={(e) => setEditScheduledAt(e.target.value)}
