@@ -6,7 +6,6 @@ import {
   Send,
   Users,
   Loader2,
-  X,
   StopCircle,
   CheckCircle2,
   AlertCircle,
@@ -27,6 +26,14 @@ import {
   Copy,
   Pencil,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/primitives/dialog";
 import { LiveBadge } from "@/components/ui/live-badge";
 import { useRealtimeSnapshot } from "@/hooks/use-realtime";
 import { useToast } from "@/components/ui/toast";
@@ -490,7 +497,7 @@ export default function BroadcastsUi() {
           />
           <button
             onClick={() => setCreating(true)}
-            className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white inline-flex items-center gap-2 text-sm"
+            className="btn-primary inline-flex items-center gap-2"
           >
             <Megaphone className="w-4 h-4" />
             حملة جديدة
@@ -729,18 +736,17 @@ export default function BroadcastsUi() {
       </div>
 
       {/* Create modal */}
-      {creating && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Megaphone className="w-5 h-5 text-rose-400" />
-                حملة جديدة
-              </h3>
-              <button onClick={() => setCreating(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Dialog open={creating} onOpenChange={(open) => { if (!open) setCreating(false); }}>
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto p-6"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="mb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-rose-400" />
+              حملة جديدة
+            </DialogTitle>
+          </DialogHeader>
 
             <div className="space-y-4">
               {/* Mode: normal campaign vs A/B test */}
@@ -765,7 +771,7 @@ export default function BroadcastsUi() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="مثال: عرض اليوم الوطني"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
+                  className="input"
                 />
               </div>
 
@@ -774,7 +780,7 @@ export default function BroadcastsUi() {
                 <select
                   value={audience}
                   onChange={(e) => setAudience(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
+                  className="input"
                 >
                   <option value="all">كل العملاء</option>
                   <option value="hot">العملاء الساخنون (70+) — الأكثر استعداداً للشراء</option>
@@ -803,11 +809,11 @@ export default function BroadcastsUi() {
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[11px] text-slate-500 mb-1 block">من</label>
-                      <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm" />
+                      <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="input" />
                     </div>
                     <div>
                       <label className="text-[11px] text-slate-500 mb-1 block">إلى</label>
-                      <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm" />
+                      <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="input" />
                     </div>
                   </div>
                 )}
@@ -831,8 +837,8 @@ export default function BroadcastsUi() {
                   ))}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                  <input value={genProduct} onChange={(e) => setGenProduct(e.target.value)} placeholder="المنتج/الخدمة (اختياري)" className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm" />
-                  <input value={genOffer} onChange={(e) => setGenOffer(e.target.value)} placeholder="تفاصيل العرض/الخصم (اختياري)" className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm" />
+                  <input value={genProduct} onChange={(e) => setGenProduct(e.target.value)} placeholder="المنتج/الخدمة (اختياري)" className="input" />
+                  <input value={genOffer} onChange={(e) => setGenOffer(e.target.value)} placeholder="تفاصيل العرض/الخصم (اختياري)" className="input" />
                 </div>
                 <button
                   onClick={generate}
@@ -854,7 +860,7 @@ export default function BroadcastsUi() {
                   onChange={(e) => setTemplate(e.target.value)}
                   rows={6}
                   placeholder={"مرحباً {name}،\nعندنا عرض جديد هذا الأسبوع — راسلنا لو حابب التفاصيل."}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 resize-none"
+                  className="input resize-none"
                 />
                 <div className="text-[11px] text-slate-500 mt-1">
                   {abMode ? "النسخة A · " : ""}
@@ -935,11 +941,11 @@ export default function BroadcastsUi() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Ticket className="w-3.5 h-3.5" /> كود خصم (اختياري)</label>
-                  <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="SAVE25" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm" />
+                  <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="SAVE25" className="input" />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 mb-1 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> رابط صورة — تظهر كمعاينة (اختياري)</label>
-                  <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." dir="ltr" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm" />
+                  <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." dir="ltr" className="input" />
                 </div>
               </div>
 
@@ -950,7 +956,7 @@ export default function BroadcastsUi() {
                   <button onClick={() => setScheduleMode("now")} className={`px-3 py-1.5 rounded-lg text-xs border ${scheduleMode === "now" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-200" : "bg-white/5 border-white/10 text-slate-300"}`}>الآن</button>
                   <button onClick={() => setScheduleMode("later")} className={`px-3 py-1.5 rounded-lg text-xs border ${scheduleMode === "later" ? "bg-amber-500/15 border-amber-500/30 text-amber-200" : "bg-white/5 border-white/10 text-slate-300"}`}>لاحقاً</button>
                   {scheduleMode === "later" && (
-                    <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm" />
+                    <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="input w-auto" />
                   )}
                 </div>
               </div>
@@ -979,36 +985,35 @@ export default function BroadcastsUi() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setCreating(false)} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">إلغاء</button>
-              <button
-                onClick={abMode ? submitAb : submit}
-                disabled={
-                  submitting ||
-                  !template.trim() ||
-                  (abMode && !templateB.trim()) ||
-                  (!abMode && scheduleMode === "later" && !scheduledAt)
-                }
-                className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-sm inline-flex items-center gap-2"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : abMode ? <FlaskConical className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                {abMode ? "إطلاق اختبار A/B" : scheduleMode === "later" ? "جدولة الحملة" : "إطلاق الحملة"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          <DialogFooter className="mt-6">
+            <DialogClose asChild>
+              <button className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">إلغاء</button>
+            </DialogClose>
+            <button
+              onClick={abMode ? submitAb : submit}
+              disabled={
+                submitting ||
+                !template.trim() ||
+                (abMode && !templateB.trim()) ||
+                (!abMode && scheduleMode === "later" && !scheduledAt)
+              }
+              className="btn-primary disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : abMode ? <FlaskConical className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+              {abMode ? "إطلاق اختبار A/B" : scheduleMode === "later" ? "جدولة الحملة" : "إطلاق الحملة"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {editing && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-          <div
-            className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Pencil className="w-4 h-4" /> تعديل الحملة</h2>
-              <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
-            </div>
+      <Dialog open onOpenChange={(open) => { if (!open) setEditing(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-6">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4" /> تعديل الحملة
+            </DialogTitle>
+          </DialogHeader>
             <div className="text-xs text-slate-400 mb-4 bg-white/5 rounded-lg p-2.5">
               الجمهور ({AUDIENCE_LABEL[editing.audience] || editing.audience}, {editing.total} مستلم) لا يمكن تعديله بعد الإنشاء — استخدم "تكرار" لإعادة الاستهداف لجمهور جديد.
             </div>
@@ -1018,7 +1023,7 @@ export default function BroadcastsUi() {
                 <input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                  className="input"
                 />
               </div>
               <div>
@@ -1027,7 +1032,7 @@ export default function BroadcastsUi() {
                   value={editTemplate}
                   onChange={(e) => setEditTemplate(e.target.value)}
                   rows={5}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                  className="input resize-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1036,7 +1041,7 @@ export default function BroadcastsUi() {
                   <input
                     value={editCoupon}
                     onChange={(e) => setEditCoupon(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                    className="input"
                   />
                 </div>
                 <div>
@@ -1044,7 +1049,7 @@ export default function BroadcastsUi() {
                   <input
                     value={editImageUrl}
                     onChange={(e) => setEditImageUrl(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                    className="input"
                     dir="ltr"
                   />
                 </div>
@@ -1055,23 +1060,25 @@ export default function BroadcastsUi() {
                   type="datetime-local"
                   value={editScheduledAt}
                   onChange={(e) => setEditScheduledAt(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                  className="input"
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setEditing(null)} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">إلغاء</button>
-              <button
-                onClick={submitEdit}
-                disabled={editSubmitting || !editTemplate.trim()}
-                className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-sm inline-flex items-center gap-2"
-              >
-                {editSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
-                حفظ التعديلات
-              </button>
-            </div>
-          </div>
-        </div>
+          <DialogFooter className="mt-6">
+            <DialogClose asChild>
+              <button className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">إلغاء</button>
+            </DialogClose>
+            <button
+              onClick={submitEdit}
+              disabled={editSubmitting || !editTemplate.trim()}
+              className="btn-primary disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              {editSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+              حفظ التعديلات
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       )}
 
       <UpgradeModal
