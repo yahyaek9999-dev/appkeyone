@@ -13,6 +13,7 @@ import EscalationActions from "@/app/dashboard/escalations/ticket-actions";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageGate } from "@/lib/membership/gate";
 import LockedFeature from "@/components/billing/LockedFeature";
+import { PageHeader } from "@/components/patterns/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -106,21 +107,23 @@ export default async function EscalationsPage() {
     <div className="space-y-5" dir="rtl">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
-        <div>
-          <h1 className="page-title">التصعيدات</h1>
-          <p className="page-desc mt-1">
-            {tickets.length > 0
+      <div className="border-b border-white/[0.05] pb-5">
+        <PageHeader
+          title="التصعيدات"
+          description={
+            tickets.length > 0
               ? `${tickets.length} محادثة تحتاج تدخلاً${critical > 0 ? ` · ${critical} عالية الأولوية` : ""}`
-              : "لا توجد محادثات تحتاج تدخلاً الآن"}
-          </p>
-        </div>
-        {resolved24h > 0 && (
-          <div className="shrink-0 flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 text-[12px] text-emerald-300">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {resolved24h} حُلّت اليوم
-          </div>
-        )}
+              : "لا توجد محادثات تحتاج تدخلاً الآن"
+          }
+          actions={
+            resolved24h > 0 ? (
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 text-[12px] text-emerald-300">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {resolved24h} حُلّت اليوم
+              </div>
+            ) : undefined
+          }
+        />
       </div>
 
       {/* Priority band — only if there's something to show */}
