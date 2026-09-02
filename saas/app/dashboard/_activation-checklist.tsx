@@ -137,7 +137,7 @@ export default function ActivationChecklist({
         <button
           onClick={dismiss}
           className="shrink-0 rounded-lg p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-300"
-          title="إخفاء"
+          aria-label="إخفاء خطوات التفعيل"
         >
           <X className="h-4 w-4" />
         </button>

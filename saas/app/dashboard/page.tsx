@@ -327,10 +327,10 @@ export default async function DashboardOverview() {
 
       {/* ══ OPPORTUNITY SIGNALS ══════════════════════════════════════════════ */}
       {((humanActiveCount as number) > 0 || (hotLeadCount as number) > 0) && (
-        <section className="py-4 border-b border-white/[0.05]">
+        <section aria-labelledby="opportunity-signals-heading" className="py-4 border-b border-white/[0.05]">
           <div className="mb-2.5 flex items-center gap-2">
             <Flame className="h-3 w-3 text-amber-400" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.10em] text-slate-600">فرص نشطة</span>
+            <h2 id="opportunity-signals-heading" className="text-[10px] font-semibold uppercase tracking-[0.10em] text-slate-600">فرص نشطة</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             {(humanActiveCount as number) > 0 && (
@@ -361,9 +361,9 @@ export default async function DashboardOverview() {
       )}
 
       {/* ══ BUSINESS PERFORMANCE ══════════════════════════════════════════════ */}
-      <section className="py-6 border-b border-white/[0.05]">
+      <section aria-labelledby="business-performance-heading" className="py-6 border-b border-white/[0.05]">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-[13px] font-semibold text-white">أداء النشاط</h2>
+          <h2 id="business-performance-heading" className="text-[13px] font-semibold text-white">أداء النشاط</h2>
           <span className="text-[11px] text-slate-600">آخر 7 أيام مقارنةً بالأسبوع السابق</span>
         </div>
 
