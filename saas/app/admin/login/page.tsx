@@ -51,8 +51,9 @@ export default function AdminLoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-200">البريد الإلكتروني</label>
+            <label htmlFor="admin-email" className="block text-sm font-medium text-slate-200">البريد الإلكتروني</label>
             <input
+              id="admin-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -64,9 +65,10 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-200">كلمة المرور</label>
+            <label htmlFor="admin-password" className="block text-sm font-medium text-slate-200">كلمة المرور</label>
             <div className="relative">
               <input
+                id="admin-password"
                 type={showPw ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -77,6 +79,7 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
+                aria-label={showPw ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                 className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-200"
               >
                 {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
