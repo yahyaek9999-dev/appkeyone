@@ -64,11 +64,12 @@ export default async function CustomersPage({
           }
           actions={
             <>
-              <form action="/dashboard/customers" method="get" className="flex items-center gap-2">
+              <form action="/dashboard/customers" method="get" role="search" aria-label="بحث العملاء" className="flex items-center gap-2">
                 <input
                   name="q"
                   defaultValue={q}
                   placeholder="بحث بالاسم أو الهاتف…"
+                  aria-label="بحث بالاسم أو الهاتف"
                   className="input h-9 w-44 px-3 text-[13px]"
                 />
                 <button type="submit" className="btn-ghost h-9 text-[13px]">بحث</button>

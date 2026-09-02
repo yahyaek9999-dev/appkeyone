@@ -79,7 +79,7 @@ export default function OrderActions({
             update({ status: e.target.value });
           }}
           disabled={pending}
-          className="mt-1 w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="input mt-1 w-full px-3 py-2 text-sm"
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -115,20 +115,23 @@ export default function OrderActions({
           value={track.trackingCode}
           onChange={(e) => setTrack({ ...track, trackingCode: e.target.value })}
           placeholder="رقم التتبع"
-          className="w-full bg-slate-900/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs"
+          aria-label="رقم التتبع"
+          className="input w-full px-3 py-1.5 text-xs"
         />
         <input
           value={track.courierName}
           onChange={(e) => setTrack({ ...track, courierName: e.target.value })}
           placeholder="شركة الشحن"
-          className="w-full bg-slate-900/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs"
+          aria-label="شركة الشحن"
+          className="input w-full px-3 py-1.5 text-xs"
         />
         <input
           value={track.trackingUrl}
           onChange={(e) => setTrack({ ...track, trackingUrl: e.target.value })}
           placeholder="رابط التتبع"
+          aria-label="رابط التتبع"
           dir="ltr"
-          className="w-full bg-slate-900/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs"
+          className="input w-full px-3 py-1.5 text-xs"
         />
         <button
           disabled={savingTrack || pending}

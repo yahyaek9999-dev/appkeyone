@@ -660,7 +660,7 @@ export default function BroadcastsUi() {
                       تكرار
                     </button>
                     {(bc.status === "done" || bc.status === "canceled" || bc.status === "paused") && (
-                      <button onClick={() => remove(bc)} className="p-1.5 rounded-md text-rose-300 hover:bg-rose-500/10">
+                      <button onClick={() => remove(bc)} aria-label={`حذف ${bc.title}`} className="p-1.5 rounded-md text-rose-300 hover:bg-rose-500/10">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
@@ -806,7 +806,8 @@ export default function BroadcastsUi() {
                       min={1}
                       value={inactiveDays}
                       onChange={(e) => setInactiveDays(e.target.value)}
-                      className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm"
+                      aria-label="عدد أيام عدم النشاط"
+                      className="input w-20 px-2 py-1 text-sm"
                     />
                     يوم
                   </div>
@@ -887,7 +888,7 @@ export default function BroadcastsUi() {
                     onChange={(e) => setTemplateB(e.target.value)}
                     rows={5}
                     placeholder={"نص بديل لاختبار أيهما يحقق تحويلاً أعلى..."}
-                    className="w-full bg-white/5 border border-brand-500/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 resize-none"
+                    className="input resize-none"
                   />
                   <div className="text-[11px] text-slate-500 mt-1">النسخة B · {templateB.length}/4000 حرف · سيُقسَّم الجمهور 50/50 تلقائياً</div>
                 </div>
@@ -964,7 +965,7 @@ export default function BroadcastsUi() {
                   <button onClick={() => setScheduleMode("now")} className={`px-3 py-1.5 rounded-lg text-xs border ${scheduleMode === "now" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-200" : "bg-white/5 border-white/10 text-slate-300"}`}>الآن</button>
                   <button onClick={() => setScheduleMode("later")} className={`px-3 py-1.5 rounded-lg text-xs border ${scheduleMode === "later" ? "bg-amber-500/15 border-amber-500/30 text-amber-200" : "bg-white/5 border-white/10 text-slate-300"}`}>لاحقاً</button>
                   {scheduleMode === "later" && (
-                    <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="input w-auto" />
+                    <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} aria-label="موعد الإرسال المجدول" className="input w-auto" />
                   )}
                 </div>
               </div>

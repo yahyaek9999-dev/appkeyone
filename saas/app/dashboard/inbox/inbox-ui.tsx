@@ -364,6 +364,7 @@ export default function InboxUi({
     <div className="-m-4 flex h-[calc(100dvh_-_4rem_-_env(safe-area-inset-top))] min-w-0 overflow-hidden bg-canvas/80 md:-m-6 md:h-[calc(100vh_-_3rem)] lg:-m-10">
       {/* ----- conversation list (full width on mobile when no conv selected, fixed width on md+) ----- */}
       <aside
+        aria-label="قائمة المحادثات"
         className={`${
           activeId ? "hidden md:flex" : "flex"
         } w-full shrink-0 flex-col border-l border-white/[0.06] bg-canvas/80 backdrop-blur-xl md:w-80`}
@@ -385,6 +386,7 @@ export default function InboxUi({
               type="search"
               inputMode="search"
               autoComplete="off"
+              aria-label="البحث في المحادثات"
               className="input pr-10"
             />
           </div>
@@ -476,7 +478,8 @@ export default function InboxUi({
       </aside>
 
       {/* ----- conversation pane (hidden on mobile when no conv selected) ----- */}
-      <main
+      <section
+        aria-label="المحادثة"
         className={`${
           activeId ? "flex" : "hidden md:flex"
         } min-w-0 flex-1 flex-col bg-black/10`}
@@ -572,7 +575,7 @@ export default function InboxUi({
                 <button
                   onClick={() => setProfileOpen(true)}
                   className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-semibold text-brand-300 transition hover:bg-brand-500/20"
-                  title="عرض ملف العميل الكامل"
+                  aria-label="عرض ملف العميل الكامل"
                 >
                   <IdCard className="w-3.5 h-3.5" /> ملف 360
                 </button>
@@ -692,6 +695,7 @@ export default function InboxUi({
                   }}
                   rows={2}
                   placeholder="اكتب رسالة... (Ctrl+Enter للإرسال)"
+                  aria-label="رسالة الرد"
                   className="input min-h-[64px] flex-1 resize-none p-3 text-sm"
                 />
                 <div className="flex shrink-0 flex-row gap-2 sm:flex-col">
@@ -710,7 +714,7 @@ export default function InboxUi({
                   <button
                     onClick={loadSuggestions}
                     disabled={suggesting}
-                    title="اقترح ردوداً جاهزة"
+                    aria-label="اقترح ردوداً جاهزة"
                     className="btn-ghost min-h-[44px] flex-1 border-brand-500/30 px-4 py-2 text-xs text-brand-200 disabled:opacity-50 sm:flex-none"
                   >
                     {suggesting ? (
@@ -725,11 +729,11 @@ export default function InboxUi({
             </div>
           </>
         )}
-      </main>
+      </section>
 
       {/* ----- right sidebar: customer info + notes (lg+ only; mobile/tablet save space) ----- */}
       {active && (
-        <aside className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-white/[0.06] bg-canvas/70 p-4 backdrop-blur-xl lg:flex">
+        <aside aria-label="معلومات العميل" className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-white/[0.06] bg-canvas/70 p-4 backdrop-blur-xl lg:flex">
           <div>
             <div className="text-xs text-slate-400 mb-1">العميل</div>
             <div className="font-semibold">{active.customer.name || "—"}</div>
@@ -784,10 +788,11 @@ export default function InboxUi({
             )}
 
           <div>
-            <div className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+            <label htmlFor="inbox-notes" className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
               <StickyNote className="w-3 h-3" /> ملاحظات داخلية
-            </div>
+            </label>
             <textarea
+              id="inbox-notes"
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
               rows={5}
@@ -805,11 +810,12 @@ export default function InboxUi({
 
           {/* Assign to teammate (reuses CRM assign) */}
           <div>
-            <div className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+            <label htmlFor="inbox-assign" className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
               <User className="w-3 h-3" /> إسناد المحادثة
-            </div>
+            </label>
             <div className="flex gap-2">
               <input
+                id="inbox-assign"
                 value={assignDraft}
                 onChange={(e) => setAssignDraft(e.target.value)}
                 placeholder="اسم الموظف..."
@@ -823,9 +829,9 @@ export default function InboxUi({
 
           {/* Internal team notes thread (admin-only, never sent to the customer) */}
           <div>
-            <div className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+            <label htmlFor="inbox-team-note" className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
               <MessageSquare className="w-3 h-3" /> ملاحظات الفريق
-            </div>
+            </label>
             <div className="mb-2 max-h-48 space-y-1.5 overflow-y-auto">
               {thread.length === 0 && <div className="text-[11px] text-slate-600">لا توجد ملاحظات فريق بعد.</div>}
               {thread.map((n) => (
@@ -839,6 +845,7 @@ export default function InboxUi({
               ))}
             </div>
             <textarea
+              id="inbox-team-note"
               value={noteThreadDraft}
               onChange={(e) => setNoteThreadDraft(e.target.value)}
               rows={2}

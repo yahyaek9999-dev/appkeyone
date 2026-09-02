@@ -159,6 +159,7 @@ export default function ProductsUi() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="بحث في المنتجات..."
+                aria-label="بحث في المنتجات"
                 className="input h-9 w-48 px-3 text-sm"
                 dir="rtl"
               />
@@ -240,7 +241,7 @@ export default function ProductsUi() {
                   >
                     {p.active ? "ظاهر" : "مخفي"}
                   </button>
-                  <button onClick={() => remove(p)} className="rounded-xl border border-white/10 px-2 py-1.5 text-slate-400 transition hover:text-rose-300">
+                  <button onClick={() => remove(p)} aria-label={`حذف ${p.name}`} className="rounded-xl border border-white/10 px-2 py-1.5 text-slate-400 transition hover:text-rose-300">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -251,13 +252,13 @@ export default function ProductsUi() {
       )}
 
       {editing && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setEditing(null)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={editing?.id ? "تعديل منتج" : "منتج جديد"} onClick={() => setEditing(null)}>
           <div className="card max-h-[90vh] w-full max-w-lg overflow-y-auto p-5" onClick={(e) => e.stopPropagation()} dir="rtl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="section-title flex items-center gap-2">
                 <Package className="h-4 w-4 text-brand-400" /> {editing.id ? "تعديل منتج" : "منتج جديد"}
               </h3>
-              <button onClick={() => setEditing(null)} className="rounded-lg border border-white/10 p-1 text-slate-400 hover:text-white">
+              <button onClick={() => setEditing(null)} aria-label="إغلاق" className="rounded-lg border border-white/10 p-1 text-slate-400 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -273,7 +274,7 @@ export default function ProductsUi() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={src} alt={`صورة ${i + 1}`} className="h-full w-full object-cover" />
                         {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-brand-500/80 text-center text-[9px] text-white">الرئيسية</span>}
-                        <button type="button" onClick={() => removeImage(i)} title="حذف" className="absolute top-0.5 left-0.5 rounded bg-rose-600/90 px-1 text-[10px] text-white opacity-0 transition group-hover:opacity-100">✕</button>
+                        <button type="button" onClick={() => removeImage(i)} aria-label="حذف الصورة" className="absolute top-0.5 left-0.5 rounded bg-rose-600/90 px-1 text-[10px] text-white opacity-0 transition group-hover:opacity-100">✕</button>
                       </div>
                     ))}
                   </div>
