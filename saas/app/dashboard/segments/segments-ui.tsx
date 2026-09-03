@@ -24,7 +24,7 @@ import {
 import { formatCustomerPhone } from "@/lib/phone";
 import { fmtNumber, fmtMoney, timeAgo as taAgo } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader, HeaderFact } from "@/components/ui/page-header";
+import { PageHeader, HeaderFact } from "@/components/patterns/page-header";
 
 type Segment = {
   key: string;

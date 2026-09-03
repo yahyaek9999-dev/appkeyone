@@ -239,7 +239,7 @@ export default async function OrdersPage({
                       </td>
                       <td className="text-end">
                         <div className="text-sm font-semibold tabular-nums text-white">
-                          {(o.total || 0).toLocaleString()} {o.currency || "ج"}
+                          {(o.total || 0).toLocaleString("ar-EG")} {o.currency === "EGP" || !o.currency ? "ج.م" : o.currency}
                         </div>
                         <div className={`text-[10px] ${(o.aiConfidence || 0) >= 70 ? "text-emerald-500" : (o.aiConfidence || 0) >= 40 ? "text-amber-500" : "text-slate-500"}`}>
                           {(o.aiConfidence || 0) >= 70 ? "استخراج دقيق" : (o.aiConfidence || 0) >= 40 ? "استخراج جزئي" : "يحتاج مراجعة"}
@@ -292,7 +292,7 @@ export default async function OrdersPage({
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                       <span>{firstItem?.name || "—"}</span>
                       <span>·</span>
-                      <span className="tabular-nums">{(o.total || 0).toLocaleString()} {o.currency || "ج"}</span>
+                      <span className="tabular-nums">{(o.total || 0).toLocaleString("ar-EG")} {o.currency === "EGP" || !o.currency ? "ج.م" : o.currency}</span>
                     </div>
                   </div>
                   <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-600 mt-1" />
