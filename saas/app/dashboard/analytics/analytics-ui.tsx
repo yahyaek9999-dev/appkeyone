@@ -295,7 +295,7 @@ function DailyChart({ data }: { data: { date: string; in: number; out: number }[
 
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-0 sm:min-w-[500px] h-auto">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-0 sm:min-w-[500px] h-auto" role="img" aria-label="مخطط حركة الرسائل اليومية">
         <defs>
           <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="rgba(56,189,248,0.25)" stopOpacity="0.25" />
