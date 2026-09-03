@@ -4,13 +4,14 @@ import PublicNav from "@/components/ui/public-nav";
 import { AmbientBackdrop } from "@/components/ui/marketing";
 import { PublicFooter } from "@/components/ui/public-footer";
 import { getLocale, t } from "@/lib/i18n";
-import { MessageCircle, ShieldCheck } from "lucide-react";
+import { MessageCircle, ShieldCheck, RotateCcw, BellRing, XCircle } from "lucide-react";
 import { SectionReveal } from "@/components/ui/section-reveal";
 import PricingExperience, {
   type PricingTierVM,
   type PricingLabels,
 } from "@/components/pricing/PricingExperience";
 import FeatureMatrix from "@/components/pricing/FeatureMatrix";
+import FaqAccordion from "@/components/ui/faq-accordion";
 import IndustryMatcher from "@/components/pricing/IndustryMatcher";
 import {
   PUBLIC_TIERS,
@@ -203,6 +204,54 @@ export default async function PricingPage({
         </div>
       </section>
 
+      {/* ───────── Reassurance — at the decision point.
+           Every claim is an existing documented policy (see FAQ), not a new one. ───────── */}
+      <section className="px-5 pb-4 pt-2">
+        <div className="ai-container max-w-4xl">
+          <SectionReveal>
+            <ul className="grid gap-3 sm:grid-cols-3">
+              {[
+                {
+                  Icon: RotateCcw,
+                  t: locale === "ar" ? "استرداد خلال 7 أيام" : "7-day refund",
+                  d:
+                    locale === "ar"
+                      ? "استرداد كامل من أول اشتراك إذا لم تتجاوز 100 رسالة."
+                      : "Full refund on your first subscription if you stay under 100 messages.",
+                },
+                {
+                  Icon: XCircle,
+                  t: locale === "ar" ? "إلغاء في أي وقت" : "Cancel anytime",
+                  d:
+                    locale === "ar"
+                      ? "بدون التزام طويل الأجل وبدون رسوم خفية."
+                      : "No long-term commitment and no hidden fees.",
+                },
+                {
+                  Icon: BellRing,
+                  t: locale === "ar" ? "تنبيه قبل الحد" : "Warned before the cap",
+                  d:
+                    locale === "ar"
+                      ? "نبلّغك قبل الوصول لحد الرسائل — بدون توقّف مفاجئ."
+                      : "We notify you before you reach the message cap — no surprise stop.",
+                },
+              ].map(({ Icon, t: title, d }) => (
+                <li
+                  key={title}
+                  className="flex items-start gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3.5"
+                >
+                  <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gold-400" />
+                  <div>
+                    <div className="text-[13.5px] font-medium text-white">{title}</div>
+                    <div className="mt-0.5 text-[12px] leading-relaxed text-slate-400">{d}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </SectionReveal>
+        </div>
+      </section>
+
       {/* ───────── Industry matcher ───────── */}
       <section className="px-5 py-16">
         <div className="ai-container max-w-5xl">
@@ -240,6 +289,21 @@ export default async function PricingPage({
               }
               comingSoonLabel={locale === "ar" ? "قريباً" : "soon"}
             />
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* ───────── FAQ — reuses the shared accordion ───────── */}
+      <section id="faq" className="scroll-mt-24 px-5 py-16">
+        <div className="ai-container max-w-3xl">
+          <SectionReveal>
+            <div className="mb-8 text-center">
+              <span className="eyebrow mb-3 inline-block">
+                {locale === "ar" ? "أسئلة قبل الاشتراك" : "Before you subscribe"}
+              </span>
+              <h2 className="display-heading text-2xl sm:text-3xl">{m.faq.heading}</h2>
+            </div>
+            <FaqAccordion items={m.faq.items} />
           </SectionReveal>
         </div>
       </section>
