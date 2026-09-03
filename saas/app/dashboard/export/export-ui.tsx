@@ -76,52 +76,66 @@ export function ExportUi({
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="page-title mb-1">مركز التصدير</h1>
-        <p className="page-desc">صدّر بياناتك بصيغة CSV — متوافق مع Excel وجداول Google.</p>
-      </div>
-
-      <div className="card p-4 border-sky-500/20 bg-sky-500/[0.04] flex items-start gap-3">
-        <FileText className="h-4 w-4 shrink-0 text-sky-400 mt-0.5" />
-        <p className="text-sm text-sky-200/80">
-          الملفات تُصدَّر بصيغة <b>CSV</b> مع ترميز UTF-8 BOM لضمان ظهور النص العربي بشكل صحيح في Excel.
-          يمكنك فتحها مباشرة في Excel أو Google Sheets.
+      <div className="border-b border-white/[0.05] pb-5">
+        <p className="eyebrow mb-2">البيانات</p>
+        <h1 className="page-title">مركز التصدير</h1>
+        <p className="page-desc mt-2">
+          خذ بياناتك معك في أي وقت — ملفات CSV بترميز UTF-8 تفتح مباشرةً في Excel وجداول Google
+          بنص عربي سليم.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {EXPORTS.map(({ type, label, desc, icon: Icon, color, border, bg }) => {
-          const count = countFor(type);
-          const busy = downloading === type;
-          return (
-            <div key={type} className={`card p-5 ${border} ${bg}`}>
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06]`}>
-                    <Icon className={`h-5 w-5 ${color}`} />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-white">{label}</div>
-                    <div className="text-[11px] text-slate-500">{count.toLocaleString("ar-EG")} سجل</div>
+      {/* Evidence (Phase 11, screenshot 57): four tinted cards, each with its
+          own icon tile and a full-width emerald button, three of them reading
+          "لا توجد بيانات" — four loud, identical CTAs for a job that is really
+          one short list of "how many rows do I have, and can I take them?".
+          Rendered as a table: the record count is the deciding fact, so it
+          leads, and the action stays quiet until it can actually run. */}
+      <div className="overflow-hidden rounded-xl border border-white/[0.07]">
+        <div className="hidden grid-cols-[minmax(0,1fr)_110px_150px] items-center gap-4 border-b border-white/[0.06] bg-white/[0.015] px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500 sm:grid">
+          <span>البيانات</span>
+          <span className="text-center">السجلات</span>
+          <span></span>
+        </div>
+        <div className="divide-y divide-white/[0.04]">
+          {EXPORTS.map(({ type, label, desc, icon: Icon, color }) => {
+            const count = countFor(type);
+            const busy = downloading === type;
+            const empty = count === 0;
+            return (
+              <div
+                key={type}
+                className={`grid grid-cols-1 items-center gap-3 px-4 py-3.5 transition-colors sm:grid-cols-[minmax(0,1fr)_110px_150px] ${
+                  empty ? "opacity-50" : "hover:bg-white/[0.015]"
+                }`}
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-semibold text-white">{label}</div>
+                    <p className="mt-0.5 text-[12px] leading-relaxed text-slate-500">{desc}</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 sm:block sm:text-center">
+                  <span className="text-[11px] text-slate-500 sm:hidden">السجلات</span>
+                  <span className="text-[15px] font-semibold tabular-nums text-white">
+                    {count.toLocaleString("ar-EG")}
+                  </span>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => doExport(type)}
+                    disabled={busy || empty}
+                    className="btn-ghost h-8 justify-center px-3 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    {busy ? "جارٍ التصدير…" : empty ? "لا بيانات" : "تصدير CSV"}
+                  </button>
+                </div>
               </div>
-              <p className="mb-4 text-xs text-slate-400 leading-relaxed">{desc}</p>
-              <button
-                onClick={() => doExport(type)}
-                disabled={busy || count === 0}
-                className="btn-primary w-full justify-center text-sm disabled:opacity-50"
-              >
-                {busy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                {busy ? "جارٍ التصدير..." : count === 0 ? "لا توجد بيانات" : `تصدير ${label} (CSV)`}
-              </button>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       <div className="card p-4 text-sm text-slate-400 space-y-1.5">

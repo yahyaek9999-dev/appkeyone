@@ -371,18 +371,30 @@ export default async function DashboardOverview() {
           <span className="text-[11px] text-slate-600">آخر 7 أيام مقارنةً بالأسبوع السابق</span>
         </div>
 
-        {/* Metric band — not isolated cards */}
-        <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] lg:grid-cols-4">
+        {/* Metric band — not isolated cards.
+            Evidence (Phase 11): all four cells rendered at 28px/bold, so the
+            band read as four equal facts and the eye landed nowhere. Revenue
+            is the number a merchant actually opens this page for, so it is now
+            the anchor — wider, larger, emerald, with a start-edge rule — and
+            the other three drop to reference weight. */}
+        <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] lg:grid-cols-5">
           {modules.orders && (
-            <Link href="/dashboard/orders" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
-              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">الإيرادات</div>
-              <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">
-                {rev7d > 0 ? `${rev7d.toLocaleString("ar-EG")}` : "—"}
+            <Link
+              href="/dashboard/orders"
+              className="group relative px-5 py-4 transition-colors hover:bg-white/[0.025] col-span-2"
+            >
+              <span aria-hidden className="absolute inset-y-0 start-0 w-[2px] bg-brand-400/60" />
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">الإيرادات</div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-[34px] font-bold leading-none tracking-[-0.03em] text-brand-300 tabular-nums sm:text-[38px]">
+                  {rev7d > 0 ? `${rev7d.toLocaleString("ar-EG")}` : "—"}
+                </span>
+                {rev7d > 0 && <span className="text-[12px] text-slate-500">ج.م</span>}
               </div>
-              {rev7d > 0 && <div className="text-[10px] text-slate-600">جنيه</div>}
               {revDelta !== null && (
-                <div className={`mt-2 text-[11px] font-semibold tabular-nums ${revDelta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                <div className={`mt-2.5 text-[12px] font-semibold tabular-nums ${revDelta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                   {revDelta >= 0 ? "▲" : "▼"} {Math.abs(Math.round(revDelta))}%
+                  <span className="ms-1.5 font-normal text-slate-500">مقارنةً بالأسبوع السابق</span>
                 </div>
               )}
             </Link>
@@ -390,7 +402,7 @@ export default async function DashboardOverview() {
           {modules.orders && (
             <Link href="/dashboard/orders" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
               <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">الطلبات</div>
-              <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">{orders7d}</div>
+              <div className="mt-2 text-[22px] font-semibold leading-none tracking-[-0.02em] text-white tabular-nums">{orders7d}</div>
               {(pendingOrderCount as number) > 0 && (
                 <div className="mt-1 text-[11px] text-amber-400">{pendingOrderCount as number} معلّق</div>
               )}
@@ -403,12 +415,12 @@ export default async function DashboardOverview() {
           )}
           <Link href="/dashboard/customers" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
             <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">العملاء</div>
-            <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">{customerCount.toLocaleString("ar-EG")}</div>
+            <div className="mt-2 text-[22px] font-semibold leading-none tracking-[-0.02em] text-white tabular-nums">{customerCount.toLocaleString("ar-EG")}</div>
             <div className="mt-1 text-[11px] text-slate-600">{topCustomers.length} نشط مؤخراً</div>
           </Link>
           <Link href="/dashboard/inbox" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
             <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">الرسائل</div>
-            <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">{msgs7d.toLocaleString("ar-EG")}</div>
+            <div className="mt-2 text-[22px] font-semibold leading-none tracking-[-0.02em] text-white tabular-nums">{msgs7d.toLocaleString("ar-EG")}</div>
             <div className="mt-1 text-[11px] text-slate-600">{msgs30dToday} اليوم</div>
             {msgs7dDelta !== null && (
               <div className={`mt-2 text-[11px] font-semibold tabular-nums ${msgs7dDelta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>

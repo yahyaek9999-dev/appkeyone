@@ -245,13 +245,18 @@ export default function TeamsUi() {
       {loading && <div className="card p-8 text-center text-slate-400">جارٍ التحميل...</div>}
 
       {!loading && teams.length === 0 && (
-        <div className="card">
-          <EmptyState
+        <EmptyState
+            variant="page"
             icon={<UsersRound className="h-full w-full" />}
-            title="لا توجد فرق بعد"
-            description="أنشئ أول فريق لتقسيم موظفيك — كل فريق يرى محادثاته وأرقامه فقط."
+            title="كل الموظفين بيشوفوا كل حاجة"
+            description="من غير فرق، أي موظف تضيفه يقدر يفتح كل المحادثات وكل الأرقام. الفريق بيحصر كل مجموعة في نطاقها — محادثاتها وأرقامها هي بس."
+            hint="لو عندك أكتر من فرع أو أكتر من رقم واتساب، ده أول إعداد تعمله قبل ما تدعو حد."
+            steps={[
+              { title: "أنشئ الفريق", body: "اسم يعبّر عن الفرع أو التخصص." },
+              { title: "اربط أرقامه", body: "الفريق يرى محادثات أرقامه فقط." },
+              { title: "ادعُ الموظفين", body: "كل موظف يبدأ داخل نطاقه مباشرةً." },
+            ]}
           />
-        </div>
       )}
 
       {!loading && teams.length > 0 && (

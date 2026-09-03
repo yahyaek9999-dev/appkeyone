@@ -132,7 +132,18 @@ export default function FlowBuilderUi() {
       <div className="space-y-2">
         {loading && <div className="card p-8 text-center text-slate-400">جارٍ التحميل...</div>}
         {!loading && items.length === 0 && (
-          <EmptyState icon={<Zap className="h-full w-full" />} title="لا توجد مسارات بعد" description="أنشئ أول مسار أتمتة لتبدأ توفير الوقت." />
+          <EmptyState
+            variant="page"
+            icon={<Zap className="h-full w-full" />}
+            title="ما فيش مسارات شغّالة"
+            description="المسار بيربط حدث بإجراء: عميل جديد يبعت أول رسالة ← ابعتله ترحيب. طلب اتأكّد ← ابعت تفاصيل الشحن. بيشتغل ٢٤ ساعة من غير ما تفتح اللوحة."
+            hint="ابدأ بمسار الترحيب — أبسط واحد وأكترهم تأثيراً على أول انطباع."
+            steps={[
+              { title: "اختر الحدث", body: "أول رسالة، تأكيد طلب، أو مرور وقت." },
+              { title: "حدّد الشرط", body: "اختياري — شريحة معيّنة أو وقت معيّن." },
+              { title: "اضبط الإجراء", body: "رسالة، وسم، تحويل لموظف، أو تنبيه." },
+            ]}
+          />
         )}
         {items.map((f) => (
           <div key={f.id} className="card flex items-center justify-between p-4">

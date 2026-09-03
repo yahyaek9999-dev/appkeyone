@@ -6,16 +6,17 @@ import {
   ShoppingBag,
   ArrowUpRight,
   Download,
-  AlertTriangle,
+  Package,
 } from "lucide-react";
 import {
   OrderStatusPill,
   type OrderStatus,
 } from "@/components/ui/order-status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MetricBand, Metric } from "@/components/ui/metric-band";
 import { formatCustomerPhone } from "@/lib/phone";
 import { LimelightTabs } from "@/components/ui/limelight-tabs";
-import { PageHeader } from "@/components/patterns/page-header";
+import { PageHeader, HeaderFact } from "@/components/patterns/page-header";
 
 function toOrderStatus(s: string): OrderStatus {
   if (s === "canceled") return "cancelled";
@@ -91,27 +92,22 @@ export default async function OrdersPage({
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="border-b border-white/[0.05] pb-5">
-        <PageHeader
-          title="الطلبات"
-          description={
-            <span className="flex items-center gap-3 text-[12px]">
-              <span className="text-slate-400">{totalOrders.toLocaleString()} إجمالي</span>
-              <span className="text-white/20">·</span>
-              <span className="text-emerald-400">{revenue.toLocaleString()} ج مؤكد</span>
-              {(countByStatus["pending"] || 0) > 0 && (
-                <>
-                  <span className="text-white/20">·</span>
-                  <span className="inline-flex items-center gap-1 text-amber-400">
-                    <AlertTriangle className="h-3 w-3" />
-                    {countByStatus["pending"]} معلّق
-                  </span>
-                </>
-              )}
-            </span>
-          }
-          actions={
+      <PageHeader
+        eyebrow="المبيعات"
+        title="الطلبات"
+        description="كل طلب استخرجه المساعد من محادثة — من أول ما يتأكد لحد ما يوصل العميل."
+        meta={
+          totalOrders > 0
+            ? [
+                <HeaderFact key="t" value={totalOrders.toLocaleString("ar-EG")} label="طلب" />,
+                (countByStatus["pending"] || 0) > 0 ? (
+                  <HeaderFact key="p" value={countByStatus["pending"]} label="بانتظار المراجعة" tone="warning" />
+                ) : null,
+              ]
+            : undefined
+        }
+        secondary={
+          totalOrders > 0 ? (
             <a
               href="/api/export?type=orders&format=csv"
               download
@@ -120,11 +116,58 @@ export default async function OrdersPage({
               <Download className="h-3.5 w-3.5" />
               تصدير CSV
             </a>
-          }
-          className="flex-wrap"
-        />
-      </div>
+          ) : undefined
+        }
+      />
 
+      {/* Revenue anchors the page; the operational counts stay secondary.
+          Evidence: the orders screenshot led with five equal-weight status
+          pills and no money at all, so the page never answered "how much
+          did we actually make?" — the first question a merchant asks. */}
+      {totalOrders > 0 && (
+        <MetricBand cols={4}>
+          <Metric
+            anchor
+            label="إيراد مؤكد"
+            value={`${revenue.toLocaleString("ar-EG")} ج.م`}
+            tone="positive"
+            hint="من الطلبات المؤكدة والمشحونة والمسلَّمة"
+          />
+          <Metric label="تم التسليم" value={countByStatus["delivered"] || 0} />
+          <Metric
+            label="بانتظار المراجعة"
+            value={countByStatus["pending"] || 0}
+            tone={(countByStatus["pending"] || 0) > 0 ? "warning" : "default"}
+            hint={(countByStatus["pending"] || 0) > 0 ? "تحتاج تأكيد قبل الشحن" : undefined}
+          />
+        </MetricBand>
+      )}
+
+      {totalOrders === 0 ? (
+        <EmptyState
+          variant="page"
+          icon={<ShoppingBag className="h-full w-full" />}
+          title="لسه ما فيش طلبات"
+          description="المساعد يقرأ المحادثة ويستخرج الطلب لوحده — المنتج والكمية والعنوان وطريقة الدفع — ويحطه هنا جاهز للمراجعة. مفيش إدخال يدوي."
+          hint="الطلب يظهر هنا أول ما المساعد يتأكد منه. لو الكتالوج فاضي، هيفضل يسأل بدل ما يستخرج."
+          action={
+            <Link href="/dashboard/products" className="btn-primary px-4 py-2 text-sm">
+              <Package className="h-4 w-4" /> جهّز الكتالوج
+            </Link>
+          }
+          secondaryAction={
+            <Link href="/dashboard/settings/order-settings" className="btn-ghost px-4 py-2 text-sm">
+              إعدادات استخراج الطلبات
+            </Link>
+          }
+          steps={[
+            { title: "أضف منتجاتك", body: "المساعد لا يستخرج طلباً لمنتج لا يعرفه." },
+            { title: "اربط واتساب", body: "الطلبات تُستخرج من المحادثات الواردة." },
+            { title: "راجع وأكّد", body: "كل طلب يظهر هنا بدرجة ثقة قبل الشحن." },
+          ]}
+        />
+      ) : (
+      <>
       {/* Status filter — limelight sliding indicator */}
       <LimelightTabs
         activeKey={status || "all"}
@@ -159,8 +202,8 @@ export default async function OrdersPage({
                   <td colSpan={5} className="p-0">
                     <EmptyState
                       icon={<ShoppingBag className="h-full w-full" />}
-                      title="لا توجد طلبات حتى الآن"
-                      description="أول ما البوت يتعرّف على طلب في محادثة، هيظهر هنا."
+                      title="لا توجد طلبات بهذه الحالة"
+                      description="جرّب حالة أخرى من الشريط بالأعلى."
                       size="sm"
                     />
                   </td>
@@ -227,8 +270,8 @@ export default async function OrdersPage({
             <div className="p-4">
               <EmptyState
                 icon={<ShoppingBag className="h-full w-full" />}
-                title="لا توجد طلبات حتى الآن"
-                description="أول ما البوت يتعرّف على طلب في محادثة، هيظهر هنا."
+                title="لا توجد طلبات بهذه الحالة"
+                description="جرّب حالة أخرى من الشريط بالأعلى."
                 size="sm"
               />
             </div>
@@ -274,7 +317,8 @@ export default async function OrdersPage({
           )}
         </div>
       )}
+      </>
+      )}
     </div>
   );
 }
-

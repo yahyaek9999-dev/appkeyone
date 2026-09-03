@@ -24,6 +24,7 @@ import {
 import { formatCustomerPhone } from "@/lib/phone";
 import { fmtNumber, fmtMoney, timeAgo as taAgo } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader, HeaderFact } from "@/components/ui/page-header";
 
 type Segment = {
   key: string;
@@ -96,10 +97,12 @@ export default function SegmentsUi() {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-white/[0.05] pb-5">
-        <h1 className="page-title">شرائح العملاء</h1>
-        <p className="page-desc mt-1">تصنيف تلقائي لعملائك حسب السلوك والقيمة — {fmtNumber(total)} عميل</p>
-      </div>
+      <PageHeader
+        eyebrow="النمو"
+        title="شرائح العملاء"
+        description="المساعد يصنّف عملاءك تلقائياً حسب سلوكهم وقيمتهم — عشان تعرف تبعت لمين، وبإيه."
+        meta={total > 0 ? [<HeaderFact key="t" value={fmtNumber(total)} label="عميل مصنَّف" />] : undefined}
+      />
 
       {loading && !data ? (
         <div className="flex items-center justify-center py-24 text-slate-500">
@@ -114,77 +117,117 @@ export default function SegmentsUi() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((s) => (
-            <div key={s.key} className="card-hover flex flex-col p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-semibold ${TONE[s.key]}`}>
-                  {ICON[s.key]}
-                  {s.label}
-                </div>
-                <div className="text-2xl font-black text-white">{fmtNumber(s.count)}</div>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-500">{s.description}</p>
+        /* Evidence (Phase 11, screenshot 12): this page rendered nine identical
+           cards, each wrapping four *more* bordered mini-boxes plus a bordered
+           suggestion panel — roughly fifty independent borders competing on one
+           screen, with every segment at equal weight regardless of whether it
+           held 400 customers or zero. It read as a component demo, not a book
+           of business.
 
-              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-                <Mini label="الإيراد" value={fmtMoney(s.revenue)} />
-                <Mini label="متوسط الطلب" value={s.aov ? fmtMoney(s.aov) : "—"} />
-                <Mini label="نسبة الشراء" value={`${s.conversionPct}%`} />
-                <Mini label="آخر نشاط" value={s.lastActivity ? taAgo(s.lastActivity) : "—"} />
-              </div>
+           Now: ONE surface, one row per segment, hairline dividers. Rows sort
+           by size so the biggest audience leads, the metrics run inline as
+           quiet facts instead of nested boxes, and empty segments dim out
+           instead of shouting four zeros each. */
+        <div className="overflow-hidden rounded-xl border border-white/[0.07]">
+          <div className="hidden grid-cols-[minmax(0,1fr)_92px_110px_92px_150px] items-center gap-4 border-b border-white/[0.06] bg-white/[0.015] px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500 lg:grid">
+            <span>الشريحة</span>
+            <span className="text-center">العملاء</span>
+            <span className="text-center">الإيراد</span>
+            <span className="text-center">نسبة الشراء</span>
+            <span></span>
+          </div>
 
-              <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5 text-[11px] text-slate-300">
-                <span className="text-brand-300">إجراء مقترح: </span>
-                {s.suggestedAction}
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => toggleOpen(s.key)}
-                  disabled={s.count === 0}
-                  className="btn-ghost flex-1 px-3 py-2 text-xs disabled:opacity-40"
-                >
-                  <ChevronDown className={`h-3.5 w-3.5 transition ${openKey === s.key ? "rotate-180" : ""}`} />
-                  عرض
-                </button>
-                <button
-                  onClick={() => setComposeKey(s.key)}
-                  disabled={s.count === 0}
-                  className="btn-primary flex-1 px-3 py-2 text-xs disabled:opacity-40"
-                >
-                  <Megaphone className="h-3.5 w-3.5" /> إرسال
-                </button>
-              </div>
-
-              {openKey === s.key && (
-                <div className="mt-3 max-h-56 overflow-y-auto rounded-xl border border-white/[0.06] bg-black/20 p-2">
-                  {!members[s.key] ? (
-                    <div className="flex justify-center py-3 text-slate-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    </div>
-                  ) : members[s.key].length === 0 ? (
-                    <EmptyState
-                      icon={<Users className="h-full w-full" />}
-                      title="لا يوجد عملاء"
-                      size="sm"
-                    />
-                  ) : (
-                    members[s.key].map((m) => {
-                      const p = formatCustomerPhone(m.phone);
-                      return (
-                        <div key={m.id} className="flex items-center justify-between gap-2 border-b border-white/5 py-1.5 last:border-0">
-                          <span className="truncate text-xs text-slate-200">{m.name || "بدون اسم"}</span>
-                          <bdi dir="ltr" className="shrink-0 text-[10px] text-slate-500">
-                            {p.display}
-                          </bdi>
+          <div className="divide-y divide-white/[0.04]">
+            {[...data]
+              .sort((a, b) => b.count - a.count)
+              .map((s) => {
+                const empty = s.count === 0;
+                return (
+                  <div key={s.key}>
+                    <div
+                      className={`grid grid-cols-1 items-center gap-4 px-4 py-3.5 transition-colors lg:grid-cols-[minmax(0,1fr)_92px_110px_92px_150px] ${
+                        empty ? "opacity-45" : "hover:bg-white/[0.015]"
+                      }`}
+                    >
+                      {/* Identity + why it matters */}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${TONE[s.key]}`}>
+                            {ICON[s.key]}
+                          </span>
+                          <span className="truncate text-[14px] font-semibold text-white">{s.label}</span>
                         </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                        <p className="mt-1 line-clamp-1 text-[12px] text-slate-500">{s.description}</p>
+                        {!empty && (
+                          <p className="mt-1.5 line-clamp-1 text-[12px] text-slate-400">
+                            <span className="text-brand-300">الخطوة التالية: </span>
+                            {s.suggestedAction}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Facts — inline, no nested boxes */}
+                      <div className="flex items-center gap-4 lg:block lg:text-center">
+                        <span className="text-[11px] text-slate-500 lg:hidden">العملاء</span>
+                        <span className="text-[15px] font-semibold tabular-nums text-white">{fmtNumber(s.count)}</span>
+                      </div>
+                      <div className="flex items-center gap-4 lg:block lg:text-center">
+                        <span className="text-[11px] text-slate-500 lg:hidden">الإيراد</span>
+                        <span className="text-[13px] tabular-nums text-slate-300">{s.revenue ? fmtMoney(s.revenue) : "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-4 lg:block lg:text-center">
+                        <span className="text-[11px] text-slate-500 lg:hidden">نسبة الشراء</span>
+                        <span className="text-[13px] tabular-nums text-slate-300">{s.conversionPct}%</span>
+                      </div>
+
+                      {/* Next action — primary only where it can actually run */}
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => toggleOpen(s.key)}
+                          disabled={empty}
+                          aria-expanded={openKey === s.key}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[12px] font-medium text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ChevronDown className={`h-3.5 w-3.5 transition ${openKey === s.key ? "rotate-180" : ""}`} />
+                          عرض
+                        </button>
+                        <button
+                          onClick={() => setComposeKey(s.key)}
+                          disabled={empty}
+                          className="btn-primary px-3 py-1.5 text-[12px] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Megaphone className="h-3.5 w-3.5" /> إرسال
+                        </button>
+                      </div>
+                    </div>
+
+                    {openKey === s.key && (
+                      <div className="max-h-56 overflow-y-auto border-t border-white/[0.05] bg-black/20 px-4 py-2">
+                        {!members[s.key] ? (
+                          <div className="flex justify-center py-3 text-slate-500">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        ) : members[s.key].length === 0 ? (
+                          <EmptyState icon={<Users className="h-full w-full" />} title="لا يوجد عملاء" size="sm" />
+                        ) : (
+                          members[s.key].map((m) => {
+                            const p = formatCustomerPhone(m.phone);
+                            return (
+                              <div key={m.id} className="flex items-center justify-between gap-2 border-b border-white/5 py-1.5 last:border-0">
+                                <span className="truncate text-xs text-slate-200">{m.name || "بدون اسم"}</span>
+                                <bdi dir="ltr" className="shrink-0 text-[10px] text-slate-500">
+                                  {p.display}
+                                </bdi>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       )}
 
@@ -198,16 +241,6 @@ export default function SegmentsUi() {
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/[0.05] bg-white/[0.02] p-1.5">
-      <div className="truncate text-xs font-bold text-white" title={value}>
-        {value}
-      </div>
-      <div className="text-[10px] text-slate-500">{label}</div>
-    </div>
-  );
-}
 
 function SegmentBroadcastModal({ segment, onClose }: { segment: Segment | null; onClose: () => void }) {
   const [title, setTitle] = useState(segment ? `حملة: ${segment.label}` : "حملة");

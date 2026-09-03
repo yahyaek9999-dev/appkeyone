@@ -71,8 +71,11 @@ export default function AnalyticsUi() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.05] pb-5">
         <div>
-          <h1 className="page-title">التحليلات</h1>
-          <p className="page-desc mt-1">أداء نشاطك التجاري — آخر {days} يوم</p>
+          <p className="eyebrow mb-2">التحليلات</p>
+          <h1 className="page-title">أداء نشاطك</h1>
+          <p className="page-desc mt-2">
+            حجم الحركة على حسابك، ونوايا العملاء ومشاعرهم — آخر {days} يوم.
+          </p>
         </div>
         <LimelightTabs
           activeKey={String(days)}
@@ -81,12 +84,24 @@ export default function AnalyticsUi() {
         />
       </div>
 
-      {/* Key metrics — flat, dense, data-first */}
-      <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] sm:grid-cols-4">
-        <MetricCell label="إجمالي العملاء" value={data.totals.customers.toLocaleString()} sub={`+${data.today.newCustomers} اليوم`} />
-        <MetricCell label={`الرسائل (${data.days} يوم)`} value={data.totals.messages.toLocaleString()} sub={`${data.today.messages} اليوم`} />
-        <MetricCell label="عملاء ساخنون" value={data.totals.leadsHot.toLocaleString()} sub={`${data.totals.leadsWarm} دافئ`} />
-        <MetricCell label="ردود تلقائية" value={data.savings.estLlmCallsSaved.toLocaleString()} sub={`توفير ${data.savings.estUsdSaved}$`} />
+      {/* Key metrics.
+          Evidence (Phase 11, screenshot 45): four cells at identical weight,
+          then a chart of daily message movement directly underneath — so the
+          number the chart actually explains was given no more prominence than
+          the three reference figures beside it, and the page opened with no
+          headline at all. Message volume now anchors the band and the chart
+          below reads as its elaboration (§26: headline → trend → chart →
+          breakdown), with customers/leads/automation dropping to reference. */}
+      <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] sm:grid-cols-5">
+        <MetricCell
+          anchor
+          label={`الرسائل — آخر ${data.days} يوم`}
+          value={data.totals.messages.toLocaleString("ar-EG")}
+          sub={`${data.today.messages.toLocaleString("ar-EG")} اليوم · الحركة اليومية في الرسم أدناه`}
+        />
+        <MetricCell label="إجمالي العملاء" value={data.totals.customers.toLocaleString("ar-EG")} sub={`+${data.today.newCustomers} اليوم`} />
+        <MetricCell label="عملاء ساخنون" value={data.totals.leadsHot.toLocaleString("ar-EG")} sub={`${data.totals.leadsWarm} دافئ`} />
+        <MetricCell label="ردود تلقائية" value={data.savings.estLlmCallsSaved.toLocaleString("ar-EG")} sub={`توفير ${data.savings.estUsdSaved}$`} />
       </div>
 
       {/* Daily message chart */}
@@ -230,12 +245,26 @@ export default function AnalyticsUi() {
 
 // ---------- Sub-components -------------------------------------------------
 
-function MetricCell({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function MetricCell({
+  label, value, sub, anchor = false,
+}: { label: string; value: string; sub?: string; anchor?: boolean }) {
+  if (anchor) {
+    return (
+      <div className="metric-cell relative sm:col-span-2">
+        <span aria-hidden className="absolute inset-y-0 start-0 w-[2px] bg-brand-400/60" />
+        <div className="metric-label">{label}</div>
+        <div className="mt-2 text-[30px] font-semibold leading-none tracking-[-0.02em] text-white tabular-nums sm:text-[34px]">
+          {value}
+        </div>
+        {sub && <div className="mt-2 text-[12px] text-slate-500">{sub}</div>}
+      </div>
+    );
+  }
   return (
     <div className="metric-cell">
-      <div className="metric-value">{value}</div>
       <div className="metric-label">{label}</div>
-      {sub && <div className="mt-0.5 text-[10px] text-slate-600">{sub}</div>}
+      <div className="metric-value mt-2 leading-none">{value}</div>
+      {sub && <div className="mt-1.5 text-[11px] text-slate-600">{sub}</div>}
     </div>
   );
 }

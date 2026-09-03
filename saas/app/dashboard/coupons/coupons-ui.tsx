@@ -100,13 +100,18 @@ export default function CouponsUi() {
           <Loader2 className="h-7 w-7 animate-spin" />
         </div>
       ) : items.length === 0 ? (
-        <div className="card">
-          <EmptyState
+        <EmptyState
+            variant="page"
             icon={<Ticket className="h-full w-full" />}
-            title="لا توجد كوبونات بعد"
-            description="أنشئ كوبونًا ليقدّمه النظام تلقائيًا للعملاء المترددين."
+            title="مفيش كوبونات — فالمساعد ما عندوش حاجة يقنع بيها المتردد"
+            description="لما عميل يسأل عن السعر ويسكت، المساعد يقدر يعرض عليه كوبون بنفسه بدل ما تخسر البيع. من غير كوبون، بيقف عند السعر."
+            hint="اربطه بشريحة «الباحثون عن الخصومات» عشان يروح للناس اللي فعلاً السعر بيوقفهم."
+            steps={[
+              { title: "حدّد الخصم", body: "نسبة أو مبلغ ثابت، مع حد أدنى للطلب لو حبيت." },
+              { title: "اضبط الحدود", body: "تاريخ انتهاء وعدد استخدامات يحميك من الاستهلاك الزائد." },
+              { title: "خلّي المساعد يستخدمه", body: "يُعرض تلقائياً عند التردد على السعر." },
+            ]}
           />
-        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {items.map((c) => {

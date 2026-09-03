@@ -118,7 +118,13 @@ export default function BranchesUi() {
       <div className="space-y-2">
         {loading && <div className="card p-8 text-center text-slate-400">جارٍ التحميل...</div>}
         {!loading && items.length === 0 && (
-          <EmptyState icon={<Building2 className="h-full w-full" />} title="لا توجد فروع بعد" description="أضِف أول فرع لتبدأ إدارة مواقعك." />
+          <EmptyState
+            variant="page"
+            icon={<Building2 className="h-full w-full" />}
+            title="ما فيش فروع مسجّلة"
+            description="لما تسجّل فروعك، المساعد يقدر يجاوب على «أقرب فرع فين؟» و«مواعيد فرع كذا إيه؟» بنفسه، وتقدر تقارن أداء كل فرع على حدة."
+            hint="حتى لو عندك موقع واحد، تسجيله بيخلّي المساعد يرد بعنوانه ومواعيده بدل ما يحوّلك."
+          />
         )}
         {items.map((b) => (
           <div key={b.id} className="card flex items-center justify-between p-4">

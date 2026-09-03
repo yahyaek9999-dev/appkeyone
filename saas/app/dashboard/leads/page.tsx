@@ -97,14 +97,13 @@ export default async function LeadsPage() {
       </div>
 
       {leads.length === 0 ? (
-        <div className="card">
-          <EmptyState
+        <EmptyState
+            variant="page"
             icon={<Users className="h-full w-full" />}
-            title="لا يوجد عملاء بعد"
-            description="لما يبدأوا التواصل، هيظهروا هنا مرتّبين حسب نقاطهم."
-            size="lg"
+            title="لسه ما فيش عملاء نرتّبهم"
+            description="المساعد بيدّي كل عميل نقاط احتمال شراء من سلوكه — سأل عن السعر كام مرة، رد بسرعة قد إيه، وصل لفين في المحادثة — عشان تعرف تبدأ بمين."
+            hint="النقاط بتتحدّث مع كل محادثة، فالترتيب هنا بيتغيّر لوحده من غير ما تعمل حاجة."
           />
-        </div>
       ) : (
         <>
           {/* Mobile cards */}

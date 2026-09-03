@@ -11,7 +11,7 @@ import { useMutate } from "@/components/ui/use-mutate";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/patterns/page-header";
+import { PageHeader, HeaderFact } from "@/components/patterns/page-header";
 
 type Product = {
   id: string;
@@ -143,34 +143,43 @@ export default function ProductsUi() {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-white/[0.05] pb-5">
-        <PageHeader
-          title="كتالوج المنتجات"
-          description={
-            <>
-              {items.length} منتج
-              {lowStock > 0 && <span className="text-amber-300"> · {lowStock} مخزون منخفض</span>}
-            </>
-          }
-          actions={
-            <div className="flex items-center gap-2">
-              <input
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="بحث في المنتجات..."
-                aria-label="بحث في المنتجات"
-                className="input h-9 w-48 px-3 text-sm"
-                dir="rtl"
-              />
-              <button onClick={() => setEditing({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
-                <Plus className="h-4 w-4" /> منتج جديد
-              </button>
-            </div>
-          }
-          className="flex-wrap"
-        />
-      </div>
+      <PageHeader
+        divider
+        eyebrow="المبيعات"
+        title="كتالوج المنتجات"
+        description="ما يعرفه المساعد عن ما تبيعه — الأسعار والمخزون والصور التي يرسلها للعملاء."
+        meta={
+          items.length > 0
+            ? [
+                <HeaderFact key="n" value={items.length} label="منتج" />,
+                items.filter((p) => p.active).length !== items.length ? (
+                  <HeaderFact key="a" value={items.filter((p) => p.active).length} label="ظاهر للعملاء" />
+                ) : null,
+                lowStock > 0 ? (
+                  <HeaderFact key="l" value={lowStock} label="مخزون منخفض" tone="warning" />
+                ) : null,
+              ]
+            : undefined
+        }
+        secondary={
+          items.length > 0 ? (
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="بحث في المنتجات..."
+              aria-label="بحث في المنتجات"
+              className="input h-9 w-48 px-3 text-sm"
+              dir="rtl"
+            />
+          ) : undefined
+        }
+        actions={
+          <button onClick={() => setEditing({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
+            <Plus className="h-4 w-4" /> منتج جديد
+          </button>
+        }
+      />
 
       {loading && items.length === 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -186,13 +195,28 @@ export default function ProductsUi() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="card">
-          <EmptyState
-            icon={<Package className="h-full w-full" />}
-            title="لا توجد منتجات بعد"
-            description="أضف أول منتج ليبدأ المساعد بعرضه للعملاء."
-          />
-        </div>
+        <EmptyState
+          variant="page"
+          icon={<Package className="h-full w-full" />}
+          title="كتالوجك فاضي — والمساعد ما عندوش حاجة يبيعها"
+          description="المساعد يجاوب على أسئلة الأسعار والتوافر من الكتالوج ده. من غير منتجات، أي سؤال عن سعر أو مقاس بيوصل لك أنت بدل ما يترد عليه فوراً."
+          hint="المتاجر اللي بتضيف أول ٥ منتجات بيرد المساعد على أغلب أسئلة العملاء من غير تدخل."
+          action={
+            <button onClick={() => setEditing({ ...EMPTY })} className="btn-primary px-4 py-2 text-sm">
+              <Plus className="h-4 w-4" /> أضف أول منتج
+            </button>
+          }
+          secondaryAction={
+            <a href="/dashboard/settings/providers" className="btn-ghost px-4 py-2 text-sm">
+              <LinkIcon className="h-4 w-4" /> استيراد من متجرك
+            </a>
+          }
+          steps={[
+            { title: "أضف المنتج", body: "الاسم والسعر والمخزون — الصورة اختيارية لكنها ترفع الرد." },
+            { title: "خلّيه ظاهر", body: "المنتجات المخفية لا يعرضها المساعد على العملاء." },
+            { title: "اتركه يبيع", body: "المساعد يرد بالسعر والتوافر والصورة تلقائياً." },
+          ]}
+        />
       ) : filtered.length === 0 ? (
         <div className="card">
           <EmptyState

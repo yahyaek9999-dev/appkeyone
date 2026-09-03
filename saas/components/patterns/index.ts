@@ -1,3 +1,3 @@
-export { PageHeader } from "./page-header";
+export { PageHeader, HeaderFact } from "./page-header";
 export { LoadingState } from "./loading-state";
 export { ErrorState } from "./error-state";

@@ -527,9 +527,16 @@ export default function BroadcastsUi() {
         )}
         {!loading && items.length === 0 && (
           <EmptyState
+            variant="page"
             icon={<Megaphone className="h-full w-full" />}
-            title="لا توجد حملات بعد"
-            description="ابدأ حملة جديدة من الزر أعلاه."
+            title="لسه ما بعتّش أي حملة"
+            description="الحملة تبعت رسالة واحدة لشريحة من عملائك على واتساب — بجدولة وإرسال تدريجي يحمي رقمك من الحظر."
+            hint="ابدأ بشريحة صغيرة (٥٠–١٠٠ عميل) وشوف نسبة الرد قبل ما توسّع."
+            steps={[
+              { title: "اختر الجمهور", body: "شريحة جاهزة أو كل العملاء." },
+              { title: "اكتب الرسالة", body: "تقدر تستخدم اسم العميل داخل النص." },
+              { title: "راقب النتيجة", body: "الوصول والردود لكل حملة تظهر هنا." },
+            ]}
           />
         )}
         {!loading &&

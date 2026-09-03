@@ -485,13 +485,47 @@ export default function InboxUi({
         } min-w-0 flex-1 flex-col bg-black/10`}
       >
         {!active ? (
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyState
-              icon={<MessageSquare className="w-full h-full" />}
-              title="اختر محادثة"
-              description="اختر عميل من القائمة على اليمين لتبدأ المحادثة."
-              size="lg"
-            />
+          /* Evidence (Phase 11, screenshot 04): with no conversations yet the
+             inbox showed TWO empty states at once — "لا توجد محادثات بعد" in
+             the list rail and "اختر محادثة" filling the whole thread pane —
+             so the screen told the merchant to pick from a list that was
+             itself empty, across the largest void in the product. When there
+             is genuinely nothing to pick, the thread pane carries the
+             activation story instead; once conversations exist it goes back to
+             the quiet "pick one" prompt, which is then correct. */
+          <div className="flex flex-1 items-center justify-center p-4 sm:p-8">
+            {convs.length === 0 && !search.trim() ? (
+              <EmptyState
+                variant="page"
+                className="w-full max-w-2xl"
+                icon={<MessageSquare className="w-full h-full" />}
+                title="صندوقك لسه فاضي"
+                description="كل رسالة تيجي على رقم واتساب المربوط بتفتح محادثة هنا — والمساعد بيرد عليها لوحده. أنت بتدخل بس لما تحب، أو لما هو يحوّلهالك."
+                hint="لو ربطت الرقم خلاص ولسه مفيش محادثات، جرّب ابعت رسالة من موبايلك للرقم وشوفها بتظهر هنا."
+                action={
+                  <a href="/dashboard/settings/bridge" className="btn-primary px-4 py-2 text-sm">
+                    اربط واتساب
+                  </a>
+                }
+                secondaryAction={
+                  <a href="/dashboard/playground" className="btn-ghost px-4 py-2 text-sm">
+                    جرّب المساعد بنفسك
+                  </a>
+                }
+                steps={[
+                  { title: "اربط الرقم", body: "بـ QR أو Meta Cloud API من الإعدادات." },
+                  { title: "املأ المعرفة", body: "المساعد يرد من منتجاتك وسياساتك." },
+                  { title: "تابع من هنا", body: "كل محادثة، ومعها ما فعله المساعد فيها." },
+                ]}
+              />
+            ) : (
+              <EmptyState
+                icon={<MessageSquare className="w-full h-full" />}
+                title="اختر محادثة"
+                description="اختر عميلاً من القائمة لتفتح سجل محادثته."
+                size="md"
+              />
+            )}
           </div>
         ) : (
           <>

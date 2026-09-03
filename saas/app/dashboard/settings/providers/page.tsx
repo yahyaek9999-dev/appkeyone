@@ -31,38 +31,51 @@ export default async function ProvidersHubPage() {
     <div className="space-y-6" dir="rtl">
       <div className="border-b border-white/[0.05] pb-5">
         <h1 className="page-title">المزوّدون</h1>
-        <p className="page-desc mt-1">اربط مفاتيحك الخاصة لكل خدمة — المفاتيح مشفّرة وكل حساب معزول تماماً.</p>
+        <p className="page-desc mt-2">اربط مفاتيحك الخاصة لكل خدمة — المفاتيح مشفّرة وكل حساب معزول تماماً.</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {PROVIDER_DOMAINS.map((domain) => {
-          const Icon = ICONS[domain];
-          const total = listProviders(domain).length;
-          const configured = counts[domain] || 0;
-          return (
-            <Link key={domain} href={`/dashboard/settings/providers/${DOMAIN_SLUGS[domain]}`}
-              className="card p-5 hover:border-brand-400/40 transition-colors group">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-brand-500/10 border border-brand-500/20 p-2.5 text-brand-300">
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-100">{DOMAIN_LABELS[domain].ar}</span>
-                    {configured > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[11px] rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 px-2 py-0.5">
-                        <CheckCircle2 className="w-3 h-3" /> {configured} مفعّل
-                      </span>
-                    )}
+      {/* Evidence (Phase 11, screenshots 61 & 71): five identical cards, each
+          with the same emerald icon tile, in a 2-column grid that left the last
+          one orphaned mid-row. Configured and unconfigured domains looked
+          exactly alike, so the one thing a merchant comes here to check —
+          "what have I actually connected?" — was invisible. Now one surface,
+          and connection STATUS is the column that reads first. */}
+      <div className="overflow-hidden rounded-xl border border-white/[0.07]">
+        <ul className="divide-y divide-white/[0.04]">
+          {PROVIDER_DOMAINS.map((domain) => {
+            const Icon = ICONS[domain];
+            const total = listProviders(domain).length;
+            const configured = counts[domain] || 0;
+            return (
+              <li key={domain}>
+                <Link
+                  href={`/dashboard/settings/providers/${DOMAIN_SLUGS[domain]}`}
+                  className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50 focus-visible:ring-inset"
+                >
+                  <Icon className={`h-4 w-4 shrink-0 transition-colors ${configured > 0 ? "text-brand-300" : "text-slate-600"}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[14px] font-semibold text-slate-100 transition-colors group-hover:text-brand-300">
+                      {DOMAIN_LABELS[domain].ar}
+                    </div>
+                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-slate-500">{BLURB[domain]}</p>
                   </div>
-                  <p className="text-sm text-slate-400 mt-1">{BLURB[domain]}</p>
-                  <p className="text-[11px] text-slate-500 mt-2">{total} مزوّد متاح</p>
-                </div>
-                <ChevronLeft className="w-4 h-4 text-slate-600 group-hover:text-brand-300 transition-colors" />
-              </div>
-            </Link>
-          );
-        })}
+                  <div className="hidden shrink-0 text-end sm:block">
+                    {configured > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {configured} مفعّل
+                      </span>
+                    ) : (
+                      <span className="text-[12px] text-slate-600">غير مربوط</span>
+                    )}
+                    <div className="mt-0.5 text-[11px] text-slate-600">{total} مزوّد متاح</div>
+                  </div>
+                  <ChevronLeft className="h-4 w-4 shrink-0 text-slate-600 transition-transform group-hover:-translate-x-0.5 group-hover:text-slate-400" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

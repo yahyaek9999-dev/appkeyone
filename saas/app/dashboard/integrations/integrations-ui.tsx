@@ -440,7 +440,7 @@ export default function IntegrationsUi() {
           <EmptyState
             icon={<Plug className="h-full w-full" />}
             title="لا توجد متاجر مربوطة بعد"
-            description="اربط متجرك لمزامنة الطلبات والمنتجات تلقائيًا."
+            description="اربط متجرك من الأعلى لتتزامن المنتجات والطلبات تلقائياً — بدل إدخالها يدوياً."
           />
         )}
         {items.map((item) => {

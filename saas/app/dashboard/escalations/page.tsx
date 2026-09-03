@@ -13,7 +13,7 @@ import EscalationActions from "@/app/dashboard/escalations/ticket-actions";
 import { EmptyState } from "@/components/ui/empty-state";
 import { pageGate } from "@/lib/membership/gate";
 import LockedFeature from "@/components/billing/LockedFeature";
-import { PageHeader } from "@/components/patterns/page-header";
+import { PageHeader, HeaderFact } from "@/components/patterns/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -107,24 +107,27 @@ export default async function EscalationsPage() {
     <div className="space-y-5" dir="rtl">
 
       {/* Header */}
-      <div className="border-b border-white/[0.05] pb-5">
-        <PageHeader
-          title="التصعيدات"
-          description={
-            tickets.length > 0
-              ? `${tickets.length} محادثة تحتاج تدخلاً${critical > 0 ? ` · ${critical} عالية الأولوية` : ""}`
-              : "لا توجد محادثات تحتاج تدخلاً الآن"
-          }
-          actions={
-            resolved24h > 0 ? (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 text-[12px] text-emerald-300">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {resolved24h} حُلّت اليوم
-              </div>
-            ) : undefined
-          }
-        />
-      </div>
+      <PageHeader
+        divider
+        title="التصعيدات"
+        description="المحادثات التي رفعها المساعد لك لأنه لا يستطيع إغلاقها وحده — مرتّبة بالأخطر أولاً."
+        meta={
+          tickets.length > 0
+            ? [
+                <HeaderFact key="w" value={tickets.length} label="بانتظارك" />,
+                critical > 0 ? <HeaderFact key="c" value={critical} label="عالية الأولوية" tone="danger" /> : null,
+              ]
+            : undefined
+        }
+        status={
+          resolved24h > 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 text-[12px] text-emerald-300">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {resolved24h} حُلّت اليوم
+            </span>
+          ) : undefined
+        }
+      />
 
       {/* Priority band — only if there's something to show */}
       {tickets.length > 0 && (
@@ -147,13 +150,19 @@ export default async function EscalationsPage() {
       {/* Priority queue */}
       <div className="space-y-2">
         {tickets.length === 0 ? (
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.01]">
             <EmptyState
+              variant="page"
+              tone="clear"
               icon={<ShieldAlert className="h-full w-full" />}
-              title="لا توجد محادثات تحتاج تدخلاً"
-              description="حين يرصد المساعد موقفاً يحتاج مساعدة بشرية، ستظهر هنا مباشرةً."
+              title="طابور التصعيد فاضي — وده وضع كويس"
+              description="المساعد بيتعامل مع كل المحادثات الحالية لوحده. أي موقف يحتاج بشري — عميل زعلان، سؤال خارج معرفته، أو طلب حسّاس — بيتحوّل هنا فوراً ومعاه سبب التحويل."
+              hint="مش محتاج تفضل فاتح الصفحة دي. لو ظهر تصعيد، هيبان في «عملي اليوم» وفي التنبيهات كمان."
+              steps={[
+                { title: "عميل غاضب", body: "نبرة الرسائل تتصاعد أو يتكرر الشكوى في نفس المحادثة." },
+                { title: "سؤال خارج المعرفة", body: "المساعد لا يجد إجابة موثوقة في قاعدة معرفتك." },
+                { title: "طلب حسّاس", body: "استرجاع، شكوى على منتج، أو خصم فوق الحد المسموح." },
+              ]}
             />
-          </div>
         ) : (
           sorted.map((t: any) => {
             const sev = SEV_STYLE[t.severity] || SEV_STYLE.medium;

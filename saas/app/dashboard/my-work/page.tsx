@@ -90,24 +90,35 @@ export default async function MyWorkPage() {
       </div>
 
       {/* ── Summary band ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] my-6">
-        <div className="px-5 py-4 text-center">
-          <div className={`text-[28px] font-black tabular-nums leading-none ${activeCount > 0 ? "text-sky-300" : "text-slate-600"}`}>
-            {activeCount}
-          </div>
-          <div className="mt-1.5 text-[11px] font-medium text-slate-500">محادثة نشطة</div>
-        </div>
-        <div className="px-5 py-4 text-center">
-          <div className={`text-[28px] font-black tabular-nums leading-none ${escalationCount > 0 ? "text-rose-300" : "text-slate-600"}`}>
+      {/* Summary band. Evidence (Phase 11, screenshot 02): three identical
+          centred 28px numbers meant a merchant opening their work queue had no
+          idea which one to act on. Escalations are the only cell that implies
+          "drop what you're doing", so it anchors — and when everything is zero
+          the whole band goes quiet rather than shouting three zeros. */}
+      <div className="grid grid-cols-2 divide-x divide-x-reverse divide-white/[0.05] overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] my-6 sm:grid-cols-4">
+        <div className="relative px-5 py-4 sm:col-span-2">
+          {escalationCount > 0 && (
+            <span aria-hidden className="absolute inset-y-0 start-0 w-[2px] bg-rose-400/70" />
+          )}
+          <div className="text-[11px] font-medium text-slate-500">تصعيد مفتوح</div>
+          <div className={`mt-2 text-[32px] font-bold tabular-nums leading-none sm:text-[36px] ${escalationCount > 0 ? "text-rose-300" : "text-slate-600"}`}>
             {escalationCount}
           </div>
-          <div className="mt-1.5 text-[11px] font-medium text-slate-500">تصعيد مفتوح</div>
+          <div className="mt-2 text-[12px] text-slate-500">
+            {escalationCount > 0 ? "محادثات لا يستطيع المساعد إغلاقها وحده" : "المساعد يتولّى كل المحادثات حالياً"}
+          </div>
         </div>
-        <div className="px-5 py-4 text-center">
-          <div className={`text-[28px] font-black tabular-nums leading-none ${resolvedToday > 0 ? "text-emerald-300" : "text-slate-600"}`}>
+        <div className="px-5 py-4">
+          <div className="text-[11px] font-medium text-slate-500">محادثة نشطة</div>
+          <div className={`mt-2 text-[20px] font-semibold tabular-nums leading-none ${activeCount > 0 ? "text-sky-300" : "text-slate-600"}`}>
+            {activeCount}
+          </div>
+        </div>
+        <div className="px-5 py-4">
+          <div className="text-[11px] font-medium text-slate-500">أُنجز اليوم</div>
+          <div className={`mt-2 text-[20px] font-semibold tabular-nums leading-none ${resolvedToday > 0 ? "text-emerald-300" : "text-slate-600"}`}>
             {resolvedToday}
           </div>
-          <div className="mt-1.5 text-[11px] font-medium text-slate-500">أُنجز اليوم</div>
         </div>
       </div>
 

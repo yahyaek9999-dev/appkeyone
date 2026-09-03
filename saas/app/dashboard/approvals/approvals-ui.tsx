@@ -151,7 +151,19 @@ export default function ApprovalsUi() {
       <div className="space-y-2">
         {loading && <div className="card p-8 text-center text-slate-400">جارٍ التحميل...</div>}
         {!loading && items.length === 0 && (
-          <EmptyState icon={<CheckSquare className="h-full w-full" />} title="لا توجد طلبات" description="لا توجد طلبات موافقة في هذا العرض." />
+          <EmptyState
+            variant="page"
+            tone="clear"
+            icon={<CheckSquare className="h-full w-full" />}
+            title="مفيش طلبات مستنية موافقتك"
+            description="لما موظف يحتاج إذن لإجراء حسّاس — خصم كبير، استرجاع، أو تعديل على طلب — بيتبعت هنا وأنت اللي توافق أو ترفض."
+            hint="كل قرار بيتسجّل في سجل التدقيق باسم اللي وافق ووقته."
+            steps={[
+              { title: "خصم فوق الحد", body: "أي تخفيض يتجاوز النسبة التي حدّدتها." },
+              { title: "استرجاع أو إلغاء", body: "قرارات ترتد على الإيراد المسجَّل." },
+              { title: "تعديل بعد التأكيد", body: "تغيير على طلب دخل مرحلة التنفيذ." },
+            ]}
+          />
         )}
         {items.map((a) => {
           const st = STATUS[a.status];
