@@ -7,7 +7,7 @@
  * Reads the canonical capability ladder from the pricing catalog.
  */
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Check, Minus, ChevronDown } from "lucide-react";
 import {
   CAPABILITIES,
@@ -128,7 +128,7 @@ export default function FeatureMatrix({
               const caps = CAPABILITIES.filter((c) => c.category === cat);
               const isOpen = openDesktop.has(cat);
               return (
-                <>
+                <Fragment key={cat}>
                   {/* Category header row — always visible, clickable */}
                   <tr
                     key={`cat-${cat}`}
@@ -180,7 +180,7 @@ export default function FeatureMatrix({
                         ))}
                       </tr>
                     ))}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
