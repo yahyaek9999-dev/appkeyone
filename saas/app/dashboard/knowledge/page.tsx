@@ -35,10 +35,12 @@ export default async function KnowledgePage() {
   });
   return (
     <div>
-      <h1 className="page-title mb-1">مركز المعرفة</h1>
-      <p className="page-desc mb-6">
-        أضف منتجاتك وأسعارك وسياساتك وأسئلتك الشائعة — تُستخدم كمصدر رئيسي للردود التلقائية.
-      </p>
+      <div className="border-b border-white/[0.05] pb-5 mb-6">
+        <h1 className="page-title mb-1">مركز المعرفة</h1>
+        <p className="page-desc">
+          أضف منتجاتك وأسعارك وسياساتك وأسئلتك الشائعة — تُستخدم كمصدر رئيسي للردود التلقائية.
+        </p>
+      </div>
       <KnowledgeUI docs={JSON.parse(JSON.stringify(docs))} />
     </div>
   );

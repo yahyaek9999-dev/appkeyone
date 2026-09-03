@@ -192,6 +192,7 @@ export default function KnowledgeUI({ docs }: { docs: Doc[] }) {
                 onChange={(e) => setUrlInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && importUrl()}
                 placeholder="https://example.com/about"
+                aria-label="رابط الاستيراد"
                 dir="ltr"
                 className="input w-full pr-10"
               />
@@ -261,8 +262,8 @@ export default function KnowledgeUI({ docs }: { docs: Doc[] }) {
               </div>
               <div className="flex items-center gap-1.5">
                 <SourceBadge source={d.source} />
-                <button onClick={() => setEditing(d)} className="rounded p-1.5 text-slate-400 transition hover:text-white" title="تعديل">✎</button>
-                <button onClick={() => del(d.id)} className="rounded p-1.5 text-slate-400 transition hover:text-rose-400" title="حذف"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => setEditing(d)} className="rounded p-1.5 text-slate-400 transition hover:text-white" aria-label={`تعديل ${d.title}`}>✎</button>
+                <button onClick={() => del(d.id)} className="rounded p-1.5 text-slate-400 transition hover:text-rose-400" aria-label={`حذف ${d.title}`}><Trash2 className="h-4 w-4" /></button>
               </div>
             </div>
             <p className="line-clamp-3 whitespace-pre-wrap text-sm text-slate-400">{d.content}</p>
@@ -313,11 +314,11 @@ function DocModal({ editing, setEditing, busy, onSave }: {
   onSave: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label={editing.id ? "تعديل المستند" : "مستند جديد"}>
       <div className="card max-h-[90vh] w-full max-w-3xl overflow-y-auto p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-bold">{editing.id ? "تعديل المستند" : "مستند جديد"}</h2>
-          <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+          <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white" aria-label="إغلاق"><X className="h-5 w-5" /></button>
         </div>
         <div className="space-y-4">
           <div>
@@ -369,14 +370,14 @@ function FaqModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label="أسئلة وأجوبة">
       <div className="card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-xl font-bold">
             <HelpCircle className="h-5 w-5 text-amber-400" />
             أضف أسئلة وأجوبة (FAQ)
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-white" aria-label="إغلاق"><X className="h-5 w-5" /></button>
         </div>
         <p className="mb-4 text-sm text-slate-400">كل سؤال وجواب يُضاف كمصدر معرفة يُستخدم تلقائياً عند الإجابة.</p>
         <div className="space-y-3">
@@ -385,7 +386,7 @@ function FaqModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
               <div className="flex items-center justify-between">
                 <span className="text-xs text-amber-400 font-semibold">سؤال {i + 1}</span>
                 {pairs.length > 1 && (
-                  <button onClick={() => removePair(i)} className="text-slate-500 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => removePair(i)} className="text-slate-500 hover:text-rose-400" aria-label="حذف السؤال"><Trash2 className="h-3.5 w-3.5" /></button>
                 )}
               </div>
               <input className="input text-sm" placeholder="ما هو وقت الشحن؟" value={p.q} onChange={(e) => update(i, "q", e.target.value)} />
@@ -434,14 +435,14 @@ function ProductImportModal({ onClose, onSaved }: { onClose: () => void; onSaved
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label="استيراد قائمة منتجات">
       <div className="card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-xl font-bold">
             <Package className="h-5 w-5 text-gold-400" />
             استيراد قائمة منتجات
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-white" aria-label="إغلاق"><X className="h-5 w-5" /></button>
         </div>
         <p className="mb-1 text-sm text-slate-400">الصق قائمة منتجاتك — كل منتج في سطر على شكل:</p>
         <pre className="mb-4 rounded-xl bg-white/[0.04] p-3 text-xs text-slate-300 font-mono leading-relaxed">
