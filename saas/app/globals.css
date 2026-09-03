@@ -494,7 +494,9 @@
         font-weight: 500;
         letter-spacing: 0.38em;
         text-transform: uppercase;
-        color: rgba(47,147,132,0.9);
+        /* Gold, matching the .eyebrow token used on /features, /pricing and
+           /projects — the brand doc assigns eyebrows to the gold secondary. */
+        color: rgba(201,162,75,0.92);
     }
 
     .lp-crescent {

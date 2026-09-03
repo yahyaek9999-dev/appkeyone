@@ -105,12 +105,12 @@ export default async function AuthLayout({
             <div className="mb-6 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
             <div className="grid grid-cols-3 gap-3 text-center">
               {[
-                { v: "+47%", l: "معدل التحويل" },
-                { v: "3.2×", l: "نمو الإيرادات" },
-                { v: "98%", l: "رضا العملاء" },
+                { v: "٢", l: "قناتا ربط واتساب" },
+                { v: "٥", l: "لهجات عربية مدعومة" },
+                { v: "٦", l: "مزوّدي ذكاء اصطناعي" },
               ].map((m) => (
                 <div key={m.l} className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-3">
-                  <div className="text-xl font-bold text-brand-300 tracking-tight">{m.v}</div>
+                  <div className="text-xl font-semibold tracking-tight text-gold-400">{m.v}</div>
                   <div className="mt-0.5 text-[10px] text-slate-500">{m.l}</div>
                 </div>
               ))}

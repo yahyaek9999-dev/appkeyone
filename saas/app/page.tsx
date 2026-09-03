@@ -51,8 +51,8 @@ const LP = {
     explore: "استكشف المنصة",
     metrics: [
       { value: "24/7", label: "عمليات عملاء لا تتوقف" },
-      { value: "< 3ث", label: "متوسط زمن استجابة البوت" },
-      { value: "99.9%", label: "وقت تشغيل مضمون" },
+      { value: "٥", label: "لهجات عربية مدعومة" },
+      { value: "٦", label: "مزوّدي ذكاء اصطناعي" },
     ],
     modules: [
       { key: "customer", label: "إدارة العملاء", desc: "سجل موحّد لكل عميل — المحادثات، الطلبات، والتفاعلات في مكان واحد." },
@@ -138,8 +138,8 @@ const LP = {
     explore: "Explore the platform",
     metrics: [
       { value: "24/7", label: "Always-on customer operations" },
-      { value: "< 3s", label: "Average bot response time" },
-      { value: "99.9%", label: "Guaranteed uptime" },
+      { value: "5", label: "Arabic dialects supported" },
+      { value: "6", label: "AI providers supported" },
     ],
     modules: [
       { key: "customer", label: "Customer management", desc: "One unified record per customer — conversations, orders, and interactions in one place." },
