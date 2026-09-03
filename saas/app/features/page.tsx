@@ -262,6 +262,7 @@ export default async function FeaturesPage({
                         alt=""
                         width={900}
                         height={506}
+                        sizes="(max-width: 1024px) 100vw, 560px"
                         className="aspect-[16/9] h-auto w-full object-cover"
                         loading="lazy"
                       />

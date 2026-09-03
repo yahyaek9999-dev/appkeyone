@@ -8,6 +8,7 @@ import {
   ArrowLeft, ArrowRight, CheckCircle2, Phone,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export const metadata = {
   title: "أمثلة على استخدام KEYONE",
@@ -433,6 +434,75 @@ export default async function ProjectsPage({
               </span>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Product proof — one legible visual + capability grouping.
+           A 3-up grid of these diagrams renders illegible at ~378px, so the
+           image is shown at a size where it can actually be read. ── */}
+      <section className="border-t border-white/[0.06] px-5 py-14 sm:py-16">
+        <div className="mx-auto max-w-[1180px]">
+          <SectionReveal>
+            <div className="mb-10 max-w-2xl">
+              <span className="eyebrow mb-3 inline-block">
+                {isRtl ? "من داخل المنصة" : "Inside the platform"}
+              </span>
+              <h2 className="display-heading text-2xl sm:text-3xl">
+                {isRtl
+                  ? "الأنظمة اللي بتشتغل وراء كل حالة."
+                  : "The systems working behind every case."}
+              </h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
+                {isRtl
+                  ? "نفس المنصة في كل القطاعات — تتغيّر المعرفة والمنتجات، وتبقى طريقة التشغيل واحدة."
+                  : "The same platform across every sector — the knowledge and products change, the way it operates does not."}
+              </p>
+            </div>
+
+            <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-14">
+              <div className="overflow-hidden rounded-2xl border border-white/[0.07] shadow-[0_18px_70px_rgba(0,0,0,0.42)]">
+                <Image
+                  src="/one-platform.png"
+                  alt=""
+                  width={1200}
+                  height={675}
+                  sizes="(max-width: 1024px) 100vw, 660px"
+                  className="aspect-[16/9] w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+
+              <ul className="space-y-5">
+                {[
+                  {
+                    t: isRtl ? "بريد وارد موحّد" : "Unified inbox",
+                    d: isRtl
+                      ? "كل المحادثات والعملاء في مكان واحد بدل أدوات متفرقة."
+                      : "Every conversation and customer in one place instead of scattered tools.",
+                  },
+                  {
+                    t: isRtl ? "طلبات قابلة للمتابعة" : "Trackable orders",
+                    d: isRtl
+                      ? "الطلب يتكوّن من المحادثة نفسها ويفضل قابل للتتبّع."
+                      : "Orders form out of the conversation itself and stay trackable.",
+                  },
+                  {
+                    t: isRtl ? "تحليلات تشغيلية" : "Operational analytics",
+                    d: isRtl
+                      ? "زمن الرد والتحويل والنمو في تقارير واضحة."
+                      : "Response time, conversion and growth in clear reports.",
+                  },
+                ].map((c) => (
+                  <li key={c.t} className="border-s-2 border-gold-500/35 ps-4">
+                    <div className="text-[15px] font-medium text-white">{c.t}</div>
+                    <p className="mt-1 text-[13px] leading-relaxed text-slate-400">
+                      {c.d}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </SectionReveal>
         </div>
       </section>
 
