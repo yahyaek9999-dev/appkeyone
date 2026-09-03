@@ -465,13 +465,13 @@ export default function RuleBuilderUi() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => toggle(rule)} title={rule.enabled ? "إيقاف" : "تفعيل"} className="text-slate-400 hover:text-white">
+                <button onClick={() => toggle(rule)} aria-label={rule.enabled ? "إيقاف" : "تفعيل"} className="text-slate-400 hover:text-white">
                   {rule.enabled ? <ToggleRight className="h-5 w-5 text-brand-400" /> : <ToggleLeft className="h-5 w-5" />}
                 </button>
                 <button onClick={() => setEditing({ ...rule, conditions: parseConditions(rule), actionConfig: parseActionConfig(rule) })} className="btn-ghost px-3 py-1.5 text-xs">
                   تعديل
                 </button>
-                <button onClick={() => deleteRule(rule.id)} className="text-rose-400/60 hover:text-rose-400">
+                <button onClick={() => deleteRule(rule.id)} aria-label={`حذف ${rule.name}`} className="text-rose-400/60 hover:text-rose-400">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -482,11 +482,11 @@ export default function RuleBuilderUi() {
 
       {/* Create modal */}
       {draft && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur overflow-y-auto" role="dialog" aria-modal="true" aria-label="قاعدة جديدة">
           <div className="card w-full max-w-lg p-6 space-y-4 my-4">
             <div className="flex items-center justify-between">
               <h2 className="font-bold">قاعدة جديدة</h2>
-              <button onClick={() => setDraft(null)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+              <button onClick={() => setDraft(null)} className="text-slate-400 hover:text-white" aria-label="إغلاق"><X className="h-5 w-5" /></button>
             </div>
 
             <div>
@@ -559,11 +559,11 @@ export default function RuleBuilderUi() {
 
       {/* Edit modal */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur overflow-y-auto" role="dialog" aria-modal="true" aria-label="تعديل القاعدة">
           <div className="card w-full max-w-lg p-6 space-y-4 my-4">
             <div className="flex items-center justify-between">
               <h2 className="font-bold">تعديل القاعدة</h2>
-              <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+              <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-white" aria-label="إغلاق"><X className="h-5 w-5" /></button>
             </div>
 
             <div>
