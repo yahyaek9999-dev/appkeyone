@@ -430,7 +430,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] text-white">{o.items?.[0]?.name || "طلب"}</div>
                 <div className="text-[11px] text-slate-500">
-                  {(o.total / 100 || 0).toLocaleString("ar-EG")} {o.currency || "ج"}
+                  {(o.total || 0).toLocaleString("ar-EG")} {o.currency || "ج"}
                 </div>
               </div>
               <OrderStatusPill status={(o.status === "canceled" ? "cancelled" : o.status) as OrderStatus} size="sm" />

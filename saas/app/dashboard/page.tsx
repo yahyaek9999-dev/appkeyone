@@ -377,7 +377,7 @@ export default async function DashboardOverview() {
             <Link href="/dashboard/orders" className="group px-5 py-4 transition-colors hover:bg-white/[0.025]">
               <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-600">الإيرادات</div>
               <div className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white tabular-nums">
-                {rev7d > 0 ? `${(rev7d / 100).toLocaleString("ar-EG")}` : "—"}
+                {rev7d > 0 ? `${rev7d.toLocaleString("ar-EG")}` : "—"}
               </div>
               {rev7d > 0 && <div className="text-[10px] text-slate-600">جنيه</div>}
               {revDelta !== null && (
@@ -517,7 +517,7 @@ export default async function DashboardOverview() {
                           </td>
                           <td className="px-4 py-3 text-end">
                             <div className="text-[13px] font-semibold tabular-nums text-white">
-                              {o.total > 0 ? `${(o.total / 100).toLocaleString("ar-EG")} ج` : "—"}
+                              {o.total > 0 ? `${o.total.toLocaleString("ar-EG")} ج` : "—"}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center">

@@ -99,7 +99,7 @@ export default async function OrdersPage({
             <span className="flex items-center gap-3 text-[12px]">
               <span className="text-slate-400">{totalOrders.toLocaleString()} إجمالي</span>
               <span className="text-white/20">·</span>
-              <span className="text-emerald-400">{(revenue / 100).toLocaleString()} ج مؤكد</span>
+              <span className="text-emerald-400">{revenue.toLocaleString()} ج مؤكد</span>
               {(countByStatus["pending"] || 0) > 0 && (
                 <>
                   <span className="text-white/20">·</span>
