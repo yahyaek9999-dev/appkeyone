@@ -98,13 +98,13 @@ export default function QuickRepliesUi() {
       </div>
 
       {/* Add new */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+      <div className="card p-5">
         <h3 className="font-semibold mb-3 flex items-center gap-2">
           <Plus className="w-4 h-4" /> إضافة قالب جديد
         </h3>
         <div className="space-y-3">
           <div>
-            <label htmlFor="qr-add-triggers" className="text-xs text-slate-400 mb-1 block">
+            <label htmlFor="qr-add-triggers" className="label">
               الكلمات المفتاحية (افصل بفاصلة) — مثال: مواعيد,اوقات,بنفتح
             </label>
             <input
@@ -112,24 +112,24 @@ export default function QuickRepliesUi() {
               value={newTriggers}
               onChange={(e) => setNewTriggers(e.target.value)}
               placeholder="مواعيد,اوقات,ساعات العمل"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
+              className="input w-full"
             />
           </div>
           <div>
-            <label htmlFor="qr-add-reply" className="text-xs text-slate-400 mb-1 block">الرد</label>
+            <label htmlFor="qr-add-reply" className="label">الرد</label>
             <textarea
               id="qr-add-reply"
               value={newReply}
               onChange={(e) => setNewReply(e.target.value)}
               rows={3}
               placeholder="مثلاً: مواعيد العمل من 10ص إلى 11م كل أيام الأسبوع ما عدا الجمعة."
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 resize-none"
+              className="input w-full resize-none"
             />
           </div>
           <button
             onClick={add}
             disabled={adding || !newTriggers.trim() || !newReply.trim()}
-            className="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm inline-flex items-center gap-2"
+            className="btn-primary"
           >
             {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             إضافة
@@ -138,7 +138,7 @@ export default function QuickRepliesUi() {
       </div>
 
       {/* List */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="card overflow-hidden">
         {!loading && items.length > 0 && (
           <div className="border-b border-white/[0.06] p-3">
             <div className="relative">
@@ -149,7 +149,7 @@ export default function QuickRepliesUi() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="بحث في الردود والكلمات المفتاحية..."
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] py-2 pr-9 pl-3 text-sm focus:outline-none focus:border-brand-500"
+                className="input w-full pr-9"
                 dir="rtl"
               />
             </div>
@@ -222,13 +222,15 @@ function QuickReplyRow({
           <input
             value={triggersStr}
             onChange={(e) => setTriggersStr(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+            aria-label="الكلمات المفتاحية"
+            className="input w-full"
           />
           <textarea
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             rows={3}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm resize-none"
+            aria-label="نص الرد"
+            className="input w-full resize-none"
           />
           <div className="flex gap-2">
             <button onClick={save} disabled={saving}
@@ -237,7 +239,7 @@ function QuickReplyRow({
               حفظ
             </button>
             <button onClick={() => setEdit(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs">
+                    className="btn-ghost px-3 py-1.5 text-xs">
               إلغاء
             </button>
           </div>
@@ -265,7 +267,7 @@ function QuickReplyRow({
             </button>
             <button
               onClick={() => setEdit(true)}
-              className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-xs"
+              className="btn-ghost px-2.5 py-1 text-xs"
             >
               تعديل
             </button>
