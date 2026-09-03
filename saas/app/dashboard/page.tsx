@@ -15,6 +15,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { TrendBadge } from "@/components/ui/trend-badge";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
+import { OrderStatusPill } from "@/components/ui/order-status-pill";
 import ActivationChecklist from "./_activation-checklist";
 import { syncUserMilestones } from "@/lib/activation/track";
 import { resolveBusinessContext } from "@/lib/business-context";
@@ -520,7 +521,7 @@ export default async function DashboardOverview() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <OrderStatusChip status={o.status} />
+                            <OrderStatusPill status={o.status} />
                           </td>
                         </tr>
                       ))}
@@ -621,18 +622,3 @@ export default async function DashboardOverview() {
   );
 }
 
-// ── Order status chip ──────────────────────────────────────────────────────────
-function OrderStatusChip({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    delivered:  { label: "مُسلَّم",  cls: "text-emerald-300 bg-emerald-500/10" },
-    shipped:    { label: "شُحن",     cls: "text-blue-300 bg-blue-500/10" },
-    confirmed:  { label: "مؤكد",    cls: "text-brand-300 bg-brand-500/10" },
-    pending:    { label: "معلّق",   cls: "text-amber-300 bg-amber-500/10" },
-    canceled:   { label: "ملغي",    cls: "text-rose-300 bg-rose-500/10" },
-    cancelled:  { label: "ملغي",    cls: "text-rose-300 bg-rose-500/10" },
-  };
-  const s = map[status] ?? { label: status, cls: "text-slate-400 bg-white/[0.06]" };
-  return (
-    <span className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-medium ${s.cls}`}>{s.label}</span>
-  );
-}
