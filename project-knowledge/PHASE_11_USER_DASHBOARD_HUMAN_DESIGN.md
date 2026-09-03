@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-03
 **Branch:** `claude/wkeyone-dashboard-design-098c24`
-**Baseline:** `f38fece`
+**Baseline:** `8b5eba4` (the live production commit, after reconciliation — see §21)
 **Scope:** Customer (merchant) dashboard UI/UX only. No Meta, no Bridge, no billing,
 no auth, no infrastructure, no migrations, no deploy.
 
@@ -382,3 +382,53 @@ recorded so the next session is not surprised by them:
   a local `saas/.env` pointing at `keyone_r3`; `.claude/launch.json` was
   temporarily pointed at port 3100 (port 3000 was held by another session) and
   **reverted before commit** so the shared config is unchanged.
+
+
+---
+
+## 21. Reconciliation with the live production baseline (2026-09-04)
+
+Phase 11 was authored against `f38fece`. Production was actually running
+`8b5eba4` — `f38fece` plus an entire **UI design-system effort (Phases 1–10,
+~46 commits)** that had been deployed directly from a local commit and never
+merged back into `main`. Everything in §1–§20 above was therefore written
+without sight of that work. This section records what changed when the two were
+reconciled.
+
+**Method:** `git rebase --onto 8b5eba4 f38fece`, dropping the redundant money
+commit. Five route conflicts, each resolved by hand — not by taking a side.
+
+### What the reconciliation caught
+
+| Collision | Resolution |
+|---|---|
+| **Two `PageHeader`s.** Production had `components/patterns/page-header.tsx` with 6 consumers; Phase 11 added a richer one at `components/ui/page-header.tsx` — on 5 of those same 6 pages | Production's stays **canonical**. Phase 11's additions (eyebrow, `meta` facts, ranked `secondary`/`actions`, `status`, `divider`) folded into it; the duplicate deleted. All pre-existing call sites unchanged, all additions opt-in |
+| **`.ai-btn-primary` / `.ai-btn-ghost` were deleted** from globals.css in Phase 2B. Phase 11 added 7 fresh usages | All migrated to `btn-primary`/`btn-ghost`. Left alone, these would have rendered as **unstyled buttons in production** |
+| **Duplicate money fix.** Production already had `b0ebb6b` — same 4 sites, same values | Phase 11's `a914e4f` dropped as redundant. Only its unique part kept: the orders row printed `920 EGP` while the header printed `٤٬٣٤٠ ج.م` on the same page |
+| **A11y from Phase 1–10** on the conflicted files | Preserved explicitly: `role="search"` + both aria-labels on customers, aria-label on products search, and the `.input` token those fields had been migrated onto |
+
+### Corrections to earlier sections
+
+- **§11 overstates the money finding.** It was already fixed and live in
+  `b0ebb6b` before this branch touched it — and the original Phase 11 brief did
+  say so ("already corrected, do not undo it"). The branch it was authored
+  against simply predated the fix. Phase 11 contributed the format alignment,
+  not the fix.
+- **§18's debt item on the floating help widget overlapping content at 375px is
+  already fixed upstream** — Phase 1–10 changed `.pb-safe` to clear it.
+- **§3's finding that the operational vocabulary was unused still holds** for
+  `.metric-band-cell` / `.attention-item` / `.ops-table` / `.crm-row`.
+
+### Remaining routes — deliberately unchanged
+
+`compliance`, `agents`, `brain`, `command-center`, `revenue-forecast`,
+`business`, `revenue-pro`, `sales-brain`, `monitoring`, `bot` were reviewed and
+**left alone**. None is touched by either effort, all load clean with no console
+errors and no horizontal overflow, and all already gain the new type scale for
+free. `/dashboard/bot` is a configuration form with no honest primary metric —
+forcing a `MetricBand` onto it would have manufactured a KPI, which the brief
+explicitly prohibits.
+
+### Canva
+
+No usable reference material available (see §5–§7). Not revisited.
