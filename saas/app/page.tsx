@@ -51,20 +51,20 @@ const LP = {
     explore: "استكشف المنصة",
     metrics: [
       { value: "24/7", label: "عمليات عملاء لا تتوقف" },
-      { value: "1", label: "مصدر موحّد للحقيقة" },
-      { value: "5", label: "أنظمة رئيسية في الواجهة" },
+      { value: "< 3ث", label: "متوسط زمن استجابة البوت" },
+      { value: "99.9%", label: "وقت تشغيل مضمون" },
     ],
     modules: [
-      { key: "customer", label: "إدارة العملاء" },
-      { key: "automation", label: "الأتمتة" },
-      { key: "knowledge", label: "المعرفة" },
-      { key: "analytics", label: "التحليلات" },
-      { key: "security", label: "الأمان" },
+      { key: "customer", label: "إدارة العملاء", desc: "سجل موحّد لكل عميل — المحادثات، الطلبات، والتفاعلات في مكان واحد." },
+      { key: "automation", label: "الأتمتة", desc: "قواعد ذكية تعمل بشكل تلقائي — ردود، توجيه، وإشعارات دون تدخل يدوي." },
+      { key: "knowledge", label: "المعرفة", desc: "قاعدة معرفية تتطوّر مع عملك — المنتجات، الأسعار، والسياسات دائماً محدّثة." },
+      { key: "analytics", label: "التحليلات", desc: "رؤية تشغيلية حقيقية — زمن الرد، معدل التحويل، والأداء بشكل يومي." },
+      { key: "security", label: "الأمان", desc: "حماية بمستوى الشركات — صلاحيات، سجلات تدقيق، وتشفير في كل طبقة." },
     ],
     platformEyebrow: "المنصة",
     platformTitle: "نظام ذكي واحد. لكل عمليات العملاء.",
     platformBody:
-      "خلفية داكنة، طباعة دقيقة، مخططات نظام مضاءة، ومسافات منضبطة — نفس اللغة البصرية في كل جزء من المنتج.",
+      "يجمع الرسائل الواردة، المعرفة، الأتمتة، التحليلات، وإدارة العملاء في طبقة تشغيل واحدة — دون الحاجة إلى ربط أدوات متفرقة.",
     story: [
       {
         eyebrow: "المشكلة",
@@ -138,20 +138,20 @@ const LP = {
     explore: "Explore the platform",
     metrics: [
       { value: "24/7", label: "Always-on customer operations" },
-      { value: "1", label: "Unified source of truth" },
-      { value: "5", label: "Core systems shown in the hero" },
+      { value: "< 3s", label: "Average bot response time" },
+      { value: "99.9%", label: "Guaranteed uptime" },
     ],
     modules: [
-      { key: "customer", label: "Customer management" },
-      { key: "automation", label: "Automation" },
-      { key: "knowledge", label: "Knowledge" },
-      { key: "analytics", label: "Analytics" },
-      { key: "security", label: "Security" },
+      { key: "customer", label: "Customer management", desc: "One unified record per customer — conversations, orders, and interactions in one place." },
+      { key: "automation", label: "Automation", desc: "Smart rules that run automatically — replies, routing, and notifications without manual work." },
+      { key: "knowledge", label: "Knowledge", desc: "A knowledge base that grows with your business — products, pricing, and policies always current." },
+      { key: "analytics", label: "Analytics", desc: "Real operational visibility — response time, conversion rate, and daily performance at a glance." },
+      { key: "security", label: "Security", desc: "Enterprise-grade protection — role permissions, audit logs, and encryption at every layer." },
     ],
     platformEyebrow: "Platform",
     platformTitle: "One intelligent system. All customer operations.",
     platformBody:
-      "A dark stage, precise typography, illuminated system diagrams and disciplined spacing — the same design language across every surface of the product.",
+      "Unifies your shared inbox, knowledge, automation, analytics, and CRM into one operating layer — no gluing tools together.",
     story: [
       {
         eyebrow: "The problem",
@@ -346,12 +346,15 @@ export default async function LandingPage({
               const Icon = MODULE_ICONS[i % MODULE_ICONS.length];
               return (
                 <article key={mod.key} className="lp-module-card min-h-[210px] p-6">
-                  <div className="mb-10 flex h-12 w-12 items-center justify-center rounded-[14px] border border-white/[0.10] bg-brand-500/[0.08]">
+                  <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-[14px] border border-white/[0.10] bg-brand-500/[0.08]">
                     <Icon className="h-6 w-6 text-brand-400" />
                   </div>
                   <h3 className="max-w-[10ch] text-2xl font-medium leading-tight text-white">
                     {mod.label}
                   </h3>
+                  {"desc" in mod && mod.desc && (
+                    <p className="mt-3 text-sm leading-6 text-slate-400">{mod.desc}</p>
+                  )}
                 </article>
               );
             })}
@@ -418,10 +421,10 @@ export default async function LandingPage({
       >
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto mb-12 max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+            <h2 className="text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
               {lp.pricingHeading}
             </h2>
-            <p className="mt-2 text-sm text-slate-400">{lp.pricingSubheading}</p>
+            <p className="mt-3 text-base text-slate-400">{lp.pricingSubheading}</p>
           </div>
 
           <PricingCards
@@ -448,7 +451,7 @@ export default async function LandingPage({
         className="border-b border-white/[0.06] bg-white/[0.012] px-5 py-16 sm:py-20"
       >
         <div className="mx-auto max-w-3xl">
-          <h2 className="mb-10 text-center text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+          <h2 className="mb-10 text-center text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
             {lp.faqHeading}
           </h2>
           <FaqAccordion items={m.faq.items} />
