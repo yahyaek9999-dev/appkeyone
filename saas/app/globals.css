@@ -112,12 +112,19 @@
         @apply text-xs font-medium text-slate-400;
     }
 
+    /* ── Page typography scale ───────────────────────────────────────
+       Evidence (74-screenshot sweep): every page opened with a 20-22px
+       title over an equally-sized description, so nothing read as the
+       page's subject — the title floated instead of anchoring. The
+       display step below restores a real title→body ratio (~2.2:1) and
+       caps the description at a measure so it reads as a subtitle rather
+       than a second paragraph of body copy. */
     .page-title {
-        @apply text-xl font-semibold tracking-[-0.02em] text-white sm:text-[22px];
+        @apply text-[24px] font-semibold leading-[1.18] tracking-[-0.025em] text-white sm:text-[28px];
     }
 
     .page-desc {
-        @apply text-sm text-slate-400;
+        @apply max-w-[68ch] text-[13px] leading-relaxed text-slate-400;
     }
 
     .section-title {
