@@ -17,8 +17,11 @@
 //   keyone-wa-bridge login [name]   device-code link this host to a workspace
 //   keyone-wa-bridge start          run the bridge (connect + WhatsApp transport)
 //
-// Env: KEYONE_CLOUD_API (https://w.keyone1.com), KEYONE_CLOUD_WS
-//      (wss://w.keyone1.com/bridge), KEYONE_BRIDGE_HOME, KEYONE_CHROME
+// Env: KEYONE_CLOUD_API (default https://wkeyone.app), KEYONE_CLOUD_WS
+//      (default wss://wkeyone.app/bridge). w.keyone1.com is the LEGACY domain:
+//      it 301-redirects, and a WebSocket client does not follow redirects — a
+//      stale override there surfaces as a 301 on connect, not a clear error.
+//      Also: KEYONE_BRIDGE_HOME, KEYONE_CHROME
 //      (Chrome/Chromium executablePath; falls back to bundled puppeteer).
 
 const fs = require("fs");
