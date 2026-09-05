@@ -109,3 +109,40 @@ describe("a gated feature family has no side door", () => {
     });
   }
 });
+
+
+/**
+ * The inverse failure, which the coverage rule above cannot catch.
+ *
+ * apiGate() answers 401 when there is no KEYONE session. Some endpoints are
+ * machine-facing by design and never carry one: a Bridge daemon linking for the
+ * first time has no account at all, and a Bridge rotating its token
+ * authenticates with `Authorization: Bearer <bridge_token>`. Gating either one
+ * does not paywall it — it makes it permanently unreachable.
+ *
+ * That is not hypothetical. Adding apiGate to device/start broke
+ * `keyone-bridge login` in production with exactly the 401 this pins, and the
+ * route's own header had said "No auth (the Bridge has no token yet)" the whole
+ * time. Entitlement for Bridge is enforced on the user-facing surfaces instead.
+ */
+describe("machine-facing endpoints must not be session-gated", () => {
+  const MACHINE_FACING = [
+    "bridge/v1/device/start/route.ts",   // Bridge has no account yet
+    "bridge/v1/device/token/route.ts",   // polls with device_code + PKCE verifier
+    "bridge/v1/token/rotate/route.ts",   // Bearer bridge_token
+    "bridge/v1/health/route.ts",         // reachability probe before any token
+    "whatsapp/incoming/route.ts",        // internal secret from the gateway
+    "whatsapp/meta-webhook/route.ts",    // Meta, signed with X-Hub-Signature-256
+  ];
+
+  it.each(MACHINE_FACING)("%s carries no apiGate call", (rel) => {
+    const src = readFileSync(path.join(API, rel), "utf-8");
+    // Match a call, not the word — these files carry a DO-NOT-ADD comment.
+    const calls = src.match(/await\s+apiGate\(/g) || [];
+    expect(
+      calls,
+      `${rel} is machine-facing: apiGate would answer 401 to a caller that ` +
+      `never has a session, making the endpoint permanently unreachable.`,
+    ).toEqual([]);
+  });
+});
