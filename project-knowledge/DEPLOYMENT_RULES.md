@@ -8,7 +8,10 @@ The deploy contract for the KEYONE SaaS. Derived from `CLAUDE.md` and
 > **retired**. Production is the AWS Linux host below; the deploy mechanism,
 > database engine, and service manager are all different from what used to be
 > documented here. If you find another doc still referencing the Windows VPS,
-> it is stale — trust this file and `deploy/release-aws.sh`/`deploy/RUNBOOK.md`.
+> it is stale — trust this file and `deploy/release-aws.sh`.
+> (`deploy/RUNBOOK.md` and `deploy/README.md` are themselves Windows-era and
+> are marked HISTORICAL; for server rebuild use
+> `project-knowledge/NEW_SERVER_DEPLOYMENT_HANDOFF.md`.)
 
 ---
 
@@ -114,7 +117,7 @@ release blocker (infinite auto-update loop). If the script touches any
 
 ## 5. Infra / connection facts
 
-- Host: `ubuntu@13.63.79.43` (`w.keyone1.com`), key `~/Downloads/keyone.pem`.
+- Host: `ubuntu@16.171.230.84` (`w.keyone1.com`), key `~/Downloads/1.pem`.
 - Services (systemd): `keyone.service` (Next.js, `:3000`),
   `keyone-bridge-gateway.service` (WS ingress, `:3002`), `keyone-wa.service`
   (legacy co-located QR transport, `:3001`).

@@ -93,8 +93,8 @@ broadcasts campaigns, and surfaces operational insights. UI is **primarily Arabi
 > section below is verified against the live server, not carried over from an
 > old doc.
 
-- Production: AWS Linux (eu-north-1), host `ubuntu@13.63.79.43`
-  (`w.keyone1.com`), key `~/Downloads/keyone.pem`.
+- Production: AWS Linux (eu-north-1), host `ubuntu@16.171.230.84`
+  (`w.keyone1.com`), key `~/Downloads/1.pem`.
 - Services (systemd): `keyone.service` (Next.js, `:3000`),
   `keyone-bridge-gateway.service` (Bridge WS ingress, `:3002`),
   `keyone-wa.service` (legacy co-located QR transport, `:3001`). Caddy

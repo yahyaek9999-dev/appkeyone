@@ -4,7 +4,12 @@ S="$(grep '^SAAS_INTERNAL_SECRET=' /home/ubuntu/keyone/.env | head -1 | cut -d= 
 # batch includes payments-reconcile (financial) and broadcasts, and ran
 # every minute with zero visibility into failures before this change.
 FAILED=0
-for ep in qr-queue qr-scheduler outgoing-messages broadcasts payments-reconcile webhooks; do
+# NOTE: "webhooks" was removed — /api/cron/webhooks does not exist (the only
+# webhook handlers are /api/commerce/webhooks and /api/payments/webhook, and
+# neither is a cron endpoint). Calling it returned 404 every minute, which set
+# FAILED=1 on every run and would have made the unit permanently failed —
+# destroying the failure signal this script exists to provide.
+for ep in qr-queue qr-scheduler outgoing-messages broadcasts payments-reconcile; do
   CODE="$(curl -s -o /dev/null -w '%{http_code}' -m 55 -X POST "http://127.0.0.1:3000/api/cron/$ep" -H "x-internal-secret: $S")"
   if [ "$CODE" != "200" ]; then
     echo "[cron] FAILED: $ep -> HTTP ${CODE:-no response}" >&2

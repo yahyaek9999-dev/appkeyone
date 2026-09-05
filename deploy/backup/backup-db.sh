@@ -1,13 +1,19 @@
 #!/bin/bash
 # KEYONE production Postgres backup — nightly via keyone-dbbackup.timer.
 #
-# On-box only: this IAM user has no s3:CreateBucket/s3:PutObject permission,
-# so there is currently no off-site copy — if this EC2 instance/disk is lost,
-# these backups are lost with it. This protects against the far more common
-# cases (bad migration, accidental DELETE, application bug), not instance
-# loss. Grant the keyone IAM user s3 write access to a backup bucket to close
-# that gap; no script change needed beyond adding an `aws s3 cp` line below.
+# On-box only: there is currently NO off-site copy. Verified on the live host
+# (16.171.230.84, account 873775216781): no ~/.aws credentials and no awscli
+# installed, so an S3 grant alone would not be enough — a principal and the CLI
+# have to exist on the box first. This protects against the common cases (bad
+# migration, accidental DELETE, application bug) but NOT instance/disk loss.
+# To close that gap later: install awscli, attach a role/credential, then add
+# an `aws s3 cp "$OUT" s3://<bucket>/` line after the integrity check below.
 set -euo pipefail
+
+# Dumps contain every tenant row. The host default umask is 0002, which would
+# leave the directory 775 and the dump 664 (world-readable). Force 077 so the
+# backup dir is 700 and each dump 600, owned by ubuntu only.
+umask 077
 
 ENV_FILE="/home/ubuntu/keyone/.env"
 BACKUP_DIR="/home/ubuntu/backups/postgres"

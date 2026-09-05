@@ -67,19 +67,19 @@ fail-closed) every route already uses.
 ## Redeploy after a server rebuild
 
 ```bash
-scp -i ~/Downloads/keyone.pem deploy/cron/run-qr-crons.sh deploy/cron/run-hourly-crons.sh ubuntu@13.63.79.43:/home/ubuntu/
-ssh -i ~/Downloads/keyone.pem ubuntu@13.63.79.43 'chmod +x /home/ubuntu/run-qr-crons.sh /home/ubuntu/run-hourly-crons.sh'
+scp -i ~/Downloads/1.pem deploy/cron/run-qr-crons.sh deploy/cron/run-hourly-crons.sh ubuntu@16.171.230.84:/home/ubuntu/
+ssh -i ~/Downloads/1.pem ubuntu@16.171.230.84 'chmod +x /home/ubuntu/run-qr-crons.sh /home/ubuntu/run-hourly-crons.sh'
 # recreate all four systemd units from systemd-unit-files.txt at
 # /etc/systemd/system/keyone-{qrcron,hourlycron}.{service,timer}, then:
-ssh -i ~/Downloads/keyone.pem ubuntu@13.63.79.43 \
+ssh -i ~/Downloads/1.pem ubuntu@16.171.230.84 \
   'sudo systemctl daemon-reload && sudo systemctl enable --now keyone-qrcron.timer keyone-hourlycron.timer'
 ```
 
 ## Verify it's actually running
 
 ```bash
-ssh ubuntu@13.63.79.43 'systemctl list-timers keyone-qrcron.timer keyone-hourlycron.timer'
-ssh ubuntu@13.63.79.43 'curl -s http://127.0.0.1:3000/api/cron/outgoing-messages'   # GET = health only, no drain
+ssh ubuntu@16.171.230.84 'systemctl list-timers keyone-qrcron.timer keyone-hourlycron.timer'
+ssh ubuntu@16.171.230.84 'curl -s http://127.0.0.1:3000/api/cron/outgoing-messages'   # GET = health only, no drain
 ```
 `GET /api/ready` on the public app also surfaces `outgoing_queue` health —
 `"status":"warn"` with a growing `staleQueued`/`oldestQueuedAgeSec` means the

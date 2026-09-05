@@ -46,8 +46,8 @@ the integrity check — no other change needed.
 ## Deploying to the server
 
 ```bash
-scp -i ~/Downloads/keyone.pem deploy/backup/backup-db.sh ubuntu@13.63.79.43:~/backup-db.sh
-ssh -i ~/Downloads/keyone.pem ubuntu@13.63.79.43 'chmod +x ~/backup-db.sh'
+scp -i ~/Downloads/1.pem deploy/backup/backup-db.sh ubuntu@16.171.230.84:~/backup-db.sh
+ssh -i ~/Downloads/1.pem ubuntu@16.171.230.84 'chmod +x ~/backup-db.sh'
 # then create the two unit files from systemd-unit-files.txt under
 # /etc/systemd/system/, and:
 sudo systemctl daemon-reload

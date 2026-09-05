@@ -4,7 +4,7 @@ KEYONE is a production WhatsApp/commerce SaaS platform with a Next.js dashboard,
 
 - **GitHub is the source of truth**
 - **`main` is production**
-- **Production runs on AWS Linux (`ubuntu@13.63.79.43`, `w.keyone1.com`), deployed via `deploy/release-aws.sh`** — see [project-knowledge/DEPLOYMENT_RULES.md](project-knowledge/DEPLOYMENT_RULES.md) for the full deploy contract. The Windows-VPS/`keydeploy` workflow described in older docs (`VPS_DEPLOY_WORKFLOW.md`, `DEVELOPMENT_SETUP.md`) is retired — do not use it.
+- **Production runs on AWS Linux (`ubuntu@16.171.230.84`, `w.keyone1.com`), deployed via `deploy/release-aws.sh`** — see [project-knowledge/DEPLOYMENT_RULES.md](project-knowledge/DEPLOYMENT_RULES.md) for the full deploy contract. The Windows-VPS/`keydeploy` workflow described in older docs (`VPS_DEPLOY_WORKFLOW.md`, `DEVELOPMENT_SETUP.md`) is retired — do not use it.
 - **runtime data, secrets, sessions, backups, caches, and SQLite DB files are not committed**
 
 ---
@@ -114,7 +114,7 @@ Do not restart or modify WhatsApp auth/session state unless the task explicitly 
 
 ## Current production model
 
-- Host: AWS Linux (eu-north-1), `ubuntu@13.63.79.43` (`w.keyone1.com`)
+- Host: AWS Linux (eu-north-1), `ubuntu@16.171.230.84` (`w.keyone1.com`)
 - App dir: `~/keyone`
 - Services (systemd): `keyone.service` (Next.js, `:3000`), `keyone-bridge-gateway.service` (Bridge WS ingress, `:3002`), `keyone-wa.service` (legacy QR transport, `:3001`)
 - Database: PostgreSQL (`schema.postgres.prisma`) — not SQLite

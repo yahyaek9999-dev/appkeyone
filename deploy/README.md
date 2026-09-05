@@ -1,5 +1,18 @@
 # KEYONE — Windows VPS Deployment Guide
 
+> ## ⚠️ HISTORICAL — NOT THE CURRENT PRODUCTION ENVIRONMENT
+>
+> This guide covers the **retired Windows Server VPS** deployment. Current
+> production is **Ubuntu Linux + PostgreSQL** (systemd + Caddy, AWS).
+>
+> Deploy with `deploy/release-aws.sh`; the authoritative contract is
+> `project-knowledge/DEPLOYMENT_RULES.md`. To rebuild a lost server, follow
+> `project-knowledge/NEW_SERVER_DEPLOYMENT_HANDOFF.md`.
+>
+> Kept for historical reference only. Do not delete.
+
+---
+
 End-to-end deployment of the KEYONE WhatsApp Bot SaaS on a Windows Server VPS
 (no Docker, native services).
 

@@ -1,5 +1,30 @@
 # KEYONE — Production Runbook
 
+> ## ⚠️ HISTORICAL — NOT THE CURRENT PRODUCTION ENVIRONMENT
+>
+> This runbook documents the **retired Windows VPS** (`217.154.163.16`, `C:\app`,
+> NSSM services, SQLite `prod.db`). That box is gone.
+>
+> **Current production is Ubuntu Linux + PostgreSQL** (systemd + Caddy, AWS).
+> Use these instead:
+>
+> | Task | Current procedure |
+> |---|---|
+> | Deploy / roll back | `deploy/release-aws.sh [<commit-ish>]` |
+> | Full deploy contract | `project-knowledge/DEPLOYMENT_RULES.md` |
+> | Database backup | `deploy/backup/backup-db.sh` (systemd timer, `pg_dump`) |
+> | Restore | `deploy/backup/README.md` |
+> | Rebuild a lost server | `project-knowledge/NEW_SERVER_DEPLOYMENT_HANDOFF.md` |
+>
+> Every `.ps1` script in `deploy/` belongs to this retired environment. In
+> particular **do not** run `backup-all.ps1` / `backup-db.ps1` expecting a
+> database backup — they target SQLite on Windows and would not protect the
+> production PostgreSQL database.
+>
+> Kept for historical reference only. Do not delete.
+
+---
+
 This is the operator's playbook for `app.keyone1.com`. It assumes a Windows VPS
 (`217.154.163.16`), code installed at `C:\app`, NSSM services `mse-saas`,
 `mse-wa`, `mse-llm`, `mse-caddy`. All commands run from an elevated PowerShell
