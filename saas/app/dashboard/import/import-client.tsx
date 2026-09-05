@@ -70,6 +70,9 @@ export default function ImportClient() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const resultsLoadedFor = useRef<string | null>(null);
   const [waStatus, setWaStatus] = useState<string | null>(null);
+  // /api/whatsapp/status reports mode:"bridge" for a Bridge-transport tenant.
+  // Import pairs over the QR transport, which such a tenant does not use.
+  const [waMode, setWaMode] = useState<string | null>(null);
   const [waQr, setWaQr] = useState<string | null>(null);
   const [waBusy, setWaBusy] = useState(false);
 
@@ -103,6 +106,7 @@ export default function ImportClient() {
       const r = await fetch("/api/whatsapp/status", { cache: "no-store" });
       const j = await r.json();
       setWaStatus(j.status || null);
+      setWaMode(j.mode || null);
       setWaQr(j.status === "connected" ? null : (j.qr || null));
     } catch {}
   }, []);
@@ -161,6 +165,10 @@ export default function ImportClient() {
   const failed = status === "failed";
   // The big button is disabled once a session exists and is not failed.
   const serviceDown = waStatus === "service_unreachable";
+  // A Bridge tenant links WhatsApp from the Bridge page, not from here.
+  // /api/whatsapp/start refuses them with 409 and an explanation; showing a
+  // pairing button that can only ever produce that refusal is a dead control.
+  const bridgeMode = waMode === "bridge";
   const startDisabled = busy || (!!session && !failed) || waStatus !== "connected";
 
   return (
@@ -179,6 +187,14 @@ export default function ImportClient() {
             {waQr ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={waQr} alt="QR" width={200} height={200} className="rounded-xl bg-white p-2 shrink-0" />
+            ) : bridgeMode ? (
+              <a
+                href="/dashboard/settings/bridge"
+                className="btn-primary justify-center shrink-0 no-underline"
+              >
+                <ScanLine className="h-4 w-4" />
+                اذهب لصفحة Bridge للربط
+              </a>
             ) : serviceDown ? (
               // The pairing service is not answering, so there is no code to
               // show and never will be until it is back. Offering an enabled
@@ -196,7 +212,12 @@ export default function ImportClient() {
               </button>
             )}
             <div className="text-xs text-slate-400 space-y-1">
-              {serviceDown ? (
+              {bridgeMode ? (
+                <p className="text-slate-300">
+                  حسابك بيشتغل عبر KEYONE Bridge، والربط بيتم من صفحة Bridge مش من هنا.
+                  اربط جهازك الأول، وبعدها ارجع تكمّل الاستيراد.
+                </p>
+              ) : serviceDown ? (
                 <p className="text-rose-200/90">
                   تعذّر الوصول لخدمة ربط واتساب، فمش هينفع نقرأ جهات اتصالك دلوقتي. جرّب تاني بعد شوية،
                   ولو استمرت المشكلة كلّم الدعم.
