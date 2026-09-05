@@ -1,7 +1,17 @@
 name: Build & Deploy
 on:
-  push:
-    branches: [main]
+  # Production deploys are MANUAL ONLY.
+  #
+  # This previously carried `push: branches: [main]`, which meant every push to
+  # main shipped to production with no approval step: the deploy job needs only
+  # the build job, and there is no environment protection rule behind it. That
+  # turned an ordinary merge — or a routine catch-up push of a branch that had
+  # fallen behind — into a release nobody had decided to make.
+  #
+  # Deploying is now a deliberate act: run this workflow from the Actions tab
+  # (or `gh workflow run deploy.yml`) against the ref you intend to ship.
+  # Nothing else about the workflow changes; the build, packaging, SSH setup and
+  # release-aws.sh invocation are all untouched.
   workflow_dispatch:
     inputs:
       skip_verify:
