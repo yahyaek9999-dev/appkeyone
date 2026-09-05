@@ -7,6 +7,20 @@ import {
   ScanLine, DatabaseZap, Users, MessageSquare, Brain, Inbox, RefreshCw,
 } from "lucide-react";
 
+/**
+ * The transport states /api/whatsapp/status can return, in the dashboard's own
+ * language. Without this the screen printed the raw token — an Arabic RTL page
+ * showing "service_unreachable" to a merchant, which reads as a crash rather
+ * than a state. Mirrors the mapping in whatsapp-health-client.tsx.
+ */
+const STATUS_AR: Record<string, string> = {
+  connected: "متصل",
+  connecting: "جاري الربط",
+  qr: "في انتظار مسح الكود",
+  disconnected: "غير متصل",
+  service_unreachable: "الخدمة غير متاحة",
+};
+
 type ImportSession = {
   id: string;
   status: string;
@@ -146,6 +160,7 @@ export default function ImportClient() {
   const done = !!status && DONE.has(status);
   const failed = status === "failed";
   // The big button is disabled once a session exists and is not failed.
+  const serviceDown = waStatus === "service_unreachable";
   const startDisabled = busy || (!!session && !failed) || waStatus !== "connected";
 
   return (
@@ -164,6 +179,16 @@ export default function ImportClient() {
             {waQr ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={waQr} alt="QR" width={200} height={200} className="rounded-xl bg-white p-2 shrink-0" />
+            ) : serviceDown ? (
+              // The pairing service is not answering, so there is no code to
+              // show and never will be until it is back. Offering an enabled
+              // button here produced a click that silently did nothing — the
+              // worst of both worlds, since the merchant cannot tell whether
+              // they mis-clicked or the product is broken.
+              <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3 text-sm text-rose-200 shrink-0">
+                <XCircle className="h-4 w-4 shrink-0" />
+                <span>خدمة الربط غير متاحة حاليًا</span>
+              </div>
             ) : (
               <button onClick={connectWa} disabled={waBusy} className="btn-primary justify-center disabled:opacity-50">
                 {waBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
@@ -171,8 +196,20 @@ export default function ImportClient() {
               </button>
             )}
             <div className="text-xs text-slate-400 space-y-1">
-              <p>افتح واتساب ← الأجهزة المرتبطة ← ربط جهاز ← امسح الكود.</p>
-              <p>الحالة الحالية: <span className="text-slate-200">{waStatus || "غير متصل"}</span></p>
+              {serviceDown ? (
+                <p className="text-rose-200/90">
+                  تعذّر الوصول لخدمة ربط واتساب، فمش هينفع نقرأ جهات اتصالك دلوقتي. جرّب تاني بعد شوية،
+                  ولو استمرت المشكلة كلّم الدعم.
+                </p>
+              ) : (
+                <p>افتح واتساب ← الأجهزة المرتبطة ← ربط جهاز ← امسح الكود.</p>
+              )}
+              <p>
+                الحالة الحالية:{" "}
+                <span className={serviceDown ? "text-rose-200" : "text-slate-200"}>
+                  {STATUS_AR[waStatus || ""] || waStatus || "غير متصل"}
+                </span>
+              </p>
               {waQr && <p className="text-amber-300/80">في انتظار المسح…</p>}
             </div>
           </div>

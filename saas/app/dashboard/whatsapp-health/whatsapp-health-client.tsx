@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import HealthHero from "@/components/ui/health-hero";
 
-const STATUS_AR: Record<string, string> = { connected: "متصل", connecting: "جاري الربط", disconnected: "غير متصل", service_unreachable: "الخدمة غير متاحة" };
+// `qr` is what the status route reports for a bridge transport in `linking`
+// state — a real state this screen can receive, and one it used to print raw.
+const STATUS_AR: Record<string, string> = { connected: "متصل", connecting: "جاري الربط", qr: "في انتظار مسح الكود", disconnected: "غير متصل", service_unreachable: "الخدمة غير متاحة" };
 
 function fmt(d?: string | null) { if (!d) return ""; try { return new Date(d).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }); } catch { return ""; } }
 
