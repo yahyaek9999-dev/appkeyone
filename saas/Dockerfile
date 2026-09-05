@@ -6,10 +6,13 @@
 # Stage 3: runner   — minimal production image (~200MB vs ~1.5GB naive)
 #
 # Runtime mounts (docker-compose.production.yml):
-#   /data     ← host /keyone/data   (SQLite saas.db, uploads)
+#   /data     ← host /keyone/data   (uploads; legacy SQLite saas.db if pinned)
 #   /logs     ← host /keyone/logs
 #
-# Environment: DATABASE_URL=file:/data/saas.db must be set in env file.
+# Environment: POSTGRES_URL and POSTGRES_DIRECT_URL must be set in the env file.
+# package.json pins the Prisma schema to prisma/schema.postgres.prisma, so the
+# `npx prisma generate` step below resolves those two vars — not DATABASE_URL,
+# which is a legacy SQLite-era override (see saas/lib/db.ts).
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Install dependencies ────────────────────────────────────────────

@@ -21,7 +21,16 @@ __pycache__/
 .env.production
 .env.production.local
 .env.staging
+.env.qa
+.env.qa.local
 # .env.example  ← intentionally NOT listed: keep it tracked
+
+# Local Claude Code session config. Holds MCP server definitions that name
+# infrastructure hosts, usernames and key paths for whoever is sitting at the
+# machine — per-developer, not project configuration, and not something to put
+# in shared history.
+.claude/settings.json
+.claude/settings.local.json
 
 # ----- Secrets & credentials (NEVER commit these) -----
 .deployment-secrets.txt
