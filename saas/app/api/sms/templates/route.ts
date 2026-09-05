@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,8 @@ function countSegments(body: string): number {
 }
 
 export async function GET(req: Request) {
+  const gate = await apiGate("k1sms", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -35,6 +38,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const gate = await apiGate("k1sms", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

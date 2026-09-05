@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
+  const gate = await apiGate("broadcasts");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

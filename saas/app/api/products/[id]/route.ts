@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { httpUrlOrNull } from "@/lib/url-safe";
 import { isInternalProductImage } from "@/lib/media/product-image";
 
@@ -13,6 +14,8 @@ function clampInt(v: any, min = 0, max = 100_000_000): number {
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("products", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -46,6 +49,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const gate = await apiGate("products", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   const existing = await prisma.product.findFirst({ where: { id: params.id, userId: uid }, select: { id: true } });

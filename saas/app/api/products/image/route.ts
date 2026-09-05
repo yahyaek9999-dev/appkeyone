@@ -1,6 +1,7 @@
 /** POST /api/products/image — upload a product image from the device (multipart). */
 import { NextResponse } from "next/server";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { sniffBinaryType } from "@/lib/upload-validate";
 import { saveProductImage, MAX_PRODUCT_IMAGE_BYTES } from "@/lib/media/product-image";
@@ -11,6 +12,8 @@ export const runtime = "nodejs";
 const ALLOWED_IMAGE = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic"]);
 
 export async function POST(req: Request) {
+  const gate = await apiGate("products", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

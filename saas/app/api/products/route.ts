@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { httpUrlOrNull } from "@/lib/url-safe";
 import { isInternalProductImage } from "@/lib/media/product-image";
 
@@ -19,6 +20,8 @@ function productImages(v: any): string[] {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const gate = await apiGate("products", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
   const items = await prisma.product.findMany({
@@ -35,6 +38,8 @@ function clampInt(v: any, min = 0, max = 100_000_000): number {
 }
 
 export async function POST(req: Request) {
+  const gate = await apiGate("products", "settings");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("settings");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 

@@ -2,12 +2,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserIdForPermission } from "@/lib/auth";
+import { apiGate } from "@/lib/membership/gate";
 import { computeBroadcastAnalytics } from "@/lib/broadcasts/analytics";
 import { evaluateAbSignificance } from "@/lib/intelligence/self-learning";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { groupId: string } }) {
+  const gate = await apiGate("broadcasts");
+  if (gate.response) return gate.response;
   const uid = await getUserIdForPermission("broadcasts");
   if (!uid) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
