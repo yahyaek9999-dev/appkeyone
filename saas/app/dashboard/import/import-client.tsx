@@ -163,13 +163,16 @@ export default function ImportClient() {
   const inProgress = !!status && IN_PROGRESS.has(status);
   const done = !!status && DONE.has(status);
   const failed = status === "failed";
+  // A transport that cannot do the operation at all — distinct from a run that
+  // failed and is worth retrying.
+  const unsupportedTransport = !!session?.error?.startsWith("import_unsupported_on_");
   // The big button is disabled once a session exists and is not failed.
   const serviceDown = waStatus === "service_unreachable";
   // A Bridge tenant links WhatsApp from the Bridge page, not from here.
   // /api/whatsapp/start refuses them with 409 and an explanation; showing a
   // pairing button that can only ever produce that refusal is a dead control.
   const bridgeMode = waMode === "bridge";
-  const startDisabled = busy || (!!session && !failed) || waStatus !== "connected";
+  const startDisabled = busy || (!!session && !failed) || unsupportedTransport || waStatus !== "connected";
 
   return (
     <div className="space-y-6">
@@ -249,12 +252,15 @@ export default function ImportClient() {
               <DownloadCloud className="h-5 w-5 text-brand-300" /> استيراد لمرة واحدة
             </h2>
             <p className="text-sm text-slate-400">
-              عند الضغط، نحجز جلسة الواتساب الخاصة بك داخل طابور الـ QR، ثم نسحب جهات الاتصال وآخر المحادثات
-              ونحوّلها إلى سجلات عملاء دائمة وذاكرة للذكاء الاصطناعي. لا تُرسَل أي رسالة أثناء الاستيراد.
+              {unsupportedTransport
+                ? "الاستيراد بيسحب جهات الاتصال والمحادثات من جلسة واتساب متصلة عبر QR. حسابك مش على القناة دي، فالعملية مش متاحة — من غير ما ده يأثر على باقي مزايا حسابك."
+                : "عند الضغط، نحجز جلسة الواتساب الخاصة بك داخل طابور الـ QR، ثم نسحب جهات الاتصال وآخر المحادثات ونحوّلها إلى سجلات عملاء دائمة وذاكرة للذكاء الاصطناعي. لا تُرسَل أي رسالة أثناء الاستيراد."}
             </p>
-            <p className="text-xs text-amber-300/90 mt-2 flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5" /> هذه العملية متاحة مرة واحدة فقط لكل حساب — بعد اكتمالها تُغلق نهائيًا ولا يمكن تكرارها.
-            </p>
+            {!unsupportedTransport && (
+              <p className="text-xs text-amber-300/90 mt-2 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" /> هذه العملية متاحة مرة واحدة فقط لكل حساب — بعد اكتمالها تُغلق نهائيًا ولا يمكن تكرارها.
+              </p>
+            )}
           </div>
           <button
             onClick={start}
@@ -262,7 +268,11 @@ export default function ImportClient() {
             className="btn-primary justify-center disabled:opacity-50 shrink-0"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4" />}
-            {failed ? "إعادة محاولة الاستيراد" : "ابدأ الاستيراد (مرة واحدة)"}
+            {unsupportedTransport
+              ? "غير متاح على قناتك الحالية"
+              : failed
+                ? "إعادة محاولة الاستيراد"
+                : "ابدأ الاستيراد (مرة واحدة)"}
           </button>
         </div>
 
@@ -283,7 +293,21 @@ export default function ImportClient() {
             <CheckCircle2 className="h-4 w-4" /> اكتمل الاستيراد وأُغلق نهائيًا. بياناتك السابقة الآن داخل النظام.
           </div>
         )}
-        {failed && (
+        {failed && unsupportedTransport && (
+          // Not a failure the merchant can retry away — the transport they are on
+          // cannot read contacts at all. Saying "فشل الاستيراد … يمكنك إعادة
+          // المحاولة" here invites them to retry forever, which is exactly what
+          // the QR-queue timeline used to do.
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3 text-sm text-amber-200 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              {session?.error === "import_unsupported_on_bridge"
+                ? "الاستيراد بيقرأ جهات اتصالك من جلسة QR متصلة، وده مش متاح على KEYONE Bridge. باقي مزايا Bridge شغّالة عادي."
+                : "الاستيراد بيقرأ جهات اتصالك من جلسة QR متصلة، وده مش متاح على قناة Meta الرسمية."}
+            </span>
+          </div>
+        )}
+        {failed && !unsupportedTransport && (
           <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] p-3 text-sm text-rose-200 flex items-center gap-2">
             <XCircle className="h-4 w-4" /> فشل الاستيراد{session?.error ? ` (${session.error})` : ""}. يمكنك إعادة المحاولة.
           </div>

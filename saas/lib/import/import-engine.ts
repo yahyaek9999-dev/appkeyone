@@ -21,6 +21,7 @@ import { prisma } from "@/lib/db";
 import { wa } from "@/lib/wa";
 import { audit } from "@/lib/audit/log";
 import { completeJob, failJob } from "@/lib/qr-pool/scheduler";
+import { normalizeConnectionMode } from "@/lib/messaging/mode";
 
 export interface ImportContact { phone: string; name?: string | null }
 export interface ImportMessage { fromMe?: boolean; body?: string; ts?: number }
@@ -61,6 +62,62 @@ export async function requestImport(userId: string): Promise<{ session: any; alr
   if (existing && !REOPENABLE.has(existing.status)) {
     return { session: existing, alreadyExists: true };
   }
+
+  // TRANSPORT GATE — must precede any queue write.
+  //
+  // Import reads the tenant's existing contacts and chat history, which is only
+  // possible from a linked whatsapp-web.js session: wa.exportData() against the
+  // co-located QR service. The other two transports genuinely cannot do it —
+  // this is a capability fact, not a missing feature flag:
+  //
+  //   bridge      The Cloud<->Bridge protocol has no verb for it. The Bridge
+  //               accepts control actions disconnect|logout|reconnect|restart|
+  //               start_qr|update and nothing else, and bridge-node never calls
+  //               getContacts()/getChats(). Adding one means a new frame type
+  //               shipped to every installed Bridge.
+  //   meta_cloud  The Cloud API exposes no contact-list or history endpoint at
+  //               all; it delivers messages only from the moment a webhook
+  //               subscription exists.
+  //
+  // Without this gate every tenant was enqueued into the QR pool regardless of
+  // transport. A Bridge tenant's timeline then read "تم طلب الاستيراد وإدخاله
+  // في طابور QR" → "تم إيقاظ جلسة QR" → export_unavailable, retrying forever:
+  // three lies in a row, because it was waking a QR session the tenant does not
+  // have and blaming the export for a queue it should never have entered.
+  //
+  // Failing closed here is the honest outcome. Silently falling back to QR is
+  // what produced the misleading timeline in the first place.
+  const bot = await prisma.bot
+    .findUnique({ where: { userId }, select: { connectionMode: true } as any })
+    .catch(() => null);
+  const mode = normalizeConnectionMode((bot as any)?.connectionMode);
+  if (mode !== "qr") {
+    const session = existing
+      ? await prisma.importSession.update({
+          where: { userId },
+          data: { status: "failed", error: `import_unsupported_on_${mode}`, requestedAt: new Date() },
+        })
+      : await prisma.importSession.create({
+          data: { userId, status: "failed", error: `import_unsupported_on_${mode}` },
+        });
+    await log(
+      userId,
+      session.id,
+      "warn",
+      mode === "bridge"
+        ? "الاستيراد غير متاح على KEYONE Bridge — بيحتاج جلسة QR متصلة."
+        : "الاستيراد غير متاح على قناة Meta الرسمية — بيحتاج جلسة QR متصلة.",
+    );
+    void audit({
+      userId,
+      action: "import.unsupported_transport",
+      targetType: "import_session",
+      targetId: session.id,
+      metadata: { mode },
+    });
+    return { session, alreadyExists: false };
+  }
+
   const session = existing
     ? await prisma.importSession.update({ where: { userId }, data: { status: "queued", error: null, requestedAt: new Date() } })
     : await prisma.importSession.create({ data: { userId, status: "queued" } });
