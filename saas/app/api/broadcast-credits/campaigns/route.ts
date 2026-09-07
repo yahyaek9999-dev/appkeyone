@@ -30,6 +30,7 @@ import { creditsForRecipients } from "@/lib/credits/credits-core";
 import { creditFlags } from "@/lib/credits/flags";
 import { debit } from "@/lib/credits/credits";
 import { enqueueJob, queuePosition } from "@/lib/qr-pool/scheduler";
+import { normalizeConnectionMode } from "@/lib/messaging/mode";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,42 @@ export async function POST(req: Request) {
   const g = await apiGate("broadcasts", "broadcasts");
   if (g.response) return g.response;
   const uid = g.uid!;
+
+  // TRANSPORT GATE — deliberately the first thing after entitlement, before the
+  // rate limiter, before the body is read, and above all before Step 4 debits
+  // credits and Step 5 creates the Broadcast row.
+  //
+  // Credit campaigns run through the QR slot pool: the handler wakes a
+  // whatsapp-service session (lib/credits/broadcast-handler.ts) and the drain
+  // sends from it. A Bridge tenant has no such session, so the job would sit in
+  // the queue waking nothing — the same failure the one-time import used to
+  // produce, except here the tenant has already PAID for it.
+  //
+  // Gating later would debit credits for a campaign that can never run, so the
+  // ordering here is the point of the fix, not an implementation detail.
+  // Credit campaigns are QR-only by product decision; there is no Bridge
+  // equivalent to fall back to, and falling back to QR is what caused the
+  // original misleading behaviour.
+  const bot = await prisma.bot
+    .findUnique({ where: { userId: uid }, select: { connectionMode: true } as any })
+    .catch(() => null);
+  const mode = normalizeConnectionMode((bot as any)?.connectionMode);
+  if (mode !== "qr") {
+    return NextResponse.json(
+      {
+        error: "campaign_unsupported_on_transport",
+        mode,
+        // `detail`, not `message`: broadcasts-pro-client.tsx renders
+        // `j.detail || j.error`, so anything else surfaces the raw English code
+        // to an Arabic RTL screen — the exact defect fixed on the import page.
+        detail:
+          mode === "bridge"
+            ? "حملات الرصيد بتشتغل عبر طابور QR، وده مش متاح على KEYONE Bridge. باقي مزايا Bridge شغّالة عادي."
+            : "حملات الرصيد بتشتغل عبر طابور QR، وده مش متاح على قناة Meta الرسمية.",
+      },
+      { status: 409 },
+    );
+  }
 
   // Burst guard, same as the standard broadcast-create route.
   const limited = enforceRateLimit(req, { name: "broadcast-credit-campaign", identifier: uid, ...RATE_LIMITS.api });

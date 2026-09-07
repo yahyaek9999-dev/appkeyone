@@ -18,6 +18,7 @@ import { wa } from "@/lib/wa";
 import { refund } from "./credits";
 import { creditFlags } from "./flags";
 import { completeJob } from "@/lib/qr-pool/scheduler";
+import { normalizeConnectionMode } from "@/lib/messaging/mode";
 
 export interface HandlerOutcome { running?: boolean; done?: boolean; error?: string }
 
@@ -26,6 +27,25 @@ export async function startBroadcastJob(job: { id: string; userId: string; refId
   const bc = await prisma.broadcast.findUnique({ where: { id: job.refId } });
   if (!bc) return { done: true, error: "broadcast_not_found" };
   if (bc.status === "done" || bc.status === "canceled") return { done: true };
+
+  // Defence in depth. The campaigns route refuses to enqueue a non-QR tenant, so
+  // nothing should reach here — but connectionMode can change AFTER a job is
+  // queued: the inbound webhook flips a tenant to "bridge" the moment their
+  // Bridge reports connected, which has already happened in production. Waking a
+  // whatsapp-service session for such a tenant wakes nothing and produces the
+  // misleading "QR session awakened" timeline this guard exists to stop.
+  //
+  // The campaign is left parked in credit_queued rather than promoted, so it is
+  // not drained through a transport it cannot use. Its reserved credits stay
+  // reserved and are refunded by the normal reconcile path when the tenant
+  // cancels it — this guard deliberately does not invent a new refund route.
+  const bot = await prisma.bot
+    .findUnique({ where: { userId: job.userId }, select: { connectionMode: true } as any })
+    .catch(() => null);
+  if (normalizeConnectionMode((bot as any)?.connectionMode) !== "qr") {
+    await completeJob(job.id, { error: "campaign_unsupported_on_transport" });
+    return { done: true, error: "campaign_unsupported_on_transport" };
+  }
 
   // Book the QR slot by waking the session (best-effort — the drain handles
   // a not-yet-ready session via its own retry/pacing).
