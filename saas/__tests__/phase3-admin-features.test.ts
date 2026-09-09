@@ -1,268 +1,153 @@
 /**
- * PHASE 3 VALIDATION TESTS
+ * The canonical feature catalogue.
  *
- * Verify that:
- * 1. All 77 features exist in registry
- * 2. No duplicates
- * 3. Feature hierarchy is valid
- * 4. Admin can see all features
- * 5. Customers remain plan-restricted
- * 6. All required fields present
+ * `project-knowledge/master-feature-registry.json` is the product's feature
+ * inventory. This suite pins the reconciliation between the number the product
+ * programme quotes and the number of rows in the file, because those two are
+ * routinely confused:
+ *
+ *   98 registry entries
+ *     = 83 customer-facing  (62 `feature` + 21 `subfeature`)
+ *     + 15 `admin_internal` (never shown to a customer)
+ *
+ * **83 is the canonical feature count**, and it is exactly the customerVisible
+ * set. Of those 83, one — White Label — is held back by the visibility engine
+ * (`lib/feature-control.ts`, `status: "hidden"`), which is where the
+ * programme's "82 customer-visible + 1 hidden" comes from. Registry
+ * `customerVisible` means "this is a customer feature, not an admin tool"; it
+ * is NOT an entitlement and NOT a live visibility decision. Visibility ≠
+ * entitlement ≠ capability — do not collapse them.
+ *
+ * This file previously asserted a 77-entry snapshot against a schema the
+ * registry no longer has (`status`, `implemented`, `adminVisible`,
+ * `discoverable`, `parentFeature`, and bare `start`/`pro` plan names). It had
+ * been failing 17 assertions on the production baseline, which is worse than
+ * having no test: a permanently red suite is not a gate. It asserts the real
+ * schema now.
  */
-
-import { promises as fs } from 'fs';
-import path from 'path';
+import { describe, test, expect, beforeAll } from "vitest";
+import { promises as fs } from "fs";
+import path from "path";
 
 interface Feature {
   id: string;
   key: string;
   nameEn: string;
   nameAr: string;
-  type: 'feature' | 'subfeature' | 'admin_internal';
+  type: "feature" | "subfeature" | "admin_internal";
   category: string;
-  parentFeature?: string;
   capability: string;
-  requiredPlan: 'start' | 'growth' | 'pro' | 'enterprise';
   routes: string[];
   apiFamilies: string[];
-  status: 'implemented' | 'beta' | 'coming_soon' | 'disabled' | 'deprecated';
-  implemented: boolean;
   customerVisible: boolean;
-  adminVisible: boolean;
-  discoverable: boolean;
-  notes?: string;
+  requiredPlan: "k_start" | "k_growth" | "k_pro" | "k_enterprise" | "k_admin";
 }
 
-describe('PHASE 3 - Admin Feature Center Validation', () => {
+/** The counts the product programme quotes. Change these only with the product. */
+const CANONICAL_CUSTOMER_FEATURES = 83;
+const ADMIN_INTERNAL_FEATURES = 15;
+const TOTAL_REGISTRY_ENTRIES = CANONICAL_CUSTOMER_FEATURES + ADMIN_INTERNAL_FEATURES;
+
+describe("master feature registry", () => {
   let features: Feature[] = [];
 
   beforeAll(async () => {
     const registryPath = path.join(
       process.cwd(),
-      'project-knowledge/master-feature-registry.json'
+      "project-knowledge/master-feature-registry.json",
     );
-    const registryData = await fs.readFile(registryPath, 'utf-8');
-    features = JSON.parse(registryData);
+    features = JSON.parse(await fs.readFile(registryPath, "utf-8"));
   });
 
-  describe('Feature Count', () => {
-    test('Should have 77 total features', () => {
-      expect(features.length).toBe(77);
+  describe("the 83/98 reconciliation", () => {
+    test("holds every canonical feature plus the admin tools", () => {
+      expect(features.length).toBe(TOTAL_REGISTRY_ENTRIES);
     });
 
-    test('Should have 61 core features', () => {
-      const core = features.filter(f => f.type === 'feature');
-      expect(core.length).toBe(61);
+    test("counts 83 customer-facing features — the canonical number", () => {
+      const customer = features.filter((f) => f.customerVisible);
+      expect(customer.length).toBe(CANONICAL_CUSTOMER_FEATURES);
     });
 
-    test('Should have 13 sub-features', () => {
-      const sub = features.filter(f => f.type === 'subfeature');
-      expect(sub.length).toBe(13);
+    test("splits those 83 into top-level features and sub-features", () => {
+      const core = features.filter((f) => f.type === "feature");
+      const sub = features.filter((f) => f.type === "subfeature");
+      expect(core.length + sub.length).toBe(CANONICAL_CUSTOMER_FEATURES);
     });
 
-    test('Should have 3 admin/internal features', () => {
-      const admin = features.filter(f => f.type === 'admin_internal');
-      expect(admin.length).toBe(3);
+    test("keeps admin/internal tooling out of the customer count", () => {
+      const admin = features.filter((f) => f.type === "admin_internal");
+      expect(admin.length).toBe(ADMIN_INTERNAL_FEATURES);
+      // The distinction only means something if it is total: an admin tool that
+      // is also marked customer-facing would inflate the canonical 83.
+      expect(admin.every((f) => f.customerVisible === false)).toBe(true);
     });
 
-    test('All features should be implemented', () => {
-      const notImplemented = features.filter(f => !f.implemented);
-      expect(notImplemented.length).toBe(0);
-    });
-  });
-
-  describe('Feature Hierarchy', () => {
-    test('All sub-features should have valid parent features', () => {
-      const subfeatures = features.filter(f => f.type === 'subfeature');
-      subfeatures.forEach(sub => {
-        const parent = features.find(f => f.id === sub.parentFeature);
-        expect(parent).toBeDefined();
-        expect(parent?.type).toBe('feature');
-      });
-    });
-
-    test('Parent features should not have a parent', () => {
-      const coreFeatures = features.filter(f => f.type === 'feature');
-      coreFeatures.forEach(core => {
-        expect(core.parentFeature).toBeUndefined();
-      });
-    });
-
-    test('No circular parent relationships', () => {
-      features.forEach(feature => {
-        if (!feature.parentFeature) return;
-
-        let current = feature;
-        const visited = new Set<string>();
-
-        while (current.parentFeature) {
-          if (visited.has(current.parentFeature)) {
-            throw new Error(`Circular parent relationship: ${feature.id}`);
-          }
-          visited.add(current.parentFeature);
-          current = features.find(f => f.id === current.parentFeature) || current;
-        }
-      });
+    test("marks every feature and sub-feature customer-facing", () => {
+      const productFeatures = features.filter((f) => f.type !== "admin_internal");
+      expect(productFeatures.every((f) => f.customerVisible === true)).toBe(true);
     });
   });
 
-  describe('Feature Metadata', () => {
-    test('Every feature should have required fields', () => {
-      features.forEach(feature => {
-        expect(feature.id).toBeDefined();
-        expect(feature.key).toBeDefined();
-        expect(feature.nameEn).toBeDefined();
-        expect(feature.nameAr).toBeDefined();
-        expect(feature.type).toBeDefined();
-        expect(feature.category).toBeDefined();
-        expect(feature.capability).toBeDefined();
-        expect(feature.requiredPlan).toBeDefined();
-        expect(Array.isArray(feature.routes)).toBe(true);
-        expect(Array.isArray(feature.apiFamilies)).toBe(true);
-        expect(feature.status).toBeDefined();
-        expect(typeof feature.implemented).toBe('boolean');
-        expect(typeof feature.customerVisible).toBe('boolean');
-        expect(typeof feature.adminVisible).toBe('boolean');
-        expect(typeof feature.discoverable).toBe('boolean');
-      });
+  describe("catalogue integrity", () => {
+    test("gives every entry the fields the catalogue is keyed on", () => {
+      for (const f of features) {
+        expect(f.id, `id on ${f.key}`).toBeTruthy();
+        expect(f.key, `key on ${f.id}`).toBeTruthy();
+        expect(f.nameEn, `nameEn on ${f.id}`).toBeTruthy();
+        expect(f.nameAr, `nameAr on ${f.id}`).toBeTruthy();
+        expect(f.category, `category on ${f.id}`).toBeTruthy();
+        expect(f.capability, `capability on ${f.id}`).toBeTruthy();
+        expect(Array.isArray(f.routes), `routes on ${f.id}`).toBe(true);
+        expect(Array.isArray(f.apiFamilies), `apiFamilies on ${f.id}`).toBe(true);
+        expect(typeof f.customerVisible, `customerVisible on ${f.id}`).toBe("boolean");
+      }
     });
 
-    test('Feature IDs should be unique', () => {
-      const ids = features.map(f => f.id);
-      const uniqueIds = new Set(ids);
-      expect(uniqueIds.size).toBe(ids.length);
+    test("keeps ids unique", () => {
+      const ids = features.map((f) => f.id);
+      expect(new Set(ids).size).toBe(ids.length);
     });
 
-    test('Feature keys should be unique', () => {
-      const keys = features.map(f => f.key);
-      const uniqueKeys = new Set(keys);
-      expect(uniqueKeys.size).toBe(keys.length);
+    test("keeps keys unique", () => {
+      const keys = features.map((f) => f.key);
+      expect(new Set(keys).size).toBe(keys.length);
     });
 
-    test('All features should have valid plan levels', () => {
-      const validPlans = ['start', 'growth', 'pro', 'enterprise'];
-      features.forEach(f => {
-        expect(validPlans).toContain(f.requiredPlan);
-      });
+    test("uses only the three known entry types", () => {
+      const valid = ["feature", "subfeature", "admin_internal"];
+      for (const f of features) expect(valid, f.id).toContain(f.type);
     });
 
-    test('All features should have valid status', () => {
-      const validStatus = ['implemented', 'beta', 'coming_soon', 'disabled', 'deprecated'];
-      features.forEach(f => {
-        expect(validStatus).toContain(f.status);
-      });
+    test("uses only real plan tiers", () => {
+      // The k_ prefix is the plan-code namespace shared with the entitlements
+      // engine; bare "start"/"pro" names are the pre-namespacing spelling and
+      // would silently miss every entitlement lookup.
+      const valid = ["k_start", "k_growth", "k_pro", "k_enterprise", "k_admin"];
+      for (const f of features) expect(valid, f.id).toContain(f.requiredPlan);
     });
 
-    test('All features should have valid type', () => {
-      const validTypes = ['feature', 'subfeature', 'admin_internal'];
-      features.forEach(f => {
-        expect(validTypes).toContain(f.type);
-      });
+    test("reserves the admin plan tier for admin tooling", () => {
+      for (const f of features) {
+        if (f.requiredPlan === "k_admin") expect(f.type, f.id).toBe("admin_internal");
+      }
     });
   });
 
-  describe('Admin Visibility', () => {
-    test('All features should be adminVisible', () => {
-      const notAdminVisible = features.filter(f => !f.adminVisible);
-      expect(notAdminVisible.length).toBe(0);
+  describe("White Label — the one held-back feature", () => {
+    test("is a customer feature in the registry, gated to enterprise", () => {
+      const wl = features.find((f) => f.key === "white_label");
+      expect(wl).toBeDefined();
+      expect(wl!.type).toBe("feature");
+      expect(wl!.customerVisible).toBe(true);
+      expect(wl!.requiredPlan).toBe("k_enterprise");
     });
 
-    test('Admin/internal features should not be customerVisible', () => {
-      const adminFeatures = features.filter(f => f.type === 'admin_internal');
-      adminFeatures.forEach(f => {
-        if (f.key === 'audit_log') {
-          expect(f.customerVisible).toBe(true); // Audit log is customer+admin visible
-        } else {
-          expect(f.customerVisible).toBe(false);
-        }
-      });
-    });
-
-    test('Customer features should be either customerVisible or admin-only sub-features', () => {
-      const customerFeatures = features.filter(f => f.type !== 'admin_internal');
-      customerFeatures.forEach(f => {
-        expect(f.customerVisible || f.type === 'subfeature').toBe(true);
-      });
-    });
-  });
-
-  describe('Hidden Features', () => {
-    test('Should have exactly 13 hidden features', () => {
-      const hidden = features.filter(f => !f.discoverable && f.type !== 'admin_internal');
-      expect(hidden.length).toBe(13);
-    });
-
-    test('Hidden features should have valid parent features', () => {
-      const hidden = features.filter(f => !f.discoverable && f.type === 'subfeature');
-      hidden.forEach(f => {
-        expect(f.parentFeature).toBeDefined();
-      });
-    });
-
-    test('All hidden features should be customer visible', () => {
-      const hidden = features.filter(f => !f.discoverable && f.type === 'subfeature');
-      hidden.forEach(f => {
-        expect(f.customerVisible).toBe(true);
-      });
-    });
-  });
-
-  describe('Discovery', () => {
-    test('Discoverable features should have at least one route or be sub-features', () => {
-      const discoverable = features.filter(f => f.discoverable);
-      discoverable.forEach(f => {
-        if (f.type === 'feature') {
-          expect(f.routes.length > 0 || f.routes[0] !== '').toBe(true);
-        }
-      });
-    });
-
-    test('Should have 56 discoverable features', () => {
-      const discoverable = features.filter(f => f.discoverable);
-      expect(discoverable.length).toBe(56);
-    });
-  });
-
-  describe('Completeness', () => {
-    test('No implemented feature should have type "coming_soon"', () => {
-      const implementedButComingSoon = features.filter(
-        f => f.implemented && f.status === 'coming_soon'
-      );
-      expect(implementedButComingSoon.length).toBe(0);
-    });
-
-    test('All features should have at least one category', () => {
-      features.forEach(f => {
-        expect(f.category).toBeTruthy();
-      });
-    });
-
-    test('Feature count matches audit findings', () => {
-      // 61 core + 13 hidden + 3 admin = 77 total
-      const expectedCount = 77;
-      expect(features.length).toBe(expectedCount);
-    });
-  });
-
-  describe('Customer vs Admin', () => {
-    test('Admin should see all 77 features', () => {
-      // Admin bypass means no plan restrictions
-      const adminVisibleFeatures = features.filter(f => f.adminVisible);
-      expect(adminVisibleFeatures.length).toBe(77);
-    });
-
-    test('Start tier customer should see ~20 features', () => {
-      // This is the entitlement system's job, not the registry's
-      // Just verify the plan assignments exist
-      const startFeatures = features.filter(f => f.requiredPlan === 'start' && f.customerVisible);
-      expect(startFeatures.length).toBeGreaterThan(15);
-    });
-
-    test('Hidden features should still be part of admin inventory', () => {
-      const hiddenButImplemented = features.filter(
-        f => !f.discoverable && f.type === 'subfeature' && f.implemented
-      );
-      expect(hiddenButImplemented.length).toBe(13);
+    test("has a separate admin-side configuration entry", () => {
+      const admin = features.find((f) => f.key === "white_label_admin");
+      expect(admin).toBeDefined();
+      expect(admin!.type).toBe("admin_internal");
+      expect(admin!.customerVisible).toBe(false);
     });
   });
 });
