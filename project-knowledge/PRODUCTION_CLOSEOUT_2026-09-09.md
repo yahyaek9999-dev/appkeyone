@@ -153,9 +153,22 @@ session. Not asserted either way.
 ## 6. Test status
 
     26 files · 366 tests · 0 failures
-    typecheck: 0 errors
+    typecheck: 0 errors (tsc --noEmit, exit 0)
     schema parity: 176 models in lock-step (sqlite ↔ postgres)
     rbac: PASS
+
+Green requires the DB-backed file to reach real Postgres, and the URL **must
+carry a username** — `psql` falls back to the OS user, Prisma sends an empty
+one and the server answers ``User `` was denied access``:
+
+    TEST_POSTGRES_URL="postgresql://yahyaemad@localhost:5432/keyone_multiteam_test" \
+      npx vitest run
+
+Without it, `multi-team-db.test.ts` fails all 17 of its tests with "PostgreSQL
+not reachable" — an environment failure, not a product defect. The file throws
+loudly by design rather than skipping silently, which is the correct behaviour;
+the misleading part is only that the message names unreachability when the
+actual cause was an empty username.
 
 The 17 earlier failures were classified **STALE TEST**, not product breakage:
 `phase3-admin-features.test.ts` asserted a registry shape that no longer
