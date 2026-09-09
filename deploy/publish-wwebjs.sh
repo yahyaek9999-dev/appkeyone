@@ -54,8 +54,15 @@ RUN
 for T in darwin-arm64 darwin-x64 linux-arm64 win-x64; do assemble "$T"; done
 # linux-x64 is the REF — already complete from build-bundle.sh, skip assemble()
 # refresh app js everywhere (in case it changed) + rebuild ref app.tar.gz
+# package.json rides along: nothing reads its version today, but leaving it at
+# the version of whichever release first staged the dir makes every shipped
+# bundle disagree with the VERSION the script actually reports.
 cp "$BN/keyone-wa-bridge.js" "$REF/keyone-wa-bridge.js"
-for T in darwin-arm64 darwin-x64 linux-arm64 win-x64; do cp "$BN/keyone-wa-bridge.js" "$PK/dist/$T/app/keyone-wa-bridge.js"; done
+cp "$BN/package.json" "$REF/package.json"
+for T in darwin-arm64 darwin-x64 linux-arm64 win-x64; do
+  cp "$BN/keyone-wa-bridge.js" "$PK/dist/$T/app/keyone-wa-bridge.js"
+  cp "$BN/package.json"        "$PK/dist/$T/app/package.json"
+done
 
 echo "▶ macOS PKGs"
 bash "$PK/macos/build-pkg.sh" darwin-arm64 "$VERSION" >/dev/null && echo "  ✓ arm64 pkg"
