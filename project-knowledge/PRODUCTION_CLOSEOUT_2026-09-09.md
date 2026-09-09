@@ -45,10 +45,45 @@ What the evidence shows today:
 - `classifyLegacyRows()` reclassifies; its own comment (`:609`) says it keeps the
   row "alive; just classifies the legacy one as `legacy_mapped`"
 
-**UNKNOWN:** by what mechanism the 44 legacy rows are absent from this database.
-No deletion path exists, so they were most likely never in *this* table — but I
-have no evidence establishing that, and none was fabricated to close the gap.
-No historical record was deleted to make the numbers agree.
+**RESOLVED 2026-09-09 — nothing was ever deleted from this database.**
+
+The 44 legacy rows were never in *this* database, and the proof is that
+**no data of any kind in production predates 2026-08-19 17:19:50**:
+
+| table | oldest row |
+|---|---|
+| FeatureRelease | 2026-08-19 17:19:50.138 |
+| FeatureControl | 2026-08-19 17:19:50.157 |
+| User (5 real accounts) | 2026-08-19 17:46:49.073 |
+| Subscription | 2026-08-19 22:45:21.020 |
+| Customer / Conversation / Message | 2026-08-20 16:36:02 |
+
+`keyone.service` started at **2026-08-19T17:19:48 UTC** (journal). The first two
+tables were written **2 seconds later** — the registry seeder's own first
+writes. Not one row in any table is older. `User` rows are real signups and are
+never reseeded, so this is not a FeatureControl-specific effect: **the entire
+production database dates from 2026-08-19.**
+
+The 142-row state was recorded against `a7a5081` on **2026-08-18 19:39** — the
+day *before*. It therefore belonged to a **predecessor database that this one
+replaced**. "142 vs 83" was never a deletion; it is a comparison across two
+different database instances.
+
+Three candidate mechanisms were tested and **refuted**:
+
+- *the schema change dropped the table* — `a7a5081` added `featureSource`,
+  `featureType` and `adminVisible` **each with a `@default`**, which is purely
+  additive; `db push` would not rewrite the table
+- *the deploy accepted data loss* — `release-aws.sh:94` runs `db push` **without**
+  `--accept-data-loss` and its comment says it aborts on any destructive change
+- *the seeder deletes* — `seedFeatureRegistry()` uses `upsert` only, and
+  `featureControl.delete*` appears nowhere in the codebase
+
+**Still UNKNOWN (and unknowable from surviving evidence):** *why* the database
+was replaced on 2026-08-19. The records that would show it are gone — backups
+are pruned at 14 days (oldest retained 2026-08-25) and Postgres logs rotate well
+short of that date. No mechanism was invented, no rows recreated, and no
+historical record deleted to make the numbers agree.
 
 ---
 
@@ -280,7 +315,7 @@ Recorded so they are not re-opened later:
 | Off-host backup copy | ABSENT (documented in-script); EBS snapshots UNKNOWN |
 | Telemetry (Sentry) | ABSENT — standing known gap |
 | Tests / typecheck / schema parity | 366 pass, 0 type errors, 176 models in lock-step |
-| Feature counts | RECONCILED (83 canonical); origin of the historical 44 legacy rows UNKNOWN |
+| Feature counts | RECONCILED (83 canonical); the 44 legacy rows PROVEN to belong to a predecessor database — nothing deleted here |
 | Git ↔ production | CONSISTENT — delta is docs + tests only, zero runtime code |
 
 **Requires the account owner, not me:** `fdd76ed` is committed locally but
