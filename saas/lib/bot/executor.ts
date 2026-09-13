@@ -80,33 +80,55 @@ async function sendBotMessage(
   text: string,
   buttons?: string[],
 ): Promise<void> {
-  // Dispatch via the existing outgoing message queue / WhatsApp sender
-  // This calls the same path as the AI response sender, ensuring consistent delivery
+  // Deliver through the SAME queue the AI reply path uses:
+  //   wa.send -> enqueueOutboundText -> WaMessage -> drainOutgoingQueue
+  //     -> wa.sendNow -> maybeRouteBridgeSend -> Bridge | QR | Meta
+  // That resolver is what makes a bot reply reach a Bridge tenant. This used to
+  // write to `prisma.outgoingMessage`, a model that does not exist: the
+  // delegate was `undefined`, so `.create()` threw synchronously, the `.catch()`
+  // chained onto it never attached, and the outer catch swallowed the throw —
+  // every bot message was discarded in silence on every transport.
+  const body = renderWithOptions(text, buttons);
+  if (!body) return;
+
   try {
-    await (prisma as any).outgoingMessage.create({
-      data: {
-        userId,
-        phone,
-        content: text,
-        buttons: buttons ? JSON.stringify(buttons) : null,
-        status: "queued",
-        createdAt: new Date(),
-      },
-    }).catch(async () => {
-      // Fall back: write directly to the cron outgoing queue
-      await prisma.message.create({
-        data: {
-          conversationId: await getOrCreateConvId(userId, phone),
-          role: "assistant",
-          content: text,
-          mediaType: "text",
-          createdAt: new Date(),
-        } as any,
-      }).catch(() => null);
-    });
-  } catch {
-    // Swallow — bot message delivery failure should not crash the execution
+    const { wa } = await import("@/lib/wa");
+    const res = await wa.send(userId, phone, body, "system");
+    if (!res?.ok) {
+      console.error("[flow] send failed:", (res as any)?.data?.error || res?.status);
+    }
+  } catch (e: any) {
+    // Delivery failure must not crash the flow, but it must not be invisible
+    // either — silence here is what hid this bug.
+    console.error("[flow] send threw:", e?.message);
   }
+
+  // The send path does not persist; every caller records its own assistant
+  // message, so the reply shows in the inbox next to the AI ones.
+  const conversationId = await getOrCreateConvId(userId, phone);
+  if (!conversationId) return;
+  await prisma.message.create({
+    data: {
+      conversationId,
+      role: "assistant",
+      content: body,
+      mediaType: "text",
+      createdAt: new Date(),
+    } as any,
+  }).catch(() => null);
+}
+
+/**
+ * The outbound queue carries plain text, so button labels have to travel in the
+ * body. They are listed bare, one per line, and deliberately NOT numbered: a
+ * `buttons` node matches the reply with `b.label === userInput`, so prompting
+ * for "1" would produce an answer that can never select a branch.
+ */
+function renderWithOptions(text: string, buttons?: string[]): string {
+  const base = String(text || "").trim();
+  const labels = (buttons || []).map((b) => String(b || "").trim()).filter(Boolean);
+  if (!labels.length) return base;
+  return [base, "", ...labels].join("\n").trim();
 }
 
 async function getOrCreateConvId(userId: string, phone: string): Promise<string> {

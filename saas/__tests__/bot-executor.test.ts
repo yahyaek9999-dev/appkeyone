@@ -103,12 +103,20 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(({ where }: any) => Promise.resolve(flowStore.get(where.id) || null)),
       update: vi.fn(() => Promise.resolve({})),
     },
-    outgoingMessage: {
-      create: vi.fn(({ data }: any) => {
-        outgoingMessages.push(data);
-        return Promise.resolve({ id: "out-1", ...data });
-      }),
-    },
+  },
+}));
+
+// The executor delivers through the canonical queue (`wa.send`), the same path
+// the AI reply path uses — NOT through a Prisma model. An earlier version of
+// this file mocked a `prisma.outgoingMessage` delegate that does not exist in
+// the schema, so these tests stayed green while production silently discarded
+// every bot message. Capture the real seam instead.
+vi.mock("@/lib/wa", () => ({
+  wa: {
+    send: vi.fn((_userId: string, _to: string, content: string) => {
+      outgoingMessages.push({ content });
+      return Promise.resolve({ ok: true, status: 202, data: { queued: true } });
+    }),
   },
 }));
 
@@ -255,8 +263,13 @@ describe("Bot Executor — Node Types", () => {
 
     const r1 = await triggerBotFlow({ userId, customerId, phone: "+966500000003", incomingMessage: "start" });
     expect(r1.status).toBe("waiting");
-    const btnMsg = outgoingMessages.find((m) => m.buttons);
+    // Labels ride in the body: the queue carries plain text, and a `buttons`
+    // node matches the reply with `b.label === userInput`, so the customer has
+    // to be able to read and retype them.
+    const btnMsg = outgoingMessages.find((m) => m.content?.includes("اختر:"));
     expect(btnMsg).toBeTruthy();
+    expect(btnMsg.content).toContain("نعم");
+    expect(btnMsg.content).toContain("لا");
 
     // Tap "نعم"
     const r2 = await triggerBotFlow({ userId, customerId, phone: "+966500000003", incomingMessage: "نعم", buttonValue: "نعم" });
