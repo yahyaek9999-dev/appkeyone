@@ -91,28 +91,46 @@ async function sendBotMessage(
   const body = renderWithOptions(text, buttons);
   if (!body) return;
 
+  let queuedId: string | null = null;
   try {
     const { wa } = await import("@/lib/wa");
     const res = await wa.send(userId, phone, body, "system");
     if (!res?.ok) {
       console.error("[flow] send failed:", (res as any)?.data?.error || res?.status);
+      return;
     }
+    queuedId = String((res as any)?.data?.id || "") || null;
   } catch (e: any) {
     // Delivery failure must not crash the flow, but it must not be invisible
     // either — silence here is what hid this bug.
     console.error("[flow] send threw:", e?.message);
+    return;
   }
 
   // The send path does not persist; every caller records its own assistant
-  // message, so the reply shows in the inbox next to the AI ones.
+  // message, so the reply shows in the inbox next to the AI ones. Key that row
+  // to the queued WaMessage: `enqueueOutboundText` is idempotent on
+  // (userId, to, text, reason) and hands back the SAME id when it refuses to
+  // re-send an identical reply, so keying on it keeps the inbox showing exactly
+  // what actually went out instead of one copy per flow run.
   const conversationId = await getOrCreateConvId(userId, phone);
-  if (!conversationId) return;
+  if (!conversationId || !queuedId) return;
+
+  const already = await prisma.message
+    .findFirst({
+      where: { conversationId, role: "assistant", metadataJson: { contains: queuedId } },
+      select: { id: true },
+    } as any)
+    .catch(() => null);
+  if (already) return;
+
   await prisma.message.create({
     data: {
       conversationId,
       role: "assistant",
       content: body,
       mediaType: "text",
+      metadataJson: JSON.stringify({ waMessageId: queuedId, source: "bot_flow" }),
       createdAt: new Date(),
     } as any,
   }).catch(() => null);

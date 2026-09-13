@@ -105,6 +105,38 @@ async function queuedFor(userId: string) {
   return db.waMessage.findMany({ where: { userId }, select: { body: true, status: true } });
 }
 
+/** A tenant whose flow asks a buttons question and branches on the label. */
+async function makeButtonTenant(labels: string[]) {
+  const user = await db.user.create({
+    data: { email: email(`btn-${Math.random().toString(36).slice(2, 8)}`), passwordHash: "x", name: "Btn" },
+  });
+  await db.bot.create({ data: { userId: user.id, connectionMode: "bridge" } });
+  const customer = await db.customer.create({
+    data: { userId: user.id, phone: `+1555${Math.floor(Math.random() * 9_000_000 + 1_000_000)}`, name: "C" },
+  });
+  await db.conversation.create({ data: { customerId: customer.id } });
+
+  const nodes: any[] = [
+    { id: "n1", type: "start", nextId: "n2" },
+    {
+      id: "n2",
+      type: "buttons",
+      data: { text: "اختر:", buttons: labels.map((l) => ({ label: l })) },
+      branches: labels.map((l, i) => ({ label: l, value: l, nextId: `pick${i}` })),
+    },
+    ...labels.map((l, i) => ({ id: `pick${i}`, type: "message", data: { text: `اخترت ${l}` } })),
+  ];
+
+  await db.convFlow.create({
+    data: {
+      userId: user.id, name: "B", trigger: "message_in", isDefault: true,
+      status: "active", nodesJson: JSON.stringify(nodes),
+    },
+  });
+  return { user, customer };
+}
+
+
 beforeAll(async () => {
   try {
     await db.$queryRawUnsafe("select 1");
@@ -194,6 +226,95 @@ describe("Bot Builder outbound delivery", () => {
     const src = readFileSync(join(process.cwd(), "lib/bot/executor.ts"), "utf8");
     expect(src).not.toMatch(/prisma\s+as\s+any\)\.outgoingMessage/);
     expect(src).toMatch(/enqueueOutboundText|wa\.send/);
+  });
+});
+
+describe("Bot Builder button nodes", () => {
+  test("multiple button labels are rendered bare — never numbered", async () => {
+    requireDb();
+    const labels = ["نعم", "لا", "ربما لاحقاً"];
+    const { user, customer } = await makeButtonTenant(labels);
+
+    await triggerBotFlow({
+      userId: user.id, customerId: customer.id, phone: customer.phone, incomingMessage: "ابدأ",
+    });
+
+    const [prompt] = await queuedFor(user.id);
+    expect(prompt).toBeTruthy();
+    for (const l of labels) expect(prompt.body).toContain(l);
+    // A numbered list would invite "1", which `b.label === userInput` can never match.
+    expect(prompt.body).not.toMatch(/^\s*\d+[.)]\s/m);
+  });
+
+  test("replying with the exact rendered label selects that branch", async () => {
+    requireDb();
+    const labels = ["نعم", "لا"];
+    const { user, customer } = await makeButtonTenant(labels);
+
+    await triggerBotFlow({
+      userId: user.id, customerId: customer.id, phone: customer.phone, incomingMessage: "ابدأ",
+    });
+    const [prompt] = await queuedFor(user.id);
+    // Take the label straight out of what the customer actually received, so
+    // this breaks if rendering ever stops matching what the branch expects.
+    const rendered = prompt.body.split("\n").map((l: string) => l.trim()).filter(Boolean);
+    const chosen = rendered.find((l: string) => labels.includes(l));
+    expect(chosen, "no rendered line matches a branch label").toBe("نعم");
+
+    await triggerBotFlow({
+      userId: user.id, customerId: customer.id, phone: customer.phone, incomingMessage: chosen!,
+    });
+
+    const bodies = (await queuedFor(user.id)).map((m: any) => m.body);
+    expect(bodies.some((b: string) => b.includes("اخترت نعم"))).toBe(true);
+    expect(bodies.some((b: string) => b.includes("اخترت لا"))).toBe(false);
+  });
+});
+
+describe("Bot Builder persistence and retries", () => {
+  async function assistantRowsFor(customerId: string) {
+    const conv = await db.conversation.findUnique({ where: { customerId }, select: { id: true } });
+    if (!conv) return [];
+    return db.message.findMany({
+      where: { conversationId: conv.id, role: "assistant" },
+      select: { content: true },
+    });
+  }
+
+  test("one run persists the assistant reply exactly once", async () => {
+    requireDb();
+    const { user, customer } = await makeTenant({ mode: "bridge", text: "رسالة مرة واحدة" });
+
+    await triggerBotFlow({
+      userId: user.id,
+      customerId: customer.id,
+      phone: customer.phone,
+      incomingMessage: "hi",
+    });
+
+    expect(await queuedFor(user.id)).toHaveLength(1);
+    expect(await assistantRowsFor(customer.id)).toHaveLength(1);
+  });
+
+  test("a repeat run does not duplicate the outgoing message OR the inbox row", async () => {
+    requireDb();
+    const { user, customer } = await makeTenant({ mode: "bridge", text: "نص مكرر تماما" });
+
+    for (let i = 0; i < 3; i++) {
+      await triggerBotFlow({
+        userId: user.id,
+        customerId: customer.id,
+        phone: customer.phone,
+        incomingMessage: "hi",
+      });
+    }
+
+    // enqueueOutboundText derives an idempotency key from (userId, to, text,
+    // reason), so the identical reply must not be sent again...
+    expect(await queuedFor(user.id), "duplicate outbound queued").toHaveLength(1);
+    // ...and the inbox must not fill up with copies of a message that only
+    // went out once.
+    expect(await assistantRowsFor(customer.id), "duplicate assistant rows").toHaveLength(1);
   });
 });
 
