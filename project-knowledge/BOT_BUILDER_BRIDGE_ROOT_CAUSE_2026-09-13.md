@@ -91,3 +91,61 @@ handoff is proven.
 Import stays unsupported on Bridge. It reads contacts from a connected QR
 session, which the Bridge protocol does not expose, and the existing guard
 correctly fails closed rather than routing a Bridge tenant into QR recovery.
+
+---
+
+## Release — 2026-09-14
+
+Deployed. Production went `1dd56b4` → `198476d` → **`1ad741f`**.
+
+The second deploy was not planned: post-deploy verification on the box found a
+defect in `198476d` that no local test could have caught.
+
+### What production's configuration exposed
+
+Production runs **`WA_SMART_QUEUE_ENABLED=0`**. In that mode `wa.send` skips the
+queue entirely and calls `sendNow`, so there is no `WaMessage` row and no queued
+id. `198476d` keyed the assistant message to that id unconditionally:
+
+    if (!conversationId || !queuedId) return;
+
+so on production every successful bot reply was sent and then recorded nowhere.
+Every test until then ran with the queue ON — the default, and not what we run.
+
+`1ad741f` makes the rule *one row per message that actually went out*:
+
+- queue **on** — `wa.send` de-duplicates on (userId, to, text, reason) and
+  returns the same id, so three runs give one row
+- queue **off** — no de-duplication, every call is a real send, so each earns
+  its own row
+
+`__tests__/bot-builder-queue-off.test.ts` pins production's setting before
+`wa.ts` loads and covers both transports plus the failed-send case. Reverting
+the guard turns it red.
+
+### Production evidence
+
+Two synthetic tenants, created and removed, run twice — identical both times:
+
+    [flow] send failed: no_bridge_online   ×3   <- bridge tenant, bridge path
+    [flow] send failed: fetch failed       ×1   <- qr tenant, QR gateway
+
+`no_bridge_online` is bridge-exclusive vocabulary and `fetch failed` is the QR
+gateway call, so the split proves no cross-transport fallback in either
+direction. Those markers are themselves new: before this fix the same failures
+produced complete silence.
+
+Both runs ended with the database back at its baseline — 5 users, 5 bots,
+2 customers, 1 flow, 6 messages — and zero synthetic rows left behind.
+
+Health `1ad741f`, `db:ok`, `/api/ready` ready on all three checks; 0
+prisma/runtime errors since the restart; the 22 errors in stderr are all
+historical, ahead of the restart marker.
+
+### Still unverified
+
+The physical hop — gateway → WebSocket → the customer's Bridge → WhatsApp.
+A synthetic tenant has no Bridge linked, so its sends can only ever fail with
+`no_bridge_online`; a real send needs the one online Bridge
+(`test@wkeyone.com`), whose only flow is a draft, and no test conversation or
+recipient was approved. Nothing was modified to force it.
