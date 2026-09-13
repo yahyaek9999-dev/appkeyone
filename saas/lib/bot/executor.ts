@@ -108,21 +108,30 @@ async function sendBotMessage(
   }
 
   // The send path does not persist; every caller records its own assistant
-  // message, so the reply shows in the inbox next to the AI ones. Key that row
-  // to the queued WaMessage: `enqueueOutboundText` is idempotent on
-  // (userId, to, text, reason) and hands back the SAME id when it refuses to
-  // re-send an identical reply, so keying on it keeps the inbox showing exactly
-  // what actually went out instead of one copy per flow run.
+  // message, so the reply shows in the inbox next to the AI ones. The rule is
+  // one row per message that actually went out, which differs by queue mode:
+  //
+  //   WA_SMART_QUEUE_ENABLED=1 — wa.send queues a WaMessage and is idempotent
+  //     on (userId, to, text, reason), handing back the SAME id rather than
+  //     re-sending an identical reply. Key the row to that id so three flow
+  //     runs that produced one message produce one inbox row.
+  //
+  //   WA_SMART_QUEUE_ENABLED=0 (production today) — wa.send goes straight to
+  //     sendNow, there is no queue row and no de-duplication, so every call is
+  //     a real send and every one earns its own row. Keying on an id that does
+  //     not exist here would silently record nothing.
   const conversationId = await getOrCreateConvId(userId, phone);
-  if (!conversationId || !queuedId) return;
+  if (!conversationId) return;
 
-  const already = await prisma.message
-    .findFirst({
-      where: { conversationId, role: "assistant", metadataJson: { contains: queuedId } },
-      select: { id: true },
-    } as any)
-    .catch(() => null);
-  if (already) return;
+  if (queuedId) {
+    const already = await prisma.message
+      .findFirst({
+        where: { conversationId, role: "assistant", metadataJson: { contains: queuedId } },
+        select: { id: true },
+      } as any)
+      .catch(() => null);
+    if (already) return;
+  }
 
   await prisma.message.create({
     data: {
@@ -130,7 +139,9 @@ async function sendBotMessage(
       role: "assistant",
       content: body,
       mediaType: "text",
-      metadataJson: JSON.stringify({ waMessageId: queuedId, source: "bot_flow" }),
+      metadataJson: JSON.stringify(
+        queuedId ? { waMessageId: queuedId, source: "bot_flow" } : { source: "bot_flow" },
+      ),
       createdAt: new Date(),
     } as any,
   }).catch(() => null);
