@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useMutate } from "@/components/ui/use-mutate";
+import RecoveryPanel from "./recovery-panel";
 import {
   DownloadCloud, Loader2, CheckCircle2, XCircle, AlertTriangle, Clock,
   ScanLine, DatabaseZap, Users, MessageSquare, Brain, Inbox, RefreshCw,
@@ -176,8 +177,25 @@ export default function ImportClient() {
 
   return (
     <div className="space-y-6">
+      {/* ── Bridge tenant: Recovery runs on its own temporary session ──
+          Import stays QR-only, and this tenant never sees the normal QR flow.
+          The panel creates a session scoped to this recovery, shows the QR only
+          while it is waiting to be scanned, and tears it down afterwards. The
+          Step-0 card below is for QR tenants and stays exactly as it was. */}
+      {/* Kept visible after completion on purpose: the panel's completed state is
+          where the customer is told, in as many words, that the temporary
+          session was closed and Bridge is still their channel. */}
+      {bridgeMode && (
+        <RecoveryPanel
+          onFinished={() => {
+            void loadSession();
+            void loadResults();
+          }}
+        />
+      )}
+
       {/* ── Step 0: connect WhatsApp (required to read your data) ── */}
-      {waStatus !== "connected" && !done && (
+      {!bridgeMode && waStatus !== "connected" && !done && (
         <div className="card p-6 border border-amber-500/20">
           <h2 className="font-bold text-lg flex items-center gap-2 mb-1">
             <ScanLine className="h-5 w-5 text-amber-300" /> الخطوة 1: اربط واتساب لسحب بياناتك

@@ -907,6 +907,22 @@ class SessionManager {
     client.on("message", async (msg) => {
       try {
         if (msg.fromMe) return;
+
+        // EPHEMERAL SESSIONS ARE SILENT.
+        //
+        // A temporary session (import / campaign / Recovery) is an extra linked
+        // device on an account that already has a primary transport, so WhatsApp
+        // delivers it the SAME inbound messages the Bridge or the tenant's own
+        // QR session receives. Forwarding them would double-process every
+        // message: two bot runs, two AI replies, two usage charges. The SaaS
+        // de-duplicates on providerMessageId, but the cheaper and more honest
+        // place to stop is here — before we even fetch the chat, and crucially
+        // before sendStateTyping() below, which would otherwise show the
+        // customer a "typing…" indicator coming from a recovery device.
+        //
+        // A temporary session exists to read history, never to answer.
+        if (session.ephemeral) return;
+
         session.lastActivityAt = Date.now(); // touch on every inbound message
         const chat = await msg.getChat();
         if (chat.isGroup) return; // skip groups for now

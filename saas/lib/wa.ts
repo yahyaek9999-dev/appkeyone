@@ -104,7 +104,19 @@ async function enqueueSend(
 }
 
 export const wa = {
-  start: (userId: string) => call(`/sessions/${userId}/start`, { method: "POST" }),
+  /**
+   * Start a session. `ephemeral: true` asks the service for a TEMPORARY session
+   * — the Recovery flow's only way in. Such a session never auto-reconnects, is
+   * never restored after a restart, self-destructs on the service TTL and wipes
+   * its auth folder on teardown, so it can never become a normal QR connection.
+   * The service has accepted this flag since it was written; nothing on that
+   * side changes.
+   */
+  start: (userId: string, opts?: { ephemeral?: boolean }) =>
+    call(`/sessions/${userId}/start`, {
+      method: "POST",
+      body: JSON.stringify({ ephemeral: !!opts?.ephemeral }),
+    }),
   status: (userId: string) => call(`/sessions/${userId}/status`),
   pair: (userId: string, phone: string) =>
     call(`/sessions/${userId}/pair`, { method: "POST", body: JSON.stringify({ phone }) }),

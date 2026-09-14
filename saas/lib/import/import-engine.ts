@@ -210,6 +210,18 @@ export async function runImportJob(job: { id: string; userId: string; refId: str
   if (!session) { await completeJob(job.id, { error: "session_not_found" }); return { done: true, error: "session_not_found" }; }
   if (session.status === "completed" || session.status === "closed") { await completeJob(job.id, { skipped: true }); return { done: true }; }
 
+  // A Bridge tenant only ever reaches this job through Recovery, on a TEMPORARY
+  // session that is already connected and already ephemeral. That session cannot
+  // be re-created by a retry — once it is gone the customer has to scan again —
+  // so recovery runs fail terminally instead of looping. Nothing else about the
+  // job changes, and a QR tenant's behaviour is untouched.
+  const isRecovery =
+    normalizeConnectionMode(
+      ((await prisma.bot
+        .findUnique({ where: { userId: job.userId }, select: { connectionMode: true } as any })
+        .catch(() => null)) as any)?.connectionMode,
+    ) === "bridge";
+
   try {
     await prisma.importSession.update({ where: { id: session.id }, data: { status: "scanning", startedAt: session.startedAt || new Date() } });
     await wa.wake(job.userId).catch(() => {});
@@ -223,8 +235,9 @@ export async function runImportJob(job: { id: string; userId: string; refId: str
     if (!exp.ok) {
       await log(job.userId, session.id, "error", "تعذّر سحب بيانات الواتساب", { status: exp.status });
       await prisma.importSession.update({ where: { id: session.id }, data: { status: "failed", error: "export_unavailable" } });
-      await failJob(job.id, "export_unavailable", { retry: true });
-      return { done: false, error: "export_unavailable" };
+      if (isRecovery) await wa.logout(job.userId).catch(() => {});
+      await failJob(job.id, "export_unavailable", { retry: !isRecovery });
+      return { done: isRecovery, error: "export_unavailable" };
     }
 
     await prisma.importSession.update({ where: { id: session.id }, data: { status: "importing" } });
@@ -244,8 +257,10 @@ export async function runImportJob(job: { id: string; userId: string; refId: str
     return { done: true };
   } catch (e: any) {
     await prisma.importSession.update({ where: { id: session.id }, data: { status: "failed", error: String(e?.message || e).slice(0, 300) } }).catch(() => {});
-    await failJob(job.id, String(e?.message || e), { retry: true });
-    return { done: false, error: String(e?.message || e) };
+    // Whatever went wrong, a temporary session must not outlive it.
+    if (isRecovery) await wa.logout(job.userId).catch(() => {});
+    await failJob(job.id, String(e?.message || e), { retry: !isRecovery });
+    return { done: isRecovery, error: String(e?.message || e) };
   }
 }
 
