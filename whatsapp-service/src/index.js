@@ -294,7 +294,7 @@ app.get('/sessions/:userId/export', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[wa-service] listening on :${PORT}`);
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`[wa-service] listening on 127.0.0.1:${PORT}`);
   restoreSessions();
 });
